@@ -128,38 +128,17 @@ section[id]{
     .brand{
       display:flex;
       align-items:center;
-      gap:10px;
       height:90px;
       overflow:visible;
       min-width:0;
     }
     .brand img{
-      height:62px;
+      height:72px;
       width:auto;
       max-width:100%;
       object-fit:contain;
       transform:none;
       filter:drop-shadow(0 12px 28px rgba(0,0,0,0.45));
-    }
-    .brand-lockup{
-      display:flex;
-      flex-direction:column;
-      line-height:1.02;
-      transform:translateY(1px);
-    }
-    .brand-title{
-      font-size:2rem;
-      font-weight:800;
-      letter-spacing:0.06em;
-      color:rgba(235,240,255,0.96);
-      text-transform:uppercase;
-    }
-    .brand-sub{
-      margin-top:3px;
-      font-size:1.05rem;
-      font-weight:700;
-      letter-spacing:0.02em;
-      color:#ff4fa0;
     }
 
     /* Desktop nav */
@@ -275,26 +254,17 @@ section[id]{
       .brand{
         display:flex;
         align-items:center;
-        gap:8px;
         height:72px;
         margin-left:0;
       }
       .brand img{
-        height:56px;
+        height:62px;
         width:auto;
-        max-width:min(40vw, 190px);
+        max-width:min(68vw, 320px);
         max-height:72px;
         object-fit:contain;
         object-position:left center;
         display:block;
-      }
-      .brand-title{
-        font-size:1.28rem;
-        letter-spacing:0.05em;
-      }
-      .brand-sub{
-        margin-top:2px;
-        font-size:.82rem;
       }
       .nav-mobile{
         margin-left:auto;
@@ -308,14 +278,8 @@ section[id]{
     }
     @media (max-width: 380px){
       .brand img{
-        height:50px;
-        max-width:min(34vw, 150px);
-      }
-      .brand-title{
-        font-size:1.12rem;
-      }
-      .brand-sub{
-        font-size:.76rem;
+        height:56px;
+        max-width:min(66vw, 250px);
       }
       .nav-mobile summary{
         width:48px;
@@ -834,11 +798,7 @@ section[id]{
     <div class="header-rail">
       <div class="wrap header-inner">
         <a class="brand" href="#top" aria-label="Certifyd Creator home">
-          <img src="screenshots/logo-icon.png" alt="Certifyd icon" />
-          <span class="brand-lockup" aria-hidden="true">
-            <span class="brand-title">CERTiFYD</span>
-            <span class="brand-sub">Creator</span>
-          </span>
+          <img src="screenshots/logo-lockup.png" alt="Certifyd Creator logo" />
         </a>
 
         <nav class="nav-desktop" aria-label="Primary navigation">
