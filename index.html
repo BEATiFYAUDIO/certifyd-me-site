@@ -733,6 +733,17 @@ section[id]{
         width:100%;
         min-height:46px;
       }
+      .hero-cta{
+        flex-direction:row;
+        flex-wrap:wrap;
+        align-items:flex-start;
+      }
+      .hero-cta .btn{
+        width:auto;
+        min-height:40px;
+        padding:9px 13px;
+        font-size:.88rem;
+      }
       .card{ padding:18px; }
       .compare-list li{ padding:9px 10px; }
       .chatbot{
@@ -805,7 +816,7 @@ section[id]{
             <span class="hero-pill">Receipts stay portable</span>
           </div>
 
-          <div class="hero-actions">
+          <div class="hero-actions hero-cta">
             <a class="btn primary" href="#early-access">Get Certifyd</a>
             <a class="btn" href="#ownership">See ownership model</a>
           </div>
@@ -1139,6 +1150,7 @@ section[id]{
         <button class="chat-chip" type="button" data-q="How is this different from a platform?">How is this different?</button>
         <button class="chat-chip" type="button" data-q="What do I actually own?">What do I own?</button>
         <button class="chat-chip" type="button" data-q="How do payouts work?">How do payouts work?</button>
+        <button class="chat-chip" type="button" data-q="Is this like Patreon, Substack, or YouTube?">Is this like Patreon?</button>
       </div>
     </div>
     <form id="chat-form" class="chat-form">
@@ -1319,15 +1331,24 @@ section[id]{
 
       function answerFor(questionRaw) {
         const q = String(questionRaw || "").toLowerCase().trim();
-        if (!q) return "Ask about early access, publishing, payments, or creator verification.";
+        if (!q) return "Ask about ownership, how Certifyd differs from platforms, splits, payouts, or early access.";
         if (q.includes("what is") || q.includes("certifyd")) {
           return "Certifyd is not a content platform. It is creator-owned publishing and commerce with split-aware payouts.";
+        }
+        if (q.includes("patreon") || q.includes("substack") || q.includes("youtube") || q.includes("soundcloud") || q.includes("spotify")) {
+          return "Not exactly. Those are closed distribution platforms. Certifyd is your publishing and commerce system, where identity, receipts, and payout states stay tied to the creator.";
         }
         if (q.includes("different") || q.includes("platform")) {
           return "Traditional platforms control audience, monetization, and payout rules. Certifyd keeps identity, content, and revenue states tied to the creator.";
         }
         if (q.includes("own") || q.includes("ownership")) {
           return "You own identity, content publishing context, buyer receipts, and payout-linked revenue states.";
+        }
+        if (q.includes("split") || q.includes("collab") || q.includes("collaborator")) {
+          return "Certifyd supports split-aware releases. Contributor roles and shares are attached to the work, then payout tracking reflects what was paid and what remains payable.";
+        }
+        if (q.includes("receipt") || q.includes("entitlement") || q.includes("unlock")) {
+          return "Buyer receipts and unlock entitlements are portable records tied to the release and payment state, not hidden inside a platform-only account.";
         }
         if (q.includes("early access") || q.includes("apply") || q.includes("waitlist")) {
           return "Use the “Apply for Early Access” form on this page. It submits directly to the Certifyd intake sheet.";
@@ -1344,7 +1365,7 @@ section[id]{
         if (q.includes("feature") || q.includes("product")) {
           return "Jump to “Certifyd Creator in action” for product views: publishing, royalties, revenue, and identity.";
         }
-        return "I can help with: early access, product sections, payments, and node setup expectations.";
+        return "I can help with: how Certifyd differs from platforms, ownership model, splits, payouts, and early access.";
       }
 
       async function askLiveAssistant(question) {
