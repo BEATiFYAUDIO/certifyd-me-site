@@ -1,0 +1,8 @@
+name = "certifyd-chat-api"
+main = "src/index.js"
+compatibility_date = "2026-04-02"
+
+[vars]
+CHAT_PROVIDER = "openrouter"
+OPENROUTER_MODEL = "openrouter/free"
+ALLOWED_ORIGIN = "https://certifyd.me"
