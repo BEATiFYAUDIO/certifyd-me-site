@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Certifyd Network | Creator Examples</title>
+  <meta name="description" content="Explore live Certifyd creator examples." />
+  <style>
+    :root{
+      --bg:#070a10;
+      --text:rgba(255,255,255,0.96);
+      --muted:rgba(255,255,255,0.72);
+      --border:rgba(255,255,255,0.14);
+      --panel:rgba(255,255,255,0.06);
+      --wrap:980px;
+      --pad:22px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      color:var(--text);
+      background:
+        linear-gradient(180deg, rgba(6,8,14,0.72), rgba(7,10,16,0.84)),
+        radial-gradient(900px 600px at 10% -10%, rgba(0,225,255,0.12), transparent 55%),
+        radial-gradient(800px 500px at 90% 10%, rgba(138,77,255,0.16), transparent 55%),
+        url("images/certifyd-bg.png") center/cover no-repeat fixed,
+        var(--bg);
+      line-height:1.6;
+      overflow-x:hidden;
+    }
+    a{color:inherit;text-decoration:none}
+    .wrap{max-width:var(--wrap);margin:0 auto;padding:0 var(--pad)}
+    header{padding:20px 0;border-bottom:1px solid var(--border);backdrop-filter:blur(12px);background:rgba(7,10,16,0.72);position:sticky;top:0}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:700}
+    .brand img{height:42px;width:auto;display:block}
+    .btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 14px;border-radius:14px;border:1px solid var(--border);background:var(--panel);font-weight:700}
+    .btn.primary{background:linear-gradient(135deg, rgba(138,77,255,0.48), rgba(0,225,255,0.28));}
+    main{padding:50px 0 60px}
+    h1{margin:0 0 10px;font-size:clamp(1.9rem,5.2vw,3rem);line-height:1.1;letter-spacing:-0.02em}
+    p{margin:0;color:var(--muted)}
+    .grid{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));margin-top:26px}
+    .card{border:1px solid var(--border);border-radius:18px;background:var(--panel);padding:20px;box-shadow:0 22px 70px rgba(0,0,0,0.22)}
+    .card h2{margin:0 0 8px;font-size:1.2rem}
+    .actions{margin-top:14px;display:flex;gap:10px;flex-wrap:wrap}
+    footer{padding:16px 0 28px;border-top:1px solid var(--border);color:var(--muted);font-size:.92rem}
+    @media (max-width:640px){
+      :root{--pad:16px}
+      main{padding:34px 0 42px}
+      .btn{width:100%}
+      .actions{flex-direction:column;align-items:stretch}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap row">
+      <a class="brand" href="./index.html">
+        <img src="screenshots/logo.png" alt="Certifyd logo" />
+        <span>Certifyd Network</span>
+      </a>
+      <a class="btn" href="./index.html">Back to Certifyd</a>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <h1>Live creator examples</h1>
+      <p>Two real creator pages currently running on Certifyd infrastructure.</p>
+
+      <div class="grid">
+        <article class="card">
+          <h2>Blessedrthe</h2>
+          <p>Public creator profile and release surfaces.</p>
+          <div class="actions">
+            <a class="btn primary" href="https://certifyd.darrylhillock.com/u/blessedrthe" target="_blank" rel="noopener noreferrer">Open profile</a>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>Inklinguy</h2>
+          <p>Sovereign-domain creator page on canonical host.</p>
+          <div class="actions">
+            <a class="btn primary" href="https://inklinguy.pro/" target="_blank" rel="noopener noreferrer">Open site</a>
+          </div>
+        </article>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">Certifyd · Built by Beatify Group</div>
+  </footer>
+</body>
+</html>
