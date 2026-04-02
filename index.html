@@ -547,6 +547,18 @@ section[id]{
     .lightbox-close:focus-visible{ background:rgba(255,255,255,0.12); }
 
     /* ---------- Footer ---------- */
+
+    .reveal-up{
+      opacity:0;
+      transform:translateY(18px);
+      transition:opacity .55s ease, transform .55s ease;
+      will-change:transform, opacity;
+    }
+    .reveal-up.in{
+      opacity:1;
+      transform:translateY(0);
+    }
+
     footer{
       border-top:1px solid rgba(255,255,255,0.14);
       padding:48px 0;
@@ -1179,6 +1191,25 @@ section[id]{
 
     // Chatbot: endpoint-backed when configured, FAQ fallback otherwise.
     (function () {
+      const revealTargets = Array.from(document.querySelectorAll('.panel, .card, .shot-card, .hero-shot, .hero-mini'));
+      revealTargets.forEach((el, i) => {
+        el.classList.add('reveal-up');
+        el.style.transitionDelay = (Math.min(i % 8, 7) * 35) + 'ms';
+      });
+      if ('IntersectionObserver' in window) {
+        const io = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('in');
+              io.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+        revealTargets.forEach((el) => io.observe(el));
+      } else {
+        revealTargets.forEach((el) => el.classList.add('in'));
+      }
+
       const launch = document.getElementById("chat-launch");
       const panel = document.getElementById("site-chatbot");
       const closeBtn = document.getElementById("chat-close");
