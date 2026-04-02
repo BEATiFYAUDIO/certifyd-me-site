@@ -380,6 +380,11 @@ section[id]{
       font-size:0.82rem;
       color:#dce7ff;
     }
+    .hero-note{
+      margin-top:10px;
+      font-size:.86rem;
+      color:#aab8d7;
+    }
 
     .hero-actions{
       display:flex;
@@ -417,6 +422,34 @@ section[id]{
       border-radius:var(--radius);
       padding:22px;
       box-shadow:0 22px 70px rgba(0,0,0,0.22);
+    }
+    .compare-card{
+      border-color:rgba(255,255,255,0.2);
+      background:rgba(9,12,20,0.78);
+    }
+    .compare-list{
+      margin:8px 0 0;
+      padding:0;
+      list-style:none;
+      display:grid;
+      gap:10px;
+      color:#d7e2f8;
+    }
+    .compare-list li{
+      margin:0;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.12);
+      background:rgba(255,255,255,0.03);
+      line-height:1.45;
+    }
+    .compare-list strong{
+      color:#f2f7ff;
+      font-weight:700;
+    }
+    .own-card{
+      border-color:rgba(0,225,255,0.2);
+      background:linear-gradient(180deg, rgba(13,18,29,0.9), rgba(9,13,22,0.86));
     }
 
     /* ---------- Screenshots ---------- */
@@ -686,6 +719,8 @@ section[id]{
     @media (max-width: 680px){
       section{ padding:44px 0; }
       h1{ font-size:clamp(1.95rem, 10vw, 2.55rem); line-height:1.07; }
+      h2{ margin-bottom:10px; }
+      p{ font-size:.96rem; }
       .hero-grid{ gap:20px; }
       .hero-strip{ gap:6px; }
       .hero-pill{ font-size:.78rem; padding:5px 9px; }
@@ -699,6 +734,7 @@ section[id]{
         min-height:46px;
       }
       .card{ padding:18px; }
+      .compare-list li{ padding:9px 10px; }
       .chatbot{
         right:12px;
         left:12px;
@@ -773,7 +809,7 @@ section[id]{
             <a class="btn primary" href="#early-access">Get Certifyd</a>
             <a class="btn" href="#ownership">See ownership model</a>
           </div>
-          <p style="margin-top:10px; font-size:.86rem; color:#aab8d7;">Built by Beatify Group.</p>
+          <p class="hero-note">Built by Beatify Group.</p>
         </div>
 
         <div class="hero-media-stack">
@@ -851,25 +887,25 @@ section[id]{
       </p>
 
       <div class="grid grid-2" style="margin-top:22px">
-        <div class="card">
+        <div class="card compare-card">
           <h3>Traditional platforms</h3>
-          <p>
-            Identity: tied to their account rules<br />
-            Content: lives inside their app<br />
-            Payments: they decide rails and timing<br />
-            Revenue: black-box statements<br />
-            Control: terms can change without your input
-          </p>
+          <ul class="compare-list">
+            <li><strong>Identity:</strong> tied to platform account rules</li>
+            <li><strong>Content:</strong> hosted inside their closed system</li>
+            <li><strong>Payments:</strong> platform decides rails and timing</li>
+            <li><strong>Revenue:</strong> opaque statements and holdbacks</li>
+            <li><strong>Control:</strong> terms can change without your input</li>
+          </ul>
         </div>
-        <div class="card">
+        <div class="card compare-card">
           <h3>Certifyd</h3>
-          <p>
-            Identity: creator-owned profile and proofs<br />
-            Content: published from your own workspace<br />
-            Payments: buyer payment and payout states are visible<br />
-            Revenue: split-aware and receipt-backed<br />
-            Control: provider-backed or sovereign execution
-          </p>
+          <ul class="compare-list">
+            <li><strong>Identity:</strong> creator-owned profile and proofs</li>
+            <li><strong>Content:</strong> published from your own workspace</li>
+            <li><strong>Payments:</strong> buyer payment and payout states are visible</li>
+            <li><strong>Revenue:</strong> split-aware and receipt-backed</li>
+            <li><strong>Control:</strong> provider-backed or sovereign execution</li>
+          </ul>
         </div>
       </div>
     </section>
@@ -881,19 +917,19 @@ section[id]{
         Ownership is concrete in Certifyd. These are the four things that stay under creator control.
       </p>
       <div class="grid grid-2" style="margin-top:22px">
-        <div class="card">
+        <div class="card own-card">
           <h3>Identity</h3>
           <p>Your creator identity and verification history stay attached to your profile, not trapped in one platform account.</p>
         </div>
-        <div class="card">
+        <div class="card own-card">
           <h3>Content</h3>
           <p>You publish from your own workspace with contributor attribution and release context preserved.</p>
         </div>
-        <div class="card">
+        <div class="card own-card">
           <h3>Commerce</h3>
           <p>Buyer payments, receipts, and unlock states are linked to your releases with clear transaction evidence.</p>
         </div>
-        <div class="card">
+        <div class="card own-card">
           <h3>Revenue</h3>
           <p>Splits and payouts are tracked as distinct states, so you can see what was earned, paid, and still payable.</p>
         </div>
@@ -1262,7 +1298,7 @@ section[id]{
         panel.getAttribute("data-endpoint") ||
         ""
       ).trim();
-      const liveMode = /^https?:\/\//i.test(chatEndpoint) || chatEndpoint.startsWith("/");
+      const liveMode = false;
 
       function toggle(open) {
         const shouldOpen = typeof open === "boolean" ? open : !panel.classList.contains("open");
@@ -1354,7 +1390,6 @@ section[id]{
           const liveReply = await askLiveAssistant(cleaned);
           pending.textContent = liveReply;
         } catch (err) {
-          console.warn("Chat endpoint unavailable, falling back to FAQ mode:", err);
           pending.textContent = answerFor(cleaned);
         }
       }
@@ -1378,7 +1413,7 @@ section[id]{
         "bot",
         liveMode
           ? "Live assistant is connected."
-          : "FAQ mode is active. Set window.CERTIFYD_CHAT_ENDPOINT to enable live AI."
+          : "Ask me about ownership, payouts, or how Certifyd works."
       );
     })();
   </script>
