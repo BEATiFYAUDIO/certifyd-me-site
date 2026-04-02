@@ -312,7 +312,7 @@ section[id]{
     /* ---------- Hero ---------- */
     .hero-grid{
       display:grid;
-      grid-template-columns:0.85fr 1.15fr;
+      grid-template-columns:0.9fr 1.1fr;
       gap:34px;
       align-items:center;
     }
@@ -339,6 +339,41 @@ section[id]{
       height:auto;
       display:block;
       object-fit:cover;
+    }
+    .hero-media-stack{
+      display:grid;
+      gap:12px;
+      margin-top:12px;
+    }
+    .hero-mini-grid{
+      display:grid;
+      gap:12px;
+      grid-template-columns:1fr 1fr;
+    }
+    .hero-mini{
+      border-radius:14px;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,0.14);
+      background:rgba(255,255,255,0.03);
+      box-shadow:0 16px 44px rgba(0,0,0,0.24);
+    }
+    .hero-mini img{
+      width:100%;
+      display:block;
+    }
+    .hero-strip{
+      margin-top:16px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+    .hero-pill{
+      border:1px solid rgba(255,255,255,0.18);
+      background:rgba(255,255,255,0.05);
+      border-radius:999px;
+      padding:6px 10px;
+      font-size:0.82rem;
+      color:#dce7ff;
     }
 
     .hero-actions{
@@ -687,21 +722,39 @@ section[id]{
           <p style="font-size:0.9rem; letter-spacing:0.08em; text-transform:uppercase; color:#b8c5ff; margin-bottom:12px;">
             Certifyd Creator
           </p>
-          <h1>Own your identity. Publish anywhere. Get Certifyd.</h1>
+          <h1>Publish. Sell. Split. Pay out.</h1>
 
           <p>
-            Certifyd Creator connects publishing, attribution, and Bitcoin-native payments so collaborators are credited and paid with clarity.
+            Certifyd Creator is the identity-first commerce system for creators and collaborators.
+            Publish content, sell access, split revenue, and execute payouts with clear receipts and entitlement records.
           </p>
+          <div class="hero-strip" aria-label="Core capabilities">
+            <span class="hero-pill">Identity-first commerce</span>
+            <span class="hero-pill">Split-aware collaboration</span>
+            <span class="hero-pill">Automatic payouts</span>
+            <span class="hero-pill">Portable receipts</span>
+          </div>
 
           <div class="hero-actions">
             <a class="btn primary" href="#product">Get Certifyd</a>
             <a class="btn" href="#network">Explore Certifyd Network</a>
           </div>
+          <p style="margin-top:10px; font-size:.86rem; color:#aab8d7;">Built by Beatify Group.</p>
         </div>
 
-        <a class="hero-shot shot" href="#shot-hero" aria-label="Open Certifyd Creator product screenshot">
-          <img src="images/screenshots/contentattribution.png" alt="Certifyd Creator view showing publishing with attribution and collaborator context" />
-        </a>
+        <div class="hero-media-stack">
+          <a class="hero-shot shot" href="#shot-hero" aria-label="Open Certifyd Creator product screenshot">
+            <img src="images/screenshots/contentattribution.png" alt="Certifyd Creator view showing publishing with attribution and collaborator context" />
+          </a>
+          <div class="hero-mini-grid">
+            <a class="hero-mini shot" href="#shot-revenue" aria-label="Open revenue screenshot">
+              <img src="images/screenshots/revenue.png" alt="Revenue and payouts view" />
+            </a>
+            <a class="hero-mini shot" href="#shot-identity" aria-label="Open identity screenshot">
+              <img src="images/screenshots/identity.png" alt="Identity and trust view" />
+            </a>
+          </div>
+        </div>
       </div>
     </section>
 
