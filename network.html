@@ -34,7 +34,10 @@
     header{padding:20px 0;border-bottom:1px solid var(--border);backdrop-filter:blur(12px);background:rgba(7,10,16,0.72);position:sticky;top:0}
     .row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
     .brand{display:flex;align-items:center;gap:10px;font-weight:700}
-    .brand img{height:42px;width:auto;display:block}
+    .brand img{height:40px;width:auto;display:block}
+    .brand-lockup{display:flex;flex-direction:column;line-height:1.02}
+    .brand-title{font-size:1.1rem;font-weight:800;letter-spacing:.05em;color:rgba(241,245,255,.96);text-transform:uppercase}
+    .brand-sub{margin-top:2px;font-size:.8rem;font-weight:700;color:#ff4fa0}
     .btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 14px;border-radius:14px;border:1px solid var(--border);background:var(--panel);font-weight:700}
     .btn.primary{background:linear-gradient(135deg, rgba(138,77,255,0.48), rgba(0,225,255,0.28));}
     main{padding:50px 0 60px}
@@ -47,6 +50,9 @@
     footer{padding:16px 0 28px;border-top:1px solid var(--border);color:var(--muted);font-size:.92rem}
     @media (max-width:640px){
       :root{--pad:16px}
+      .brand img{height:34px}
+      .brand-title{font-size:.98rem}
+      .brand-sub{font-size:.74rem}
       main{padding:34px 0 42px}
       .btn{width:100%}
       .actions{flex-direction:column;align-items:stretch}
@@ -57,8 +63,11 @@
   <header>
     <div class="wrap row">
       <a class="brand" href="./index.html">
-        <img src="screenshots/logo.png" alt="Certifyd logo" />
-        <span>Certifyd Network</span>
+        <img src="screenshots/logo-icon.png" alt="Certifyd icon" />
+        <span class="brand-lockup" aria-hidden="true">
+          <span class="brand-title">CERTiFYD</span>
+          <span class="brand-sub">Network</span>
+        </span>
       </a>
       <a class="btn" href="./index.html">Back to Certifyd</a>
     </div>
