@@ -517,6 +517,130 @@ section[id]{
       padding:48px 0;
       color:var(--muted);
     }
+
+    /* ---------- Chatbot ---------- */
+    .chat-launch{
+      position:fixed;
+      right:16px;
+      bottom:16px;
+      z-index:1200;
+      border:1px solid rgba(255,255,255,0.2);
+      background:linear-gradient(135deg, rgba(138,77,255,0.55), rgba(0,225,255,0.28));
+      color:#fff;
+      border-radius:999px;
+      min-height:44px;
+      padding:10px 14px;
+      font-weight:700;
+      cursor:pointer;
+      box-shadow:0 18px 40px rgba(0,0,0,0.38);
+    }
+    .chat-launch:hover{ filter:brightness(1.06); }
+
+    .chatbot{
+      position:fixed;
+      right:16px;
+      bottom:70px;
+      width:min(380px, calc(100vw - 24px));
+      max-height:min(70vh, 620px);
+      background:rgba(7,10,16,0.96);
+      border:1px solid rgba(255,255,255,0.18);
+      border-radius:16px;
+      box-shadow:0 26px 80px rgba(0,0,0,0.48);
+      z-index:1200;
+      display:none;
+      overflow:hidden;
+      backdrop-filter:blur(12px);
+    }
+    .chatbot.open{ display:flex; flex-direction:column; }
+    .chat-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:12px 14px;
+      border-bottom:1px solid rgba(255,255,255,0.12);
+      background:rgba(255,255,255,0.04);
+    }
+    .chat-title{ font-weight:700; font-size:0.95rem; }
+    .chat-close{
+      border:1px solid rgba(255,255,255,0.18);
+      background:rgba(255,255,255,0.04);
+      color:#fff;
+      border-radius:10px;
+      min-height:36px;
+      min-width:36px;
+      cursor:pointer;
+    }
+    .chat-body{
+      padding:12px;
+      overflow:auto;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .chat-msg{
+      border:1px solid rgba(255,255,255,0.14);
+      background:rgba(255,255,255,0.04);
+      border-radius:12px;
+      padding:10px 11px;
+      font-size:0.92rem;
+      color:var(--muted);
+    }
+    .chat-msg.bot{ border-color:rgba(0,225,255,0.35); color:#e9fdff; }
+    .chat-msg.user{ border-color:rgba(138,77,255,0.35); color:#f4ecff; }
+    .chat-quick{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:4px;
+    }
+    .chat-chip{
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(255,255,255,0.04);
+      color:#fff;
+      border-radius:999px;
+      min-height:34px;
+      padding:6px 10px;
+      font-size:0.82rem;
+      cursor:pointer;
+    }
+    .chat-form{
+      border-top:1px solid rgba(255,255,255,0.12);
+      padding:10px;
+      display:flex;
+      gap:8px;
+    }
+    .chat-input{
+      flex:1;
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(255,255,255,0.04);
+      color:#fff;
+      border-radius:10px;
+      min-height:40px;
+      padding:8px 10px;
+      font:inherit;
+    }
+    .chat-send{
+      border:1px solid rgba(255,255,255,0.18);
+      background:rgba(255,255,255,0.08);
+      color:#fff;
+      border-radius:10px;
+      min-height:40px;
+      padding:8px 12px;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    @media (max-width: 680px){
+      .chatbot{
+        right:12px;
+        left:12px;
+        width:auto;
+        bottom:66px;
+        max-height:68vh;
+      }
+      .chat-launch{ right:12px; bottom:12px; }
+    }
   </style>
 </head>
 
@@ -857,6 +981,31 @@ section[id]{
     </div>
   </footer>
 
+  <button id="chat-launch" class="chat-launch" type="button" aria-controls="site-chatbot" aria-expanded="false">
+    Ask Certifyd
+  </button>
+  <aside id="site-chatbot" class="chatbot" aria-label="Certifyd assistant" aria-hidden="true">
+    <div class="chat-head">
+      <div class="chat-title">Certifyd Assistant</div>
+      <button id="chat-close" class="chat-close" type="button" aria-label="Close assistant">×</button>
+    </div>
+    <div id="chat-body" class="chat-body">
+      <div class="chat-msg bot">
+        Hi. I can help with product questions and where to find things on this page.
+      </div>
+      <div class="chat-quick">
+        <button class="chat-chip" type="button" data-q="What is Certifyd?">What is Certifyd?</button>
+        <button class="chat-chip" type="button" data-q="How do I get early access?">How do I get early access?</button>
+        <button class="chat-chip" type="button" data-q="How do payments work?">How do payments work?</button>
+        <button class="chat-chip" type="button" data-q="Do I need a node?">Do I need a node?</button>
+      </div>
+    </div>
+    <form id="chat-form" class="chat-form">
+      <input id="chat-input" class="chat-input" type="text" placeholder="Ask a question…" autocomplete="off" />
+      <button class="chat-send" type="submit">Send</button>
+    </form>
+  </aside>
+
   <script>
     // Footer year
     document.getElementById("year").textContent = new Date().getFullYear();
@@ -972,6 +1121,78 @@ section[id]{
         } finally {
           if (submitButton) submitButton.disabled = false;
         }
+      });
+    })();
+
+    // Lightweight page chatbot (client-only, no backend dependency)
+    (function () {
+      const launch = document.getElementById("chat-launch");
+      const panel = document.getElementById("site-chatbot");
+      const closeBtn = document.getElementById("chat-close");
+      const form = document.getElementById("chat-form");
+      const input = document.getElementById("chat-input");
+      const body = document.getElementById("chat-body");
+      if (!launch || !panel || !closeBtn || !form || !input || !body) return;
+
+      function toggle(open) {
+        const shouldOpen = typeof open === "boolean" ? open : !panel.classList.contains("open");
+        panel.classList.toggle("open", shouldOpen);
+        panel.setAttribute("aria-hidden", shouldOpen ? "false" : "true");
+        launch.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+        if (shouldOpen) input.focus();
+      }
+
+      function appendMessage(kind, text) {
+        const el = document.createElement("div");
+        el.className = "chat-msg " + kind;
+        el.textContent = text;
+        body.appendChild(el);
+        body.scrollTop = body.scrollHeight;
+      }
+
+      function answerFor(questionRaw) {
+        const q = String(questionRaw || "").toLowerCase().trim();
+        if (!q) return "Ask about early access, publishing, payments, or creator verification.";
+        if (q.includes("what is") || q.includes("certifyd")) {
+          return "Certifyd helps creators publish with verified identity, collaborator attribution, and Bitcoin-native payment context.";
+        }
+        if (q.includes("early access") || q.includes("apply") || q.includes("waitlist")) {
+          return "Use the “Apply for Early Access” form on this page. It submits directly to the Certifyd intake sheet.";
+        }
+        if (q.includes("payment") || q.includes("bitcoin") || q.includes("lightning")) {
+          return "Certifyd supports Bitcoin and Lightning-native payment flows with attribution and revenue context tied to published works.";
+        }
+        if (q.includes("node")) {
+          return "You can start without running a full node. Node-backed paths are available for deeper sovereign setup.";
+        }
+        if (q.includes("network")) {
+          return "Open the “Certifyd Network” section for discovery-layer details and entry points.";
+        }
+        if (q.includes("feature") || q.includes("product")) {
+          return "Jump to “Certifyd Creator in action” for product views: publishing, royalties, revenue, and identity.";
+        }
+        return "I can help with: early access, product sections, payments, and node setup expectations.";
+      }
+
+      function handleQuestion(text) {
+        const cleaned = String(text || "").trim();
+        if (!cleaned) return;
+        appendMessage("user", cleaned);
+        appendMessage("bot", answerFor(cleaned));
+      }
+
+      launch.addEventListener("click", () => toggle(true));
+      closeBtn.addEventListener("click", () => toggle(false));
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && panel.classList.contains("open")) toggle(false);
+      });
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        handleQuestion(input.value);
+        input.value = "";
+      });
+      panel.querySelectorAll(".chat-chip").forEach((btn) => {
+        btn.addEventListener("click", () => handleQuestion(btn.getAttribute("data-q") || ""));
       });
     })();
   </script>
