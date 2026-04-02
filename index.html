@@ -14,7 +14,7 @@
 
     /* ===== Anchor jump offset (so header doesn't cover section titles) ===== */
 :root{
-  --header-offset: 132px; /* desktop default */
+  --header-offset: 112px; /* desktop default */
 }
 
 /* Tell the browser how much space to leave when scrolling to #anchors */
@@ -30,10 +30,10 @@ section[id]{
 
 /* Match your header sizing on smaller screens */
 @media (max-width: 860px){
-  :root{ --header-offset: 128px; }
+  :root{ --header-offset: 102px; }
 }
 @media (max-width: 520px){
-  :root{ --header-offset: 148px; } /* your mobile header is taller because of the big logo */
+  :root{ --header-offset: 94px; }
 }
 
     :root{
@@ -120,20 +120,20 @@ section[id]{
       grid-template-columns:auto 1fr auto; /* brand | nav | menu */
       align-items:center;
       gap:10px;
-      min-height:100px;
-      padding:6px 0;
+      min-height:86px;
+      padding:5px 0;
     }
 
     /* Brand */
     .brand{
       display:flex;
       align-items:center;
-      height:96px;
+      height:82px;
       overflow:visible;
       min-width:0;
     }
     .brand img{
-      height:72px;
+      height:60px;
       width:auto;
       max-width:100%;
       object-fit:contain;
@@ -172,12 +172,12 @@ section[id]{
     .nav-mobile summary{
       list-style:none;
       cursor:pointer;
-      padding:10px 12px;
-      border-radius:14px;
+      padding:8px 10px;
+      border-radius:12px;
       border:1px solid var(--border2);
       background:rgba(255,255,255,0.06);
-      min-height:44px;
-      width:56px;
+      min-height:40px;
+      width:48px;
       display:flex;
       align-items:center;
       justify-content:center;
@@ -234,8 +234,8 @@ section[id]{
       .nav-desktop{ display:none; }
       .nav-mobile{ display:block; }
       .header-inner{
-        min-height:100px;
-        padding:8px 0;
+        min-height:80px;
+        padding:6px 0;
       }
     }
 
@@ -245,21 +245,21 @@ section[id]{
         display:flex;
         align-items:center;
         justify-content:space-between;
-        min-height:118px;
-        padding:12px 0;
-        gap:12px;
+        min-height:76px;
+        padding:5px 0;
+        gap:10px;
       }
       .brand{
         display:flex;
         align-items:center;
-        height:88px;
-        margin-left:8px;
+        height:64px;
+        margin-left:0;
       }
       .brand img{
-        height:72px;
+        height:52px;
         width:auto;
-        max-width:min(72vw, 360px);
-        max-height:88px;
+        max-width:min(70vw, 320px);
+        max-height:64px;
         object-fit:contain;
         object-position:left center;
         display:block;
@@ -275,11 +275,12 @@ section[id]{
     }
     @media (max-width: 380px){
       .brand img{
-        height:62px;
-        max-width:min(66vw, 300px);
+        height:46px;
+        max-width:min(64vw, 270px);
       }
       .nav-mobile summary{
-        width:52px;
+        width:46px;
+        min-height:38px;
       }
     }
 
@@ -845,25 +846,6 @@ section[id]{
               <img src="images/screenshots/identity.png" alt="Identity and trust view" />
             </a>
           </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="hero-options" class="wrap">
-      <h2>Headline options</h2>
-      <p>Three ownership-first hero directions for Certifyd.</p>
-      <div class="grid grid-3" style="margin-top:22px">
-        <div class="card">
-          <h3>Own your content. Own your revenue.</h3>
-          <p>Certifyd gives creators direct control of publishing, payments, receipts, and payouts.</p>
-        </div>
-        <div class="card">
-          <h3>Publish. Sell. Get paid. Instantly.</h3>
-          <p>Release your work, accept payment, split earnings, and route payouts without platform holdbacks.</p>
-        </div>
-        <div class="card">
-          <h3>Creators own the outcome here.</h3>
-          <p>Your identity, your catalog, your buyer receipts, and your payout state stay tied to you.</p>
         </div>
       </div>
     </section>
