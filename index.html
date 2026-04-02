@@ -14,7 +14,7 @@
 
     /* ===== Anchor jump offset (so header doesn't cover section titles) ===== */
 :root{
-  --header-offset: 112px; /* desktop default */
+  --header-offset: 122px; /* desktop default */
 }
 
 /* Tell the browser how much space to leave when scrolling to #anchors */
@@ -30,10 +30,10 @@ section[id]{
 
 /* Match your header sizing on smaller screens */
 @media (max-width: 860px){
-  :root{ --header-offset: 102px; }
+  :root{ --header-offset: 116px; }
 }
 @media (max-width: 520px){
-  :root{ --header-offset: 94px; }
+  :root{ --header-offset: 108px; }
 }
 
     :root{
@@ -120,20 +120,20 @@ section[id]{
       grid-template-columns:auto 1fr auto; /* brand | nav | menu */
       align-items:center;
       gap:10px;
-      min-height:86px;
-      padding:5px 0;
+      min-height:94px;
+      padding:6px 0;
     }
 
     /* Brand */
     .brand{
       display:flex;
       align-items:center;
-      height:82px;
+      height:90px;
       overflow:visible;
       min-width:0;
     }
     .brand img{
-      height:60px;
+      height:68px;
       width:auto;
       max-width:100%;
       object-fit:contain;
@@ -177,7 +177,7 @@ section[id]{
       border:1px solid var(--border2);
       background:rgba(255,255,255,0.06);
       min-height:40px;
-      width:48px;
+      width:50px;
       display:flex;
       align-items:center;
       justify-content:center;
@@ -234,7 +234,7 @@ section[id]{
       .nav-desktop{ display:none; }
       .nav-mobile{ display:block; }
       .header-inner{
-        min-height:80px;
+        min-height:90px;
         padding:6px 0;
       }
     }
@@ -245,27 +245,28 @@ section[id]{
         display:flex;
         align-items:center;
         justify-content:space-between;
-        min-height:76px;
-        padding:5px 0;
+        min-height:96px;
+        padding:8px 0;
         gap:10px;
       }
       .brand{
         display:flex;
         align-items:center;
-        height:64px;
+        height:80px;
         margin-left:0;
       }
       .brand img{
-        height:52px;
+        height:68px;
         width:auto;
-        max-width:min(70vw, 320px);
-        max-height:64px;
+        max-width:min(72vw, 360px);
+        max-height:80px;
         object-fit:contain;
         object-position:left center;
         display:block;
       }
       .nav-mobile{
         margin-left:auto;
+        margin-right:4px;
         align-self:center;
       }
       .nav-drawer{
@@ -275,11 +276,11 @@ section[id]{
     }
     @media (max-width: 380px){
       .brand img{
-        height:46px;
+        height:58px;
         max-width:min(64vw, 270px);
       }
       .nav-mobile summary{
-        width:46px;
+        width:48px;
         min-height:38px;
       }
     }
