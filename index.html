@@ -1124,7 +1124,7 @@ section[id]{
       });
     })();
 
-    // Lightweight page chatbot (client-only, no backend dependency)
+    // Chatbot: endpoint-backed when configured, FAQ fallback otherwise.
     (function () {
       const launch = document.getElementById("chat-launch");
       const panel = document.getElementById("site-chatbot");
@@ -1133,6 +1133,12 @@ section[id]{
       const input = document.getElementById("chat-input");
       const body = document.getElementById("chat-body");
       if (!launch || !panel || !closeBtn || !form || !input || !body) return;
+      const chatEndpoint = String(
+        window.CERTIFYD_CHAT_ENDPOINT ||
+        panel.getAttribute("data-endpoint") ||
+        ""
+      ).trim();
+      const liveMode = /^https?:\/\//i.test(chatEndpoint) || chatEndpoint.startsWith("/");
 
       function toggle(open) {
         const shouldOpen = typeof open === "boolean" ? open : !panel.classList.contains("open");
@@ -1148,6 +1154,7 @@ section[id]{
         el.textContent = text;
         body.appendChild(el);
         body.scrollTop = body.scrollHeight;
+        return el;
       }
 
       function answerFor(questionRaw) {
@@ -1174,11 +1181,52 @@ section[id]{
         return "I can help with: early access, product sections, payments, and node setup expectations.";
       }
 
-      function handleQuestion(text) {
+      async function askLiveAssistant(question) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 20000);
+        try {
+          const response = await fetch(chatEndpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message: question,
+              source: "certifyd.me",
+              context: {
+                page: location.href,
+                sectionHints: ["why", "how", "product", "network", "early-access"]
+              }
+            }),
+            signal: controller.signal
+          });
+          const text = await response.text();
+          let data = null;
+          try { data = text ? JSON.parse(text) : null; } catch {}
+          if (!response.ok) {
+            throw new Error((data && (data.error || data.message)) || `chat_endpoint_${response.status}`);
+          }
+          const reply =
+            (data && (data.reply || data.message || data.answer || data.output_text)) ||
+            (typeof data === "string" ? data : "");
+          if (!String(reply || "").trim()) throw new Error("chat_endpoint_empty_reply");
+          return String(reply).trim();
+        } finally {
+          clearTimeout(timeout);
+        }
+      }
+
+      async function handleQuestion(text) {
         const cleaned = String(text || "").trim();
         if (!cleaned) return;
         appendMessage("user", cleaned);
-        appendMessage("bot", answerFor(cleaned));
+        const pending = appendMessage("bot", liveMode ? "Thinking…" : answerFor(cleaned));
+        if (!liveMode) return;
+        try {
+          const liveReply = await askLiveAssistant(cleaned);
+          pending.textContent = liveReply;
+        } catch (err) {
+          console.warn("Chat endpoint unavailable, falling back to FAQ mode:", err);
+          pending.textContent = answerFor(cleaned);
+        }
       }
 
       launch.addEventListener("click", () => toggle(true));
@@ -1186,14 +1234,22 @@ section[id]{
       document.addEventListener("keydown", (e) => {
         if (e.key === "Escape" && panel.classList.contains("open")) toggle(false);
       });
-      form.addEventListener("submit", (e) => {
+      form.addEventListener("submit", async (e) => {
         e.preventDefault();
-        handleQuestion(input.value);
+        await handleQuestion(input.value);
         input.value = "";
       });
       panel.querySelectorAll(".chat-chip").forEach((btn) => {
-        btn.addEventListener("click", () => handleQuestion(btn.getAttribute("data-q") || ""));
+        btn.addEventListener("click", async () => {
+          await handleQuestion(btn.getAttribute("data-q") || "");
+        });
       });
+      appendMessage(
+        "bot",
+        liveMode
+          ? "Live assistant is connected."
+          : "FAQ mode is active. Set window.CERTIFYD_CHAT_ENDPOINT to enable live AI."
+      );
     })();
   </script>
 </body>
