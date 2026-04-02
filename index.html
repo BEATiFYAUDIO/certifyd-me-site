@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title></title>
+  <title>Certifyd | Own Your Content and Revenue</title>
 
   <meta
     name="description"
@@ -121,7 +121,7 @@ section[id]{
       align-items:center;
       gap:10px;
       min-height:100px;
-      padding:6px 0;https://beatifyaudio.github.io/contentbox/index.html#top
+      padding:6px 0;
     }
 
     /* Brand */
@@ -320,6 +320,9 @@ section[id]{
     }
     @media (max-width: 900px){
       .hero-grid{ grid-template-columns:1fr; }
+      .hero-media-stack{ margin-top:8px; }
+      .hero-actions{ gap:10px; }
+      .hero-actions .btn{ flex:1 1 220px; }
     }
 
     .panel{
@@ -681,6 +684,21 @@ section[id]{
     }
 
     @media (max-width: 680px){
+      section{ padding:44px 0; }
+      h1{ font-size:clamp(1.95rem, 10vw, 2.55rem); line-height:1.07; }
+      .hero-grid{ gap:20px; }
+      .hero-strip{ gap:6px; }
+      .hero-pill{ font-size:.78rem; padding:5px 9px; }
+      .hero-actions{
+        margin-top:16px;
+        flex-direction:column;
+        align-items:stretch;
+      }
+      .hero-actions .btn{
+        width:100%;
+        min-height:46px;
+      }
+      .card{ padding:18px; }
       .chatbot{
         right:12px;
         left:12px;
@@ -704,11 +722,12 @@ section[id]{
         </a>
 
         <nav class="nav-desktop" aria-label="Primary navigation">
-          <a href="#why">Why Certifyd</a>
+          <a href="#ownership">Ownership</a>
+          <a href="#own">What you own</a>
           <a href="#how">How it works</a>
           <a href="#built-for">Built for</a>
+          <a href="#product">Screens</a>
           <a href="#network">Network</a>
-          <a href="#product">Product</a>
         </nav>
 
         <details class="nav-mobile">
@@ -717,11 +736,12 @@ section[id]{
           </summary>
 
           <nav class="nav-drawer" aria-label="Mobile navigation">
-            <a href="#why">Why Certifyd</a>
+            <a href="#ownership">Ownership</a>
+            <a href="#own">What you own</a>
             <a href="#how">How it works</a>
             <a href="#built-for">Built for</a>
+            <a href="#product">Screens</a>
             <a href="#network">Network</a>
-            <a href="#product">Product</a>
           </nav>
         </details>
       </div>
@@ -736,22 +756,22 @@ section[id]{
           <p style="font-size:0.9rem; letter-spacing:0.08em; text-transform:uppercase; color:#b8c5ff; margin-bottom:12px;">
             Certifyd Creator
           </p>
-          <h1>Publish. Sell. Split. Pay out.</h1>
+          <h1>Own your content. Own your revenue.</h1>
 
           <p>
-            Certifyd Creator is the identity-first commerce system for creators and collaborators.
-            Publish content, sell access, split revenue, and execute payouts with clear receipts and entitlement records.
+            Certifyd is not a platform that owns your audience. It is your commerce system:
+            publish, sell, split revenue, and pay collaborators automatically with portable receipts.
           </p>
           <div class="hero-strip" aria-label="Core capabilities">
-            <span class="hero-pill">Identity-first commerce</span>
-            <span class="hero-pill">Split-aware collaboration</span>
-            <span class="hero-pill">Automatic payouts</span>
-            <span class="hero-pill">Portable receipts</span>
+            <span class="hero-pill">You own identity</span>
+            <span class="hero-pill">You own content</span>
+            <span class="hero-pill">You control payouts</span>
+            <span class="hero-pill">Receipts stay portable</span>
           </div>
 
           <div class="hero-actions">
-            <a class="btn primary" href="#product">Get Certifyd</a>
-            <a class="btn" href="#network">Explore Certifyd Network</a>
+            <a class="btn primary" href="#early-access">Get Certifyd</a>
+            <a class="btn" href="#ownership">See ownership model</a>
           </div>
           <p style="margin-top:10px; font-size:.86rem; color:#aab8d7;">Built by Beatify Group.</p>
         </div>
@@ -772,11 +792,30 @@ section[id]{
       </div>
     </section>
 
+    <section id="hero-options" class="wrap">
+      <h2>Headline options</h2>
+      <p>Three ownership-first hero directions for Certifyd.</p>
+      <div class="grid grid-3" style="margin-top:22px">
+        <div class="card">
+          <h3>Own your content. Own your revenue.</h3>
+          <p>Certifyd gives creators direct control of publishing, payments, receipts, and payouts.</p>
+        </div>
+        <div class="card">
+          <h3>Publish. Sell. Get paid. Instantly.</h3>
+          <p>Release your work, accept payment, split earnings, and route payouts without platform holdbacks.</p>
+        </div>
+        <div class="card">
+          <h3>Creators own the outcome here.</h3>
+          <p>Your identity, your catalog, your buyer receipts, and your payout state stay tied to you.</p>
+        </div>
+      </div>
+    </section>
+
     <!-- PRODUCT PREVIEW -->
     <section id="product" class="wrap">
-      <h2>Certifyd Creator in action</h2>
+      <h2>Certifyd in action</h2>
       <p>
-        Publishing, attribution, revenue, and identity in one creator workspace.
+        Real screens from identity, publishing, splits, and payout flows.
       </p>
 
       <div class="grid grid-3" style="margin-top:22px">
@@ -804,56 +843,60 @@ section[id]{
       </div>
     </section>
 
-    <!-- WHY -->
-    <section id="why" class="wrap">
-      <h2>Why Certifyd</h2>
+    <!-- OWNERSHIP VS PLATFORM -->
+    <section id="ownership" class="wrap">
+      <h2>Ownership, not platform</h2>
       <p>
-        Certifyd Creator is built for creators who need verification, attribution, and payments to stay connected to each release.
+        Traditional platforms keep control. Certifyd gives it back to creators.
       </p>
 
-      <div class="grid grid-3" style="margin-top:22px">
+      <div class="grid grid-2" style="margin-top:22px">
         <div class="card">
-          <h3>Verified Identity</h3>
+          <h3>Traditional platforms</h3>
           <p>
-            Attach a real identity to your creator presence using domain and platform proofs.
+            Identity: tied to their account rules<br />
+            Content: lives inside their app<br />
+            Payments: they decide rails and timing<br />
+            Revenue: black-box statements<br />
+            Control: terms can change without your input
           </p>
         </div>
         <div class="card">
-          <h3>Attribution &amp; Splits</h3>
+          <h3>Certifyd</h3>
           <p>
-            Keep contributor attribution and revenue splits linked to every release.
-          </p>
-        </div>
-        <div class="card">
-          <h3>Creator-Controlled Publishing</h3>
-          <p>
-            Publish from your own workspace without surrendering custody of your work.
+            Identity: creator-owned profile and proofs<br />
+            Content: published from your own workspace<br />
+            Payments: buyer payment and payout states are visible<br />
+            Revenue: split-aware and receipt-backed<br />
+            Control: provider-backed or sovereign execution
           </p>
         </div>
       </div>
     </section>
 
-    <!-- TRUST -->
-    <section id="trust" class="wrap">
-      <h2>Identity and trust</h2>
+    <!-- WHAT YOU OWN -->
+    <section id="own" class="wrap">
+      <h2>What you actually own</h2>
       <p>
-        Persistent creator identity and verification proofs support trusted publishing.
+        Ownership is concrete in Certifyd. These are the four things that stay under creator control.
       </p>
       <div class="grid grid-2" style="margin-top:22px">
-        <a class="shot-card" href="#shot-identity" aria-label="Open Creator identity screenshot">
-          <img src="images/screenshots/identity.png" alt="Creator identity panel with verification fingerprint and proof state" />
-          <div class="shot-meta">
-            <h3>Creator identity</h3>
-            <p>Each creator has a persistent identity fingerprint.</p>
-          </div>
-        </a>
-        <a class="shot-card" href="#shot-workspace" aria-label="Open Creator workspace screenshot">
-          <img src="images/screenshots/personallibrary.png" alt="Personal creator workspace for releases, proofs, and publishing" />
-          <div class="shot-meta">
-            <h3>Creator workspace</h3>
-            <p>Manage releases, proofs, and publishing from one workspace.</p>
-          </div>
-        </a>
+        <div class="card">
+          <h3>Identity</h3>
+          <p>Your creator identity and verification history stay attached to your profile, not trapped in one platform account.</p>
+        </div>
+        <div class="card">
+          <h3>Content</h3>
+          <p>You publish from your own workspace with contributor attribution and release context preserved.</p>
+        </div>
+        <div class="card">
+          <h3>Commerce</h3>
+          <p>Buyer payments, receipts, and unlock states are linked to your releases with clear transaction evidence.</p>
+        </div>
+        <div class="card">
+          <h3>Revenue</h3>
+          <p>Splits and payouts are tracked as distinct states, so you can see what was earned, paid, and still payable.</p>
+        </div>
       </div>
     </section>
 
@@ -861,33 +904,33 @@ section[id]{
     <section id="how" class="wrap">
       <h2>How it works</h2>
       <p>
-        Certifyd Creator keeps the workflow clear: identity first, proofs second, publishing third.
+        A simple flow from release to payout.
       </p>
 
       <div class="grid grid-3" style="margin-top:22px">
         <div class="card">
-          <h3>Create your identity</h3>
-          <p>
-            Generate your creator identity and fingerprint.
-          </p>
+          <h3>1. Creator</h3>
+          <p>You create your identity and set your release terms.</p>
         </div>
         <div class="card">
-          <h3>Verify your presence</h3>
-          <p>
-            Add proofs for domains and creator platforms.
-          </p>
+          <h3>2. Publish</h3>
+          <p>You publish content with contributor roles and shares attached.</p>
         </div>
         <div class="card">
-          <h3>Publish your work</h3>
-          <p>
-            Release content with attribution, splits, and verified creator context.
-          </p>
+          <h3>3. Buyer</h3>
+          <p>A buyer opens your release and starts checkout.</p>
         </div>
         <div class="card">
-          <h3>Join the network</h3>
-          <p>
-            Connect your verified publishing profile into the broader Certifyd discovery layer.
-          </p>
+          <h3>4. Payment</h3>
+          <p>Payment is recorded with receipt and entitlement proof.</p>
+        </div>
+        <div class="card">
+          <h3>5. Split</h3>
+          <p>Earnings are distributed to creator and collaborators by the release split.</p>
+        </div>
+        <div class="card">
+          <h3>6. Payout</h3>
+          <p>Payouts execute automatically with visible paid and pending states.</p>
         </div>
       </div>
     </section>
@@ -895,23 +938,19 @@ section[id]{
     <!-- BUILT FOR -->
     <section id="built-for" class="wrap">
       <h2>Built for</h2>
-      <p>Certifyd Creator supports independent creators and teams who need verifiable publishing infrastructure.</p>
+      <p>For creators who want control, collaborators who want fair credit, and nodes that execute payouts clearly.</p>
       <div class="grid grid-3" style="margin-top:22px">
         <div class="card">
-          <h3>Musicians</h3>
-          <p>Release tracks with verified credits and attribution.</p>
+          <h3>Creators</h3>
+          <p>Publish and sell without handing ownership to a closed platform.</p>
         </div>
         <div class="card">
-          <h3>Producers</h3>
-          <p>Track contributions and manage collaborative releases.</p>
+          <h3>Collaborators</h3>
+          <p>Get credited in split terms and paid through tracked payout execution.</p>
         </div>
         <div class="card">
-          <h3>Video creators</h3>
-          <p>Connect published work to verified identity and history.</p>
-        </div>
-        <div class="card">
-          <h3>Creative teams</h3>
-          <p>Coordinate shared publishing with clear contributor context.</p>
+          <h3>Nodes and providers</h3>
+          <p>Run provider-backed or sovereign workflows with clear execution truth.</p>
         </div>
       </div>
     </section>
@@ -920,11 +959,10 @@ section[id]{
     <section id="network" class="wrap">
       <h2>Certifyd Network</h2>
       <p>
-        A discovery layer for verified creators and trusted works.
+        Built for verified creators and trusted releases.
       </p>
       <p style="margin-top:14px;">
-        Certifyd Creator nodes publish identity, proofs, attribution, and releases.
-        The network surfaces these verified creators and connects them through shared trust signals.
+        Discover creator profiles and releases that carry portable identity, receipts, and payout-linked history.
       </p>
       <div class="hero-actions">
         <a class="btn primary" href="https://beatifyaudio.github.io/contentbox/" target="_blank" rel="noopener noreferrer">Explore the Network</a>
@@ -1024,14 +1062,14 @@ section[id]{
     </div>
 
     <div id="shot-identity" class="lightbox" role="dialog" aria-modal="true" aria-label="Creator identity screenshot">
-      <a class="lightbox-bg" href="#trust" aria-label="Close"></a>
-      <a href="#trust" class="lightbox-close" aria-label="Close image">×</a>
+      <a class="lightbox-bg" href="#own" aria-label="Close"></a>
+      <a href="#own" class="lightbox-close" aria-label="Close image">×</a>
       <img src="images/screenshots/identity.png" alt="Creator identity panel with verification fingerprint and proof state" />
     </div>
 
     <div id="shot-workspace" class="lightbox" role="dialog" aria-modal="true" aria-label="Creator workspace screenshot">
-      <a class="lightbox-bg" href="#trust" aria-label="Close"></a>
-      <a href="#trust" class="lightbox-close" aria-label="Close image">×</a>
+      <a class="lightbox-bg" href="#own" aria-label="Close"></a>
+      <a href="#own" class="lightbox-close" aria-label="Close image">×</a>
       <img src="images/screenshots/personallibrary.png" alt="Personal creator workspace for releases, proofs, and publishing" />
     </div>
 
@@ -1062,9 +1100,9 @@ section[id]{
       </div>
       <div class="chat-quick">
         <button class="chat-chip" type="button" data-q="What is Certifyd?">What is Certifyd?</button>
-        <button class="chat-chip" type="button" data-q="How do I get early access?">How do I get early access?</button>
-        <button class="chat-chip" type="button" data-q="How do payments work?">How do payments work?</button>
-        <button class="chat-chip" type="button" data-q="Do I need a node?">Do I need a node?</button>
+        <button class="chat-chip" type="button" data-q="How is this different from a platform?">How is this different?</button>
+        <button class="chat-chip" type="button" data-q="What do I actually own?">What do I own?</button>
+        <button class="chat-chip" type="button" data-q="How do payouts work?">How do payouts work?</button>
       </div>
     </div>
     <form id="chat-form" class="chat-form">
@@ -1247,13 +1285,19 @@ section[id]{
         const q = String(questionRaw || "").toLowerCase().trim();
         if (!q) return "Ask about early access, publishing, payments, or creator verification.";
         if (q.includes("what is") || q.includes("certifyd")) {
-          return "Certifyd helps creators publish with verified identity, collaborator attribution, and Bitcoin-native payment context.";
+          return "Certifyd is not a content platform. It is creator-owned publishing and commerce with split-aware payouts.";
+        }
+        if (q.includes("different") || q.includes("platform")) {
+          return "Traditional platforms control audience, monetization, and payout rules. Certifyd keeps identity, content, and revenue states tied to the creator.";
+        }
+        if (q.includes("own") || q.includes("ownership")) {
+          return "You own identity, content publishing context, buyer receipts, and payout-linked revenue states.";
         }
         if (q.includes("early access") || q.includes("apply") || q.includes("waitlist")) {
           return "Use the “Apply for Early Access” form on this page. It submits directly to the Certifyd intake sheet.";
         }
-        if (q.includes("payment") || q.includes("bitcoin") || q.includes("lightning")) {
-          return "Certifyd supports Bitcoin and Lightning-native payment flows with attribution and revenue context tied to published works.";
+        if (q.includes("payment") || q.includes("payout") || q.includes("bitcoin") || q.includes("lightning")) {
+          return "Buyer payments, split distribution, and payout execution are tracked as separate states so creators can see what was paid and what is still payable.";
         }
         if (q.includes("node")) {
           return "You can start without running a full node. Node-backed paths are available for deeper sovereign setup.";
@@ -1279,7 +1323,7 @@ section[id]{
               source: "certifyd.me",
               context: {
                 page: location.href,
-                sectionHints: ["why", "how", "product", "network", "early-access"]
+                sectionHints: ["ownership", "own", "how", "product", "network", "early-access"]
               }
             }),
             signal: controller.signal
