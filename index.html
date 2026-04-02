@@ -30,10 +30,10 @@ section[id]{
 
 /* Match your header sizing on smaller screens */
 @media (max-width: 860px){
-  :root{ --header-offset: 116px; }
+  :root{ --header-offset: 108px; }
 }
 @media (max-width: 520px){
-  :root{ --header-offset: 108px; }
+  :root{ --header-offset: 100px; }
 }
 
     :root{
@@ -234,39 +234,39 @@ section[id]{
       .nav-desktop{ display:none; }
       .nav-mobile{ display:block; }
       .header-inner{
-        min-height:90px;
-        padding:6px 0;
+        min-height:84px;
+        padding:5px 0;
       }
     }
 
     @media (max-width: 768px){
-      :root{ --pad:18px; }
+      :root{ --pad:16px; }
       .header-inner{
         display:flex;
         align-items:center;
         justify-content:space-between;
-        min-height:96px;
-        padding:8px 0;
-        gap:10px;
+        min-height:86px;
+        padding:6px 0;
+        gap:8px;
       }
       .brand{
         display:flex;
         align-items:center;
-        height:80px;
+        height:72px;
         margin-left:0;
       }
       .brand img{
-        height:68px;
+        height:62px;
         width:auto;
-        max-width:min(72vw, 360px);
-        max-height:80px;
+        max-width:min(70vw, 340px);
+        max-height:72px;
         object-fit:contain;
         object-position:left center;
         display:block;
       }
       .nav-mobile{
         margin-left:auto;
-        margin-right:4px;
+        margin-right:2px;
         align-self:center;
       }
       .nav-drawer{
@@ -276,12 +276,12 @@ section[id]{
     }
     @media (max-width: 380px){
       .brand img{
-        height:58px;
+        height:56px;
         max-width:min(64vw, 270px);
       }
       .nav-mobile summary{
         width:48px;
-        min-height:38px;
+        min-height:40px;
       }
     }
 
