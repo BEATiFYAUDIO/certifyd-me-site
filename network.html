@@ -7,11 +7,14 @@
   <meta name="description" content="Explore live Certifyd creator examples." />
   <style>
     :root{
-      --bg:#070a10;
-      --text:rgba(255,255,255,0.96);
-      --muted:rgba(255,255,255,0.72);
-      --border:rgba(255,255,255,0.14);
-      --panel:rgba(255,255,255,0.06);
+      --bg:#080a0d;
+      --text:#e8ecf1;
+      --muted:#8a95a3;
+      --border:#232b35;
+      --border2:#3a4554;
+      --panel:rgba(15,19,24,0.86);
+      --brand:#c6a65a;
+      --brand-hover:#d2b56f;
       --wrap:980px;
       --pad:22px;
     }
@@ -21,9 +24,9 @@
       font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
       color:var(--text);
       background:
-        linear-gradient(180deg, rgba(6,8,14,0.72), rgba(7,10,16,0.84)),
-        radial-gradient(900px 600px at 10% -10%, rgba(0,225,255,0.12), transparent 55%),
-        radial-gradient(800px 500px at 90% 10%, rgba(138,77,255,0.16), transparent 55%),
+        linear-gradient(180deg, rgba(8,10,13,0.84), rgba(8,10,13,0.9)),
+        radial-gradient(1000px 620px at 14% -12%, rgba(95,137,198,0.10), transparent 58%),
+        radial-gradient(900px 560px at 88% 10%, rgba(198,166,90,0.12), transparent 58%),
         url("images/certifyd-bg.png") center/cover no-repeat fixed,
         var(--bg);
       line-height:1.6;
@@ -31,12 +34,13 @@
     }
     a{color:inherit;text-decoration:none}
     .wrap{max-width:var(--wrap);margin:0 auto;padding:0 var(--pad)}
-    header{padding:20px 0;border-bottom:1px solid var(--border);backdrop-filter:blur(12px);background:rgba(7,10,16,0.72);position:sticky;top:0}
+    header{padding:20px 0;border-bottom:1px solid var(--border);backdrop-filter:blur(12px);background:rgba(8,10,13,0.84);position:sticky;top:0}
     .row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
     .brand{display:flex;align-items:center;font-weight:700}
     .brand img{height:46px;width:auto;display:block}
-    .btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 14px;border-radius:14px;border:1px solid var(--border);background:var(--panel);font-weight:700}
-    .btn.primary{background:linear-gradient(135deg, rgba(138,77,255,0.48), rgba(0,225,255,0.28));}
+    .btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 14px;border-radius:14px;border:1px solid var(--border2);background:#1a212a;font-weight:700}
+    .btn.primary{background:var(--brand);color:#111418;border-color:transparent}
+    .btn.primary:hover{background:var(--brand-hover)}
     main{padding:50px 0 60px}
     h1{margin:0 0 10px;font-size:clamp(1.9rem,5.2vw,3rem);line-height:1.1;letter-spacing:-0.02em}
     p{margin:0;color:var(--muted)}
