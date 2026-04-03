@@ -1229,8 +1229,9 @@ section[id]{
   </aside>
 
   <script>
-    // Footer year
-    document.getElementById("year").textContent = new Date().getFullYear();
+    // Footer year (null-safe so other scripts still run on static variants)
+    const yearEl = document.getElementById("year");
+    if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
     // Mobile menu auto-close (link click, outside click, Escape)
     (function () {
