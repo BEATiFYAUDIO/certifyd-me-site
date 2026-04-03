@@ -1379,7 +1379,7 @@ section[id]{
         panel.getAttribute("data-endpoint") ||
         ""
       ).trim();
-      const liveMode = false;
+      const liveMode = /^https?:\/\//i.test(chatEndpoint);
 
       function toggle(open) {
         const shouldOpen = typeof open === "boolean" ? open : !panel.classList.contains("open");
@@ -1503,7 +1503,7 @@ section[id]{
         "bot",
         liveMode
           ? "Live assistant is connected."
-          : "Ask me about ownership, payouts, or how Certifyd works."
+          : "Ask me about ownership, payouts, or how Certifyd works. (Live endpoint not configured.)"
       );
     })();
   </script>
