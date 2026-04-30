@@ -447,6 +447,44 @@ section[id]{
       background:var(--brand-active);
     }
 
+    /* ---------- Live Profile ---------- */
+    .live-profile-section{
+      margin-top:8px;
+      padding-top:34px;
+      border-top:1px solid rgba(108,139,184,0.24);
+    }
+    .live-profile-eyebrow{
+      font-size:0.74rem;
+      letter-spacing:0.18em;
+      text-transform:uppercase;
+      color:#9fb2c9;
+      margin:0 0 8px;
+    }
+    .live-profile-intro{
+      margin:0 0 18px;
+      color:var(--text-secondary);
+    }
+    .live-profile-frame{
+      border:1px solid rgba(58,69,84,0.95);
+      border-radius:18px;
+      overflow:hidden;
+      background:rgba(8,10,13,0.9);
+      box-shadow:0 28px 88px rgba(0,0,0,0.38);
+    }
+    .live-profile-embed{
+      display:block;
+      width:100%;
+      height:720px;
+      border:0;
+      background:#090c10;
+    }
+    @media (max-width: 980px){
+      .live-profile-embed{ height:640px; }
+    }
+    @media (max-width: 760px){
+      .live-profile-embed{ height:560px; }
+    }
+
     /* ---------- Cards ---------- */
     .grid{ display:grid; gap:22px; }
     .grid-3{ grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); }
@@ -828,6 +866,7 @@ section[id]{
         </a>
 
         <nav class="nav-desktop" aria-label="Primary navigation">
+          <a href="#live-profile">Live profile</a>
           <a href="#ownership">Ownership</a>
           <a href="#own">What you own</a>
           <a href="#how">How it works</a>
@@ -842,6 +881,7 @@ section[id]{
           </summary>
 
           <nav class="nav-drawer" aria-label="Mobile navigation">
+            <a href="#live-profile">Live profile</a>
             <a href="#ownership">Ownership</a>
             <a href="#own">What you own</a>
             <a href="#how">How it works</a>
@@ -898,6 +938,23 @@ section[id]{
             </a>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- LIVE PROFILE -->
+    <section class="wrap live-profile-section" id="live-profile">
+      <p class="live-profile-eyebrow">Live profile</p>
+      <h2>See Certifyd in production</h2>
+      <p class="live-profile-intro">This is the live Certifyd profile and storefront.</p>
+      <div class="live-profile-frame" role="region" aria-label="Live Certifyd profile embed">
+        <iframe
+          class="live-profile-embed"
+          src="https://public.certifyd.me/u/certifyd"
+          title="Live Certifyd profile"
+          loading="lazy"
+          referrerpolicy="strict-origin-when-cross-origin"
+          allowfullscreen
+        ></iframe>
       </div>
     </section>
 
