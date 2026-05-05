@@ -503,25 +503,25 @@ section[id]{
       z-index:1;
     }
     .declaration-section{
-      padding-top:96px;
-      padding-bottom:96px;
+      padding-top:72px;
+      padding-bottom:72px;
     }
     .declaration-copy{
       max-width:760px;
     }
     .ownership-moment{
-      margin-top:120px;
-      margin-bottom:120px;
+      margin-top:72px;
+      margin-bottom:72px;
     }
     .proof-section{
-      margin-top:100px;
-      margin-bottom:100px;
+      margin-top:56px;
+      margin-bottom:56px;
     }
     .proof-section .declaration-copy{
       max-width:720px;
     }
     .network-section{
-      margin-top:80px;
+      margin-top:56px;
     }
     .network-section .declaration-copy{
       max-width:640px;
@@ -542,6 +542,7 @@ section[id]{
       letter-spacing:-0.02em;
       margin:0;
       font-weight:800;
+      text-shadow:0 8px 24px rgba(0,0,0,0.45);
     }
     .ownership-mainline{
       font-size:clamp(28px, 4vw, 48px);
@@ -551,6 +552,7 @@ section[id]{
       letter-spacing:-0.01em;
       font-weight:600;
       opacity:0.95;
+      text-shadow:0 6px 18px rgba(0,0,0,0.35);
     }
     .ownership-support{
       margin-top:0;
@@ -561,19 +563,20 @@ section[id]{
     }
     .proof-headline,
     .network-headline{
-      font-size:clamp(32px, 4vw, 56px);
+      font-size:clamp(36px, 4.2vw, 56px);
       line-height:1.08;
       letter-spacing:-0.02em;
       margin-bottom:14px;
+      text-shadow:0 8px 24px rgba(0,0,0,0.4);
     }
     .proof-body,
     .network-body{
-      font-size:clamp(18px, 1.9vw, 22px);
+      font-size:clamp(19px, 2vw, 24px);
       line-height:1.45;
       color:var(--text-secondary);
       margin:0;
       max-width:760px;
-      opacity:0.75;
+      opacity:0.86;
     }
     .proof-kicker{
       margin-top:14px;
@@ -589,6 +592,7 @@ section[id]{
       letter-spacing:-0.025em;
       line-height:1.08;
       margin:0;
+      text-shadow:0 10px 30px rgba(0,0,0,0.48);
     }
     .flow-section{
       padding-top:120px;
@@ -1061,16 +1065,25 @@ section[id]{
       }
       .card{ padding:20px; }
       .compare-list li{ padding:12px 12px; }
-      .declaration-section{ padding-top:76px; padding-bottom:76px; }
-      .flow-section{ padding-top:76px; padding-bottom:76px; }
+      .declaration-section{ padding-top:64px; padding-bottom:64px; }
+      .flow-section{ padding-top:64px; padding-bottom:64px; }
       .why-section{ padding-bottom:72px; }
-      .ownership-moment{ margin-top:90px; margin-bottom:90px; }
-      .proof-section{ margin-top:72px; margin-bottom:72px; }
-      .network-section{ margin-top:72px; }
+      .ownership-moment{ margin-top:56px; margin-bottom:56px; }
+      .proof-section{ margin-top:44px; margin-bottom:44px; }
+      .network-section{ margin-top:44px; }
       .why-card{ padding:28px 22px; }
       .who-heading{ margin-top:74px; }
       .who-grid{ gap:20px; }
       .who-card{ padding:24px 18px; }
+      .ownership-headline{ font-size:clamp(36px, 12vw, 54px); }
+      .ownership-mainline{ font-size:clamp(24px, 8vw, 36px); }
+      .ownership-support{ font-size:16px; opacity:0.86; }
+      .proof-headline,
+      .network-headline{ font-size:clamp(30px, 10vw, 44px); }
+      .proof-body,
+      .network-body{ font-size:16px; line-height:1.55; opacity:0.92; }
+      .proof-kicker{ font-size:16px; }
+      .flow-divider{ font-size:clamp(34px, 11vw, 46px); line-height:1.16; }
       .network-headline,
       .network-body,
       .declaration-center,
