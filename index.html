@@ -59,19 +59,19 @@ section[id]{
       --warning:#c89a4b;
       --danger:#c35f5f;
       --info:#5f89c6;
-      --radius:18px;
-      --wrap:1200px;
-      --pad:22px;
+      --radius:20px;
+      --wrap:1160px;
+      --pad:24px;
       --shadow:0 30px 90px rgba(0,0,0,0.65);
     }
 
     *{ box-sizing:border-box; }
-    html{ font-size:clamp(16px,1.1vw,18px); }
+    html{ font-size:clamp(16px,1.02vw,18px); }
     body{
       margin:0;
       font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
       background:
-        linear-gradient(180deg, rgba(8,10,13,0.84), rgba(8,10,13,0.9)),
+        linear-gradient(180deg, rgba(4,6,8,0.88), rgba(4,6,8,0.94)),
         radial-gradient(1000px 620px at 14% -12%, rgba(95,137,198,0.10), transparent 58%),
         radial-gradient(900px 560px at 88% 10%, rgba(198,166,90,0.12), transparent 58%),
         url("images/certifyd-bg.png") center/cover no-repeat fixed,
@@ -303,17 +303,20 @@ section[id]{
     }
 
     /* ---------- Sections ---------- */
-    section{ padding:clamp(56px, 8vw, 96px) 0; }
+    section{ padding:clamp(64px, 9vw, 120px) 0; }
 
     h1{
-      font-size:clamp(2.4rem, 6vw, 3.6rem);
-      line-height:1.05;
+      font-size:clamp(2.35rem, 5.7vw, 4.15rem);
+      line-height:1.02;
       margin:0 0 20px;
-      letter-spacing:-0.02em;
+      letter-spacing:-0.032em;
+      text-wrap:balance;
     }
     h2{
-      font-size:clamp(1.5rem, 3vw, 2rem);
-      margin:0 0 14px;
+      font-size:clamp(1.7rem, 3.4vw, 2.45rem);
+      margin:0 0 16px;
+      letter-spacing:-0.015em;
+      text-wrap:balance;
     }
     h3{ margin:0 0 8px; font-size:1.05rem; }
 
@@ -321,7 +324,8 @@ section[id]{
       max-width:72ch;
       color:var(--text-secondary);
       margin:0;
-      font-size:1rem;
+      font-size:1.04rem;
+      line-height:1.65;
     }
     ul{
       margin:12px 0 0;
@@ -334,7 +338,7 @@ section[id]{
     .hero-grid{
       display:grid;
       grid-template-columns:0.9fr 1.1fr;
-      gap:34px;
+      gap:48px;
       align-items:center;
     }
     @media (max-width: 900px){
@@ -346,17 +350,17 @@ section[id]{
 
     .panel{
       background:var(--panel);
-      border:1px solid var(--border);
+      border:1px solid rgba(111,134,167,0.24);
       border-radius:var(--radius);
-      padding:22px;
-      box-shadow:0 26px 80px rgba(0,0,0,0.25);
+      padding:26px;
+      box-shadow:0 28px 80px rgba(0,0,0,0.26);
     }
     .hero-shot{
       display:block;
-      border-radius:18px;
-      border:1px solid var(--border2);
+      border-radius:20px;
+      border:1px solid rgba(111,134,167,0.34);
       overflow:hidden;
-      box-shadow:0 26px 80px rgba(0,0,0,0.32);
+      box-shadow:0 36px 98px rgba(0,0,0,0.44);
     }
     .hero-shot img{
       width:100%;
@@ -408,7 +412,7 @@ section[id]{
     .hero-actions{
       display:flex;
       gap:14px;
-      margin-top:24px;
+      margin-top:28px;
       flex-wrap:wrap;
     }
     .form-cta{
@@ -423,17 +427,17 @@ section[id]{
     }
 
     .btn{
-      padding:14px 20px;
+      padding:14px 22px;
       border-radius:16px;
       border:1px solid var(--border2);
-      background:#1a212a;
-      font-weight:700;
+      background:#171f28;
+      font-weight:720;
       min-height:44px;
-      font-size:0.95rem;
+      font-size:0.96rem;
       display:inline-flex;
       align-items:center;
       justify-content:center;
-      box-shadow:0 18px 60px rgba(0,0,0,0.18);
+      box-shadow:0 14px 44px rgba(0,0,0,0.22);
     }
     .btn.primary{
       color:#111418;
@@ -449,9 +453,9 @@ section[id]{
 
     /* ---------- Live Profile ---------- */
     .live-profile-section{
-      margin-top:8px;
-      padding-top:34px;
-      border-top:1px solid rgba(108,139,184,0.24);
+      margin-top:18px;
+      padding-top:46px;
+      border-top:1px solid rgba(108,139,184,0.20);
     }
     .live-profile-eyebrow{
       font-size:0.74rem;
@@ -465,11 +469,11 @@ section[id]{
       color:var(--text-secondary);
     }
     .live-profile-frame{
-      border:1px solid rgba(58,69,84,0.95);
-      border-radius:18px;
+      border:1px solid rgba(94,117,146,0.64);
+      border-radius:22px;
       overflow:hidden;
-      background:rgba(8,10,13,0.9);
-      box-shadow:0 28px 88px rgba(0,0,0,0.38);
+      background:rgba(8,10,13,0.92);
+      box-shadow:0 34px 102px rgba(0,0,0,0.46);
     }
     .live-profile-embed{
       display:block;
@@ -489,7 +493,7 @@ section[id]{
       position:absolute;
       inset:0;
       pointer-events:none;
-      background:linear-gradient(180deg, rgba(0,0,0,0.85), rgba(0,0,0,0.92));
+      background:linear-gradient(180deg, rgba(0,0,0,0.80), rgba(0,0,0,0.9));
       z-index:0;
     }
     .mid-editorial > *{
@@ -605,8 +609,8 @@ section[id]{
       padding:24px 28px;
       border-radius:20px;
       border:1px solid rgba(255, 215, 0, 0.15);
-      background:linear-gradient(180deg, rgba(15,19,24,0.72), rgba(13,17,22,0.62));
-      box-shadow:0 18px 46px rgba(0,0,0,0.2);
+      background:linear-gradient(180deg, rgba(15,19,24,0.62), rgba(13,17,22,0.5));
+      box-shadow:0 14px 34px rgba(0,0,0,0.18);
     }
     .why-card h3{
       margin:0 0 12px;
@@ -642,9 +646,9 @@ section[id]{
     .who-card{
       padding:34px 28px;
       border-radius:18px;
-      border:1px solid rgba(58,69,84,0.56);
-      background:rgba(15,19,24,0.64);
-      box-shadow:0 14px 36px rgba(0,0,0,0.18);
+      border:1px solid rgba(72,90,113,0.50);
+      background:rgba(15,19,24,0.58);
+      box-shadow:0 12px 30px rgba(0,0,0,0.16);
     }
     .who-card h3{
       margin:0 0 8px;
@@ -669,10 +673,10 @@ section[id]{
 
     .card{
       background:var(--panel);
-      border:1px solid var(--border);
+      border:1px solid rgba(74,92,114,0.56);
       border-radius:var(--radius);
-      padding:22px;
-      box-shadow:0 22px 70px rgba(0,0,0,0.22);
+      padding:24px;
+      box-shadow:0 18px 48px rgba(0,0,0,0.18);
     }
     .compare-card{
       border-color:var(--border2);
@@ -688,10 +692,10 @@ section[id]{
     }
     .compare-list li{
       margin:0;
-      padding:10px 12px;
+      padding:12px 14px;
       border-radius:12px;
-      border:1px solid var(--border);
-      background:rgba(255,255,255,0.02);
+      border:1px solid rgba(68,84,103,0.42);
+      background:rgba(255,255,255,0.01);
       line-height:1.45;
     }
     .compare-list strong{
@@ -972,11 +976,19 @@ section[id]{
     }
 
     @media (max-width: 680px){
-      section{ padding:44px 0; }
-      h1{ font-size:clamp(1.95rem, 10vw, 2.55rem); line-height:1.07; }
+      body{
+        background:
+          linear-gradient(180deg, rgba(4,6,8,0.92), rgba(4,6,8,0.96)),
+          radial-gradient(800px 460px at 14% -12%, rgba(95,137,198,0.10), transparent 58%),
+          radial-gradient(700px 420px at 88% 10%, rgba(198,166,90,0.10), transparent 58%),
+          url("images/certifyd-bg.png") center/cover no-repeat,
+          var(--bg);
+      }
+      section{ padding:56px 0; }
+      h1{ font-size:clamp(2.15rem, 10.6vw, 2.85rem); line-height:1.03; }
       h2{ margin-bottom:10px; }
-      p{ font-size:.96rem; }
-      .hero-grid{ gap:20px; }
+      p{ font-size:1.03rem; line-height:1.62; }
+      .hero-grid{ gap:28px; }
       .hero-strip{ gap:6px; }
       .hero-pill{ font-size:.78rem; padding:5px 9px; }
       .hero-actions{
@@ -986,7 +998,7 @@ section[id]{
       }
       .hero-actions .btn{
         width:100%;
-        min-height:46px;
+        min-height:48px;
       }
       .hero-cta{
         flex-direction:row;
@@ -1018,17 +1030,17 @@ section[id]{
         padding:9px 13px;
         font-size:.88rem;
       }
-      .card{ padding:18px; }
-      .compare-list li{ padding:9px 10px; }
-      .declaration-section{ padding-top:64px; padding-bottom:64px; }
-      .flow-section{ padding-top:56px; padding-bottom:56px; }
+      .card{ padding:20px; }
+      .compare-list li{ padding:12px 12px; }
+      .declaration-section{ padding-top:76px; padding-bottom:76px; }
+      .flow-section{ padding-top:76px; padding-bottom:76px; }
       .why-section{ padding-bottom:72px; }
-      .ownership-moment{ margin-top:80px; margin-bottom:80px; }
-      .proof-section{ margin-top:56px; margin-bottom:56px; }
-      .network-section{ margin-top:56px; }
+      .ownership-moment{ margin-top:90px; margin-bottom:90px; }
+      .proof-section{ margin-top:72px; margin-bottom:72px; }
+      .network-section{ margin-top:72px; }
       .why-card{ padding:28px 22px; }
-      .who-heading{ margin-top:56px; }
-      .who-grid{ gap:18px; }
+      .who-heading{ margin-top:74px; }
+      .who-grid{ gap:20px; }
       .who-card{ padding:24px 18px; }
       .network-headline,
       .network-body,
