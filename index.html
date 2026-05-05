@@ -904,15 +904,7 @@ section[id]{
           <p>
             No banks. No platforms. When someone pays you, it goes straight to you.
           </p>
-          <ul class="compare-list" style="margin-top:10px; margin-bottom:0;">
-            <li><strong>Be your own payment processor.</strong></li>
-          </ul>
-          <div class="hero-strip" aria-label="Core capabilities">
-            <span class="hero-pill">You own identity</span>
-            <span class="hero-pill">You own content</span>
-            <span class="hero-pill">You control payouts</span>
-            <span class="hero-pill">Receipts stay portable</span>
-          </div>
+          <p style="margin-top:12px;"><strong>Be your own payment processor.</strong></p>
 
           <div class="hero-actions hero-cta">
             <a class="btn primary" href="#early-access">Get Certifyd</a>
@@ -925,14 +917,7 @@ section[id]{
           <a class="hero-shot shot" href="#shot-workspace" aria-label="Open Certifyd Creator library screenshot">
             <img src="images/screenshots/personallibrary.png" alt="Certifyd Creator library and authoring workspace" />
           </a>
-          <div class="hero-mini-grid">
-            <a class="hero-mini shot" href="#shot-revenue" aria-label="Open revenue screenshot">
-              <img src="images/screenshots/revenue.png" alt="Revenue and payouts view" />
-            </a>
-            <a class="hero-mini shot" href="#shot-identity" aria-label="Open identity screenshot">
-              <img src="images/screenshots/identity.png" alt="Identity and trust view" />
-            </a>
-          </div>
+          
         </div>
       </div>
     </section>
@@ -960,33 +945,27 @@ section[id]{
       <p>No lock-in. No gatekeepers.</p>
       <p style="margin-top:12px;"><strong>The people who support you stay yours.</strong></p>
 
-      <div class="grid grid-3" style="margin-top:22px">
-        <a class="shot-card" href="#shot-workspace" aria-label="Open Author in your library screenshot">
-          <img src="images/screenshots/contentlibrary.png" alt="Content library view for publishing with structured creator metadata" />
-          <div class="shot-meta">
-            <h3>One payment. You’re paid.</h3>
-            <p>A fan pays → the money goes straight to you.</p>
-          </div>
-        </a>
-        <a class="shot-card" href="#shot-royalties" aria-label="Open Credit collaborators screenshot">
-          <img src="images/screenshots/royalties.png" alt="Royalties view showing contributor attribution and split details" />
-          <div class="shot-meta">
-            <h3>Access unlocks instantly.</h3>
-            <p>Collaborators are paid automatically.</p>
-          </div>
-        </a>
-        <a class="shot-card" href="#shot-how" aria-label="Open creator execution workflow screenshot">
-          <img src="images/screenshots/creator-studio-work.png" alt="Creator working in a studio workspace with Certifyd execution flow" />
-          <div class="shot-meta">
-            <h3>No waiting. No chasing.</h3>
-            <p>Payment and payout state update from the same event.</p>
-          </div>
+    </section>
+
+    <!-- CORE MECHANIC -->
+    <section id="ownership" class="wrap">
+      <h2>One payment. You’re paid.</h2>
+      <p>A fan pays → the money goes straight to you.</p>
+      <ul class="compare-list" style="margin-top:16px; margin-bottom:0; max-width:760px;">
+        <li><strong>Access unlocks instantly.</strong></li>
+        <li><strong>Collaborators are paid automatically.</strong></li>
+        <li><strong>No waiting. No chasing.</strong></li>
+      </ul>
+
+      <div class="grid grid-2" style="margin-top:22px">
+        <a class="shot-card" href="#shot-how" aria-label="Open payment confirmation screenshot">
+          <img src="images/screenshots/payment-phone-warm.png" alt="Mobile payment confirmation showing sats received via Lightning" />
         </a>
       </div>
     </section>
 
     <!-- WHY IT'S BETTER -->
-    <section id="ownership" class="wrap">
+    <section id="own" class="wrap">
       <h2>Why it’s better</h2>
       <p>If you get paid, you have it.</p>
 
@@ -1011,10 +990,11 @@ section[id]{
     </section>
 
     <!-- OWNERSHIP -->
-    <section id="own" class="wrap">
+    <section id="data" class="wrap">
       <h2>What you build stays yours.</h2>
       <p>Audience. Content. Income.</p>
-      <div class="grid grid-2" style="margin-top:22px">
+      <p style="margin-top:12px;"><strong>All under your control.</strong></p>
+      <div class="grid grid-3" style="margin-top:22px">
         <div class="card own-card">
           <h3>Audience</h3>
           <p>The people who support you remain connected to your work, not a platform account.</p>
@@ -1029,32 +1009,12 @@ section[id]{
         </div>
       </div>
     </section>
+
     <!-- PROOF / DATA -->
-    <section id="data" class="wrap">
+    <section class="wrap">
       <h2>Not a dashboard. A record.</h2>
       <p>See who paid, what they got, and where the money went.</p>
       <p style="margin-top:12px;"><strong>Everything is connected. Nothing is hidden.</strong></p>
-
-      <div class="grid grid-2" style="margin-top:22px">
-        <div class="card compare-card">
-          <h3>Traditional platforms</h3>
-          <ul class="compare-list">
-            <li><strong>Data:</strong> aggregated summaries</li>
-            <li><strong>Links:</strong> missing relationships</li>
-            <li><strong>Exports:</strong> limited exports</li>
-            <li><strong>AI:</strong> must infer or approximate</li>
-          </ul>
-        </div>
-        <div class="card compare-card">
-          <h3>Certifyd</h3>
-          <ul class="compare-list">
-            <li><strong>Data:</strong> full event history</li>
-            <li><strong>Links:</strong> identity, content, and payments connected</li>
-            <li><strong>Attribution:</strong> preserved at every step</li>
-            <li><strong>AI:</strong> reads real records directly</li>
-          </ul>
-        </div>
-      </div>
     </section>
 
 
@@ -1062,54 +1022,13 @@ section[id]{
     <section id="how" class="wrap">
       <h2>Create → Publish → Sell → Get paid</h2>
       <p>One line. One flow.</p>
-
-      <div class="grid grid-3" style="margin-top:22px">
-        <div class="card">
-          <h3>1. Create</h3>
-          <p>Define your identity and release terms.</p>
-        </div>
-        <div class="card">
-          <h3>2. Publish</h3>
-          <p>Attach contributors and revenue splits.</p>
-        </div>
-        <div class="card">
-          <h3>3. Sell</h3>
-          <p>Buyers open your release and pay.</p>
-        </div>
-        <div class="card">
-          <h3>4. Record</h3>
-          <p>Payment creates a receipt and unlock.</p>
-        </div>
-        <div class="card">
-          <h3>5. Split</h3>
-          <p>Revenue is allocated by your terms.</p>
-        </div>
-        <div class="card">
-          <h3>6. Payout</h3>
-          <p>Funds move with visible execution state.</p>
-        </div>
-      </div>
-
-      <div class="grid grid-2" style="margin-top:22px">
-        <a class="shot-card" href="#shot-how" aria-label="Open payment confirmation screenshot">
-          <img src="images/screenshots/payment-phone-warm.png" alt="Mobile payment confirmation showing sats received via Lightning" />
-          <div class="shot-meta">
-            <h3>Visible payment confirmation</h3>
-            <p>Receipt-backed payment proof is visible the moment funds settle.</p>
-          </div>
-        </a>
-      </div>
     </section>
 
     <!-- NETWORK -->
-    <section id="built-for" class="wrap">
+    <section id="network" class="wrap">
       <h2>Run it. Or use it.</h2>
       <p>Get paid directly, or help run payments and earn from it.</p>
-    </section>
-
-    <!-- WHO IT'S FOR -->
-    <section class="wrap" id="who">
-      <h2>Who it’s for</h2>
+      <h2 style="margin-top:20px;">Who it’s for</h2>
       <div class="grid grid-3" style="margin-top:22px">
         <div class="card">
           <h3>Creators</h3>
@@ -1130,10 +1049,7 @@ section[id]{
     <section id="early-access" class="wrap">
       <h2>Apply for Early Access</h2>
       <p>
-        Certifyd Creator is currently opening to a small group of creators and node operators.
-      </p>
-      <p style="margin-top:10px;">
-        We are especially looking for early testers running Bitcoin / Lightning nodes and creators publishing from their own domains.
+        Certifyd is opening to creators, musicians, writers, publishers, and node operators.
       </p>
 
       <div class="card" style="margin-top:20px;">
