@@ -481,14 +481,138 @@ section[id]{
 
     /* ---------- Mid-page declaration stack ---------- */
     .declaration-section{
-      padding-top:72px;
-      padding-bottom:72px;
+      padding-top:96px;
+      padding-bottom:96px;
     }
     .declaration-copy{
       max-width:760px;
     }
     .declaration-copy p + p{
       margin-top:10px;
+    }
+    .declaration-center{
+      text-align:center;
+      margin-left:auto;
+      margin-right:auto;
+    }
+    .ownership-headline{
+      font-size:clamp(32px, 5vw, 64px);
+      line-height:1.06;
+      letter-spacing:-0.02em;
+      margin-bottom:14px;
+    }
+    .ownership-mainline{
+      font-size:clamp(24px, 4vw, 48px);
+      line-height:1.12;
+      color:var(--text);
+      margin:0;
+      letter-spacing:-0.01em;
+      font-weight:700;
+    }
+    .ownership-support{
+      margin-top:16px;
+      font-size:clamp(18px, 2vw, 22px);
+      color:var(--text-secondary);
+      font-weight:600;
+    }
+    .proof-headline,
+    .network-headline{
+      font-size:clamp(32px, 4vw, 56px);
+      line-height:1.08;
+      letter-spacing:-0.02em;
+      margin-bottom:14px;
+    }
+    .proof-body,
+    .network-body{
+      font-size:clamp(18px, 2vw, 22px);
+      line-height:1.45;
+      color:var(--text-secondary);
+      margin:0;
+      max-width:760px;
+    }
+    .proof-kicker{
+      margin-top:14px;
+      font-size:clamp(18px, 1.8vw, 21px);
+      color:var(--text);
+      font-weight:700;
+    }
+    .flow-divider{
+      text-align:center;
+      font-size:clamp(30px, 5vw, 64px);
+      font-weight:900;
+      letter-spacing:-0.025em;
+      line-height:1.08;
+      margin:0;
+    }
+    .flow-section{
+      padding-top:88px;
+      padding-bottom:88px;
+    }
+    .why-section{
+      padding-bottom:96px;
+    }
+    .why-subline{
+      font-size:clamp(20px, 2.2vw, 30px);
+      color:var(--text);
+      margin-bottom:22px;
+    }
+    .why-grid{
+      display:grid;
+      gap:26px;
+      grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));
+    }
+    .why-card{
+      padding:32px 30px;
+      border-radius:20px;
+      border:1px solid rgba(198,166,90,0.22);
+      background:linear-gradient(180deg, rgba(15,19,24,0.72), rgba(13,17,22,0.62));
+      box-shadow:0 18px 46px rgba(0,0,0,0.2);
+    }
+    .why-card h3{
+      margin:0 0 12px;
+      font-size:1.22rem;
+      letter-spacing:0.01em;
+    }
+    .why-list{
+      margin:0;
+      padding:0;
+      list-style:none;
+      display:grid;
+      gap:12px;
+      color:var(--text-secondary);
+    }
+    .why-list li{
+      padding:4px 0;
+      border:none;
+      background:none;
+      line-height:1.55;
+    }
+    .who-heading{
+      margin-top:72px;
+      font-size:clamp(28px, 3.4vw, 46px);
+      letter-spacing:-0.015em;
+    }
+    .who-grid{
+      margin-top:26px;
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
+      gap:24px;
+    }
+    .who-card{
+      padding:30px 26px;
+      border-radius:18px;
+      border:1px solid rgba(58,69,84,0.72);
+      background:rgba(15,19,24,0.64);
+      box-shadow:0 14px 36px rgba(0,0,0,0.18);
+    }
+    .who-card h3{
+      margin:0 0 8px;
+      font-size:1.16rem;
+      color:var(--text);
+    }
+    .who-card p{
+      margin:0;
+      color:var(--text-secondary);
     }
     @media (max-width: 980px){
       .live-profile-embed{ height:640px; }
@@ -855,6 +979,13 @@ section[id]{
       }
       .card{ padding:18px; }
       .compare-list li{ padding:9px 10px; }
+      .declaration-section{ padding-top:64px; padding-bottom:64px; }
+      .flow-section{ padding-top:56px; padding-bottom:56px; }
+      .why-section{ padding-bottom:64px; }
+      .why-card{ padding:24px 20px; }
+      .who-heading{ margin-top:56px; }
+      .who-grid{ gap:16px; }
+      .who-card{ padding:22px 18px; }
       .chatbot{
         right:12px;
         left:12px;
@@ -977,22 +1108,22 @@ section[id]{
     </section>
 
     <!-- WHY IT'S BETTER -->
-    <section id="own" class="wrap">
+    <section id="own" class="wrap why-section">
       <h2>Why it’s better</h2>
-      <p>If you get paid, you have it.</p>
+      <p class="why-subline">If you get paid, you have it.</p>
 
-      <div class="grid grid-2" style="margin-top:22px">
-        <div class="card compare-card">
+      <div class="why-grid">
+        <div class="why-card">
           <h3>Platforms</h3>
-          <ul class="compare-list">
+          <ul class="why-list">
             <li><strong>Hold your money</strong></li>
             <li><strong>Pay you later</strong></li>
             <li><strong>Control access</strong></li>
           </ul>
         </div>
-        <div class="card compare-card">
+        <div class="why-card">
           <h3>Certifyd</h3>
-          <ul class="compare-list">
+          <ul class="why-list">
             <li><strong>Pays you instantly</strong></li>
             <li><strong>Sends money directly</strong></li>
             <li><strong>Handles splits automatically</strong></li>
@@ -1003,46 +1134,45 @@ section[id]{
 
     <!-- OWNERSHIP -->
     <section id="data" class="wrap declaration-section">
-      <h2>What you build stays yours.</h2>
-      <div class="declaration-copy">
-        <p>Audience. Work. Income.</p>
-        <p><strong>All under your control.</strong></p>
+      <div class="declaration-copy declaration-center">
+        <h2 class="ownership-headline">What you build stays yours.</h2>
+        <p class="ownership-mainline">Audience. Work. Money.</p>
+        <p class="ownership-support">All under your control.</p>
       </div>
     </section>
 
     <!-- PROOF / DATA -->
     <section class="wrap declaration-section">
-      <h2>Not a dashboard. A record.</h2>
       <div class="declaration-copy">
-        <p>See who paid, what they got, and where the money went.</p>
-        <p><strong>Nothing hidden.</strong></p>
+        <h2 class="proof-headline">Not a dashboard. A record.</h2>
+        <p class="proof-body">See who paid, what they got, and where the money went.</p>
+        <p class="proof-kicker">Nothing hidden.</p>
       </div>
     </section>
 
 
     <!-- HOW -->
-    <section id="how" class="wrap declaration-section">
-      <h2>Create → Publish → Sell → Get paid</h2>
+    <section id="how" class="wrap flow-section">
+      <h2 class="flow-divider">Create → Publish → Sell → Get paid</h2>
     </section>
 
     <!-- NETWORK -->
     <section id="network" class="wrap declaration-section">
-      <h2>Run it. Or use it.</h2>
+      <h2 class="network-headline">Run it. Or use it.</h2>
       <div class="declaration-copy">
-        <p>Get paid directly,</p>
-        <p>or help run payments and earn from it.</p>
+        <p class="network-body">Get paid directly,<br />or help run payments and earn from it.</p>
       </div>
-      <h2 style="margin-top:20px;">Who it’s for</h2>
-      <div class="grid grid-3" style="margin-top:22px">
-        <div class="card">
+      <h2 class="who-heading">Who it’s for</h2>
+      <div class="who-grid">
+        <div class="who-card">
           <h3>Creators</h3>
           <p>Sell without giving up control.</p>
         </div>
-        <div class="card">
+        <div class="who-card">
           <h3>Collaborators</h3>
           <p>Get paid automatically.</p>
         </div>
-        <div class="card">
+        <div class="who-card">
           <h3>Operators</h3>
           <p>Run payments. Earn from the network.</p>
         </div>
