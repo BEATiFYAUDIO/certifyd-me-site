@@ -361,6 +361,7 @@ section[id]{
       border:1px solid rgba(111,134,167,0.34);
       overflow:hidden;
       box-shadow:0 36px 98px rgba(0,0,0,0.44);
+      aspect-ratio:16 / 10;
     }
     .hero-shot img{
       width:100%;
@@ -720,15 +721,22 @@ section[id]{
     }
     .shot:hover img{ transform:translateY(-1px); filter:brightness(1.05); }
     .shot-card{
-      display:block;
+      display:flex;
+      align-items:center;
+      justify-content:center;
       text-decoration:none;
       color:inherit;
+      overflow:hidden;
+      border-radius:14px;
+      border:1px solid rgba(68,84,103,0.5);
+      background:rgba(10,13,18,0.72);
+      aspect-ratio:16 / 10;
     }
     .shot-card img{
       width:100%;
-      border-radius:14px;
-      border:1px solid var(--border);
-      box-shadow:0 22px 70px rgba(0,0,0,0.22);
+      height:100%;
+      border:0;
+      box-shadow:none;
       object-fit:cover;
       object-position:center center;
     }
@@ -1192,7 +1200,7 @@ section[id]{
     </section>
 
     <!-- WHY IT'S BETTER -->
-    <section id="own" class="wrap why-section mid-editorial">
+    <section id="own" class="wrap why-section">
       <h2>Why it’s better</h2>
       <p class="why-subline">If you get paid, you have it.</p>
 
@@ -1217,7 +1225,7 @@ section[id]{
     </section>
 
     <!-- OWNERSHIP -->
-    <section id="data" class="wrap declaration-section ownership-moment mid-editorial">
+    <section id="data" class="wrap declaration-section ownership-moment">
       <div class="declaration-copy declaration-center">
         <h2 class="ownership-headline">What you build stays yours.</h2>
         <p class="ownership-mainline">Audience. Work. Money.</p>
@@ -1226,7 +1234,7 @@ section[id]{
     </section>
 
     <!-- PROOF / DATA -->
-    <section class="wrap declaration-section proof-section mid-editorial">
+    <section class="wrap declaration-section proof-section">
       <div class="declaration-copy">
         <h2 class="proof-headline">Not a dashboard. A record.</h2>
         <p class="proof-body">See who paid, what they got, and where the money went.</p>
@@ -1236,12 +1244,12 @@ section[id]{
 
 
     <!-- HOW -->
-    <section id="how" class="wrap flow-section mid-editorial">
+    <section id="how" class="wrap flow-section">
       <h2 class="flow-divider">Create → Publish → Sell → Get paid</h2>
     </section>
 
     <!-- NETWORK -->
-    <section id="network" class="wrap declaration-section network-section mid-editorial">
+    <section id="network" class="wrap declaration-section network-section">
       <h2 class="network-headline">Run it. Or use it.</h2>
       <div class="declaration-copy">
         <p class="network-body">Get paid directly,<br />or help run payments and earn from it.</p>
