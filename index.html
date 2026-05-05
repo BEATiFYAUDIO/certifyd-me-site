@@ -480,12 +480,45 @@ section[id]{
     }
 
     /* ---------- Mid-page declaration stack ---------- */
+    .mid-editorial{
+      position:relative;
+      isolation:isolate;
+    }
+    .mid-editorial::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:linear-gradient(180deg, rgba(0,0,0,0.85), rgba(0,0,0,0.92));
+      z-index:0;
+    }
+    .mid-editorial > *{
+      position:relative;
+      z-index:1;
+    }
     .declaration-section{
       padding-top:96px;
       padding-bottom:96px;
     }
     .declaration-copy{
       max-width:760px;
+    }
+    .ownership-moment{
+      margin-top:120px;
+      margin-bottom:120px;
+    }
+    .proof-section{
+      margin-top:100px;
+      margin-bottom:100px;
+    }
+    .proof-section .declaration-copy{
+      max-width:720px;
+    }
+    .network-section{
+      margin-top:80px;
+    }
+    .network-section .declaration-copy{
+      max-width:640px;
     }
     .declaration-copy p + p{
       margin-top:10px;
@@ -494,26 +527,31 @@ section[id]{
       text-align:center;
       margin-left:auto;
       margin-right:auto;
+      display:grid;
+      gap:16px;
     }
     .ownership-headline{
-      font-size:clamp(32px, 5vw, 64px);
+      font-size:clamp(40px, 5vw, 72px);
       line-height:1.06;
       letter-spacing:-0.02em;
-      margin-bottom:14px;
+      margin:0;
+      font-weight:800;
     }
     .ownership-mainline{
-      font-size:clamp(24px, 4vw, 48px);
+      font-size:clamp(28px, 4vw, 48px);
       line-height:1.12;
       color:var(--text);
       margin:0;
       letter-spacing:-0.01em;
-      font-weight:700;
+      font-weight:600;
+      opacity:0.95;
     }
     .ownership-support{
-      margin-top:16px;
-      font-size:clamp(18px, 2vw, 22px);
+      margin-top:0;
+      font-size:18px;
       color:var(--text-secondary);
       font-weight:600;
+      opacity:0.7;
     }
     .proof-headline,
     .network-headline{
@@ -524,17 +562,19 @@ section[id]{
     }
     .proof-body,
     .network-body{
-      font-size:clamp(18px, 2vw, 22px);
+      font-size:clamp(18px, 1.9vw, 22px);
       line-height:1.45;
       color:var(--text-secondary);
       margin:0;
       max-width:760px;
+      opacity:0.75;
     }
     .proof-kicker{
       margin-top:14px;
       font-size:clamp(18px, 1.8vw, 21px);
       color:var(--text);
       font-weight:700;
+      opacity:1;
     }
     .flow-divider{
       text-align:center;
@@ -545,11 +585,11 @@ section[id]{
       margin:0;
     }
     .flow-section{
-      padding-top:88px;
-      padding-bottom:88px;
+      padding-top:120px;
+      padding-bottom:120px;
     }
     .why-section{
-      padding-bottom:96px;
+      padding-bottom:120px;
     }
     .why-subline{
       font-size:clamp(20px, 2.2vw, 30px);
@@ -558,20 +598,21 @@ section[id]{
     }
     .why-grid{
       display:grid;
-      gap:26px;
+      gap:32px;
       grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));
     }
     .why-card{
-      padding:38px 34px;
+      padding:24px 28px;
       border-radius:20px;
-      border:1px solid rgba(198,166,90,0.16);
+      border:1px solid rgba(255, 215, 0, 0.15);
       background:linear-gradient(180deg, rgba(15,19,24,0.72), rgba(13,17,22,0.62));
       box-shadow:0 18px 46px rgba(0,0,0,0.2);
     }
     .why-card h3{
       margin:0 0 12px;
-      font-size:1.22rem;
+      font-size:18px;
       letter-spacing:0.01em;
+      opacity:0.6;
     }
     .why-list{
       margin:0;
@@ -588,7 +629,7 @@ section[id]{
       line-height:1.55;
     }
     .who-heading{
-      margin-top:96px;
+      margin-top:120px;
       font-size:clamp(28px, 3.4vw, 46px);
       letter-spacing:-0.015em;
     }
@@ -981,7 +1022,10 @@ section[id]{
       .compare-list li{ padding:9px 10px; }
       .declaration-section{ padding-top:64px; padding-bottom:64px; }
       .flow-section{ padding-top:56px; padding-bottom:56px; }
-      .why-section{ padding-bottom:64px; }
+      .why-section{ padding-bottom:72px; }
+      .ownership-moment{ margin-top:80px; margin-bottom:80px; }
+      .proof-section{ margin-top:56px; margin-bottom:56px; }
+      .network-section{ margin-top:56px; }
       .why-card{ padding:28px 22px; }
       .who-heading{ margin-top:56px; }
       .who-grid{ gap:18px; }
@@ -1140,7 +1184,7 @@ section[id]{
     </section>
 
     <!-- OWNERSHIP -->
-    <section id="data" class="wrap declaration-section mid-editorial">
+    <section id="data" class="wrap declaration-section ownership-moment mid-editorial">
       <div class="declaration-copy declaration-center">
         <h2 class="ownership-headline">What you build stays yours.</h2>
         <p class="ownership-mainline">Audience. Work. Money.</p>
@@ -1149,7 +1193,7 @@ section[id]{
     </section>
 
     <!-- PROOF / DATA -->
-    <section class="wrap declaration-section mid-editorial">
+    <section class="wrap declaration-section proof-section mid-editorial">
       <div class="declaration-copy">
         <h2 class="proof-headline">Not a dashboard. A record.</h2>
         <p class="proof-body">See who paid, what they got, and where the money went.</p>
@@ -1164,7 +1208,7 @@ section[id]{
     </section>
 
     <!-- NETWORK -->
-    <section id="network" class="wrap declaration-section mid-editorial">
+    <section id="network" class="wrap declaration-section network-section mid-editorial">
       <h2 class="network-headline">Run it. Or use it.</h2>
       <div class="declaration-copy">
         <p class="network-body">Get paid directly,<br />or help run payments and earn from it.</p>
@@ -1609,18 +1653,3 @@ section[id]{
   </script>
 </body>
 </html>
-    .mid-editorial{
-      position:relative;
-    }
-    .mid-editorial::before{
-      content:"";
-      position:absolute;
-      inset:0;
-      pointer-events:none;
-      background:linear-gradient(180deg, rgba(6,8,11,0.38), rgba(6,8,11,0.68) 30%, rgba(6,8,11,0.78) 100%);
-      z-index:0;
-    }
-    .mid-editorial > *{
-      position:relative;
-      z-index:1;
-    }
