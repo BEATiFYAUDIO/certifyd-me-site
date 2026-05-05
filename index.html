@@ -562,9 +562,9 @@ section[id]{
       grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));
     }
     .why-card{
-      padding:32px 30px;
+      padding:38px 34px;
       border-radius:20px;
-      border:1px solid rgba(198,166,90,0.22);
+      border:1px solid rgba(198,166,90,0.16);
       background:linear-gradient(180deg, rgba(15,19,24,0.72), rgba(13,17,22,0.62));
       box-shadow:0 18px 46px rgba(0,0,0,0.2);
     }
@@ -578,7 +578,7 @@ section[id]{
       padding:0;
       list-style:none;
       display:grid;
-      gap:12px;
+      gap:16px;
       color:var(--text-secondary);
     }
     .why-list li{
@@ -588,7 +588,7 @@ section[id]{
       line-height:1.55;
     }
     .who-heading{
-      margin-top:72px;
+      margin-top:96px;
       font-size:clamp(28px, 3.4vw, 46px);
       letter-spacing:-0.015em;
     }
@@ -596,12 +596,12 @@ section[id]{
       margin-top:26px;
       display:grid;
       grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
-      gap:24px;
+      gap:28px;
     }
     .who-card{
-      padding:30px 26px;
+      padding:34px 28px;
       border-radius:18px;
-      border:1px solid rgba(58,69,84,0.72);
+      border:1px solid rgba(58,69,84,0.56);
       background:rgba(15,19,24,0.64);
       box-shadow:0 14px 36px rgba(0,0,0,0.18);
     }
@@ -982,10 +982,17 @@ section[id]{
       .declaration-section{ padding-top:64px; padding-bottom:64px; }
       .flow-section{ padding-top:56px; padding-bottom:56px; }
       .why-section{ padding-bottom:64px; }
-      .why-card{ padding:24px 20px; }
+      .why-card{ padding:28px 22px; }
       .who-heading{ margin-top:56px; }
-      .who-grid{ gap:16px; }
-      .who-card{ padding:22px 18px; }
+      .who-grid{ gap:18px; }
+      .who-card{ padding:24px 18px; }
+      .network-headline,
+      .network-body,
+      .declaration-center,
+      .flow-divider{ text-align:center; margin-left:auto; margin-right:auto; }
+      .proof-body,
+      .network-body,
+      .ownership-support{ font-size:clamp(18px, 4.6vw, 22px); }
       .chatbot{
         right:12px;
         left:12px;
@@ -1108,7 +1115,7 @@ section[id]{
     </section>
 
     <!-- WHY IT'S BETTER -->
-    <section id="own" class="wrap why-section">
+    <section id="own" class="wrap why-section mid-editorial">
       <h2>Why it’s better</h2>
       <p class="why-subline">If you get paid, you have it.</p>
 
@@ -1133,7 +1140,7 @@ section[id]{
     </section>
 
     <!-- OWNERSHIP -->
-    <section id="data" class="wrap declaration-section">
+    <section id="data" class="wrap declaration-section mid-editorial">
       <div class="declaration-copy declaration-center">
         <h2 class="ownership-headline">What you build stays yours.</h2>
         <p class="ownership-mainline">Audience. Work. Money.</p>
@@ -1142,7 +1149,7 @@ section[id]{
     </section>
 
     <!-- PROOF / DATA -->
-    <section class="wrap declaration-section">
+    <section class="wrap declaration-section mid-editorial">
       <div class="declaration-copy">
         <h2 class="proof-headline">Not a dashboard. A record.</h2>
         <p class="proof-body">See who paid, what they got, and where the money went.</p>
@@ -1152,12 +1159,12 @@ section[id]{
 
 
     <!-- HOW -->
-    <section id="how" class="wrap flow-section">
+    <section id="how" class="wrap flow-section mid-editorial">
       <h2 class="flow-divider">Create → Publish → Sell → Get paid</h2>
     </section>
 
     <!-- NETWORK -->
-    <section id="network" class="wrap declaration-section">
+    <section id="network" class="wrap declaration-section mid-editorial">
       <h2 class="network-headline">Run it. Or use it.</h2>
       <div class="declaration-copy">
         <p class="network-body">Get paid directly,<br />or help run payments and earn from it.</p>
@@ -1602,3 +1609,18 @@ section[id]{
   </script>
 </body>
 </html>
+    .mid-editorial{
+      position:relative;
+    }
+    .mid-editorial::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:linear-gradient(180deg, rgba(6,8,11,0.38), rgba(6,8,11,0.68) 30%, rgba(6,8,11,0.78) 100%);
+      z-index:0;
+    }
+    .mid-editorial > *{
+      position:relative;
+      z-index:1;
+    }
