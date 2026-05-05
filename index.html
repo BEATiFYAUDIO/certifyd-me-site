@@ -364,9 +364,10 @@ section[id]{
     }
     .hero-shot img{
       width:100%;
-      height:auto;
+      height:100%;
       display:block;
       object-fit:cover;
+      object-position:center center;
     }
     .hero-media-stack{
       display:grid;
@@ -710,9 +711,12 @@ section[id]{
     /* ---------- Screenshots ---------- */
     .shot{ cursor:zoom-in; display:block; }
     .shot img{
+      width:100%;
       border-radius:14px;
       border:1px solid var(--border);
       transition:transform 140ms ease, filter 140ms ease;
+      object-fit:cover;
+      object-position:center center;
     }
     .shot:hover img{ transform:translateY(-1px); filter:brightness(1.05); }
     .shot-card{
@@ -721,9 +725,26 @@ section[id]{
       color:inherit;
     }
     .shot-card img{
+      width:100%;
       border-radius:14px;
       border:1px solid var(--border);
       box-shadow:0 22px 70px rgba(0,0,0,0.22);
+      object-fit:cover;
+      object-position:center center;
+    }
+
+    /* Keep mid-story sections clean with no dark slab backgrounds */
+    #own,
+    #data,
+    #how,
+    #network{
+      background:transparent !important;
+      box-shadow:none !important;
+    }
+    .mid-editorial::before{
+      display:none !important;
+      content:none !important;
+      background:transparent !important;
     }
     .shot-meta{
       margin-top:12px;
