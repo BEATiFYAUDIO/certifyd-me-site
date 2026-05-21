@@ -319,18 +319,12 @@ section[id]{
       text-wrap:nowrap;
       color:var(--text);
     }
-    .hero-title-fallback{
-      color:var(--text);
-    }
     .hero-title-gradient{
-      position:absolute;
-      inset:0;
-      background:linear-gradient(90deg, #f8fbff 0%, #f8fbff 30%, var(--gold) 50%, #6fa8ff 82%, #9ec3ff 100%);
+      background:linear-gradient(90deg, var(--gold) 0%, #6fa8ff 48%, #f8fbff 100%);
       -webkit-background-clip:text;
       background-clip:text;
       -webkit-text-fill-color:transparent;
       color:transparent;
-      pointer-events:none;
     }
     @supports not ((background-clip:text) or (-webkit-background-clip:text)){
       .hero-title-gradient{
@@ -1317,16 +1311,18 @@ section[id]{
     <section class="wrap" id="top">
       <div class="hero-grid">
         <div>
-          <h1 class="hero-title"><span class="hero-title-fallback">Certifyd Music and Content Distribution.</span><span class="hero-title-gradient" aria-hidden="true">Certifyd Music and Content Distribution.</span></h1>
+          <h1 class="hero-title"><span class="hero-title-gradient">Certifyd Music and Content Distribution.</span></h1>
 
           <p>
-            Get paid instantly, no middleman. Commerce creator network.
+            Get paid instantly, no middleman. A commerce creator network.
+          </p>
+          <p style="margin-top:12px;">
+            Stay on Apple, Spotify, YouTube. Keep 100% of your content. Stay in control of your IP.
           </p>
           <div class="hero-actions hero-cta">
             <a class="btn" href="https://fan.certifyd.me" target="_blank" rel="noreferrer">Discover</a>
             <a class="btn primary" href="#early-access">Get Certifyd</a>
           </div>
-          <p class="hero-note">Built by Beatify Group.</p>
         </div>
 
       </div>
@@ -1582,6 +1578,8 @@ section[id]{
       No banks. No platforms. No lock-in.
       <br />
       Take your audience. Take your income.
+      <br />
+      Built by <a href="https://beatifygroup.com" target="_blank" rel="noreferrer">Beatify Group</a>.
     </div>
   </footer>
 
