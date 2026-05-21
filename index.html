@@ -50,13 +50,13 @@ section[id]{
       --text:#e8ecf1;
       --text-secondary:#b4bdc8;
       --muted:#8a95a3;
-      --focus:rgba(198,166,90,0.42);
-      --brand:#c6a65a;
-      --brand-hover:#d2b56f;
-      --brand-active:#a98b47;
-      --accent-secondary:#6c8bb8;
+      --focus:rgba(111,168,255,0.45);
+      --brand:#ffa600;
+      --brand-hover:#ffb72e;
+      --brand-active:#d88400;
+      --accent-secondary:#6fa8ff;
       --success:#4fa078;
-      --warning:#c89a4b;
+      --warning:#ffa600;
       --danger:#c35f5f;
       --info:#5f89c6;
       --radius:20px;
@@ -73,7 +73,7 @@ section[id]{
       background:
         linear-gradient(180deg, rgba(4,6,8,0.88), rgba(4,6,8,0.94)),
         radial-gradient(1000px 620px at 14% -12%, rgba(95,137,198,0.10), transparent 58%),
-        radial-gradient(900px 560px at 88% 10%, rgba(198,166,90,0.12), transparent 58%),
+        radial-gradient(900px 560px at 88% 10%, rgba(255,166,0,0.13), transparent 58%),
         var(--bg);
       color:var(--text);
       line-height:1.6;
@@ -441,8 +441,9 @@ section[id]{
     .btn{
       padding:14px 22px;
       border-radius:16px;
-      border:1px solid var(--border2);
-      background:#171f28;
+      border:1px solid rgba(111,168,255,0.45);
+      background:linear-gradient(180deg, rgba(18,28,40,0.96), rgba(12,19,28,0.96));
+      color:#f8fbff;
       font-weight:720;
       min-height:44px;
       font-size:0.96rem;
@@ -451,13 +452,19 @@ section[id]{
       justify-content:center;
       box-shadow:0 14px 44px rgba(0,0,0,0.22);
     }
+    .btn:hover{
+      border-color:rgba(111,168,255,0.78);
+      box-shadow:0 18px 48px rgba(111,168,255,0.16);
+    }
     .btn.primary{
       color:#111418;
       border-color:transparent;
-      background:var(--brand);
+      background:linear-gradient(180deg, var(--brand-hover), var(--brand));
+      box-shadow:0 18px 48px rgba(255,166,0,0.22);
     }
     .btn.primary:hover{
-      background:var(--brand-hover);
+      background:linear-gradient(180deg, #ffc34f, var(--brand-hover));
+      box-shadow:0 22px 54px rgba(255,166,0,0.28);
     }
     .btn.primary:active{
       background:var(--brand-active);
@@ -746,7 +753,7 @@ section[id]{
       font-weight:700;
     }
     .own-card{
-      border-color:rgba(198,166,90,0.35);
+      border-color:rgba(255,166,0,0.36);
       background:linear-gradient(180deg, rgba(15,19,24,0.95), rgba(12,16,21,0.92));
     }
 
@@ -1009,7 +1016,7 @@ section[id]{
       color:var(--muted);
     }
     .chat-msg.bot{ border-color:rgba(95,137,198,0.45); color:#dfeaf8; }
-    .chat-msg.user{ border-color:rgba(198,166,90,0.5); color:#f2e9d0; }
+    .chat-msg.user{ border-color:rgba(255,166,0,0.55); color:#fff1d2; }
     .chat-quick{
       display:flex;
       flex-wrap:wrap;
@@ -1058,7 +1065,7 @@ section[id]{
         background:
           linear-gradient(180deg, rgba(4,6,8,0.92), rgba(4,6,8,0.96)),
           radial-gradient(800px 460px at 14% -12%, rgba(95,137,198,0.10), transparent 58%),
-          radial-gradient(700px 420px at 88% 10%, rgba(198,166,90,0.10), transparent 58%),
+          radial-gradient(700px 420px at 88% 10%, rgba(255,166,0,0.11), transparent 58%),
           url("images/certifyd-bg.png") center/cover no-repeat,
           var(--bg);
       }
