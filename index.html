@@ -1064,6 +1064,14 @@ section[id]{
       }
       section{ padding:56px 0; }
       h1{ font-size:clamp(2.15rem, 10.6vw, 2.85rem); line-height:1.03; }
+      .hero-title{
+        display:block;
+        max-width:100%;
+        white-space:normal;
+        text-wrap:balance;
+        overflow-wrap:normal;
+        font-size:clamp(2.35rem, 11vw, 3.05rem);
+      }
       h2{ margin-bottom:10px; }
       p{ font-size:1.03rem; line-height:1.62; }
       .hero-grid{ gap:28px; }
@@ -1079,15 +1087,16 @@ section[id]{
         min-height:48px;
       }
       .hero-cta{
-        flex-direction:row;
-        flex-wrap:wrap;
-        align-items:flex-start;
+        display:grid;
+        grid-template-columns:1fr;
+        gap:12px;
+        align-items:stretch;
       }
       .hero-cta .btn{
-        width:auto;
-        min-height:40px;
-        padding:9px 13px;
-        font-size:.88rem;
+        width:100%;
+        min-height:52px;
+        padding:12px 14px;
+        font-size:1rem;
       }
       .network-cta{
         flex-direction:row;
