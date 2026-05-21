@@ -311,6 +311,14 @@ section[id]{
       letter-spacing:-0.032em;
       text-wrap:balance;
     }
+    .hero-title{
+      font-size:clamp(2rem, 4.7vw, 3.85rem);
+      white-space:nowrap;
+      text-wrap:nowrap;
+    }
+    .hero-title .title-orange{ color:var(--gold); }
+    .hero-title .title-white{ color:var(--text); }
+    .hero-title .title-blue{ color:#8fb7ff; }
     h2{
       font-size:clamp(1.7rem, 3.4vw, 2.45rem);
       margin:0 0 16px;
@@ -1289,7 +1297,7 @@ section[id]{
     <section class="wrap" id="top">
       <div class="hero-grid">
         <div>
-          <h1>Certifyd music and content distribution.</h1>
+          <h1 class="hero-title"><span class="title-orange">Certifyd</span> <span class="title-white">music and content</span> <span class="title-blue">distribution.</span></h1>
 
           <p>
             Get paid in Bitcoin. Instantly. No middlemen.
