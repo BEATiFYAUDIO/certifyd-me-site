@@ -72,6 +72,11 @@ section[id]{
       --radius:20px;
       --wrap:1280px;
       --pad:clamp(16px, 4vw, 48px);
+      --space-section:clamp(34px, 5vw, 72px);
+      --space-section-tight:clamp(26px, 4vw, 54px);
+      --space-card:clamp(22px, 3vw, 34px);
+      --space-stack:clamp(16px, 2vw, 24px);
+      --panel-radius:24px;
       --shadow:0 30px 90px rgba(0,0,0,0.65);
     }
 
@@ -398,10 +403,10 @@ section[id]{
     }
 
     /* ---------- Sections ---------- */
-    section{ padding:clamp(48px, 7vw, 88px) 0; }
+    section{ padding:var(--space-section-tight) 0; }
     #top{
-      padding-top:clamp(22px, 3.8vw, 52px);
-      padding-bottom:clamp(34px, 5vw, 64px);
+      padding-top:clamp(18px, 3vw, 42px);
+      padding-bottom:var(--space-section-tight);
     }
     section[id]{
       position:relative;
@@ -438,7 +443,7 @@ section[id]{
     .hero-title-white{ color:var(--certifyd-text); }
     h2{
       font-size:clamp(1.7rem, 3.4vw, 2.45rem);
-      margin:0 0 16px;
+      margin:0 0 12px;
       letter-spacing:-0.015em;
       text-wrap:balance;
     }
@@ -502,8 +507,8 @@ section[id]{
       -webkit-backdrop-filter:blur(var(--glass-blur));
     }
     .feature-panel{
-      padding:clamp(22px, 3vw, 34px);
-      border-radius:24px;
+      padding:var(--space-card);
+      border-radius:var(--panel-radius);
       border:1px solid rgba(255,255,255,0.085);
       background:
         linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.022)),
@@ -511,9 +516,6 @@ section[id]{
       box-shadow:0 20px 58px rgba(0,0,0,0.24);
       backdrop-filter:blur(16px);
       -webkit-backdrop-filter:blur(16px);
-    }
-    .feature-panel + .feature-panel{
-      margin-top:18px;
     }
     .hero-shot{
       display:block;
@@ -535,7 +537,7 @@ section[id]{
       min-width:0;
       width:100%;
       max-width:1120px;
-      margin:26px 0 32px;
+      margin:18px 0 24px;
       border-radius:26px;
       overflow:hidden;
       border:1px solid rgba(255,255,255,0.10);
@@ -682,8 +684,8 @@ section[id]{
 
     /* ---------- Live Profile ---------- */
     .live-profile-section{
-      margin-top:18px;
-      padding-top:46px;
+      margin-top:0;
+      padding-top:var(--space-section-tight);
       border-top:1px solid rgba(108,139,184,0.20);
     }
     .live-profile-eyebrow{
@@ -755,25 +757,25 @@ section[id]{
       z-index:1;
     }
     .declaration-section{
-      padding-top:72px;
-      padding-bottom:72px;
+      padding-top:var(--space-section-tight);
+      padding-bottom:var(--space-section-tight);
     }
     .declaration-copy{
       max-width:760px;
     }
     .ownership-moment{
-      margin-top:72px;
-      margin-bottom:72px;
+      margin-top:0;
+      margin-bottom:0;
     }
     .proof-section{
-      margin-top:56px;
-      margin-bottom:56px;
+      margin-top:0;
+      margin-bottom:0;
     }
     .proof-section .declaration-copy{
       max-width:720px;
     }
     .network-section{
-      margin-top:56px;
+      margin-top:0;
     }
     .network-section .declaration-copy{
       max-width:640px;
@@ -782,11 +784,11 @@ section[id]{
       margin-top:10px;
     }
     .declaration-center{
-      text-align:center;
-      margin-left:auto;
-      margin-right:auto;
+      text-align:left;
+      margin-left:0;
+      margin-right:0;
       display:grid;
-      gap:16px;
+      gap:var(--space-stack);
     }
     .ownership-headline{
       font-size:clamp(40px, 5vw, 72px);
@@ -838,7 +840,7 @@ section[id]{
       opacity:1;
     }
     .flow-divider{
-      text-align:center;
+      text-align:left;
       font-size:clamp(30px, 5vw, 64px);
       font-weight:900;
       letter-spacing:-0.025em;
@@ -847,16 +849,16 @@ section[id]{
       text-shadow:0 10px 30px rgba(0,0,0,0.48);
     }
     .flow-section{
-      padding-top:88px;
-      padding-bottom:88px;
+      padding-top:var(--space-section);
+      padding-bottom:var(--space-section);
     }
     .why-section{
-      padding-bottom:88px;
+      padding-bottom:var(--space-section-tight);
     }
     .why-subline{
       font-size:clamp(20px, 2.2vw, 30px);
       color:var(--text);
-      margin-bottom:22px;
+      margin-bottom:var(--space-stack);
     }
     .why-grid{
       display:grid;
@@ -893,12 +895,12 @@ section[id]{
       line-height:1.55;
     }
     .who-heading{
-      margin-top:84px;
+      margin-top:var(--space-section-tight);
       font-size:clamp(28px, 3.4vw, 46px);
       letter-spacing:-0.015em;
     }
     .who-grid{
-      margin-top:26px;
+      margin-top:var(--space-stack);
       display:grid;
       grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
       gap:22px;
@@ -1312,10 +1314,10 @@ section[id]{
           url("images/certifyd-bg.png") center/cover no-repeat,
           var(--bg);
       }
-      section{ padding:42px 0; }
+      section{ padding:32px 0; }
       #top{
-        padding-top:20px;
-        padding-bottom:34px;
+        padding-top:18px;
+        padding-bottom:30px;
       }
       h1{ font-size:clamp(2.15rem, 10.6vw, 2.85rem); line-height:1.03; }
       .hero-title{
@@ -1332,7 +1334,7 @@ section[id]{
       .hero-main-image{
         border-radius:20px;
         aspect-ratio:4 / 3;
-        margin:14px 0 20px;
+        margin:14px 0 18px;
       }
       .hero-strip{ gap:6px; }
       .hero-pill{ font-size:.78rem; padding:5px 9px; }
@@ -1378,12 +1380,12 @@ section[id]{
       }
       .card{ padding:20px; }
       .compare-list li{ padding:12px 12px; }
-      .declaration-section{ padding-top:64px; padding-bottom:64px; }
-      .flow-section{ padding-top:64px; padding-bottom:64px; }
-      .why-section{ padding-bottom:72px; }
-      .ownership-moment{ margin-top:56px; margin-bottom:56px; }
-      .proof-section{ margin-top:44px; margin-bottom:44px; }
-      .network-section{ margin-top:44px; }
+      .declaration-section{ padding-top:36px; padding-bottom:36px; }
+      .flow-section{ padding-top:42px; padding-bottom:42px; }
+      .why-section{ padding-bottom:36px; }
+      .ownership-moment{ margin-top:0; margin-bottom:0; }
+      .proof-section{ margin-top:0; margin-bottom:0; }
+      .network-section{ margin-top:0; }
       .why-card{ padding:28px 22px; }
       .who-heading{ margin-top:74px; }
       .who-grid{ gap:20px; }
@@ -1654,32 +1656,34 @@ section[id]{
 
     <!-- WHY IT'S BETTER -->
     <section id="own" class="wrap why-section">
-      <h2>Why it’s better</h2>
-      <p class="why-subline">If you get paid, you have it.</p>
+      <div class="feature-panel">
+        <h2>Why it’s better</h2>
+        <p class="why-subline">If you get paid, you have it.</p>
 
-      <div class="why-grid">
-        <div class="why-card">
-          <h3>Platforms</h3>
-          <ul class="why-list">
-            <li><strong>Hold your money</strong></li>
-            <li><strong>Pay you later</strong></li>
-            <li><strong>Control access</strong></li>
-          </ul>
-        </div>
-        <div class="why-card">
-          <h3>Certifyd</h3>
-          <ul class="why-list">
-            <li><strong>Pays you instantly</strong></li>
-            <li><strong>Sends money directly</strong></li>
-            <li><strong>Handles splits automatically</strong></li>
-          </ul>
+        <div class="why-grid">
+          <div class="why-card">
+            <h3>Platforms</h3>
+            <ul class="why-list">
+              <li><strong>Hold your money</strong></li>
+              <li><strong>Pay you later</strong></li>
+              <li><strong>Control access</strong></li>
+            </ul>
+          </div>
+          <div class="why-card">
+            <h3>Certifyd</h3>
+            <ul class="why-list">
+              <li><strong>Pays you instantly</strong></li>
+              <li><strong>Sends money directly</strong></li>
+              <li><strong>Handles splits automatically</strong></li>
+            </ul>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- OWNERSHIP -->
     <section id="data" class="wrap declaration-section ownership-moment">
-      <div class="declaration-copy declaration-center">
+      <div class="feature-panel declaration-copy declaration-center">
         <h2 class="ownership-headline">What you build stays yours.</h2>
         <p class="ownership-mainline">Audience. Work. Money.</p>
         <p class="ownership-support">All under your control.</p>
@@ -1688,7 +1692,7 @@ section[id]{
 
     <!-- PROOF / DATA -->
     <section class="wrap declaration-section proof-section">
-      <div class="declaration-copy">
+      <div class="feature-panel declaration-copy">
         <h2 class="proof-headline">Not a dashboard. A record.</h2>
         <p class="proof-body">See who paid, what they got, and where the money went.</p>
         <p class="proof-kicker">Nothing hidden.</p>
@@ -1698,39 +1702,43 @@ section[id]{
 
     <!-- HOW -->
     <section id="how" class="wrap flow-section">
-      <h2 class="flow-divider">Create → Publish → Sell → Get paid</h2>
+      <div class="feature-panel">
+        <h2 class="flow-divider">Create → Publish → Sell → Get paid</h2>
+      </div>
     </section>
 
     <!-- NETWORK -->
     <section id="network" class="wrap declaration-section network-section">
-      <h2 class="network-headline">Run it. Or use it.</h2>
-      <div class="declaration-copy">
-        <p class="network-body">Get paid directly,<br />or help run payments and earn from it.</p>
-      </div>
-      <div class="declaration-copy" style="margin-top:36px;">
-        <h3 style="font-size:clamp(1.1rem,2.5vw,1.45rem); margin-bottom:10px;">This is already live.</h3>
-        <p class="network-body" style="font-size:1.05rem; line-height:1.6;">
-          Creators are publishing.<br />
-          Fans are unlocking content.<br />
-          Payments are settling over Bitcoin Lightning.
-        </p>
-        <p style="margin-top:12px;">
-          <a href="https://fan.certifyd.me" target="_blank" rel="noreferrer" style="font-weight:700;">Visit Discover</a>
-        </p>
-      </div>
-      <h2 id="built-for" class="who-heading">Who it’s for</h2>
-      <div class="who-grid">
-        <div class="who-card">
-          <h3>Creators</h3>
-          <p>Sell without giving up control.</p>
+      <div class="feature-panel">
+        <h2 class="network-headline">Run it. Or use it.</h2>
+        <div class="declaration-copy">
+          <p class="network-body">Get paid directly,<br />or help run payments and earn from it.</p>
         </div>
-        <div class="who-card">
-          <h3>Collaborators</h3>
-          <p>Get paid automatically.</p>
+        <div class="declaration-copy" style="margin-top:24px;">
+          <h3 style="font-size:clamp(1.1rem,2.5vw,1.45rem); margin-bottom:10px;">This is already live.</h3>
+          <p class="network-body" style="font-size:1.05rem; line-height:1.6;">
+            Creators are publishing.<br />
+            Fans are unlocking content.<br />
+            Payments are settling over Bitcoin Lightning.
+          </p>
+          <p style="margin-top:12px;">
+            <a href="https://fan.certifyd.me" target="_blank" rel="noreferrer" style="font-weight:700;">Visit Discover</a>
+          </p>
         </div>
-        <div class="who-card">
-          <h3>Operators</h3>
-          <p>Run payments. Earn from the network.</p>
+        <h2 id="built-for" class="who-heading">Who it’s for</h2>
+        <div class="who-grid">
+          <div class="who-card">
+            <h3>Creators</h3>
+            <p>Sell without giving up control.</p>
+          </div>
+          <div class="who-card">
+            <h3>Collaborators</h3>
+            <p>Get paid automatically.</p>
+          </div>
+          <div class="who-card">
+            <h3>Operators</h3>
+            <p>Run payments. Earn from the network.</p>
+          </div>
         </div>
       </div>
     </section>
