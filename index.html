@@ -422,8 +422,8 @@ section[id]{
       position:relative;
       display:inline-block;
       font-size:clamp(2rem, 4.7vw, 3.85rem);
-      white-space:nowrap;
-      text-wrap:nowrap;
+      white-space:normal;
+      text-wrap:balance;
       color:var(--text);
     }
     .hero-title-orange{ color:var(--certifyd-orange); }
@@ -455,8 +455,8 @@ section[id]{
     .hero-grid{
       position:relative;
       display:grid;
-      grid-template-columns:minmax(0, 0.82fr) minmax(300px, 0.9fr);
-      gap:48px;
+      grid-template-columns:minmax(0, 1fr);
+      gap:0;
       align-items:center;
     }
     .hero-grid::before{
@@ -511,7 +511,8 @@ section[id]{
     .hero-main-image{
       position:relative;
       min-width:0;
-      margin:0;
+      width:min(100%, 820px);
+      margin:22px 0 28px;
       border-radius:26px;
       overflow:hidden;
       border:1px solid rgba(255,255,255,0.10);
@@ -1297,6 +1298,7 @@ section[id]{
       .hero-main-image{
         border-radius:20px;
         aspect-ratio:4 / 3;
+        margin:18px 0 24px;
       }
       .hero-strip{ gap:6px; }
       .hero-pill{ font-size:.78rem; padding:5px 9px; }
@@ -1534,6 +1536,10 @@ section[id]{
         <div>
           <h1 class="hero-title"><span class="hero-title-white">Certifyd</span> <span class="hero-title-orange">Music</span> <span class="hero-title-blue">&amp;</span> <span class="hero-title-blue">Content</span> <span class="hero-title-white">Distribution.</span></h1>
 
+          <figure class="hero-main-image" aria-label="Certifyd featured creators">
+            <img src="images/certifyd-main-image.png" alt="Two music creators posing under stage lights" fetchpriority="high" decoding="async" />
+          </figure>
+
           <p>
             Get paid instantly, no middleman. A commerce creator network.
           </p>
@@ -1548,10 +1554,6 @@ section[id]{
             Empower yourself with unlimited distribution and put your music and content in front of a global audience. Keep 100% ownership, maintain creative control, and retain full authority over your IP.
           </p>
         </div>
-
-        <figure class="hero-main-image" aria-label="Certifyd featured creators">
-          <img src="images/certifyd-main-image.png" alt="Two music creators posing under stage lights" fetchpriority="high" decoding="async" />
-        </figure>
       </div>
     </section>
 
