@@ -398,7 +398,7 @@ section[id]{
     }
 
     /* ---------- Sections ---------- */
-    section{ padding:clamp(64px, 9vw, 120px) 0; }
+    section{ padding:clamp(48px, 7vw, 88px) 0; }
     section[id]{
       position:relative;
     }
@@ -829,11 +829,11 @@ section[id]{
       text-shadow:0 10px 30px rgba(0,0,0,0.48);
     }
     .flow-section{
-      padding-top:120px;
-      padding-bottom:120px;
+      padding-top:88px;
+      padding-bottom:88px;
     }
     .why-section{
-      padding-bottom:120px;
+      padding-bottom:88px;
     }
     .why-subline{
       font-size:clamp(20px, 2.2vw, 30px);
@@ -842,8 +842,8 @@ section[id]{
     }
     .why-grid{
       display:grid;
-      gap:32px;
-      grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));
+      gap:22px;
+      grid-template-columns:repeat(auto-fit, minmax(min(320px, 100%), 1fr));
     }
     .why-card{
       padding:24px 28px;
@@ -875,7 +875,7 @@ section[id]{
       line-height:1.55;
     }
     .who-heading{
-      margin-top:120px;
+      margin-top:84px;
       font-size:clamp(28px, 3.4vw, 46px);
       letter-spacing:-0.015em;
     }
@@ -883,7 +883,7 @@ section[id]{
       margin-top:26px;
       display:grid;
       grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
-      gap:28px;
+      gap:22px;
     }
     .who-card{
       padding:34px 28px;
@@ -1134,10 +1134,14 @@ section[id]{
     /* ---------- Footer ---------- */
 
     .reveal-up{
-      opacity:0;
-      transform:translateY(18px);
+      opacity:1;
+      transform:none;
       transition:opacity .55s ease, transform .55s ease;
       will-change:transform, opacity;
+    }
+    .reveal-enabled .reveal-up{
+      opacity:0;
+      transform:translateY(18px);
     }
     .reveal-up.in{
       opacity:1;
@@ -1968,6 +1972,7 @@ section[id]{
 
     // Chatbot: endpoint-backed when configured, FAQ fallback otherwise.
     (function () {
+      document.documentElement.classList.add('reveal-enabled');
       const revealTargets = Array.from(document.querySelectorAll('.panel, .card, .shot-card, .hero-shot, .hero-mini'));
       revealTargets.forEach((el, i) => {
         el.classList.add('reveal-up');
