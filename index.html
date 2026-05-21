@@ -74,7 +74,6 @@ section[id]{
         linear-gradient(180deg, rgba(4,6,8,0.88), rgba(4,6,8,0.94)),
         radial-gradient(1000px 620px at 14% -12%, rgba(95,137,198,0.10), transparent 58%),
         radial-gradient(900px 560px at 88% 10%, rgba(198,166,90,0.12), transparent 58%),
-        url("images/certifyd-bg.png") center/cover no-repeat fixed,
         var(--bg);
       color:var(--text);
       line-height:1.6;
@@ -337,7 +336,7 @@ section[id]{
     /* ---------- Hero ---------- */
     .hero-grid{
       display:grid;
-      grid-template-columns:0.9fr 1.1fr;
+      grid-template-columns:minmax(0, 0.85fr);
       gap:48px;
       align-items:center;
     }
@@ -1290,11 +1289,12 @@ section[id]{
     <section class="wrap" id="top">
       <div class="hero-grid">
         <div>
-          <h1>Get paid in Bitcoin. Instantly. No middlemen.</h1>
+          <h1>Certifyd music and content distribution.</h1>
 
           <p>
-            No banks. No platforms. When someone pays you, it goes straight to you.
+            Get paid in Bitcoin. Instantly. No middlemen.
           </p>
+          <p style="margin-top:12px;">No banks. No platforms. When someone pays you, it goes straight to you.</p>
           <p style="margin-top:12px;"><strong>Be your own payment processor.</strong></p>
           <p style="margin-top:12px;"><strong>Certifyd is building one of the most distributed Bitcoin-native creator commerce networks on the internet.</strong></p>
 
@@ -1305,12 +1305,6 @@ section[id]{
           <p class="hero-note">Built by Beatify Group.</p>
         </div>
 
-        <div class="hero-media-stack">
-          <a class="hero-shot shot" href="#shot-workspace" aria-label="Open Certifyd Creator library screenshot">
-            <img src="images/screenshots/personallibrary.png" alt="Certifyd Creator library and authoring workspace" />
-          </a>
-          
-        </div>
       </div>
     </section>
 
