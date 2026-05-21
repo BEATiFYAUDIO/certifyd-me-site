@@ -399,6 +399,10 @@ section[id]{
 
     /* ---------- Sections ---------- */
     section{ padding:clamp(48px, 7vw, 88px) 0; }
+    #top{
+      padding-top:clamp(22px, 3.8vw, 52px);
+      padding-bottom:clamp(34px, 5vw, 64px);
+    }
     section[id]{
       position:relative;
     }
@@ -496,6 +500,20 @@ section[id]{
       box-shadow:0 28px 80px rgba(0,0,0,0.26);
       backdrop-filter:blur(var(--glass-blur));
       -webkit-backdrop-filter:blur(var(--glass-blur));
+    }
+    .feature-panel{
+      padding:clamp(22px, 3vw, 34px);
+      border-radius:24px;
+      border:1px solid rgba(255,255,255,0.085);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.022)),
+        rgba(6,8,12,0.62);
+      box-shadow:0 20px 58px rgba(0,0,0,0.24);
+      backdrop-filter:blur(16px);
+      -webkit-backdrop-filter:blur(16px);
+    }
+    .feature-panel + .feature-panel{
+      margin-top:18px;
     }
     .hero-shot{
       display:block;
@@ -1294,7 +1312,11 @@ section[id]{
           url("images/certifyd-bg.png") center/cover no-repeat,
           var(--bg);
       }
-      section{ padding:56px 0; }
+      section{ padding:42px 0; }
+      #top{
+        padding-top:20px;
+        padding-bottom:34px;
+      }
       h1{ font-size:clamp(2.15rem, 10.6vw, 2.85rem); line-height:1.03; }
       .hero-title{
         display:block;
@@ -1310,7 +1332,7 @@ section[id]{
       .hero-main-image{
         border-radius:20px;
         aspect-ratio:4 / 3;
-        margin:18px 0 24px;
+        margin:14px 0 20px;
       }
       .hero-strip{ gap:6px; }
       .hero-pill{ font-size:.78rem; padding:5px 9px; }
@@ -1589,39 +1611,44 @@ section[id]{
 
     <!-- DISCOVER -->
     <section class="wrap" id="fan-app">
-      <h2>Discover creators across the Certifyd network.</h2>
-      <p>
-        Fans can explore creators, unlock content, and support artists across independently operated Certifyd nodes.
-      </p>
-      <p style="margin-top:12px;"><strong>One identity.<br />One network.<br />No platform controlling distribution.</strong></p>
-      <div class="hero-actions hero-cta" style="margin-top:18px;">
-        <a class="btn primary" href="https://fan.certifyd.me" target="_blank" rel="noreferrer">Discover</a>
+      <div class="feature-panel">
+        <h2>Discover creators across the Certifyd network.</h2>
+        <p>
+          Fans can explore creators, unlock content, and support artists across independently operated Certifyd nodes.
+        </p>
+        <p style="margin-top:12px;"><strong>One identity.<br />One network.<br />No platform controlling distribution.</strong></p>
+        <div class="hero-actions hero-cta" style="margin-top:18px;">
+          <a class="btn primary" href="https://fan.certifyd.me" target="_blank" rel="noreferrer">Discover</a>
+        </div>
       </div>
     </section>
 
     <!-- AUDIENCE OWNERSHIP -->
     <section id="product" class="wrap">
-      <h2>Own your audience. Take them with you.</h2>
-      <p>No lock-in. No gatekeepers.</p>
-      <p style="margin-top:12px;"><strong>The people who support you stay yours.</strong></p>
-
+      <div class="feature-panel">
+        <h2>Own your audience. Take them with you.</h2>
+        <p>No lock-in. No gatekeepers.</p>
+        <p style="margin-top:12px;"><strong>The people who support you stay yours.</strong></p>
+      </div>
     </section>
 
     <!-- CORE MECHANIC -->
     <section id="ownership" class="wrap">
-      <h2>One payment. You’re paid.</h2>
-      <p><strong>Unlimited</strong> distribution across all platforms.</p>
-      <p>A fan pays → the money goes straight to you.</p>
-      <ul class="compare-list" style="margin-top:16px; margin-bottom:0; max-width:760px;">
-        <li><strong>Access unlocks instantly.</strong></li>
-        <li><strong>Collaborators are paid automatically.</strong></li>
-        <li><strong>No waiting. No chasing.</strong></li>
-      </ul>
+      <div class="feature-panel">
+        <h2>One payment. You’re paid.</h2>
+        <p><strong>Unlimited</strong> distribution across all platforms.</p>
+        <p>A fan pays → the money goes straight to you.</p>
+        <ul class="compare-list" style="margin-top:16px; margin-bottom:0; max-width:760px;">
+          <li><strong>Access unlocks instantly.</strong></li>
+          <li><strong>Collaborators are paid automatically.</strong></li>
+          <li><strong>No waiting. No chasing.</strong></li>
+        </ul>
 
-      <div class="grid grid-2" style="margin-top:22px">
-        <a class="shot-card" href="#shot-how" aria-label="Open payment confirmation screenshot">
-          <img src="images/screenshots/payment-phone-warm.png" alt="Mobile payment confirmation showing sats received via Lightning" />
-        </a>
+        <div class="grid grid-2" style="margin-top:22px">
+          <a class="shot-card" href="#shot-how" aria-label="Open payment confirmation screenshot">
+            <img src="images/screenshots/payment-phone-warm.png" alt="Mobile payment confirmation showing sats received via Lightning" />
+          </a>
+        </div>
       </div>
     </section>
 
