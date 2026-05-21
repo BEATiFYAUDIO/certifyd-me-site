@@ -50,11 +50,16 @@ section[id]{
       --text:#e8ecf1;
       --text-secondary:#b4bdc8;
       --muted:#8a95a3;
+      --certifyd-gold:#d4af37;
+      --certifyd-orange:#ff9f0a;
+      --certifyd-blue:#6fa8ff;
+      --certifyd-bg:#050505;
+      --certifyd-text:#ffffff;
       --focus:rgba(111,168,255,0.45);
-      --brand:#ffa600;
-      --brand-hover:#ffb72e;
-      --brand-active:#d88400;
-      --accent-secondary:#6fa8ff;
+      --brand:var(--certifyd-orange);
+      --brand-hover:var(--certifyd-gold);
+      --brand-active:#b88f23;
+      --accent-secondary:var(--certifyd-blue);
       --success:#4fa078;
       --warning:#ffa600;
       --danger:#c35f5f;
@@ -85,7 +90,7 @@ section[id]{
     img{ max-width:100%; display:block; }
 
     :focus-visible{
-      outline:3px solid var(--brand);
+      outline:3px solid var(--certifyd-blue);
       box-shadow:0 0 0 4px var(--focus);
       outline-offset:3px;
       border-radius:10px;
@@ -319,9 +324,9 @@ section[id]{
       text-wrap:nowrap;
       color:var(--text);
     }
-    .hero-title-orange{ color:#ffa600; }
-    .hero-title-blue{ color:#0f52ba; }
-    .hero-title-white{ color:#f8fbff; }
+    .hero-title-orange{ color:var(--certifyd-orange); }
+    .hero-title-blue{ color:var(--certifyd-blue); }
+    .hero-title-white{ color:var(--certifyd-text); }
     h2{
       font-size:clamp(1.7rem, 3.4vw, 2.45rem);
       margin:0 0 16px;
@@ -458,16 +463,18 @@ section[id]{
     }
     .btn.primary{
       color:#111418;
-      border-color:transparent;
-      background:linear-gradient(180deg, var(--brand-hover), var(--brand));
+      border-color:rgba(255,159,10,0.58);
+      background:linear-gradient(180deg, #ffb341, var(--certifyd-orange));
       box-shadow:0 18px 48px rgba(255,166,0,0.22);
     }
     .btn.primary:hover{
-      background:linear-gradient(180deg, #ffc34f, var(--brand-hover));
-      box-shadow:0 22px 54px rgba(255,166,0,0.28);
+      border-color:rgba(212,175,55,0.86);
+      background:linear-gradient(180deg, var(--certifyd-gold), #ffb341 56%, var(--certifyd-orange));
+      box-shadow:0 22px 54px rgba(212,175,55,0.25);
     }
     .btn.primary:active{
-      background:var(--brand-active);
+      background:linear-gradient(180deg, var(--brand-active), var(--certifyd-gold));
+      border-color:rgba(212,175,55,0.94);
     }
 
     /* ---------- Live Profile ---------- */
@@ -954,7 +961,7 @@ section[id]{
       bottom:16px;
       z-index:1200;
       border:1px solid var(--border2);
-      background:var(--brand);
+      background:linear-gradient(180deg, #ffb341, var(--certifyd-orange));
       color:#111418;
       border-radius:999px;
       min-height:44px;
@@ -963,7 +970,10 @@ section[id]{
       cursor:pointer;
       box-shadow:0 18px 40px rgba(0,0,0,0.38);
     }
-    .chat-launch:hover{ background:var(--brand-hover); }
+    .chat-launch:hover{
+      background:linear-gradient(180deg, var(--certifyd-gold), #ffb341 56%, var(--certifyd-orange));
+      border-color:rgba(212,175,55,0.86);
+    }
 
     .chatbot{
       position:fixed;
