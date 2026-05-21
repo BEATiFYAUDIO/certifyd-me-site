@@ -72,10 +72,10 @@ section[id]{
       --radius:20px;
       --wrap:1280px;
       --pad:clamp(16px, 4vw, 48px);
-      --space-section:clamp(34px, 5vw, 72px);
-      --space-section-tight:clamp(26px, 4vw, 54px);
-      --space-card:clamp(22px, 3vw, 34px);
-      --space-stack:clamp(16px, 2vw, 24px);
+      --space-section:clamp(26px, 4vw, 52px);
+      --space-section-tight:clamp(16px, 2.6vw, 32px);
+      --space-card:clamp(18px, 2.4vw, 28px);
+      --space-stack:clamp(12px, 1.8vw, 20px);
       --panel-radius:24px;
       --shadow:0 30px 90px rgba(0,0,0,0.65);
     }
@@ -408,6 +408,17 @@ section[id]{
       padding-top:clamp(18px, 3vw, 42px);
       padding-bottom:var(--space-section-tight);
     }
+    #fan-app,
+    #product,
+    #ownership,
+    #own,
+    #data,
+    .proof-section,
+    #how,
+    #network{
+      padding-top:var(--space-section-tight);
+      padding-bottom:var(--space-section-tight);
+    }
     section[id]{
       position:relative;
     }
@@ -686,6 +697,7 @@ section[id]{
     .live-profile-section{
       margin-top:0;
       padding-top:var(--space-section-tight);
+      padding-bottom:var(--space-section-tight);
       border-top:1px solid rgba(108,139,184,0.20);
     }
     .live-profile-eyebrow{
@@ -1314,10 +1326,10 @@ section[id]{
           url("images/certifyd-bg.png") center/cover no-repeat,
           var(--bg);
       }
-      section{ padding:32px 0; }
+      section{ padding:22px 0; }
       #top{
-        padding-top:18px;
-        padding-bottom:30px;
+        padding-top:16px;
+        padding-bottom:22px;
       }
       h1{ font-size:clamp(2.15rem, 10.6vw, 2.85rem); line-height:1.03; }
       .hero-title{
@@ -1380,9 +1392,9 @@ section[id]{
       }
       .card{ padding:20px; }
       .compare-list li{ padding:12px 12px; }
-      .declaration-section{ padding-top:36px; padding-bottom:36px; }
-      .flow-section{ padding-top:42px; padding-bottom:42px; }
-      .why-section{ padding-bottom:36px; }
+      .declaration-section{ padding-top:22px; padding-bottom:22px; }
+      .flow-section{ padding-top:24px; padding-bottom:24px; }
+      .why-section{ padding-bottom:22px; }
       .ownership-moment{ margin-top:0; margin-bottom:0; }
       .proof-section{ margin-top:0; margin-bottom:0; }
       .network-section{ margin-top:0; }
@@ -1468,14 +1480,14 @@ section[id]{
       .proof-section,
       #how,
       #network{
-        padding-top:44px !important;
-        padding-bottom:44px !important;
+        padding-top:24px !important;
+        padding-bottom:24px !important;
         padding-left:var(--pad) !important;
         padding-right:var(--pad) !important;
       }
-      #data{ margin-top:32px !important; margin-bottom:32px !important; }
-      .proof-section{ margin-top:28px !important; margin-bottom:28px !important; }
-      #network{ margin-top:28px !important; }
+      #data{ margin-top:0 !important; margin-bottom:0 !important; }
+      .proof-section{ margin-top:0 !important; margin-bottom:0 !important; }
+      #network{ margin-top:0 !important; }
 
       #data .declaration-center{
         text-align:left !important;
