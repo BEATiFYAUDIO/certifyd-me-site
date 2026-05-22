@@ -200,7 +200,7 @@ section[id]{
     .site-header{
       position:sticky;
       top:0;
-      z-index:50;
+      z-index:1600;
       background:linear-gradient(180deg, rgba(8,10,13,0.82), rgba(8,10,13,0.68));
       backdrop-filter:blur(var(--glass-blur));
       -webkit-backdrop-filter:blur(var(--glass-blur));
@@ -213,7 +213,7 @@ section[id]{
       position:relative;
       border-bottom:0px solid rgba(206,214,255,0.10);
       background:linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.008));
-      overflow:hidden;
+      overflow:visible;
     }
     .header-rail::before{
       content:"";
@@ -285,6 +285,7 @@ section[id]{
       display:none;
       position:relative;
       justify-self:end;
+      z-index:1700;
     }
     .nav-mobile summary{
       list-style:none;
@@ -337,7 +338,7 @@ section[id]{
       display:grid;
       gap:6px;
       box-shadow:var(--shadow);
-      z-index:100;
+      z-index:1800;
     }
     .nav-drawer a{
       padding:12px 12px;
