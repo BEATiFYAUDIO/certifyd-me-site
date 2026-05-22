@@ -445,8 +445,9 @@ section[id]{
     }
     .hero-title{
       position:relative;
-      display:inline-block;
-      font-size:clamp(2.45rem, 5.45vw, 5.05rem);
+      display:block;
+      width:100%;
+      font-size:clamp(2.35rem, 4.85vw, 4.35rem);
       white-space:normal;
       text-wrap:normal;
       color:var(--text);
@@ -489,6 +490,11 @@ section[id]{
       gap:0;
       align-items:center;
       min-width:0;
+    }
+    .hero-grid > div{
+      width:100%;
+      max-width:1120px;
+      margin-inline:auto;
     }
     .hero-grid::before{
       content:"";
@@ -1345,7 +1351,7 @@ section[id]{
         white-space:normal;
         text-wrap:normal;
         overflow-wrap:normal;
-        font-size:clamp(2.15rem, 10.2vw, 3.05rem);
+        font-size:clamp(2.1rem, 9.6vw, 2.85rem);
       }
       .hero-title-line{
         white-space:normal;
