@@ -446,10 +446,15 @@ section[id]{
     .hero-title{
       position:relative;
       display:inline-block;
-      font-size:clamp(2.65rem, 6vw, 5.4rem);
+      font-size:clamp(2.45rem, 5.45vw, 5.05rem);
       white-space:normal;
-      text-wrap:balance;
+      text-wrap:normal;
       color:var(--text);
+    }
+    .hero-title-line{
+      display:inline-block;
+      max-width:100%;
+      white-space:nowrap;
     }
     .hero-title-orange{ color:var(--certifyd-orange); }
     .hero-title-blue{ color:#6fa8ff; }
@@ -1338,9 +1343,12 @@ section[id]{
         display:block;
         max-width:100%;
         white-space:normal;
-        text-wrap:balance;
+        text-wrap:normal;
         overflow-wrap:normal;
-        font-size:clamp(2.35rem, 11vw, 3.2rem);
+        font-size:clamp(2.15rem, 10.2vw, 3.05rem);
+      }
+      .hero-title-line{
+        white-space:normal;
       }
       h2{ margin-bottom:10px; }
       p{ font-size:1.03rem; line-height:1.62; }
@@ -1584,7 +1592,7 @@ section[id]{
     <section class="wrap" id="top">
       <div class="hero-grid">
         <div>
-          <h1 class="hero-title"><span class="hero-title-white">Certifyd AI</span><br><span class="hero-title-orange">Music</span> <span class="hero-title-blue">&amp;</span> <span class="hero-title-blue">Content</span> <span class="hero-title-white">Distribution.</span></h1>
+          <h1 class="hero-title"><span class="hero-title-white">Certifyd AI</span><br><span class="hero-title-line"><span class="hero-title-orange">Music</span> <span class="hero-title-blue">&amp;</span> <span class="hero-title-blue">Content</span> <span class="hero-title-white">Distribution.</span></span></h1>
 
           <figure class="hero-main-image" aria-label="Certifyd featured creators">
             <img src="images/certifyd-main-image.jpeg" alt="Two music creators posing under stage lights" fetchpriority="high" decoding="async" />
