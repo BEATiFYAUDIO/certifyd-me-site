@@ -986,6 +986,31 @@ section[id]{
       font-weight:600;
       text-shadow:0 4px 16px rgba(0,0,0,0.22);
     }
+    .distribution-manifesto{
+      padding:clamp(26px, 3vw, 38px);
+    }
+    .distribution-manifesto .distribution-card-title{
+      margin:0 0 20px;
+      max-width:24ch;
+      font-size:clamp(1.34rem, 2.15vw, 1.82rem);
+      line-height:1.18;
+      letter-spacing:0.003em;
+      font-weight:700;
+      color:rgba(241,248,255,0.96);
+      text-shadow:0 3px 12px rgba(0,0,0,0.24);
+    }
+    .distribution-manifesto .distribution-card-copy{
+      margin-top:0;
+      max-width:56ch;
+      font-size:clamp(1rem, 1.34vw, 1.11rem);
+      line-height:1.8;
+      font-weight:460;
+      color:rgba(224,236,248,0.9);
+      text-shadow:0 1px 8px rgba(0,0,0,0.16);
+    }
+    .distribution-manifesto .distribution-card-copy + .distribution-card-copy{
+      margin-top:14px;
+    }
     .distribution-image-frame{
       margin-top:16px;
       border-radius:8px;
@@ -1544,6 +1569,20 @@ section[id]{
         width:100%;
         min-height:48px;
       }
+      .distribution-manifesto{
+        padding:20px 18px;
+      }
+      .distribution-manifesto .distribution-card-title{
+        margin-bottom:16px;
+        font-size:clamp(1.12rem, 5.6vw, 1.34rem);
+        line-height:1.22;
+        max-width:100%;
+      }
+      .distribution-manifesto .distribution-card-copy{
+        font-size:0.98rem;
+        line-height:1.72;
+        max-width:100%;
+      }
       .hero-cta{
         display:grid;
         grid-template-columns:1fr;
@@ -1794,10 +1833,13 @@ section[id]{
           <div id="how" class="feature-panel flow-inline" style="margin-top:18px;">
             <h2 class="flow-divider"><span>CREATE</span> <span class="flow-arrow" aria-hidden="true">→</span> <span>PUBLISH</span> <span class="flow-arrow" aria-hidden="true">→</span> <span>SELL</span> <span class="flow-arrow" aria-hidden="true">→</span> <span>GET PAID</span></h2>
           </div>
-          <div class="feature-panel" style="margin-top:16px;">
+          <div class="feature-panel distribution-manifesto" style="margin-top:16px;">
             <h3 class="distribution-card-title">Certifyd DISTRIBUTION is a SOVEREIGN DECENTRALIZED platform</h3>
             <p class="distribution-card-copy">
-              Certifyd DISTRIBUTION is A SOVEREIGN DECENTRALIZED next-generation independent music distribution and artist empowerment platform built for creators who want ownership, transparency, and global reach. Through innovative technology and artist-first solutions, Certifyd provides independent music distribution, publishing administration, royalty management, blockchain-powered authentication, and promotional tools designed to help artists grow their audience, maximize revenue, and build lasting careers.
+              Certifyd DISTRIBUTION is A SOVEREIGN DECENTRALIZED next-generation independent music distribution and artist empowerment platform built for creators who want ownership, transparency, and global reach.
+            </p>
+            <p class="distribution-card-copy">
+              Through innovative technology and artist-first solutions, Certifyd provides independent music distribution, publishing administration, royalty management, blockchain-powered authentication, and promotional tools designed to help artists grow their audience, maximize revenue, and build lasting careers.
             </p>
           </div>
           <div class="feature-panel" style="margin-top:16px;">
