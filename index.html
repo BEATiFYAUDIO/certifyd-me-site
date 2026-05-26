@@ -113,14 +113,15 @@ section[id]{
     body::before{
       inset:-18%;
       z-index:1200;
-      opacity:0.28;
+      opacity:0.38;
       background-image:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.35' numOctaves='5' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='table' tableValues='.05 .95'/%3E%3CfeFuncG type='table' tableValues='.05 .95'/%3E%3CfeFuncB type='table' tableValues='.05 .95'/%3E%3CfeFuncA type='table' tableValues='0 .95'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='96' height='96' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E"),
-        radial-gradient(circle at 1px 1px, rgba(4,34,52,0.45) 0 1px, transparent 1.4px);
-      background-size:96px 96px, 4px 4px;
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='132' height='132' viewBox='0 0 132 132'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.78' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='table' tableValues='.02 .98'/%3E%3CfeFuncG type='table' tableValues='.02 .98'/%3E%3CfeFuncB type='table' tableValues='.02 .98'/%3E%3CfeFuncA type='table' tableValues='0 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='132' height='132' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E"),
+        radial-gradient(circle at 1.5px 1.5px, rgba(3,29,45,0.58) 0 1.65px, transparent 2.15px),
+        radial-gradient(circle at 4px 4px, rgba(225,250,255,0.28) 0 1.2px, transparent 1.8px);
+      background-size:132px 132px, 7px 7px, 11px 11px;
       background-color:transparent;
       mix-blend-mode:multiply;
-      animation:certifyd-noise-drift 5.5s steps(8, end) infinite;
+      animation:certifyd-noise-drift 4.8s steps(8, end) infinite;
       will-change:transform, background-position;
     }
     body::after{
@@ -144,12 +145,12 @@ section[id]{
       min-width:0;
     }
     @keyframes certifyd-noise-drift{
-      0%{ transform:translate3d(-1.2%, -1.2%, 0); background-position:0 0, 0 0; }
-      20%{ transform:translate3d(0.6%, -0.9%, 0); background-position:31px -19px, 1px 2px; }
-      40%{ transform:translate3d(1.1%, 0.5%, 0); background-position:-24px 35px, 3px 1px; }
-      60%{ transform:translate3d(0.2%, 1.1%, 0); background-position:44px 18px, 2px 3px; }
-      80%{ transform:translate3d(-0.9%, 0.4%, 0); background-position:-12px -38px, 1px 1px; }
-      100%{ transform:translate3d(-1.2%, -1.2%, 0); background-position:0 0, 0 0; }
+      0%{ transform:translate3d(-1.2%, -1.2%, 0); background-position:0 0, 0 0, 0 0; }
+      20%{ transform:translate3d(0.6%, -0.9%, 0); background-position:42px -27px, 2px 3px, -3px 1px; }
+      40%{ transform:translate3d(1.1%, 0.5%, 0); background-position:-35px 51px, 5px 2px, 4px 6px; }
+      60%{ transform:translate3d(0.2%, 1.1%, 0); background-position:60px 26px, 3px 5px, 7px 3px; }
+      80%{ transform:translate3d(-0.9%, 0.4%, 0); background-position:-18px -54px, 2px 2px, 2px 8px; }
+      100%{ transform:translate3d(-1.2%, -1.2%, 0); background-position:0 0, 0 0, 0 0; }
     }
     @keyframes certifyd-ambient-drift{
       from{ transform:translate3d(-1.5%, -1%, 0) scale(1); }
