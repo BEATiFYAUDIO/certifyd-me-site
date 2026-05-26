@@ -1053,6 +1053,54 @@ section[id]{
     .infra-grid .infra-cap:last-child{
       grid-column:1 / -1;
     }
+    .infra-manifesto{
+      padding:clamp(26px, 3vw, 38px);
+    }
+    .infra-manifesto .distribution-card-title{
+      margin:0 0 16px;
+      max-width:24ch;
+      font-size:clamp(1.34rem, 2.2vw, 1.9rem);
+      line-height:1.18;
+      font-weight:720;
+      letter-spacing:0.003em;
+      color:rgba(241,248,255,0.98);
+      text-shadow:0 3px 12px rgba(0,0,0,0.24);
+    }
+    .infra-manifesto .infra-subhead{
+      margin:0 0 18px;
+      max-width:60ch;
+      font-size:clamp(1rem, 1.28vw, 1.08rem);
+      line-height:1.72;
+      font-weight:500;
+    }
+    .infra-list{
+      margin:0;
+      padding:0;
+      list-style:none;
+      display:grid;
+      gap:10px;
+      max-width:62ch;
+    }
+    .infra-list li{
+      margin:0;
+      padding:12px 13px;
+      border-radius:8px;
+      border:1px solid rgba(206,235,255,0.3);
+      background:linear-gradient(180deg, rgba(205,236,255,0.12), rgba(130,201,239,0.07));
+      color:rgba(226,238,248,0.92);
+      font-size:0.98rem;
+      line-height:1.62;
+      font-weight:500;
+    }
+    .infra-close{
+      margin-top:16px;
+      max-width:34ch;
+      font-size:clamp(1.05rem, 1.46vw, 1.22rem);
+      line-height:1.5;
+      font-weight:650;
+      color:#eff7ff;
+      text-shadow:0 2px 10px rgba(0,0,0,0.2);
+    }
     .distribution-image-frame{
       margin-top:16px;
       border-radius:8px;
@@ -1638,6 +1686,36 @@ section[id]{
       .infra-cap{
         padding:12px;
       }
+      .infra-manifesto{
+        padding:20px 18px;
+      }
+      .infra-manifesto .distribution-card-title{
+        margin-bottom:14px;
+        font-size:clamp(1.12rem, 5.6vw, 1.34rem);
+        line-height:1.22;
+        max-width:100%;
+      }
+      .infra-manifesto .infra-subhead{
+        margin-bottom:14px;
+        max-width:100%;
+        font-size:0.98rem;
+        line-height:1.68;
+      }
+      .infra-list{
+        gap:8px;
+        max-width:100%;
+      }
+      .infra-list li{
+        padding:11px 12px;
+        font-size:0.95rem;
+        line-height:1.58;
+      }
+      .infra-close{
+        margin-top:14px;
+        max-width:100%;
+        font-size:1rem;
+        line-height:1.5;
+      }
       .hero-cta{
         display:grid;
         grid-template-columns:1fr;
@@ -1940,23 +2018,16 @@ section[id]{
             </figure>
           </div>
           <h3 class="hero-subheader">No Label Needed. Sell your music worldwide. Stream, distribute and own your future.</h3>
-          <div class="feature-panel" style="margin-top:16px;">
-            <h3 class="distribution-card-title">In 2026, We Changed the Game.</h3>
-            <p class="distribution-card-copy" style="margin-top:10px;">
-              Before Certifyd, artists needed a record label to get global distribution and access to digital stores. In 2026, we changed the game.
-            </p>
-            <p class="distribution-card-copy" style="margin-top:10px;">
-              Certifyd disrupted the music industry by connecting artists directly to digital platforms through blockchain-powered distribution, giving independent creators the power, ownership, and freedom they deserve.
-            </p>
-            <p class="distribution-card-copy" style="margin-top:10px;">
-              Upload your music, choose an unlimited distribution plan, and release your songs worldwide in minutes.
-            </p>
-            <p class="distribution-card-copy" style="margin-top:10px;">
-              Keep control of your music.<br />Keep control of your money.<br />Keep control of your destiny.
-            </p>
-            <p class="distribution-card-copy" style="margin-top:10px;">
-              This isn’t just music distribution.<br />This is the future of independent music.
-            </p>
+          <div class="feature-panel infra-manifesto" style="margin-top:16px;">
+            <h3 class="distribution-card-title">Own Your Audience. Own Your Commerce.</h3>
+            <p class="infra-subhead">Certifyd gives creators direct control over publishing, payments, receipts, payouts, and audience relationships - without relying on platform lock-in or delayed payout systems.</p>
+            <ul class="infra-list" aria-label="Creator value statements">
+              <li>Publish globally without giving up ownership.</li>
+              <li>Accept direct payments and track receipts transparently.</li>
+              <li>Manage splits, collaborators, royalties, and payouts clearly.</li>
+              <li>Keep control of your catalog, identity, and audience relationships.</li>
+            </ul>
+            <p class="infra-close">This is more than distribution.<br />This is creator-owned infrastructure.</p>
           </div>
           <h3 class="hero-subheader">accellerate your publishing earnings by harnessing the power of your own IP.</h3>
           <div class="feature-panel" style="margin-top:16px;">
