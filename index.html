@@ -1625,12 +1625,18 @@ section[id]{
           var(--bg);
       }
       body::before{
-        opacity:0.3;
+        opacity:0.24;
         mix-blend-mode:soft-light;
+        background-size:170px 170px, cover, cover, cover;
+        background-position:0 0, 0 0, 0 0, 0 0;
+        animation:none;
+        transform:none;
+        will-change:auto;
       }
       body::after{
-        opacity:0.82;
-        filter:blur(10px);
+        opacity:0.74;
+        filter:blur(8px);
+        animation:none;
       }
       section{ padding:22px 0; }
       #top{
