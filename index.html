@@ -551,10 +551,10 @@ section[id]{
       -webkit-backdrop-filter:blur(16px);
     }
     #how.flow-inline{
-      border-color:rgba(170,222,255,0.58);
+      border-color:rgba(173,224,255,0.7);
       background:
-        linear-gradient(145deg, rgba(196,233,255,0.44), rgba(111,194,238,0.34) 58%, rgba(72,162,211,0.36)),
-        rgba(78,170,218,0.42);
+        linear-gradient(145deg, rgba(182,227,255,0.52), rgba(106,192,239,0.42) 58%, rgba(68,162,214,0.46)),
+        rgba(72,170,222,0.5);
     }
     .hero-shot{
       display:block;
@@ -920,6 +920,22 @@ section[id]{
       letter-spacing:-0.01em;
       color:#cfe5ff;
       text-transform:none;
+    }
+    .distribution-card-title{
+      margin:0 0 14px;
+      font-size:clamp(1.55rem, 3vw, 2.2rem);
+      line-height:1.15;
+      letter-spacing:0.01em;
+      color:#f5fbff;
+      text-shadow:0 6px 20px rgba(0,0,0,0.32);
+    }
+    .distribution-card-copy{
+      font-size:clamp(1.2rem, 2.15vw, 1.5rem);
+      line-height:1.6;
+      color:#eef7ff;
+      max-width:68ch;
+      font-weight:600;
+      text-shadow:0 4px 16px rgba(0,0,0,0.22);
     }
     .flow-section{
       padding-top:var(--space-section);
@@ -1675,8 +1691,8 @@ section[id]{
             <h2 class="flow-divider"><span>Decentralize/Distro</span> <span class="flow-arrow" aria-hidden="true">→</span> <span>Create</span> <span class="flow-arrow" aria-hidden="true">→</span> <span>Publish</span> <span class="flow-arrow" aria-hidden="true">→</span> <span>Sell</span> <span class="flow-arrow" aria-hidden="true">→</span> <span>Get Paid</span><span class="flow-tail">on the blockchain</span></h2>
           </div>
           <div class="feature-panel" style="margin-top:16px;">
-            <h3 style="margin:0 0 12px; font-size:clamp(1.2rem, 2.4vw, 1.7rem); letter-spacing:0.01em;">Certifyd DISTRIBUTION is a SOVEREIGN DECENTRALIZED platform</h3>
-            <p>
+            <h3 class="distribution-card-title">Certifyd DISTRIBUTION is a SOVEREIGN DECENTRALIZED platform</h3>
+            <p class="distribution-card-copy">
               Certifyd DISTRIBUTION is A SOVEREIGN DECENTRALIZED next-generation independent music distribution and artist empowerment platform built for creators who want ownership, transparency, and global reach. Through innovative technology and artist-first solutions, Certifyd provides independent music distribution, publishing administration, royalty management, blockchain-powered authentication, and promotional tools designed to help artists grow their audience, maximize revenue, and build lasting careers.
             </p>
           </div>
