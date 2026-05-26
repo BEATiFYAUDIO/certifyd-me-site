@@ -1112,6 +1112,19 @@ section[id]{
         0 14px 34px rgba(0,0,0,0.24),
         0 0 0 1px rgba(173,224,255,0.12);
     }
+    .distribution-image-frame::after{
+      content:"";
+      position:absolute;
+      left:16px;
+      top:16px;
+      width:clamp(120px, 18vw, 210px);
+      aspect-ratio:3.2 / 1;
+      background:url("screenshots/logo-lockup.png") left center / contain no-repeat;
+      opacity:0.9;
+      filter:drop-shadow(0 6px 14px rgba(0,0,0,0.45));
+      pointer-events:none;
+      z-index:2;
+    }
     .distribution-image-frame img{
       width:100%;
       display:block;
