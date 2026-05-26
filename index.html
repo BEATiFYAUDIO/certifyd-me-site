@@ -122,6 +122,8 @@ section[id]{
       background-size:220px 220px, cover, cover, cover;
       background-color:transparent;
       mix-blend-mode:normal;
+      animation:certifyd-tv-static 320ms steps(6, end) infinite;
+      will-change:transform, background-position, opacity;
     }
     body::after{
       z-index:0;
@@ -146,6 +148,14 @@ section[id]{
     @keyframes certifyd-ambient-drift{
       from{ transform:translate3d(-1.5%, -1%, 0) scale(1); }
       to{ transform:translate3d(1.5%, 1%, 0) scale(1.035); }
+    }
+    @keyframes certifyd-tv-static{
+      0%{ transform:translate3d(0,0,0); background-position:0 0, 0 0, 0 0, 0 0; opacity:0.4; }
+      20%{ transform:translate3d(-0.6%, 0.4%, 0); background-position:17px -13px, 0 0, 0 0, 0 0; opacity:0.48; }
+      40%{ transform:translate3d(0.5%, -0.3%, 0); background-position:-22px 9px, 0 0, 0 0, 0 0; opacity:0.43; }
+      60%{ transform:translate3d(-0.4%, -0.5%, 0); background-position:13px 21px, 0 0, 0 0, 0 0; opacity:0.5; }
+      80%{ transform:translate3d(0.7%, 0.2%, 0); background-position:-11px -19px, 0 0, 0 0, 0 0; opacity:0.44; }
+      100%{ transform:translate3d(0,0,0); background-position:0 0, 0 0, 0 0, 0 0; opacity:0.42; }
     }
     @media (prefers-reduced-motion: reduce){
       body::before,
