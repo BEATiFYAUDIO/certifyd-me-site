@@ -1102,6 +1102,7 @@ section[id]{
       text-shadow:0 2px 10px rgba(0,0,0,0.2);
     }
     .distribution-image-frame{
+      position:relative;
       margin-top:16px;
       border-radius:8px;
       overflow:hidden;
@@ -1111,6 +1112,19 @@ section[id]{
         0 18px 44px rgba(0,0,0,0.28),
         0 0 0 1px rgba(173,224,255,0.18),
         0 0 52px rgba(72,170,222,0.16);
+    }
+    .distribution-image-frame::after{
+      content:"";
+      position:absolute;
+      top:14px;
+      left:14px;
+      width:clamp(120px, 22vw, 220px);
+      aspect-ratio:3.2 / 1;
+      background:url("screenshots/logo-lockup.png") left center / contain no-repeat;
+      opacity:0.9;
+      filter:drop-shadow(0 8px 14px rgba(0,0,0,0.45));
+      pointer-events:none;
+      z-index:2;
     }
     .distribution-image-frame img{
       width:100%;
