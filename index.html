@@ -1011,6 +1011,45 @@ section[id]{
     .distribution-manifesto .distribution-card-copy + .distribution-card-copy{
       margin-top:14px;
     }
+    .infra-subhead{
+      margin:0 0 20px;
+      max-width:62ch;
+      font-size:clamp(1rem, 1.34vw, 1.1rem);
+      line-height:1.7;
+      font-weight:500;
+      color:rgba(224,236,248,0.9);
+      text-shadow:0 1px 8px rgba(0,0,0,0.16);
+    }
+    .infra-grid{
+      margin-top:4px;
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+      gap:12px;
+      max-width:980px;
+    }
+    .infra-cap{
+      padding:14px 14px 13px;
+      border-radius:8px;
+      border:1px solid rgba(206,235,255,0.32);
+      background:linear-gradient(180deg, rgba(205,236,255,0.14), rgba(130,201,239,0.08));
+      box-shadow:0 8px 22px rgba(0,0,0,0.16);
+    }
+    .infra-cap h4{
+      margin:0 0 6px;
+      font-size:clamp(0.98rem, 1.2vw, 1.1rem);
+      line-height:1.3;
+      font-weight:680;
+      letter-spacing:0.003em;
+      color:#eff7ff;
+    }
+    .infra-cap p{
+      margin:0;
+      max-width:none;
+      font-size:0.94rem;
+      line-height:1.55;
+      font-weight:460;
+      color:rgba(220,233,247,0.9);
+    }
     .distribution-image-frame{
       margin-top:16px;
       border-radius:8px;
@@ -1583,6 +1622,19 @@ section[id]{
         line-height:1.72;
         max-width:100%;
       }
+      .infra-subhead{
+        margin-bottom:16px;
+        max-width:100%;
+        font-size:0.98rem;
+        line-height:1.66;
+      }
+      .infra-grid{
+        grid-template-columns:1fr;
+        gap:10px;
+      }
+      .infra-cap{
+        padding:12px;
+      }
       .hero-cta{
         display:grid;
         grid-template-columns:1fr;
@@ -1834,13 +1886,26 @@ section[id]{
             <h2 class="flow-divider"><span>CREATE</span> <span class="flow-arrow" aria-hidden="true">→</span> <span>PUBLISH</span> <span class="flow-arrow" aria-hidden="true">→</span> <span>SELL</span> <span class="flow-arrow" aria-hidden="true">→</span> <span>GET PAID</span></h2>
           </div>
           <div class="feature-panel distribution-manifesto" style="margin-top:16px;">
-            <h3 class="distribution-card-title">Certifyd DISTRIBUTION is a SOVEREIGN DECENTRALIZED platform</h3>
-            <p class="distribution-card-copy">
-              Certifyd DISTRIBUTION is A SOVEREIGN DECENTRALIZED next-generation independent music distribution and artist empowerment platform built for creators who want ownership, transparency, and global reach.
-            </p>
-            <p class="distribution-card-copy">
-              Through innovative technology and artist-first solutions, Certifyd provides independent music distribution, publishing administration, royalty management, blockchain-powered authentication, and promotional tools designed to help artists grow their audience, maximize revenue, and build lasting careers.
-            </p>
+            <h3 class="distribution-card-title">Creator Commerce Infrastructure</h3>
+            <p class="infra-subhead">Certifyd gives creators direct control over publishing, payments, receipts, payouts, ownership, and audience relationships.</p>
+            <div class="infra-grid" role="list" aria-label="Certifyd capabilities">
+              <article class="infra-cap" role="listitem">
+                <h4>Publish &amp; Distribute</h4>
+                <p>Release music, video, files, products, and creative work without giving up ownership.</p>
+              </article>
+              <article class="infra-cap" role="listitem">
+                <h4>Sell &amp; Get Paid</h4>
+                <p>Accept direct payments, generate receipts, and settle earnings without payout queues.</p>
+              </article>
+              <article class="infra-cap" role="listitem">
+                <h4>Splits &amp; Payouts</h4>
+                <p>Track collaborators, royalties, participant earnings, and payout execution clearly.</p>
+              </article>
+              <article class="infra-cap" role="listitem">
+                <h4>Ownership &amp; Provenance</h4>
+                <p>Preserve attribution, rights, lineage, and proof of what was created, sold, and paid.</p>
+              </article>
+            </div>
           </div>
           <div class="feature-panel" style="margin-top:16px;">
             <h3 class="distribution-card-title">Why Choose Certifyd?</h3>
