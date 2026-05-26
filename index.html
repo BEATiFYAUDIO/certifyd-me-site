@@ -1347,6 +1347,15 @@ section[id]{
           url("images/certifyd-bg.png") center/cover no-repeat,
           var(--bg);
       }
+      body::before{
+        inset:-6%;
+        opacity:0.52;
+        background-size:180px 180px, cover, cover, cover;
+      }
+      body::after{
+        opacity:0.72;
+        filter:blur(10px);
+      }
       section{ padding:22px 0; }
       #top{
         padding-top:16px;
