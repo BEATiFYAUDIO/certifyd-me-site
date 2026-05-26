@@ -945,6 +945,16 @@ section[id]{
       font-weight:600;
       text-shadow:0 4px 16px rgba(0,0,0,0.22);
     }
+    .ownership-copy-card{
+      margin-top:8px;
+      margin-bottom:16px;
+    }
+    .ownership-media-card{
+      padding:12px;
+    }
+    .ownership-media-card .shot-card{
+      border-radius:6px;
+    }
     .flow-section{
       padding-top:var(--space-section);
       padding-bottom:var(--space-section);
@@ -1409,11 +1419,19 @@ section[id]{
     @media (max-width: 680px){
       body{
         background:
-          linear-gradient(180deg, rgba(4,6,8,0.92), rgba(4,6,8,0.96)),
-          radial-gradient(800px 460px at 14% -12%, rgba(95,137,198,0.10), transparent 58%),
-          radial-gradient(700px 420px at 88% 10%, rgba(255,138,0,0.10), transparent 58%),
+          linear-gradient(180deg, rgba(23,94,132,0.86), rgba(10,56,84,0.9)),
+          radial-gradient(820px 520px at 14% -12%, rgba(188,234,255,0.26), transparent 60%),
+          radial-gradient(760px 460px at 88% 10%, rgba(255,165,46,0.16), transparent 62%),
           url("images/certifyd-bg.png") center/cover no-repeat,
           var(--bg);
+      }
+      body::before{
+        opacity:0.3;
+        mix-blend-mode:soft-light;
+      }
+      body::after{
+        opacity:0.82;
+        filter:blur(10px);
       }
       section{ padding:22px 0; }
       #top{
@@ -1760,16 +1778,18 @@ section[id]{
     <!-- CORE MECHANIC -->
     <section id="ownership" class="wrap">
       <div class="feature-panel">
-        <h2>One payment. You’re paid.</h2>
-        <p><strong>Unlimited</strong> distribution across all platforms.</p>
-        <p>A fan pays → the money goes straight to you.</p>
-        <ul class="compare-list" style="margin-top:16px; margin-bottom:0; max-width:760px;">
-          <li><strong>Access unlocks instantly.</strong></li>
-          <li><strong>Collaborators are paid automatically.</strong></li>
-          <li><strong>No waiting. No chasing.</strong></li>
-        </ul>
+        <div class="why-card ownership-copy-card">
+          <h2>One payment. You’re paid.</h2>
+          <p><strong>Unlimited</strong> distribution across all platforms.</p>
+          <p>A fan pays → the money goes straight to you.</p>
+          <ul class="compare-list" style="margin-top:16px; margin-bottom:0; max-width:760px;">
+            <li><strong>Access unlocks instantly.</strong></li>
+            <li><strong>Collaborators are paid automatically.</strong></li>
+            <li><strong>No waiting. No chasing.</strong></li>
+          </ul>
+        </div>
 
-        <div class="grid grid-2" style="margin-top:22px">
+        <div class="why-card ownership-media-card">
           <a class="shot-card" href="#shot-how" aria-label="Open payment confirmation screenshot">
             <img src="images/screenshots/payment-phone-warm.png" alt="Mobile payment confirmation showing sats received via Lightning" />
           </a>
