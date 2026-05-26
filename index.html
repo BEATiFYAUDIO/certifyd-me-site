@@ -1625,10 +1625,15 @@ section[id]{
           var(--bg);
       }
       body::before{
-        opacity:0.2;
-        mix-blend-mode:soft-light;
-        background-size:170px 170px, cover, cover, cover;
-        background-position:0 0, 0 0, 0 0, 0 0;
+        inset:0;
+        z-index:0;
+        opacity:0.17;
+        mix-blend-mode:normal;
+        background-image:
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420' viewBox='0 0 420 420'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.22' numOctaves='3' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='discrete' tableValues='0 .2 .58 .86 1'/%3E%3CfeFuncG type='discrete' tableValues='0 .2 .58 .86 1'/%3E%3CfeFuncB type='discrete' tableValues='0 .2 .58 .86 1'/%3E%3CfeFuncA type='table' tableValues='0 .24 .46 .7 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='420' height='420' filter='url(%23grain)' opacity='1'/%3E%3C/svg%3E");
+        background-size:180px 180px;
+        background-position:0 0;
+        background-repeat:repeat;
         animation:none;
         transform:none;
         will-change:auto;
