@@ -113,16 +113,16 @@ section[id]{
     body::before{
       inset:-12%;
       z-index:1200;
-      opacity:0.58;
+      opacity:0.76;
       background-image:
         url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420' viewBox='0 0 420 420'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.15' numOctaves='3' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='discrete' tableValues='0 .2 .58 .86 1'/%3E%3CfeFuncG type='discrete' tableValues='0 .2 .58 .86 1'/%3E%3CfeFuncB type='discrete' tableValues='0 .2 .58 .86 1'/%3E%3CfeFuncA type='table' tableValues='0 .28 .56 .82 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='420' height='420' filter='url(%23grain)' opacity='1'/%3E%3C/svg%3E"),
         radial-gradient(480px 340px at 24% 18%, rgba(0,0,0,0.3), transparent 74%),
         radial-gradient(520px 360px at 78% 20%, rgba(255,255,255,0.1), transparent 76%),
         radial-gradient(620px 420px at 70% 76%, rgba(0,0,0,0.24), transparent 78%);
-      background-size:220px 220px, cover, cover, cover;
+      background-size:150px 150px, cover, cover, cover;
       background-color:transparent;
       mix-blend-mode:multiply;
-      animation:certifyd-tv-static 2200ms steps(4, end) infinite;
+      animation:certifyd-tv-static 1550ms steps(6, end) infinite;
       will-change:transform, background-position, opacity;
     }
     body::after{
@@ -151,10 +151,10 @@ section[id]{
     }
     @keyframes certifyd-tv-static{
       0%{ transform:translate3d(0,0,0); background-position:0 0, 0 0, 0 0, 0 0; opacity:0.4; }
-      20%{ transform:translate3d(-0.6%, 0.4%, 0); background-position:17px -13px, 0 0, 0 0, 0 0; opacity:0.48; }
-      40%{ transform:translate3d(0.5%, -0.3%, 0); background-position:-22px 9px, 0 0, 0 0, 0 0; opacity:0.43; }
-      60%{ transform:translate3d(-0.4%, -0.5%, 0); background-position:13px 21px, 0 0, 0 0, 0 0; opacity:0.5; }
-      80%{ transform:translate3d(0.7%, 0.2%, 0); background-position:-11px -19px, 0 0, 0 0, 0 0; opacity:0.44; }
+      20%{ transform:translate3d(-1.1%, 0.7%, 0); background-position:27px -20px, 0 0, 0 0, 0 0; opacity:0.62; }
+      40%{ transform:translate3d(0.9%, -0.5%, 0); background-position:-34px 16px, 0 0, 0 0, 0 0; opacity:0.53; }
+      60%{ transform:translate3d(-0.9%, -0.9%, 0); background-position:23px 31px, 0 0, 0 0, 0 0; opacity:0.66; }
+      80%{ transform:translate3d(1.2%, 0.4%, 0); background-position:-19px -29px, 0 0, 0 0, 0 0; opacity:0.56; }
       100%{ transform:translate3d(0,0,0); background-position:0 0, 0 0, 0 0, 0 0; opacity:0.42; }
     }
     @media (prefers-reduced-motion: reduce){
