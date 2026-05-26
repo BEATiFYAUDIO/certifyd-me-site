@@ -945,6 +945,24 @@ section[id]{
       font-weight:600;
       text-shadow:0 4px 16px rgba(0,0,0,0.22);
     }
+    .distribution-image-frame{
+      margin-top:16px;
+      border-radius:8px;
+      overflow:hidden;
+      border:1px solid rgba(206,235,255,0.46);
+      background:linear-gradient(180deg, rgba(205,236,255,0.22), rgba(130,201,239,0.14));
+      box-shadow:
+        0 18px 44px rgba(0,0,0,0.28),
+        0 0 0 1px rgba(173,224,255,0.18),
+        0 0 52px rgba(72,170,222,0.16);
+    }
+    .distribution-image-frame img{
+      width:100%;
+      display:block;
+      aspect-ratio:16 / 10;
+      object-fit:cover;
+      object-position:center center;
+    }
     .ownership-copy-card{
       margin-top:8px;
       margin-bottom:16px;
@@ -1743,6 +1761,9 @@ section[id]{
             <p class="distribution-card-copy" style="margin-top:10px;">
               Discover why Certifyd is built for the next generation of independent artists, labels, and creators. Certifyd is the KEY.
             </p>
+            <figure class="distribution-image-frame" aria-label="Creator listening with headphones">
+              <img src="images/girlheadphones.jpg" alt="Creator in a hoodie listening to music with over-ear headphones under neon lighting" loading="lazy" decoding="async" />
+            </figure>
           </div>
         </div>
       </div>
