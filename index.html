@@ -111,19 +111,17 @@ section[id]{
       pointer-events:none;
     }
     body::before{
-      inset:-18%;
+      inset:-12%;
       z-index:1200;
-      opacity:0.38;
+      opacity:0.3;
       background-image:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='132' height='132' viewBox='0 0 132 132'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='discrete' tableValues='0 .18 .42 .72 1'/%3E%3CfeFuncG type='discrete' tableValues='0 .18 .42 .72 1'/%3E%3CfeFuncB type='discrete' tableValues='0 .18 .42 .72 1'/%3E%3CfeFuncA type='table' tableValues='.25 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='132' height='132' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E"),
-        linear-gradient(90deg, rgba(3,29,45,0.62) 0 9px, transparent 9px 17px),
-        linear-gradient(0deg, rgba(225,250,255,0.25) 0 5px, transparent 5px 13px),
-        linear-gradient(90deg, transparent 0 4px, rgba(2,24,38,0.42) 4px 12px, transparent 12px 20px);
-      background-size:132px 132px, 22px 9px, 15px 19px, 31px 14px;
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420' viewBox='0 0 420 420'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='discrete' tableValues='0 .24 .66 .9 1'/%3E%3CfeFuncG type='discrete' tableValues='0 .24 .66 .9 1'/%3E%3CfeFuncB type='discrete' tableValues='0 .24 .66 .9 1'/%3E%3CfeFuncA type='table' tableValues='0 .2 .42 .7 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='420' height='420' filter='url(%23grain)' opacity='1'/%3E%3C/svg%3E"),
+        radial-gradient(480px 340px at 24% 18%, rgba(0,0,0,0.22), transparent 74%),
+        radial-gradient(520px 360px at 78% 20%, rgba(255,255,255,0.14), transparent 76%),
+        radial-gradient(620px 420px at 70% 76%, rgba(0,0,0,0.18), transparent 78%);
+      background-size:420px 420px, cover, cover, cover;
       background-color:transparent;
-      mix-blend-mode:multiply;
-      animation:certifyd-noise-drift 4.8s steps(8, end) infinite;
-      will-change:transform, background-position;
+      mix-blend-mode:soft-light;
     }
     body::after{
       z-index:0;
@@ -144,14 +142,6 @@ section[id]{
       z-index:1;
       width:100%;
       min-width:0;
-    }
-    @keyframes certifyd-noise-drift{
-      0%{ transform:translate3d(-1.2%, -1.2%, 0); background-position:0 0, 0 0, 0 0, 0 0; }
-      20%{ transform:translate3d(0.6%, -0.9%, 0); background-position:42px -27px, 11px 4px, -7px 6px, 9px -3px; }
-      40%{ transform:translate3d(1.1%, 0.5%, 0); background-position:-35px 51px, -5px 7px, 5px -8px, -13px 4px; }
-      60%{ transform:translate3d(0.2%, 1.1%, 0); background-position:60px 26px, 16px -3px, -11px 9px, 17px 6px; }
-      80%{ transform:translate3d(-0.9%, 0.4%, 0); background-position:-18px -54px, -9px -5px, 8px 3px, -6px -9px; }
-      100%{ transform:translate3d(-1.2%, -1.2%, 0); background-position:0 0, 0 0, 0 0, 0 0; }
     }
     @keyframes certifyd-ambient-drift{
       from{ transform:translate3d(-1.5%, -1%, 0) scale(1); }
