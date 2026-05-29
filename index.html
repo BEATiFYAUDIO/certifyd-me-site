@@ -1154,6 +1154,30 @@ section[id]{
       margin-top:8px;
       margin-bottom:16px;
     }
+    .btc-inline{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin-top:8px;
+    }
+    .btc-mark{
+      width:26px;
+      height:26px;
+      flex:0 0 26px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:999px;
+      background:var(--certifyd-orange);
+      color:#0b1117;
+      font-weight:900;
+      font-size:16px;
+      line-height:1;
+      box-shadow:0 8px 18px rgba(255,138,0,0.28);
+    }
+    .btc-copy{
+      margin:0;
+    }
     .ownership-media-card{
       padding:12px;
     }
@@ -1869,6 +1893,13 @@ section[id]{
 
     /* Mid-section readability for phone/tablet widths where 680px rules may not trigger */
     @media (max-width: 900px){
+      .btc-inline{ gap:8px; }
+      .btc-mark{
+        width:24px;
+        height:24px;
+        flex-basis:24px;
+        font-size:15px;
+      }
       #live-profile,
       #fan-app,
       #product,
@@ -2132,7 +2163,10 @@ section[id]{
       <div class="feature-panel">
         <div class="why-card ownership-copy-card">
           <h2>One payment. You’re paid.</h2>
-          <p>A fan pays. You receive money directly over Bitcoin Lightning.</p>
+          <div class="btc-inline" aria-label="Bitcoin Lightning payment">
+            <span class="btc-mark" aria-hidden="true">₿</span>
+            <p class="btc-copy">A fan pays. You receive money directly over Bitcoin Lightning.</p>
+          </div>
           <p>A fan pays → the money goes straight to you.</p>
           <ul class="compare-list" style="margin-top:16px; margin-bottom:0; max-width:760px;">
             <li><strong>Access unlocks instantly.</strong></li>
