@@ -2914,7 +2914,10 @@ section[id]{
       function answerFor(questionRaw) {
         const q = String(questionRaw || "").toLowerCase().trim();
         if (!q) {
-          return "Ask about what Certifyd is, ownership, publishing, payments, receipts, splits, payouts, Bitcoin Lightning, network, or who Certifyd is for.";
+          return {
+            matched: false,
+            text: "Ask about what Certifyd is, ownership, publishing, payments, receipts, splits, payouts, Bitcoin Lightning, network, or who Certifyd is for."
+          };
         }
 
         const faq = [
@@ -3021,14 +3024,22 @@ section[id]{
         ];
 
         for (const item of faq) {
-          if (item.patterns.some((pattern) => q.includes(pattern))) return item.answer;
+          if (item.patterns.some((pattern) => q.includes(pattern))) {
+            return { matched: true, text: item.answer };
+          }
         }
 
         if (q.includes("early access") || q.includes("apply") || q.includes("waitlist")) {
-          return "Use the “Apply for Early Access” form on this page. It submits directly to the Certifyd intake sheet.";
+          return {
+            matched: true,
+            text: "Use the “Apply for Early Access” form on this page. It submits directly to the Certifyd intake sheet."
+          };
         }
 
-        return "I can help with publishing, ownership, payments, receipts, splits, payouts, Bitcoin Lightning, and the Certifyd network.";
+        return {
+          matched: false,
+          text: "I can help with publishing, ownership, payments, receipts, splits, payouts, Bitcoin Lightning, and the Certifyd network."
+        };
       }
 
       async function askLiveAssistant(question) {
@@ -3068,13 +3079,17 @@ section[id]{
         const cleaned = String(text || "").trim();
         if (!cleaned) return;
         appendMessage("user", cleaned);
-        const pending = appendMessage("bot", liveMode ? "Thinking…" : answerFor(cleaned));
-        if (!liveMode) return;
+        const localAnswer = answerFor(cleaned);
+        if (localAnswer.matched || !liveMode) {
+          appendMessage("bot", localAnswer.text);
+          return;
+        }
+        const pending = appendMessage("bot", "Thinking…");
         try {
           const liveReply = await askLiveAssistant(cleaned);
           pending.textContent = liveReply;
         } catch (err) {
-          pending.textContent = answerFor(cleaned);
+          pending.textContent = localAnswer.text;
         }
       }
 
