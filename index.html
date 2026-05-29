@@ -2913,41 +2913,122 @@ section[id]{
 
       function answerFor(questionRaw) {
         const q = String(questionRaw || "").toLowerCase().trim();
-        if (!q) return "Ask about ownership, how Certifyd differs from platforms, splits, payouts, or early access.";
-        if (q.includes("what is") || q.includes("certifyd")) {
-          return "Certifyd is a creator-owned commerce system. Payments settle, receipts are created, splits apply, and payout states stay visible.";
+        if (!q) {
+          return "Ask about what Certifyd is, ownership, publishing, payments, receipts, splits, payouts, Bitcoin Lightning, network, or who Certifyd is for.";
         }
-        if (q.includes("patreon") || q.includes("substack") || q.includes("youtube") || q.includes("soundcloud") || q.includes("spotify")) {
-          return "Platforms keep custody and reporting control. Certifyd keeps settlement and records tied to the creator.";
+
+        const faq = [
+          {
+            patterns: ["what is certifyd", "what's certifyd", "what is certfiyd", "certifyd"],
+            answer: "Certifyd is creator commerce infrastructure that helps creators publish content, accept payments, manage ownership, and connect directly with their audience. It combines publishing, commerce, receipts, payouts, and creator ownership into a single system."
+          },
+          {
+            patterns: ["music distribution service", "is certifyd a distribution service", "distribution only"],
+            answer: "Partly. Certifyd supports music distribution, but it is broader than traditional distribution. It helps creators publish, sell, get paid, manage rights, and build direct relationships with their audience."
+          },
+          {
+            patterns: ["what can i publish", "publish with certifyd", "publish music", "publish videos", "publish content"],
+            answer: "Creators can publish music, videos, images, documents, digital products, downloads, memberships, premium content, and other digital media."
+          },
+          {
+            patterns: ["keep ownership", "do i own my content", "ownership of content", "retain ownership"],
+            answer: "Yes. Creators retain ownership of their content, audience relationships, receipts, and creative rights."
+          },
+          {
+            patterns: ["how do creators get paid", "how do i get paid", "payments", "paid instantly"],
+            answer: "Fans can purchase content directly. Payments are processed through the Certifyd commerce system and can settle instantly using Bitcoin Lightning where supported."
+          },
+          {
+            patterns: ["bitcoin lightning", "what is lightning", "lightning network"],
+            answer: "Bitcoin Lightning is a payment network built on Bitcoin that enables fast, low-cost payments. It allows creators to receive payments quickly without traditional payout delays."
+          },
+          {
+            patterns: ["need bitcoin", "do i need bitcoin", "must i use bitcoin"],
+            answer: "Not necessarily. Certifyd is designed to make creator commerce simple while supporting Bitcoin-powered payments behind the scenes where available."
+          },
+          {
+            patterns: ["spotify", "apple music", "youtube", "different from platforms", "patreon", "substack"],
+            answer: "Those platforms primarily control distribution and audience access. Certifyd focuses on creator ownership, direct commerce, transparent payouts, and audience relationships."
+          },
+          {
+            patterns: ["creator commerce", "what is creator commerce"],
+            answer: "Creator commerce means creators can sell directly to their audience instead of relying solely on advertising, streams, or platform-controlled monetization."
+          },
+          {
+            patterns: ["receipts", "what are receipts"],
+            answer: "Receipts are permanent records of purchases, payments, and content access. They provide transparency for creators and buyers."
+          },
+          {
+            patterns: ["splits", "split payment", "revenue split"],
+            answer: "Splits allow multiple contributors to share revenue from a sale. Certifyd can track how earnings should be allocated among collaborators."
+          },
+          {
+            patterns: ["payout", "payouts", "what are payouts"],
+            answer: "Payouts are the actual movement of earnings to creators and participants after revenue has been allocated."
+          },
+          {
+            patterns: ["collaborate", "collaboration", "collaborators", "other creators"],
+            answer: "Yes. Certifyd supports collaboration through revenue sharing, contributor participation, attribution, and payout tracking."
+          },
+          {
+            patterns: ["provenance", "what is provenance"],
+            answer: "Provenance is the history of a piece of content. It helps track who created it, who contributed to it, and how it evolved over time."
+          },
+          {
+            patterns: ["creator-owned infrastructure", "creator owned infrastructure", "what does creator-owned mean"],
+            answer: "It means creators maintain greater control over their content, audience relationships, commerce, and earnings rather than depending entirely on centralized platforms."
+          },
+          {
+            patterns: ["certifyd profile", "what is a profile", "creator storefront"],
+            answer: "A Certifyd profile is a creator storefront where fans can discover content, make purchases, and interact directly with creators."
+          },
+          {
+            patterns: ["fans discover", "discover creators", "can fans browse"],
+            answer: "Yes. Fans can browse creator profiles, discover content, unlock premium releases, and support creators directly."
+          },
+          {
+            patterns: ["certifyd network", "what is the network"],
+            answer: "The Certifyd network is a distributed creator commerce network that connects creators, fans, and operators through publishing, payments, and ownership infrastructure."
+          },
+          {
+            patterns: ["distributed network", "what does distributed mean"],
+            answer: "A distributed network is not controlled by a single platform or company. Multiple operators and creators can participate while maintaining their own presence and audience."
+          },
+          {
+            patterns: ["why was certifyd created", "why certifyd", "why did you build certifyd"],
+            answer: "Certifyd was created to give creators more control over publishing, payments, audience relationships, ownership, and long-term value creation."
+          },
+          {
+            patterns: ["is certifyd live", "is this live", "live now"],
+            answer: "Yes. Creators can publish content, fans can unlock content, and payments can settle through the Certifyd network."
+          },
+          {
+            patterns: ["who is certifyd for", "who is this for", "target users"],
+            answer: "Certifyd is designed for musicians, creators, labels, publishers, educators, media companies, creator collectives, and independent operators."
+          },
+          {
+            patterns: ["biggest benefit", "main benefit", "key benefit"],
+            answer: "Direct creator ownership. Creators can publish, sell, get paid, and build audience relationships without giving up control of their work."
+          },
+          {
+            patterns: ["why bitcoin", "use bitcoin", "bitcoin payments"],
+            answer: "Bitcoin enables borderless payments, global accessibility, and direct value transfer without requiring traditional banking infrastructure."
+          },
+          {
+            patterns: ["certifyd vision", "vision", "future"],
+            answer: "A world where creators own their audience, control their commerce, publish independently, and participate in a distributed creator economy."
+          }
+        ];
+
+        for (const item of faq) {
+          if (item.patterns.some((pattern) => q.includes(pattern))) return item.answer;
         }
-        if (q.includes("different") || q.includes("platform")) {
-          return "Certifyd is execution-first: payment, receipt, split, and payout state from one source event.";
-        }
-        if (q.includes("own") || q.includes("ownership")) {
-          return "You own identity, content context, receipts, and payout-linked revenue states.";
-        }
-        if (q.includes("split") || q.includes("collab") || q.includes("collaborator")) {
-          return "Certifyd supports split-aware releases. Contributor roles and shares are attached to the work, then payout tracking reflects what was paid and what remains payable.";
-        }
-        if (q.includes("receipt") || q.includes("entitlement") || q.includes("unlock")) {
-          return "Receipts are source-of-truth records: payment proof, unlock entitlement, and allocation context.";
-        }
+
         if (q.includes("early access") || q.includes("apply") || q.includes("waitlist")) {
           return "Use the “Apply for Early Access” form on this page. It submits directly to the Certifyd intake sheet.";
         }
-        if (q.includes("payment") || q.includes("payout") || q.includes("bitcoin") || q.includes("lightning")) {
-          return "Payments settle directly. Splits and payout states remain visible end to end.";
-        }
-        if (q.includes("node")) {
-          return "You can start without running a full node. Node-backed paths are available for deeper sovereign setup.";
-        }
-        if (q.includes("network")) {
-          return "Open the “Certifyd Network” section for discovery-layer details and entry points.";
-        }
-        if (q.includes("feature") || q.includes("product")) {
-          return "Jump to “Certifyd Creator in action” for product views: publishing, royalties, revenue, and identity.";
-        }
-        return "I can help with ownership model, receipts, splits, payout states, and how Certifyd differs from platforms.";
+
+        return "I can help with publishing, ownership, payments, receipts, splits, payouts, Bitcoin Lightning, and the Certifyd network.";
       }
 
       async function askLiveAssistant(question) {
