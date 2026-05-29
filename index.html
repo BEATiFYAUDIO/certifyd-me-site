@@ -2112,6 +2112,79 @@ section[id]{
         overflow-wrap:break-word !important;
       }
     }
+
+    /* Enforce top-card styling across all sections below the IP card */
+    #live-profile .live-profile-frame,
+    #fan-app > .feature-panel,
+    #product > .feature-panel,
+    #ownership > .feature-panel,
+    #own > .feature-panel,
+    #data > .feature-panel,
+    .proof-section > .feature-panel,
+    #network > .feature-panel{
+      position:relative;
+      overflow:hidden;
+      padding:clamp(26px, 3vw, 38px) !important;
+      border-radius:8px !important;
+      border:1px solid rgba(125,198,241,0.34) !important;
+      background:
+        linear-gradient(155deg, rgba(8,38,60,0.95), rgba(5,27,45,0.95)),
+        rgba(6,30,49,0.94) !important;
+      box-shadow:
+        0 20px 58px rgba(0,0,0,0.24),
+        inset 0 1px 0 rgba(206,235,255,0.18) !important;
+      backdrop-filter:blur(16px);
+      -webkit-backdrop-filter:blur(16px);
+    }
+    #live-profile .live-profile-frame::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      border-radius:inherit;
+      border:1px solid rgba(206,235,255,0.14);
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,0.03);
+    }
+    #live-profile h2,
+    #fan-app > .feature-panel h2,
+    #product > .feature-panel h2,
+    #ownership > .feature-panel h2,
+    #own > .feature-panel h2,
+    #data > .feature-panel h2,
+    .proof-section > .feature-panel h2,
+    #network > .feature-panel h2{
+      margin:0 0 16px !important;
+      font-size:clamp(1.34rem, 2.15vw, 1.82rem) !important;
+      line-height:1.18 !important;
+      letter-spacing:0.003em !important;
+      font-weight:700 !important;
+      color:rgba(241,248,255,0.96) !important;
+      text-shadow:0 3px 12px rgba(0,0,0,0.24) !important;
+    }
+    #live-profile p,
+    #fan-app > .feature-panel p,
+    #product > .feature-panel p,
+    #ownership > .feature-panel p,
+    #own > .feature-panel p,
+    #data > .feature-panel p,
+    .proof-section > .feature-panel p,
+    #network > .feature-panel p{
+      font-size:clamp(1rem, 1.34vw, 1.11rem) !important;
+      line-height:1.72 !important;
+      font-weight:460 !important;
+      color:rgba(224,236,248,0.9) !important;
+      text-shadow:0 1px 8px rgba(0,0,0,0.16) !important;
+    }
+    #ownership .why-card,
+    #own .why-card,
+    #network .who-card,
+    #ownership .compare-list li,
+    #own .why-list li{
+      border:1px solid rgba(206,235,255,0.32) !important;
+      border-radius:8px !important;
+      background:linear-gradient(180deg, rgba(205,236,255,0.14), rgba(130,201,239,0.08)) !important;
+      box-shadow:0 8px 22px rgba(0,0,0,0.16) !important;
+    }
   </style>
 </head>
 
