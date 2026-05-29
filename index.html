@@ -50,8 +50,8 @@ section[id]{
       --text:#e8ecf1;
       --text-secondary:#b4bdc8;
       --muted:#8a95a3;
-      --certifyd-gold:#d4af37;
       --certifyd-orange:#ff8a00;
+      --certifyd-gold:var(--certifyd-orange);
       --certifyd-sapphire:#5f9fff;
       --certifyd-blue:var(--certifyd-sapphire);
       --certifyd-bg:#147dab;
@@ -62,11 +62,11 @@ section[id]{
       --glass-blur:16px;
       --focus:rgba(95,159,255,0.42);
       --brand:var(--certifyd-orange);
-      --brand-hover:var(--certifyd-gold);
-      --brand-active:#b88f23;
+      --brand-hover:#ff9f2a;
+      --brand-active:#d97300;
       --accent-secondary:var(--certifyd-blue);
       --success:#4fa078;
-      --warning:#ff9f0a;
+      --warning:var(--certifyd-orange);
       --danger:#c35f5f;
       --info:#5f89c6;
       --radius:20px;
@@ -750,13 +750,13 @@ section[id]{
     }
     #top .hero-actions .btn.primary{
       color:#10151b;
-      border-color:rgba(255,173,53,0.78);
-      background:linear-gradient(180deg, #ffb13d, #ff9f0a 62%, #f08a00);
+      border-color:rgba(255,163,41,0.82);
+      background:linear-gradient(180deg, #ffad33, #ff8a00 62%, #e67d00);
       box-shadow:0 16px 38px rgba(255,138,0,0.26), inset 0 1px 0 rgba(255,255,255,0.22);
     }
     #top .hero-actions .btn.primary:hover{
-      border-color:rgba(255,190,97,0.92);
-      background:linear-gradient(180deg, #ffc15a, #ffab24 62%, #f08a00);
+      border-color:rgba(255,177,79,0.92);
+      background:linear-gradient(180deg, #ffb347, #ff9820 62%, #e67d00);
       box-shadow:0 18px 42px rgba(255,138,0,0.32), inset 0 1px 0 rgba(255,255,255,0.24);
     }
     .form-cta{
@@ -804,23 +804,23 @@ section[id]{
     .btn.primary{
       color:#111418;
       border-color:rgba(255,138,0,0.62);
-      background:linear-gradient(180deg, #ff9f0a, var(--certifyd-orange));
+      background:linear-gradient(180deg, #ffad33, var(--certifyd-orange));
       box-shadow:0 18px 44px rgba(255,138,0,0.22), inset 0 1px 0 rgba(255,255,255,0.20);
     }
     .btn.primary:hover{
-      border-color:rgba(212,175,55,0.86);
-      background:linear-gradient(180deg, var(--certifyd-gold), #ffad2e 58%, var(--certifyd-orange));
-      box-shadow:0 20px 50px rgba(212,175,55,0.26), inset 0 1px 0 rgba(255,255,255,0.24);
+      border-color:rgba(255,177,79,0.88);
+      background:linear-gradient(180deg, #ffb347, #ff9820 58%, var(--certifyd-orange));
+      box-shadow:0 20px 50px rgba(255,138,0,0.26), inset 0 1px 0 rgba(255,255,255,0.24);
       transform:translateY(-2px);
     }
     .btn.primary:focus-visible{
-      outline:3px solid rgba(212,175,55,0.78);
-      box-shadow:0 0 0 4px rgba(212,175,55,0.18), 0 22px 54px rgba(212,175,55,0.26);
+      outline:3px solid rgba(255,138,0,0.82);
+      box-shadow:0 0 0 4px rgba(255,138,0,0.2), 0 22px 54px rgba(255,138,0,0.26);
     }
     .btn.primary:active{
-      background:linear-gradient(180deg, var(--brand-active), var(--certifyd-gold));
-      border-color:rgba(212,175,55,0.94);
-      box-shadow:0 10px 28px rgba(212,175,55,0.16), inset 0 2px 8px rgba(0,0,0,0.18);
+      background:linear-gradient(180deg, var(--brand-active), #ff8a00);
+      border-color:rgba(255,138,0,0.94);
+      box-shadow:0 10px 28px rgba(255,138,0,0.16), inset 0 2px 8px rgba(0,0,0,0.18);
       transform:translateY(0);
     }
 
@@ -863,7 +863,7 @@ section[id]{
       font-size:0.86rem;
       padding:10px 14px;
       border-radius:999px;
-      background:linear-gradient(180deg, #ff9f0a, var(--certifyd-orange));
+      background:linear-gradient(180deg, #ffad33, var(--certifyd-orange));
       border:1px solid rgba(255,138,0,0.62);
       color:#111418;
       text-decoration:none;
@@ -873,8 +873,8 @@ section[id]{
       box-shadow:0 16px 38px rgba(255,138,0,0.24), inset 0 1px 0 rgba(255,255,255,0.2);
     }
     .live-profile-open:hover{
-      border-color:rgba(212,175,55,0.86);
-      background:linear-gradient(180deg, var(--certifyd-gold), #ffad2e 58%, var(--certifyd-orange));
+      border-color:rgba(255,177,79,0.88);
+      background:linear-gradient(180deg, #ffb347, #ff9820 58%, var(--certifyd-orange));
     }
     .live-profile-embed{
       display:block;
@@ -1687,7 +1687,7 @@ section[id]{
       bottom:16px;
       z-index:1200;
       border:1px solid var(--border2);
-      background:linear-gradient(180deg, #ff9f0a, var(--certifyd-orange));
+      background:linear-gradient(180deg, #ffad33, var(--certifyd-orange));
       color:#111418;
       border-radius:999px;
       min-height:44px;
@@ -1702,18 +1702,18 @@ section[id]{
         box-shadow 220ms ease;
     }
     .chat-launch:hover{
-      background:linear-gradient(180deg, var(--certifyd-gold), #ffad2e 58%, var(--certifyd-orange));
-      border-color:rgba(212,175,55,0.86);
+      background:linear-gradient(180deg, #ffb347, #ff9820 58%, var(--certifyd-orange));
+      border-color:rgba(255,177,79,0.88);
       transform:translateY(-1px);
-      box-shadow:0 20px 48px rgba(212,175,55,0.20), 0 18px 40px rgba(0,0,0,0.38);
+      box-shadow:0 20px 48px rgba(255,138,0,0.22), 0 18px 40px rgba(0,0,0,0.38);
     }
     .chat-launch:focus-visible{
-      outline:3px solid rgba(212,175,55,0.78);
-      box-shadow:0 0 0 4px rgba(212,175,55,0.18), 0 18px 40px rgba(0,0,0,0.38);
+      outline:3px solid rgba(255,138,0,0.82);
+      box-shadow:0 0 0 4px rgba(255,138,0,0.2), 0 18px 40px rgba(0,0,0,0.38);
     }
     .chat-launch:active{
       transform:translateY(0);
-      background:linear-gradient(180deg, var(--brand-active), var(--certifyd-gold));
+      background:linear-gradient(180deg, var(--brand-active), #ff8a00);
     }
 
     .chatbot{
