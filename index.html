@@ -1112,11 +1112,22 @@ section[id]{
       margin-top:16px;
       border-radius:8px;
       overflow:hidden;
-      border:1px solid rgba(173,209,236,0.36);
+      border:1px solid rgba(126,168,210,0.52);
       background:rgba(8,18,30,0.55);
       box-shadow:
         0 14px 34px rgba(0,0,0,0.24),
-        0 0 0 1px rgba(173,224,255,0.12);
+        0 0 0 1px rgba(126,168,210,0.24),
+        0 0 24px rgba(95,159,255,0.18);
+    }
+    .distribution-image-frame::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      z-index:1;
+      pointer-events:none;
+      background:
+        linear-gradient(160deg, rgba(126,168,210,0.36), rgba(95,159,255,0.28) 44%, rgba(6,16,30,0.2));
+      mix-blend-mode:screen;
     }
     .distribution-image-frame::after{
       content:"";
@@ -1134,10 +1145,12 @@ section[id]{
     .distribution-image-frame img{
       width:100%;
       display:block;
+      position:relative;
+      z-index:0;
       height:auto;
       aspect-ratio:auto;
       object-fit:initial;
-      filter:saturate(.96) contrast(.98) brightness(.97);
+      filter:hue-rotate(12deg) saturate(.84) contrast(.95) brightness(.94);
     }
     .hero-subheader{
       margin:16px 0 4px;
@@ -1157,23 +1170,27 @@ section[id]{
     .btc-inline{
       display:flex;
       align-items:center;
-      gap:10px;
-      margin-top:8px;
+      gap:12px;
+      margin-top:10px;
+      padding:8px 10px;
+      border-radius:10px;
+      border:1px solid rgba(255,138,0,0.42);
+      background:linear-gradient(180deg, rgba(255,138,0,0.18), rgba(255,138,0,0.08));
     }
     .btc-mark{
-      width:26px;
-      height:26px;
-      flex:0 0 26px;
+      width:30px;
+      height:30px;
+      flex:0 0 30px;
       display:inline-flex;
       align-items:center;
       justify-content:center;
       border-radius:999px;
       background:var(--certifyd-orange);
-      color:#0b1117;
+      color:#0a0f15;
       font-weight:900;
-      font-size:16px;
+      font-size:18px;
       line-height:1;
-      box-shadow:0 8px 18px rgba(255,138,0,0.28);
+      box-shadow:0 10px 22px rgba(255,138,0,0.36);
     }
     .btc-copy{
       margin:0;
@@ -1895,10 +1912,10 @@ section[id]{
     @media (max-width: 900px){
       .btc-inline{ gap:8px; }
       .btc-mark{
-        width:24px;
-        height:24px;
-        flex-basis:24px;
-        font-size:15px;
+        width:26px;
+        height:26px;
+        flex-basis:26px;
+        font-size:16px;
       }
       #live-profile,
       #fan-app,
