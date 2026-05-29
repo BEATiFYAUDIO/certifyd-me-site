@@ -1040,6 +1040,7 @@ section[id]{
       grid-template-columns:repeat(2, minmax(0, 1fr));
       gap:12px;
       max-width:980px;
+      align-items:stretch;
     }
     .infra-cap{
       padding:14px 14px 13px;
@@ -1047,6 +1048,9 @@ section[id]{
       border:1px solid rgba(206,235,255,0.32);
       background:linear-gradient(180deg, rgba(205,236,255,0.14), rgba(130,201,239,0.08));
       box-shadow:0 8px 22px rgba(0,0,0,0.16);
+      display:flex;
+      flex-direction:column;
+      height:100%;
     }
     .infra-cap h4{
       margin:0 0 6px;
@@ -1065,7 +1069,17 @@ section[id]{
       color:rgba(220,233,247,0.9);
     }
     .infra-grid .infra-cap:last-child{
-      grid-column:1 / -1;
+      grid-column:auto;
+    }
+    @media (min-width: 1101px){
+      .infra-grid .infra-cap:last-child{
+        grid-column:1 / -1;
+      }
+    }
+    @media (max-width: 900px){
+      .infra-grid{
+        grid-template-columns:1fr;
+      }
     }
     .infra-manifesto{
       padding:clamp(26px, 3vw, 38px);
