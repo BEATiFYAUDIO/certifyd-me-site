@@ -830,6 +830,7 @@ section[id]{
       position:relative;
       min-width:0;
       width:100%;
+      margin-top:16px;
       border:1px solid rgba(125,198,241,0.46);
       border-radius:8px;
       overflow:hidden;
@@ -1187,6 +1188,9 @@ section[id]{
     .proof-section .feature-panel,
     #network .feature-panel{
       padding:clamp(26px, 3vw, 38px);
+    }
+    #live-profile .feature-panel .live-profile-frame{
+      padding:0 !important;
     }
     #live-profile h2,
     #fan-app .feature-panel h2,
@@ -2137,6 +2141,21 @@ section[id]{
         inset 0 1px 0 rgba(206,235,255,0.18) !important;
       backdrop-filter:blur(16px);
       -webkit-backdrop-filter:blur(16px);
+      border-color:rgba(166,224,255,0.52) !important;
+    }
+    #fan-app > .feature-panel::after,
+    #product > .feature-panel::after,
+    #ownership > .feature-panel::after,
+    #own > .feature-panel::after,
+    #data > .feature-panel::after,
+    .proof-section > .feature-panel::after,
+    #network > .feature-panel::after,
+    #live-profile .live-profile-frame::after{
+      border:1px solid rgba(214,241,255,0.34) !important;
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,0.09),
+        inset 0 1px 0 rgba(255,255,255,0.13),
+        0 0 0 1px rgba(140,209,248,0.24) !important;
     }
     #live-profile .live-profile-frame::after{
       content:"";
@@ -2345,25 +2364,27 @@ section[id]{
 
     <!-- PRODUCT PROOF -->
     <section class="wrap live-profile-section" id="live-profile">
-      <p class="live-profile-eyebrow">Live profile</p>
-      <h2>See Certifyd in production</h2>
-      <p class="live-profile-intro">Live profile and storefront.</p>
-      <div class="live-profile-frame" role="region" aria-label="Live Certifyd profile embed">
-        <a class="live-profile-open" href="https://public.certifyd.me/u/certifyd" target="_blank" rel="noreferrer">Open full profile ↗</a>
-        <iframe
-          class="live-profile-embed"
-          src="https://public.certifyd.me/u/certifyd"
-          title="Live Certifyd profile"
-          loading="lazy"
-          referrerpolicy="strict-origin-when-cross-origin"
-          allowfullscreen
-        ></iframe>
+      <div class="feature-panel distribution-manifesto">
+        <p class="live-profile-eyebrow">Live profile</p>
+        <h2>See Certifyd in production</h2>
+        <p class="live-profile-intro">Live profile and storefront.</p>
+        <div class="live-profile-frame" role="region" aria-label="Live Certifyd profile embed">
+          <a class="live-profile-open" href="https://public.certifyd.me/u/certifyd" target="_blank" rel="noreferrer">Open full profile ↗</a>
+          <iframe
+            class="live-profile-embed"
+            src="https://public.certifyd.me/u/certifyd"
+            title="Live Certifyd profile"
+            loading="lazy"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen
+          ></iframe>
+        </div>
       </div>
     </section>
 
     <!-- DISCOVER -->
     <section class="wrap" id="fan-app">
-      <div class="feature-panel">
+      <div class="feature-panel distribution-manifesto">
         <h2>Discover creators across the Certifyd network.</h2>
         <p>
           Fans can explore creators, unlock content, and support artists across independently operated Certifyd nodes.
@@ -2377,7 +2398,7 @@ section[id]{
 
     <!-- AUDIENCE OWNERSHIP -->
     <section id="product" class="wrap">
-      <div class="feature-panel">
+      <div class="feature-panel distribution-manifesto">
         <h2>Own your audience. Take them with you.</h2>
         <p>Own the relationship, not just the reach.</p>
         <p style="margin-top:12px;"><strong>The people who support you stay yours.</strong></p>
@@ -2386,7 +2407,7 @@ section[id]{
 
     <!-- CORE MECHANIC -->
     <section id="ownership" class="wrap">
-      <div class="feature-panel">
+      <div class="feature-panel distribution-manifesto">
         <div class="why-card ownership-copy-card">
           <h2>One payment. You’re paid.</h2>
           <div class="btc-inline" aria-label="Bitcoin Lightning payment">
@@ -2411,7 +2432,7 @@ section[id]{
 
     <!-- WHY IT'S BETTER -->
     <section id="own" class="wrap why-section">
-      <div class="feature-panel">
+      <div class="feature-panel distribution-manifesto">
         <h2>Why it’s better</h2>
         <p class="why-subline">If you get paid, you have it.</p>
 
@@ -2438,7 +2459,7 @@ section[id]{
 
     <!-- OWNERSHIP -->
     <section id="data" class="wrap declaration-section ownership-moment">
-      <div class="feature-panel declaration-copy declaration-center">
+      <div class="feature-panel distribution-manifesto declaration-copy declaration-center">
         <h2 class="ownership-headline">What you build stays yours.</h2>
         <p class="ownership-mainline">Audience. Work. Money.</p>
         <p class="ownership-support">All under your control.</p>
@@ -2447,7 +2468,7 @@ section[id]{
 
     <!-- PROOF / DATA -->
     <section class="wrap declaration-section proof-section">
-      <div class="feature-panel declaration-copy">
+      <div class="feature-panel distribution-manifesto declaration-copy">
         <h2 class="proof-headline">Not a dashboard. A record.</h2>
         <p class="proof-body">See who paid, what they got, and where the money went.</p>
         <p class="proof-kicker">Nothing hidden.</p>
@@ -2456,7 +2477,7 @@ section[id]{
 
     <!-- NETWORK -->
     <section id="network" class="wrap declaration-section network-section">
-      <div class="feature-panel">
+      <div class="feature-panel distribution-manifesto">
         <h2 class="network-headline">Run it. Or use it.</h2>
         <div class="declaration-copy">
           <p class="network-body">Use Certifyd as a creator,<br />or run infrastructure and earn from network activity.</p>
