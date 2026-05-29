@@ -1160,6 +1160,47 @@ section[id]{
       background:linear-gradient(180deg, rgba(205,236,255,0.12), rgba(130,201,239,0.07));
       box-shadow:0 8px 22px rgba(0,0,0,0.16);
     }
+    /* Match top-card spacing and typography rhythm on sections below IP card */
+    #live-profile .live-profile-frame,
+    #fan-app .feature-panel,
+    #product .feature-panel,
+    #ownership .feature-panel,
+    #own .feature-panel,
+    #data .feature-panel,
+    .proof-section .feature-panel,
+    #network .feature-panel{
+      padding:clamp(26px, 3vw, 38px);
+    }
+    #live-profile h2,
+    #fan-app .feature-panel h2,
+    #product .feature-panel h2,
+    #ownership .feature-panel h2,
+    #own .feature-panel h2,
+    #data .feature-panel h2,
+    .proof-section .feature-panel h2,
+    #network .feature-panel h2{
+      margin:0 0 16px;
+      font-size:clamp(1.34rem, 2.15vw, 1.82rem);
+      line-height:1.18;
+      letter-spacing:0.003em;
+      font-weight:700;
+      color:rgba(241,248,255,0.96);
+      text-shadow:0 3px 12px rgba(0,0,0,0.24);
+    }
+    #live-profile p,
+    #fan-app .feature-panel p,
+    #product .feature-panel p,
+    #ownership .feature-panel p,
+    #own .feature-panel p,
+    #data .feature-panel p,
+    .proof-section .feature-panel p,
+    #network .feature-panel p{
+      font-size:clamp(1rem, 1.34vw, 1.11rem);
+      line-height:1.72;
+      font-weight:460;
+      color:rgba(224,236,248,0.9);
+      text-shadow:0 1px 8px rgba(0,0,0,0.16);
+    }
     .distribution-image-frame{
       position:relative;
       margin-top:16px;
