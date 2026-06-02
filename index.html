@@ -1433,10 +1433,21 @@ section[id]{
       .live-profile-embed{ height:640px; }
     }
     @media (max-width: 760px){
-      .live-profile-embed{ height:560px; }
+      .live-profile-frame{
+        padding:10px;
+      }
+      .live-profile-embed{
+        height:420px;
+        border:1px solid rgba(125,198,241,0.28);
+        border-radius:8px;
+      }
       .live-profile-open{
-        top:10px;
-        right:10px;
+        position:static;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        width:100%;
+        margin:0 0 10px;
         font-size:0.8rem;
         padding:8px 12px;
       }
