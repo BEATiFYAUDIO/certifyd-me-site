@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <link rel="icon" type="image/svg+xml" href="screenshots/certifyd-icon-logo-only.svg?v=20260603a" />
-  <link rel="shortcut icon" type="image/svg+xml" href="screenshots/certifyd-icon-logo-only.svg?v=20260603a" />
-  <link rel="apple-touch-icon" href="screenshots/tab-icon.png?v=20260404e" />
+  <link rel="icon" type="image/svg+xml" href="images/certifyd-tab-icon.svg?v=20260601a" />
+  <link rel="shortcut icon" type="image/svg+xml" href="images/certifyd-tab-icon.svg?v=20260601a" />
+  <link rel="apple-touch-icon" href="images/certifyd-tab-icon.svg?v=20260601a" />
   <title>Certifyd | Own Your Content and Revenue</title>
 
   <meta
     name="description"
     content="Certifyd Creator helps creators publish from their own workspace, prove identity, and connect attribution, proofs, and payments across the open web."
   />
-  <meta name="robots" content="noindex,nofollow" />
+  <!-- pages-cache-bust: 2026-06-01T11:38:00 -->
 
   <style>
 
@@ -243,8 +243,8 @@ section[id]{
       display:grid;
       grid-template-columns:auto 1fr auto; /* brand | nav | menu */
       align-items:center;
-      gap:10px;
-      min-height:94px;
+      gap:14px;
+      min-height:82px;
       padding:6px 0;
     }
 
@@ -252,12 +252,13 @@ section[id]{
     .brand{
       display:flex;
       align-items:center;
-      height:90px;
+      height:64px;
       overflow:visible;
       min-width:0;
+      padding-bottom:0;
     }
     .brand img{
-      height:82px;
+      height:56px;
       width:auto;
       max-width:100%;
       object-fit:contain;
@@ -267,19 +268,24 @@ section[id]{
 
     /* Desktop nav */
     .nav-desktop{
-      justify-self:end;
+      justify-self:stretch;
+      width:100%;
       display:flex;
-      gap:6px;
+      justify-content:space-evenly;
+      gap:0;
       align-items:center;
       white-space:nowrap;
+      padding-bottom:0;
     }
     .nav-desktop a{
-      padding:10px 14px;
+      padding:10px 8px;
       font-size:0.95rem;
       border-radius:12px;
       min-height:44px;
       display:flex;
       align-items:center;
+      justify-content:center;
+      text-align:center;
       border:1px solid transparent;
       transition:background 210ms ease, border-color 210ms ease, color 210ms ease, box-shadow 210ms ease;
     }
@@ -379,14 +385,14 @@ section[id]{
       .brand{
         display:flex;
         align-items:center;
-        height:84px;
+        height:72px;
         margin-left:0;
       }
       .brand img{
-        height:74px;
+        height:62px;
         width:auto;
         max-width:min(70vw, 410px);
-        max-height:82px;
+        max-height:68px;
         object-fit:contain;
         object-position:left center;
         display:block;
@@ -404,7 +410,7 @@ section[id]{
     }
     @media (max-width: 380px){
       .brand img{
-        height:66px;
+        height:58px;
         max-width:min(66vw, 300px);
       }
       .nav-mobile summary{
@@ -627,43 +633,8 @@ section[id]{
       object-position:center center;
     }
     .hero-main-image{
-      position:relative;
-      min-width:0;
-      width:100%;
-      max-width:1120px;
       margin:18px 0 24px;
-      border-radius:16px;
-      overflow:hidden;
-      border:1px solid rgba(207,227,245,0.22);
-      background:linear-gradient(145deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015));
-      box-shadow:
-        0 28px 70px rgba(0,0,0,0.34),
-        0 0 0 1px rgba(111,168,255,0.05),
-        0 0 34px rgba(111,168,255,0.07);
-      aspect-ratio:16 / 9;
-      isolation:isolate;
-    }
-    .hero-main-image::after{
-      content:"";
-      position:absolute;
-      inset:0;
-      pointer-events:none;
-      background:
-        linear-gradient(180deg, rgba(4,10,16,0.1), rgba(4,10,16,0.22)),
-        radial-gradient(420px 220px at 18% 16%, rgba(255,159,10,0.035), transparent 68%),
-        radial-gradient(460px 250px at 86% 10%, rgba(111,168,255,0.055), transparent 70%);
-      mix-blend-mode:multiply;
-      opacity:0.58;
-      z-index:1;
-    }
-    .hero-main-image img{
-      width:100%;
-      height:100%;
-      display:block;
-      object-fit:cover;
-      object-position:center center;
-      transform:scale(1.01);
-      filter:saturate(1.04) contrast(1.06) brightness(1.01);
+      max-width:1120px;
     }
     .hero-image-caption{
       margin:-6px 0 24px;
@@ -676,6 +647,17 @@ section[id]{
       letter-spacing:.01em;
       line-height:1.5;
       white-space:normal;
+      text-align:left;
+    }
+    .hero-recommendation{
+      margin:-10px 0 16px;
+      width:100%;
+      max-width:1120px;
+      font-size:0.84rem;
+      font-style:italic;
+      font-weight:500;
+      color:rgba(210,226,240,0.88);
+      line-height:1.4;
       text-align:left;
     }
     .hero-media-stack{
@@ -993,6 +975,17 @@ section[id]{
       line-height:1.02;
       margin:0;
       text-shadow:0 10px 30px rgba(0,0,0,0.48);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:.12em;
+    }
+    .flow-line{
+      display:flex;
+      align-items:baseline;
+      justify-content:center;
+      gap:.22em;
+      white-space:nowrap;
     }
     .flow-inline{
       width:100%;
@@ -1158,6 +1151,16 @@ section[id]{
       color:rgba(236,245,252,0.96);
       font-weight:600;
     }
+    .infra-list.plain-lines li{
+      padding:0;
+      border:0;
+      border-radius:0;
+      background:none;
+      color:rgba(226,238,248,0.92);
+      font-size:0.98rem;
+      line-height:1.62;
+      font-weight:500;
+    }
     .infra-close{
       margin-top:16px;
       margin-inline:auto;
@@ -1242,12 +1245,13 @@ section[id]{
       color:rgba(224,236,248,0.9);
       text-shadow:0 1px 8px rgba(0,0,0,0.16);
     }
-    .distribution-image-frame{
+    .card-media{
       position:relative;
       margin-top:16px;
       margin-inline:auto;
-      max-width:980px;
-      border-radius:8px;
+      width:100%;
+      max-width:1120px;
+      border-radius:var(--panel-radius);
       overflow:hidden;
       border:1px solid rgba(126,168,210,0.52);
       background:rgba(8,18,30,0.55);
@@ -1255,39 +1259,92 @@ section[id]{
         0 14px 34px rgba(0,0,0,0.24),
         0 0 0 1px rgba(126,168,210,0.24),
         0 0 24px rgba(95,159,255,0.18);
+      aspect-ratio:16 / 9;
     }
-    .distribution-image-frame::before{
+    .card-media img{
+      width:100%;
+      display:block;
+      height:100%;
+      object-fit:var(--media-fit, cover);
+      object-position:var(--media-pos, center center);
+      transform:scale(var(--media-zoom, 1));
+      transform-origin:center center;
+    }
+    .card-media.natural-media{
+      aspect-ratio:auto;
+    }
+    .card-media.natural-media img{
+      height:auto;
+      object-fit:contain;
+      transform:none;
+    }
+    .logo-overlay-frame .media-logo-overlay{
+      position:absolute;
+      top:var(--logo-top, 16px);
+      left:var(--logo-left, 18px);
+      z-index:4;
+      width:var(--logo-width, clamp(150px, 22%, 270px));
+      height:auto;
+      object-fit:contain;
+      transform:none;
+      pointer-events:none;
+      filter:drop-shadow(0 2px 5px rgba(0,0,0,0.28));
+    }
+    .logo-overlay-frame .media-logo-overlay-mobile{
+      display:none;
+    }
+    .ip-group-grade{
+      border-color:rgba(94,122,224,0.68);
+      background:
+        radial-gradient(620px 360px at 82% 12%, rgba(255,128,18,0.24), transparent 62%),
+        radial-gradient(360px 260px at 90% 78%, rgba(255,106,0,0.18), transparent 68%),
+        radial-gradient(520px 320px at 14% 76%, rgba(28,57,187,0.24), transparent 66%),
+        rgba(8,18,30,0.55);
+      box-shadow:
+        0 18px 40px rgba(0,0,0,0.26),
+        0 0 0 1px rgba(94,122,224,0.34),
+        0 0 28px rgba(28,57,187,0.32),
+        0 0 38px rgba(255,112,14,0.22);
+    }
+    .ip-group-grade::before{
       content:"";
       position:absolute;
       inset:0;
       z-index:1;
       pointer-events:none;
       background:
-        linear-gradient(160deg, rgba(126,168,210,0.36), rgba(95,159,255,0.28) 44%, rgba(6,16,30,0.2));
-      mix-blend-mode:screen;
+        linear-gradient(180deg, rgba(28,57,187,0.16), rgba(16,42,142,0.1)),
+        radial-gradient(52% 58% at 78% 10%, rgba(255,120,18,0.2), transparent 68%),
+        radial-gradient(30% 26% at 91% 78%, rgba(255,93,0,0.2), transparent 72%),
+        radial-gradient(45% 46% at 18% 82%, rgba(28,57,187,0.16), transparent 72%);
+      mix-blend-mode:soft-light;
+      opacity:0.58;
     }
-    .distribution-image-frame::after{
+    .ip-group-grade::after{
       content:"";
       position:absolute;
-      left:16px;
-      top:16px;
-      width:clamp(120px, 18vw, 210px);
-      aspect-ratio:3.2 / 1;
-      background:url("screenshots/logo-lockup.png") left center / contain no-repeat;
-      opacity:0.9;
-      filter:drop-shadow(0 6px 14px rgba(0,0,0,0.45));
-      pointer-events:none;
+      inset:0;
       z-index:2;
+      pointer-events:none;
+      background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.15' numOctaves='3' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='table' tableValues='0 .18 .34 .48 .62'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23grain)' opacity='1'/%3E%3C/svg%3E"),
+        radial-gradient(24% 22% at 91% 77%, rgba(202,70,0,0.32), transparent 74%),
+        radial-gradient(22% 18% at 82% 13%, rgba(226,82,0,0.18), transparent 78%);
+      background-size:140px 140px, auto, auto;
+      mix-blend-mode:soft-light;
+      opacity:0.42;
     }
-    .distribution-image-frame img{
+    .ip-group-grade img{
+      opacity:0.97;
+      filter:saturate(1.05) contrast(0.94) brightness(1.03) sepia(0.04) blur(0.16px);
+    }
+    .raw-panel-media{
+      margin-top:16px;
+    }
+    .raw-panel-image{
       width:100%;
       display:block;
-      position:relative;
-      z-index:0;
-      height:auto;
-      aspect-ratio:auto;
-      object-fit:initial;
-      filter:hue-rotate(12deg) saturate(.84) contrast(.95) brightness(.94);
+      margin:0;
     }
     .hero-subheader{
       margin:16px 0 4px;
@@ -1301,7 +1358,7 @@ section[id]{
       text-wrap:normal;
     }
     .inner-rail{
-      width:calc(100% - (var(--space-card) * 2));
+      width:100%;
       margin-inline:auto;
     }
     .hero-btc-mark{
@@ -1348,12 +1405,38 @@ section[id]{
     .btc-copy{
       margin:0;
     }
-    .ownership-media-card{
-      padding:12px;
+    .payment-note{
+      margin:14px auto 0;
+      width:calc(100% - (var(--space-card) * 2));
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      padding:9px 12px;
+      border-radius:8px;
+      border:1px solid rgba(255,138,0,0.52);
+      background:linear-gradient(180deg, rgba(255,138,0,0.16), rgba(255,138,0,0.06));
+      color:rgba(237,243,250,0.96);
+      font-size:clamp(0.96rem, 1.42vw, 1.05rem);
+      line-height:1.4;
+      text-align:center;
+      box-shadow:0 8px 20px rgba(0,0,0,0.24);
     }
-    .ownership-media-card .shot-card{
-      border-radius:6px;
+    .payment-note-icon{
+      width:22px;
+      height:22px;
+      flex:0 0 22px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:999px;
+      background:var(--certifyd-orange);
+      color:#fff;
+      font-size:14px;
+      font-weight:700;
+      line-height:1;
     }
+    .ownership-media-card{ padding:12px; }
     .flow-section{
       padding-top:var(--space-section);
       padding-bottom:var(--space-section);
@@ -1433,21 +1516,10 @@ section[id]{
       .live-profile-embed{ height:640px; }
     }
     @media (max-width: 760px){
-      .live-profile-frame{
-        padding:10px;
-      }
-      .live-profile-embed{
-        height:420px;
-        border:1px solid rgba(125,198,241,0.28);
-        border-radius:8px;
-      }
+      .live-profile-embed{ height:560px; }
       .live-profile-open{
-        position:static;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        width:100%;
-        margin:0 0 10px;
+        top:10px;
+        right:10px;
         font-size:0.8rem;
         padding:8px 12px;
       }
@@ -1509,24 +1581,13 @@ section[id]{
     }
     .shot:hover img{ transform:translateY(-1px); filter:brightness(1.05); }
     .shot-card{
-      display:flex;
-      align-items:center;
-      justify-content:center;
+      display:block;
       text-decoration:none;
       color:inherit;
-      overflow:hidden;
-      border-radius:8px;
-      border:1px solid rgba(206,235,255,0.38);
-      background:linear-gradient(180deg, rgba(205,236,255,0.3), rgba(130,201,239,0.2));
-      aspect-ratio:16 / 10;
     }
     .shot-card img{
-      width:100%;
-      height:100%;
       border:0;
       box-shadow:none;
-      object-fit:cover;
-      object-position:center center;
     }
 
     /* Middle narrative band: consistent premium surface instead of floating text on wallpaper */
@@ -1827,6 +1888,47 @@ section[id]{
     }
 
     @media (max-width: 680px){
+      :root{
+        --pad:12px;
+      }
+      .wrap{
+        width:100%;
+        max-width:var(--wrap);
+        margin-left:auto;
+        margin-right:auto;
+        padding-left:var(--pad);
+        padding-right:var(--pad);
+      }
+      .feature-panel,
+      .card,
+      .hero-main-image,
+      .distribution-image-frame,
+      .payment-note{
+        width:100%;
+        max-width:100%;
+        margin-left:auto;
+        margin-right:auto;
+      }
+      .logo-overlay-frame .media-logo-overlay{
+        display:none;
+      }
+      .logo-overlay-frame .media-logo-overlay-mobile{
+        display:block;
+        position:absolute;
+        top:var(--logo-mobile-top, -10px);
+        left:var(--logo-mobile-left, 6px);
+        z-index:4;
+        width:var(--logo-mobile-width, clamp(44px, 15vw, 68px));
+        aspect-ratio:1 / 1;
+        height:auto;
+        object-fit:cover;
+        object-position:center;
+        border-radius:6px;
+        transform:none;
+        pointer-events:none;
+        opacity:0.92;
+        filter:drop-shadow(0 2px 5px rgba(0,0,0,0.32));
+      }
       body{
         background:
           linear-gradient(180deg, rgba(23,94,132,0.86), rgba(10,56,84,0.9)),
@@ -1875,9 +1977,9 @@ section[id]{
       p{ font-size:1.03rem; line-height:1.62; }
       .hero-grid{ gap:28px; }
       .hero-main-image{
-        border-radius:20px;
+        border-radius:14px;
         aspect-ratio:16 / 9;
-        margin:14px 0 18px;
+        margin:10px 0 14px;
       }
       .hero-image-caption{
         margin:-8px 0 18px;
@@ -1896,7 +1998,7 @@ section[id]{
         min-height:48px;
       }
       .distribution-manifesto{
-        padding:22px 22px;
+        padding:16px 14px;
       }
       .distribution-manifesto .distribution-card-title{
         margin-bottom:16px;
@@ -1923,7 +2025,7 @@ section[id]{
         padding:12px 14px;
       }
       .infra-manifesto{
-        padding:22px 22px;
+        padding:16px 14px;
       }
       .infra-manifesto .distribution-card-title{
         margin-bottom:14px;
@@ -1957,6 +2059,33 @@ section[id]{
       }
       .distribution-image-frame::after{
         display:none;
+      }
+      .distribution-image-frame{
+        margin-top:12px;
+        border-radius:12px;
+        max-width:none;
+        width:100%;
+      }
+      .hero-subheader{
+        margin:10px 0 2px;
+        font-size:clamp(1.06rem, 4.8vw, 1.32rem);
+        line-height:1.3;
+        font-weight:800;
+        letter-spacing:-0.006em;
+        text-wrap:pretty;
+      }
+      .hero-subheader.inner-rail{
+        margin-top:12px;
+      }
+      .payment-note{
+        width:100%;
+        margin-top:10px;
+        padding:8px 10px;
+        font-size:0.92rem;
+      }
+      .infra-list.plain-lines li{
+        font-size:0.9rem;
+        line-height:1.52;
       }
       .hero-btc-mark{
         width:34px;
@@ -2017,15 +2146,25 @@ section[id]{
       .proof-kicker{ font-size:16px; }
       .flow-divider{ font-size:clamp(34px, 11vw, 46px); line-height:1.16; }
       #how.flow-inline{
-        padding:18px 20px;
+        padding:16px 12px;
       }
       #how .flow-divider{
-        font-size:clamp(28px, 10vw, 44px);
-        line-height:1.14;
+        font-size:clamp(17px, 5.9vw, 24px);
+        line-height:1.12;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        width:fit-content;
+        max-width:100%;
+        justify-content:center;
+        gap:.12em;
+        margin-left:auto;
+        margin-right:auto;
+        text-align:center;
+        letter-spacing:-0.005em;
       }
       #how .flow-break{
-        display:block;
-        height:0;
+        display:none;
       }
       #how .flow-arrow{
         margin:0 .1em;
@@ -2112,8 +2251,9 @@ section[id]{
       #network{
         padding-top:24px !important;
         padding-bottom:24px !important;
-        padding-left:var(--pad) !important;
-        padding-right:var(--pad) !important;
+        /* Keep horizontal gutters owned by .wrap only to prevent right-side squeeze */
+        padding-left:0 !important;
+        padding-right:0 !important;
       }
       #data{ margin-top:0 !important; margin-bottom:0 !important; }
       .proof-section{ margin-top:0 !important; margin-bottom:0 !important; }
@@ -2156,11 +2296,20 @@ section[id]{
         opacity:0.9 !important;
       }
       #how .flow-divider{
-        text-align:left !important;
-        margin-left:0 !important;
-        margin-right:0 !important;
-        max-width:none !important;
-        overflow-wrap:break-word !important;
+        text-align:center !important;
+        margin-left:auto !important;
+        margin-right:auto !important;
+        width:fit-content !important;
+        max-width:100% !important;
+        overflow-wrap:normal !important;
+      }
+      #product > .hero-subheader,
+      #ownership > .hero-subheader,
+      #data > .hero-subheader,
+      #own > .hero-subheader{
+        font-size:clamp(1.06rem, 4.6vw, 1.26rem) !important;
+        line-height:1.32 !important;
+        letter-spacing:-0.004em !important;
       }
     }
 
@@ -2331,18 +2480,15 @@ section[id]{
     <div class="header-rail">
       <div class="wrap header-inner">
         <a class="brand" href="#top" aria-label="Certifyd Creator home">
-          <img src="screenshots/certifyd-logo-transparent.svg" alt="Certifyd Creator logo" />
+          <img src="images/certifyd_logo_transparent.svg" alt="Certifyd Creator logo" />
         </a>
 
         <nav class="nav-desktop" aria-label="Primary navigation">
           <a href="#live-profile">Live profile</a>
-          <a href="https://fan.certifyd.me" target="_blank" rel="noreferrer">Discover</a>
-          <a href="#ownership">Ownership</a>
-          <a href="#own">What you own</a>
-          <a href="#how">How it works</a>
-          <a href="#built-for">Built for</a>
-          <a href="#product">Screens</a>
+          <a href="#discover">Discover scenes</a>
+          <a href="#how">Build</a>
           <a href="#network">Network</a>
+          <a href="#early-access">Early access</a>
         </nav>
 
         <details class="nav-mobile">
@@ -2352,13 +2498,10 @@ section[id]{
 
           <nav class="nav-drawer" aria-label="Mobile navigation">
             <a href="#live-profile">Live profile</a>
-            <a href="https://fan.certifyd.me" target="_blank" rel="noreferrer">Discover</a>
-            <a href="#ownership">Ownership</a>
-            <a href="#own">What you own</a>
-            <a href="#how">How it works</a>
-            <a href="#built-for">Built for</a>
-            <a href="#product">Screens</a>
+            <a href="#discover">Discover scenes</a>
+            <a href="#how">Build</a>
             <a href="#network">Network</a>
+            <a href="#early-access">Early access</a>
           </nav>
         </details>
       </div>
@@ -2372,96 +2515,58 @@ section[id]{
         <div>
           <h1 class="hero-title"><span class="hero-title-line"><span class="hero-title-white">Own</span> <span class="hero-title-orange">Your</span></span><br><span class="hero-title-line"><span class="hero-title-blue-light">Audience</span></span></h1>
 
+          <figure class="hero-main-image card-media" style="--media-zoom:1.045;" aria-label="Certifyd featured creators">
+            <img src="images/certifyd-main-image-edgefix-20260601.jpeg?v=20260601b" alt="Two music creators posing under stage lights" fetchpriority="high" decoding="async" />
+          </figure>
+          <p class="hero-recommendation">For creators who refuse to rent their business from platforms.</p>
+
           <div class="hero-actions hero-cta">
             <a class="btn" href="https://fan.certifyd.me" target="_blank" rel="noreferrer">Discover</a>
             <a class="btn primary" href="#early-access">Get Certifyd</a>
           </div>
-          <h3 class="hero-subheader">For creators who refuse to rent their business from platforms.</h3>
-          <p style="margin-top:10px;">
-            Build direct relationships with fans, collaborators, and communities on infrastructure you control.
-          </p>
+          <h3 class="hero-subheader">Build direct relationships with fans, collaborators, and communities on infrastructure you control.</h3>
           <div id="how" class="feature-panel flow-inline" style="margin-top:18px;">
-            <h2 class="flow-divider"><span>CREATE</span> <span class="flow-arrow" aria-hidden="true">→</span> <span>PUBLISH</span> <span class="flow-break" aria-hidden="true"></span><span>SELL</span> <span class="flow-arrow" aria-hidden="true">→</span> <span>GET PAID</span></h2>
+            <h2 class="flow-divider">
+              <span class="flow-line"><span>CREATE</span><span class="flow-arrow" aria-hidden="true">→</span><span>PUBLISH</span></span>
+              <span class="flow-line"><span>SELL</span><span class="flow-arrow" aria-hidden="true">→</span><span>GET PAID</span></span>
+            </h2>
           </div>
+          <h3 class="hero-subheader inner-rail">The Independent Creator Network</h3>
           <div class="feature-panel distribution-manifesto" style="margin-top:16px;">
-            <h3 class="distribution-card-title">The Independent Creator Network</h3>
             <p class="infra-subhead">A growing network of creators, labels, communities, and operators building an alternative to platform dependency.</p>
-            <div class="infra-grid" role="list" aria-label="Certifyd capabilities">
-              <article class="infra-cap" role="listitem">
-                <h4>Own Your Identity</h4>
-                <p>Your profile becomes your home on the internet.</p>
-              </article>
-              <article class="infra-cap" role="listitem">
-                <h4>Own Your Audience</h4>
-                <p>Build relationships that survive platform changes.</p>
-              </article>
-              <article class="infra-cap" role="listitem">
-                <h4>Own Your Commerce</h4>
-                <p>Sell directly, receive payments, and reduce unnecessary custodians.</p>
-              </article>
-              <article class="infra-cap" role="listitem">
-                <h4>Own Your Future</h4>
-                <p>Build on infrastructure you control.</p>
-              </article>
-            </div>
-          </div>
-          <div class="feature-panel distribution-manifesto" style="margin-top:16px;">
-            <h3 class="distribution-card-title">Why Creators Choose Certifyd</h3>
-            <p class="infra-subhead">No gatekeepers. No platform lock-in. Creator-to-fan commerce with audience independence.</p>
-            <div class="infra-grid" role="list" aria-label="Why creators choose Certifyd">
-              <article class="infra-cap" role="listitem">
-                <h4>Publish Without Gatekeepers</h4>
-                <p>Release music, video, files, and digital products on your terms.</p>
-              </article>
-              <article class="infra-cap" role="listitem">
-                <h4>Creator-to-Fan Commerce</h4>
-                <p>Run direct commerce with fans instead of renting access from a platform.</p>
-              </article>
-              <article class="infra-cap" role="listitem">
-                <h4>P2P Creator Economy</h4>
-                <p>Creators, collaborators, and operators participate in a peer-to-peer economy that compounds value.</p>
-              </article>
-              <article class="infra-cap" role="listitem">
-                <h4>Creator-Owned Infrastructure</h4>
-                <p>Your content and audience relationships are portable, durable, and creator-controlled.</p>
-              </article>
-              <article class="infra-cap" role="listitem">
-                <h4>Built for Independent Creators</h4>
-                <p>Designed for artists, labels, collectives, agencies, educators, and creator networks.</p>
-              </article>
-            </div>
-            <figure class="distribution-image-frame" aria-label="Creator listening with headphones">
-              <img src="images/promo-2026-01-27-14.png" alt="Creator commerce infrastructure promo visual with creator profile and platform metrics" loading="lazy" decoding="async" />
+            <ul class="infra-list" aria-label="Certifyd ownership pillars">
+              <li><strong>Own Your Identity</strong> — Your profile becomes your home on the internet.</li>
+              <li><strong>Own Your Audience</strong> — Build relationships that survive platform changes.</li>
+              <li><strong>Own Your Commerce</strong> — Sell directly, receive payments, and reduce unnecessary custodians.</li>
+              <li><strong>Own Your Future</strong> — Build on infrastructure you control.</li>
+            </ul>
+            <figure class="card-media raw-panel-media logo-overlay-frame" style="--media-zoom:1.065; --logo-width:clamp(150px, 24%, 300px); --logo-top:16px; --logo-left:18px;" aria-label="Certifyd creator commerce infrastructure">
+              <img class="raw-panel-image" src="images/creator-commerce-raw-20260601-edgefix.jpeg?v=20260602clean" alt="Certifyd distribution promo with creators and platform metrics" loading="lazy" decoding="async" />
+              <img class="media-logo-overlay" src="images/certifyd-logo-overlay.svg" alt="" aria-hidden="true" loading="lazy" decoding="async" />
+              <img class="media-logo-overlay-mobile" src="images/certifyd-logo-mobile-float-20260602.png" alt="" aria-hidden="true" loading="lazy" decoding="async" />
             </figure>
           </div>
+          <p class="payment-note"><span class="payment-note-icon" aria-hidden="true">₿</span>A fan pays. You receive money directly over Bitcoin Lightning.</p>
           <h3 class="hero-subheader inner-rail">Build The Alternative</h3>
           <div class="feature-panel infra-manifesto" style="margin-top:16px;">
             <h3 class="distribution-card-title">Build The Alternative</h3>
             <p class="infra-subhead">The internet promised creators independence.</p>
             <p class="infra-subhead">Instead, most creators became dependent on platforms for discovery, distribution, payments, and audience access.</p>
             <p class="infra-subhead">Certifyd is for creators, labels, operators, and communities who believe ownership still matters.</p>
-            <ul class="infra-list" aria-label="Creator value statements">
-              <li>Own your identity.</li>
-              <li>Own your audience.</li>
-              <li>Own your commerce.</li>
-              <li>Build relationships that survive platform changes.</li>
-            </ul>
-            <p class="infra-close">The internet promised independence.<br />We’re building the alternative.</p>
+            <figure class="distribution-image-frame wallet-blue card-media logo-overlay-frame" style="--media-zoom:1.075; --logo-width:clamp(145px, 28%, 260px); --logo-top:18px; --logo-left:18px;" aria-label="Payment received via Bitcoin Lightning">
+              <img src="images/screenshots/payment-phone-new-20260601.jpeg?v=20260602clean" alt="Phone wallet screen showing payment received via Lightning" loading="lazy" decoding="async" />
+              <img class="media-logo-overlay" src="images/certifyd-logo-overlay.svg" alt="" aria-hidden="true" loading="lazy" decoding="async" />
+              <img class="media-logo-overlay-mobile" src="images/certifyd-logo-mobile-float-20260602.png" alt="" aria-hidden="true" loading="lazy" decoding="async" />
+            </figure>
+            <p class="infra-close">Own your identity.<br />Own your audience.<br />Own your commerce.<br />We’re building the alternative.</p>
           </div>
           <h3 class="hero-subheader inner-rail">Accelerate your publishing earnings through the power of your own IP.</h3>
           <div class="feature-panel infra-manifesto" style="margin-top:16px;">
             <h3 class="distribution-card-title">Grow Your IP and Earnings Worldwide</h3>
             <p class="infra-subhead">Your music is more than content - it’s intellectual property with long-term value. Certifyd helps creators manage publishing, royalties, catalog performance, and long-term earnings while retaining creator rights.</p>
-            <ul class="infra-list" aria-label="IP and earnings capabilities">
-              <li>Ownership-first infrastructure</li>
-              <li>Publishing and royalty tools</li>
-              <li>Transparent royalty and earnings tracking</li>
-              <li>Audience, streaming, and sales insights</li>
-              <li>Collaboration and rights metadata management</li>
-              <li>Global publishing-ready release support</li>
-              <li>Catalog and rights control</li>
-            </ul>
-            <p class="infra-close">Grow your audience.<br />Build publishing revenue.<br />Keep control of your work.</p>
+            <figure class="distribution-image-frame ip-group-grade card-media natural-media" aria-label="Creators in a Certifyd IP and publishing strategy room">
+              <img src="images/ip-publishing-creators-20260605.jpeg?v=20260605" alt="Creators in a Certifyd IP and publishing strategy room" loading="lazy" decoding="async" />
+            </figure>
           </div>
         </div>
       </div>
@@ -2488,144 +2593,37 @@ section[id]{
     </section>
 
     <!-- DISCOVER -->
-    <section class="wrap" id="fan-app">
+    <section id="discover" class="wrap declaration-section network-section">
       <div class="feature-panel distribution-manifesto">
-        <h2>More Than Content</h2>
-        <p>
-          Centralized content services discover songs.
-        </p>
-        <p style="margin-top:12px;"><strong>Certifyd discovers scenes.</strong></p>
-        <p style="margin-top:12px;">
-          A fan discovers a creator.<br />
-          A creator discovers a collaborator.<br />
-          A label discovers an artist.<br />
-          A community discovers a movement.
-        </p>
-        <p style="margin-top:12px;">
-          Discovery should come from labels, creators, communities, local scenes, and trusted relationships — not only centralized content services.
-        </p>
-        <p style="margin-top:12px;"><strong>The future is not just bigger algorithms.<br />It is stronger relationships.</strong></p>
-        <div class="hero-actions hero-cta" style="margin-top:18px;">
-          <a class="btn primary" href="https://fan.certifyd.me" target="_blank" rel="noreferrer">Discover</a>
+        <h2 class="network-headline">More Than Content</h2>
+        <div class="declaration-copy">
+          <p class="network-body">Spotify discovers songs.</p>
+          <p class="network-body" style="margin-top:10px;">Certifyd discovers scenes.</p>
+          <p class="network-body" style="margin-top:10px;">
+            A fan discovers a creator.<br />
+            A creator discovers a collaborator.<br />
+            A label discovers an artist.<br />
+            A community discovers a movement.
+          </p>
+          <p class="network-body" style="margin-top:10px;">Discovery should come from labels, creators, communities, local scenes, and trusted relationships — not only centralized content services.</p>
+          <p class="network-body" style="margin-top:10px;">The future is not just bigger algorithms. It is stronger relationships.</p>
         </div>
-      </div>
-    </section>
-
-    <!-- AUDIENCE OWNERSHIP -->
-    <section id="product" class="wrap">
-      <div class="feature-panel distribution-manifesto">
-        <h2>Own your audience. Take them with you.</h2>
-        <p>Own the relationship, not just the reach.</p>
-        <p style="margin-top:12px;"><strong>The people who support you stay yours.</strong></p>
-      </div>
-    </section>
-
-    <!-- CORE MECHANIC -->
-    <section id="ownership" class="wrap">
-      <div class="feature-panel distribution-manifesto">
-        <div class="why-card ownership-copy-card">
-          <h2>One payment. You’re paid.</h2>
-          <div class="btc-inline" aria-label="Bitcoin Lightning payment">
-            <span class="btc-mark" aria-hidden="true"><img src="images/bitcoin-logo.svg?v=20260529b" alt="" loading="lazy" decoding="async" /></span>
-            <p class="btc-copy">A fan pays. You receive money directly over Bitcoin Lightning.</p>
-          </div>
-          <p>A fan pays → the money goes straight to you.</p>
-          <ul class="compare-list" style="margin-top:16px; margin-bottom:0; max-width:760px;">
-            <li><strong>Access unlocks instantly.</strong></li>
-            <li><strong>Collaborators are paid automatically.</strong></li>
-            <li><strong>No waiting. No chasing.</strong></li>
-          </ul>
-        </div>
-
-        <div class="why-card ownership-media-card">
-          <a class="shot-card" href="#shot-how" aria-label="Open payment confirmation screenshot">
-            <img src="images/screenshots/payment-phone-warm.png" alt="Mobile payment confirmation showing sats received via Lightning" />
-          </a>
-        </div>
-      </div>
-    </section>
-
-    <!-- WHY IT'S BETTER -->
-    <section id="own" class="wrap why-section">
-      <div class="feature-panel distribution-manifesto">
-        <h2>Why it’s better</h2>
-        <p class="why-subline">If you get paid, you have it.</p>
-
-        <div class="why-grid">
-          <div class="why-card">
-            <h3>Platforms</h3>
-            <ul class="why-list">
-              <li><strong>Hold your money</strong></li>
-              <li><strong>Pay you later</strong></li>
-              <li><strong>Control access</strong></li>
-            </ul>
-          </div>
-          <div class="why-card">
-            <h3>Certifyd</h3>
-            <ul class="why-list">
-              <li><strong>Pays you instantly</strong></li>
-              <li><strong>Sends funds directly</strong></li>
-              <li><strong>Handles splits automatically</strong></li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- OWNERSHIP -->
-    <section id="data" class="wrap declaration-section ownership-moment">
-      <div class="feature-panel distribution-manifesto declaration-copy declaration-center">
-        <h2 class="ownership-headline">What you build stays yours.</h2>
-        <p class="ownership-mainline">Audience. Work. Money.</p>
-        <p class="ownership-support">All under your control.</p>
-      </div>
-    </section>
-
-    <!-- PROOF / DATA -->
-    <section class="wrap declaration-section proof-section">
-      <div class="feature-panel distribution-manifesto declaration-copy">
-        <h2 class="proof-headline">Not a dashboard. A record.</h2>
-        <p class="proof-body">See who paid, what they got, and where the money went.</p>
-        <p class="proof-kicker">Nothing hidden.</p>
       </div>
     </section>
 
     <!-- NETWORK -->
     <section id="network" class="wrap declaration-section network-section">
       <div class="feature-panel distribution-manifesto">
-        <h2 class="network-headline">Run it. Or use it.</h2>
+        <h2 class="network-headline">Join The Builders</h2>
         <div class="declaration-copy">
-          <p class="network-body">Use Certifyd as a creator,<br />or run infrastructure and earn from network activity.</p>
-          <p class="network-body" style="margin-top:10px;">Powered by peer-to-peer infrastructure, creator ownership, and borderless payments.</p>
+          <p class="network-body">We launched our technical beta in 2026.</p>
+          <p class="network-body" style="margin-top:10px;">We are not chasing vanity metrics.</p>
+          <p class="network-body" style="margin-top:10px;">We are looking for independent creators, labels, technologists, Bitcoiners, and operators who want to help build a better future for creators.</p>
+          <p class="network-body" style="margin-top:10px;">The network is early.<br />The mission is not.</p>
         </div>
-        <div class="declaration-copy" style="margin-top:24px;">
-          <h3 style="font-size:clamp(1.1rem,2.5vw,1.45rem); margin-bottom:10px;">Join The Builders</h3>
-          <p class="network-body" style="font-size:1.05rem; line-height:1.6;">
-            We launched our technical beta in 2026.<br /><br />
-            We are not chasing vanity metrics.<br /><br />
-            We are looking for independent creators, labels, technologists, Bitcoiners, and operators who want to help build a better future for creators.<br /><br />
-            The network is early.<br />
-            The mission is not.
-          </p>
-          <p style="margin-top:12px;">
-            <a href="https://fan.certifyd.me" target="_blank" rel="noreferrer" style="font-weight:700;">Visit Discover</a>
-          </p>
-        </div>
-        <h2 id="built-for" class="who-heading">Who it’s for</h2>
-        <div class="who-grid">
-          <div class="who-card">
-            <h3>Creators</h3>
-            <p>Sell without giving up control.</p>
-          </div>
-          <div class="who-card">
-            <h3>Collaborators</h3>
-            <p>Get paid automatically.</p>
-          </div>
-          <div class="who-card">
-            <h3>Operators</h3>
-            <p>Run payments. Earn from the network.</p>
-          </div>
-        </div>
+        <figure class="card-media raw-panel-media natural-media" aria-label="Certifyd creator distribution promo">
+          <img src="images/certifyd-creators-web3-powered-20260607.png?v=20260607" alt="Certifyd Built for Creators Powered by You promo" loading="lazy" decoding="async" />
+        </figure>
       </div>
     </section>
 
@@ -2633,7 +2631,7 @@ section[id]{
     <section id="early-access" class="wrap">
       <h2>Apply for Early Access</h2>
       <p>
-        Certifyd is opening to creators, musicians, writers, publishers, and node operators.
+        Certifyd is opening to independent creators, labels, technologists, Bitcoiners, and node operators.
       </p>
 
       <div class="card" style="margin-top:20px;">
@@ -2659,7 +2657,10 @@ section[id]{
               <span class="ea-label">Role</span>
               <select class="ea-select" name="role">
                 <option>Musician</option>
+                <option>Artist</option>
                 <option>Producer</option>
+                <option>Publisher</option>
+                <option>Label</option>
                 <option>Video creator</option>
                 <option>Developer</option>
                 <option>Creative team</option>
@@ -2700,32 +2701,32 @@ section[id]{
 
     <!-- Lightboxes -->
     <div id="shot-library" class="lightbox" role="dialog" aria-modal="true" aria-label="Publish your work screenshot">
-      <a class="lightbox-bg" href="#product" aria-label="Close"></a>
-      <a href="#product" class="lightbox-close" aria-label="Close image">×</a>
+      <a class="lightbox-bg" href="#top" aria-label="Close"></a>
+      <a href="#top" class="lightbox-close" aria-label="Close image">×</a>
       <img src="images/screenshots/contentlibrary.png" alt="Content library view for publishing with structured creator metadata" />
     </div>
 
     <div id="shot-royalties" class="lightbox" role="dialog" aria-modal="true" aria-label="Credit collaborators screenshot">
-      <a class="lightbox-bg" href="#product" aria-label="Close"></a>
-      <a href="#product" class="lightbox-close" aria-label="Close image">×</a>
+      <a class="lightbox-bg" href="#top" aria-label="Close"></a>
+      <a href="#top" class="lightbox-close" aria-label="Close image">×</a>
       <img src="images/screenshots/royalties.png" alt="Royalties view showing contributor attribution and split details" />
     </div>
 
     <div id="shot-revenue" class="lightbox" role="dialog" aria-modal="true" aria-label="Route payments screenshot">
-      <a class="lightbox-bg" href="#product" aria-label="Close"></a>
-      <a href="#product" class="lightbox-close" aria-label="Close image">×</a>
+      <a class="lightbox-bg" href="#top" aria-label="Close"></a>
+      <a href="#top" class="lightbox-close" aria-label="Close image">×</a>
       <img src="images/screenshots/revenue.png" alt="Revenue dashboard showing Bitcoin and Lightning payment activity" />
     </div>
 
     <div id="shot-identity" class="lightbox" role="dialog" aria-modal="true" aria-label="Creator identity screenshot">
-      <a class="lightbox-bg" href="#own" aria-label="Close"></a>
-      <a href="#own" class="lightbox-close" aria-label="Close image">×</a>
+      <a class="lightbox-bg" href="#top" aria-label="Close"></a>
+      <a href="#top" class="lightbox-close" aria-label="Close image">×</a>
       <img src="images/screenshots/identity.png" alt="Creator identity panel with verification fingerprint and proof state" />
     </div>
 
     <div id="shot-workspace" class="lightbox" role="dialog" aria-modal="true" aria-label="Creator workspace screenshot">
-      <a class="lightbox-bg" href="#own" aria-label="Close"></a>
-      <a href="#own" class="lightbox-close" aria-label="Close image">×</a>
+      <a class="lightbox-bg" href="#top" aria-label="Close"></a>
+      <a href="#top" class="lightbox-close" aria-label="Close image">×</a>
       <img src="images/screenshots/personallibrary.png" alt="Personal creator workspace for releases, proofs, and publishing" />
     </div>
 
