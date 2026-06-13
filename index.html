@@ -2490,8 +2490,8 @@ section[id]{
           <a href="#live-profile">Live profile</a>
           <a href="#discover">Discover scenes</a>
           <a href="#how">Build</a>
-          <a href="#network">Network</a>
-          <a href="#early-access">Early access</a>
+          <a href="#early-access">Join Network</a>
+          <a href="./network.html">Register Node</a>
         </nav>
 
         <details class="nav-mobile">
@@ -2503,8 +2503,8 @@ section[id]{
             <a href="#live-profile">Live profile</a>
             <a href="#discover">Discover scenes</a>
             <a href="#how">Build</a>
-            <a href="#network">Network</a>
-            <a href="#early-access">Early access</a>
+            <a href="#early-access">Join Network</a>
+            <a href="./network.html">Register Node</a>
           </nav>
         </details>
       </div>
@@ -2632,9 +2632,9 @@ section[id]{
 
     <!-- EARLY ACCESS -->
     <section id="early-access" class="wrap">
-      <h2>Apply for Early Access</h2>
+      <h2>Join the Network</h2>
       <p>
-        Certifyd is opening to independent creators, labels, technologists, Bitcoiners, and node operators.
+        Certifyd is onboarding independent creators, labels, technologists, Bitcoiners, and operators who want to help build the alternative.
       </p>
 
       <div class="card" style="margin-top:20px;">
@@ -2699,6 +2699,10 @@ section[id]{
           </div>
           <div id="early-access-status" class="ea-status" role="status" aria-live="polite"></div>
         </form>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <p>Already operating a Bitcoin / Lightning node?</p>
+        <p style="margin-top:10px;"><a class="btn" href="./network.html">Register Node →</a></p>
       </div>
     </section>
 
@@ -3069,7 +3073,7 @@ section[id]{
         if (q.includes("early access") || q.includes("apply") || q.includes("waitlist")) {
           return {
             matched: true,
-            text: "Use the “Apply for Early Access” form on this page. It submits directly to the Certifyd intake sheet."
+            text: "Use the “Join the Network” form on this page. It submits directly to the Certifyd intake sheet."
           };
         }
 
