@@ -841,6 +841,23 @@ section[id]{
       backdrop-filter:blur(18px);
       -webkit-backdrop-filter:blur(18px);
     }
+    .live-profile-frame::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      z-index:0;
+      pointer-events:none;
+      background:
+        linear-gradient(110deg, rgba(255,255,255,0.03) 8%, rgba(125,198,241,0.14) 18%, rgba(255,255,255,0.03) 33%),
+        radial-gradient(circle at 18% 24%, rgba(255,138,0,0.18), transparent 34%),
+        linear-gradient(160deg, rgba(9,43,68,0.95), rgba(6,32,52,0.96));
+      background-size:220% 100%, 100% 100%, 100% 100%;
+      animation:profileSkeletonSweep 1.8s ease-in-out infinite;
+    }
+    @keyframes profileSkeletonSweep{
+      0%{ background-position:120% 0, 0 0, 0 0; }
+      100%{ background-position:-120% 0, 0 0, 0 0; }
+    }
     .live-profile-open{
       position:absolute;
       top:12px;
@@ -863,6 +880,8 @@ section[id]{
       background:linear-gradient(180deg, #ffb347, #ff9820 58%, var(--certifyd-orange));
     }
     .live-profile-embed{
+      position:relative;
+      z-index:1;
       display:block;
       width:100%;
       height:720px;
@@ -2593,7 +2612,9 @@ section[id]{
             class="live-profile-embed"
             src="https://public.certifyd.me/u/certifyd"
             title="Live Certifyd profile"
-            loading="lazy"
+            loading="eager"
+            width="1200"
+            height="720"
             referrerpolicy="strict-origin-when-cross-origin"
             allowfullscreen
           ></iframe>
