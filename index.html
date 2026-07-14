@@ -104,27 +104,11 @@ section[id]{
       overflow-x:hidden;
       text-rendering:optimizeLegibility;
     }
-    body::before,
     body::after{
       content:"";
       position:fixed;
       inset:-20%;
       pointer-events:none;
-    }
-    body::before{
-      inset:-12%;
-      z-index:0;
-      opacity:0.55;
-      background-image:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420' viewBox='0 0 420 420'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.42' numOctaves='4' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='discrete' tableValues='0 .16 .5 .82 1'/%3E%3CfeFuncG type='discrete' tableValues='0 .16 .5 .82 1'/%3E%3CfeFuncB type='discrete' tableValues='0 .16 .5 .82 1'/%3E%3CfeFuncA type='table' tableValues='0 .36 .66 .9 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='420' height='420' filter='url(%23grain)' opacity='1'/%3E%3C/svg%3E"),
-        radial-gradient(480px 340px at 24% 18%, rgba(0,0,0,0.3), transparent 74%),
-        radial-gradient(520px 360px at 78% 20%, rgba(255,255,255,0.1), transparent 76%),
-        radial-gradient(620px 420px at 70% 76%, rgba(0,0,0,0.24), transparent 78%);
-      background-size:110px 110px, cover, cover, cover;
-      background-color:transparent;
-      mix-blend-mode:multiply;
-      animation:certifyd-tv-static 5200ms steps(8, end) infinite;
-      will-change:transform, background-position, opacity;
     }
     body::after{
       z-index:-1;
@@ -138,7 +122,20 @@ section[id]{
       filter:blur(12px);
       animation:certifyd-ambient-drift 46s ease-in-out infinite alternate;
     }
+    .site-background-video{
+      position:fixed;
+      inset:0;
+      z-index:0;
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      opacity:0.18;
+      filter:saturate(0.82) contrast(1.08) brightness(0.84);
+      mix-blend-mode:luminosity;
+      pointer-events:none;
+    }
 
+    header,
     main,
     footer{
       position:relative;
@@ -150,16 +147,7 @@ section[id]{
       from{ transform:translate3d(-1.5%, -1%, 0) scale(1); }
       to{ transform:translate3d(1.5%, 1%, 0) scale(1.035); }
     }
-    @keyframes certifyd-tv-static{
-      0%{ transform:translate3d(-1.75%, -1.1%, 0); background-position:-70px -45px, 0 0, 0 0, 0 0; opacity:0.72; }
-      20%{ transform:translate3d(-1.05%, -0.66%, 0); background-position:-42px -27px, 0 0, 0 0, 0 0; opacity:0.81; }
-      40%{ transform:translate3d(-0.35%, -0.22%, 0); background-position:-14px -9px, 0 0, 0 0, 0 0; opacity:0.74; }
-      60%{ transform:translate3d(0.35%, 0.22%, 0); background-position:14px 9px, 0 0, 0 0, 0 0; opacity:0.82; }
-      80%{ transform:translate3d(1.05%, 0.66%, 0); background-position:42px 27px, 0 0, 0 0, 0 0; opacity:0.76; }
-      100%{ transform:translate3d(1.75%, 1.1%, 0); background-position:70px 45px, 0 0, 0 0, 0 0; opacity:0.8; }
-    }
     @media (prefers-reduced-motion: reduce){
-      body::before,
       body::after,
       .hero-grid::before{
         animation:none;
@@ -1959,20 +1947,6 @@ section[id]{
           url("images/certifyd-bg.png") center/cover no-repeat,
           var(--bg);
       }
-      body::before{
-        inset:0;
-        z-index:0;
-        opacity:0.17;
-        mix-blend-mode:normal;
-        background-image:
-          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420' viewBox='0 0 420 420'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.22' numOctaves='3' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='discrete' tableValues='0 .2 .58 .86 1'/%3E%3CfeFuncG type='discrete' tableValues='0 .2 .58 .86 1'/%3E%3CfeFuncB type='discrete' tableValues='0 .2 .58 .86 1'/%3E%3CfeFuncA type='table' tableValues='0 .24 .46 .7 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='420' height='420' filter='url(%23grain)' opacity='1'/%3E%3C/svg%3E");
-        background-size:180px 180px;
-        background-position:0 0;
-        background-repeat:repeat;
-        animation:none;
-        transform:none;
-        will-change:auto;
-      }
       body::after{
         opacity:0.74;
         filter:blur(8px);
@@ -2503,6 +2477,7 @@ section[id]{
 
 <body>
   <a class="skip-link" href="#main">Skip to main content</a>
+  <video class="site-background-video" src="images/certifyd-background-ambient.mp4" autoplay muted loop playsinline preload="metadata" aria-hidden="true"></video>
 
   <header class="site-header" role="banner">
     <div class="header-rail">
@@ -2577,7 +2552,6 @@ section[id]{
           <p class="payment-note"><span class="payment-note-icon" aria-hidden="true">₿</span>A fan pays. You receive money directly over Bitcoin Lightning.</p>
           <h3 class="hero-subheader inner-rail">Build The Alternative</h3>
           <div class="feature-panel infra-manifesto" style="margin-top:16px;">
-            <h3 class="distribution-card-title">Build The Alternative</h3>
             <p class="infra-subhead">The internet promised creators independence.</p>
             <p class="infra-subhead">Instead, most creators became dependent on platforms for discovery, distribution, payments, and audience access.</p>
             <p class="infra-subhead">Certifyd is for creators, labels, and communities who believe ownership still matters.</p>
@@ -2627,7 +2601,6 @@ section[id]{
       <div class="feature-panel distribution-manifesto">
         <h2 class="network-headline">Discover creators, scenes, and communities</h2>
         <div class="declaration-copy">
-          <p class="network-body">The Fan PWA is where fans discover creators, scenes, content, and communities.</p>
           <p class="network-body" style="margin-top:10px;">Spotify discovers songs. Certifyd discovers scenes.</p>
           <p class="network-body" style="margin-top:10px;">
             A fan discovers a creator.<br />
