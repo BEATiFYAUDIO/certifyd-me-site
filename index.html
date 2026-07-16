@@ -129,8 +129,8 @@ section[id]{
       width:100%;
       height:100%;
       object-fit:cover;
-      opacity:0.12;
-      filter:saturate(1.08) contrast(0.94) brightness(1.18);
+      opacity:0.18;
+      filter:saturate(1.08) contrast(1.02) brightness(0.82);
       mix-blend-mode:soft-light;
       pointer-events:none;
     }
@@ -2965,15 +2965,6 @@ section[id]{
     // Footer year (null-safe so other scripts still run on static variants)
     const yearEl = document.getElementById("year");
     if (yearEl) yearEl.textContent = String(new Date().getFullYear());
-
-    // Slow ambient background motion.
-    (function () {
-      const backgroundVideo = document.querySelector(".site-background-video");
-      if (!backgroundVideo) return;
-      const setPlaybackRate = () => { backgroundVideo.playbackRate = 0.45; };
-      setPlaybackRate();
-      backgroundVideo.addEventListener("loadedmetadata", setPlaybackRate, { once: true });
-    })();
 
     // Mobile menu auto-close (link click, outside click, Escape)
     (function () {
