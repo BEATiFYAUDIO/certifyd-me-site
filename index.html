@@ -418,7 +418,8 @@ section[id]{
     #own,
     #data,
     .proof-section,
-    #network{
+    #network,
+    #register-node{
       border-left:1px solid rgba(206,235,255,0.22);
       border-right:1px solid rgba(206,235,255,0.22);
       background:linear-gradient(180deg, rgba(10,44,67,0.16), rgba(7,33,52,0.14));
@@ -467,7 +468,8 @@ section[id]{
     #data,
     .proof-section,
     #build,
-    #network{
+    #network,
+    #register-node{
       padding-top:var(--space-section-tight);
       padding-bottom:var(--space-section-tight);
     }
@@ -2323,7 +2325,8 @@ section[id]{
     #own > .feature-panel,
     #data > .feature-panel,
     .proof-section > .feature-panel,
-    #network > .feature-panel{
+    #network > .feature-panel,
+    #register-node > .feature-panel{
       position:relative;
       overflow:hidden;
       padding:clamp(26px, 3vw, 38px) !important;
@@ -2379,7 +2382,8 @@ section[id]{
     #own > .feature-panel h2,
     #data > .feature-panel h2,
     .proof-section > .feature-panel h2,
-    #network > .feature-panel h2{
+    #network > .feature-panel h2,
+    #register-node > .feature-panel h2{
       margin:0 0 16px !important;
       font-size:clamp(1.34rem, 2.15vw, 1.82rem) !important;
       line-height:1.18 !important;
@@ -2395,7 +2399,8 @@ section[id]{
     #own > .feature-panel p,
     #data > .feature-panel p,
     .proof-section > .feature-panel p,
-    #network > .feature-panel p{
+    #network > .feature-panel p,
+    #register-node > .feature-panel p{
       font-size:clamp(1rem, 1.34vw, 1.11rem) !important;
       line-height:1.72 !important;
       font-weight:460 !important;
@@ -2464,6 +2469,124 @@ section[id]{
     #network .declaration-copy{
       max-width:none;
     }
+    .register-node-actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      margin-top:18px;
+    }
+    .awards-spotlight{
+      position:relative;
+      overflow:hidden;
+      margin-top:16px;
+      padding:clamp(22px, 3.2vw, 42px);
+      border-radius:8px;
+      border:1px solid rgba(255,138,0,0.35);
+      background:
+        radial-gradient(520px 260px at 80% 18%, rgba(255,138,0,0.22), transparent 66%),
+        radial-gradient(460px 260px at 10% 0%, rgba(95,159,255,0.20), transparent 68%),
+        linear-gradient(145deg, rgba(7,31,50,0.98), rgba(9,39,62,0.95));
+      box-shadow:
+        0 22px 62px rgba(0,0,0,0.26),
+        inset 0 1px 0 rgba(255,255,255,0.14);
+    }
+    .awards-spotlight::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:linear-gradient(110deg, rgba(255,255,255,0.08), transparent 28%, transparent 72%, rgba(255,138,0,0.08));
+      opacity:0.85;
+    }
+    .awards-spotlight > *{
+      position:relative;
+      z-index:1;
+    }
+    .awards-spotlight-grid{
+      display:grid;
+      grid-template-columns:minmax(0, 1.05fr) minmax(260px, 0.72fr);
+      gap:clamp(22px, 4vw, 56px);
+      align-items:center;
+    }
+    .awards-spotlight h2{
+      margin:0 0 14px !important;
+      max-width:720px;
+      font-size:clamp(3.6rem, 7vw, 6.8rem) !important;
+      line-height:0.94 !important;
+      font-weight:900 !important;
+      letter-spacing:-0.035em;
+      color:#ffc62f !important;
+      background:
+        linear-gradient(112deg, transparent 0%, transparent 32%, rgba(255,255,255,0.96) 42%, rgba(255,246,185,0.92) 47%, transparent 58%, transparent 100%),
+        linear-gradient(180deg, #fff9bf 0%, #ffe15c 15%, #ffc11c 31%, #d98405 48%, #6f3900 58%, #f7ad18 70%, #fff1a0 82%, #b76505 100%);
+      background-size:230% 100%, 100% 100%;
+      background-position:-140% 0, 0 0;
+      -webkit-background-clip:text;
+      background-clip:text;
+      -webkit-text-fill-color:transparent;
+      animation:awards-title-shine 5.8s ease-in-out infinite;
+      text-shadow:
+        0 1px 0 rgba(255,252,202,0.84),
+        0 2px 0 rgba(128,66,0,0.9),
+        0 4px 0 rgba(76,37,0,0.44),
+        0 0 24px rgba(255,194,34,0.42),
+        0 14px 34px rgba(0,0,0,0.46);
+    }
+    @keyframes awards-title-shine{
+      0%, 58%{ background-position:-140% 0, 0 0; }
+      82%, 100%{ background-position:140% 0, 0 0; }
+    }
+    .awards-subline{
+      margin:0 0 22px;
+      color:rgba(234,244,255,0.94);
+      font-size:clamp(1.18rem, 2vw, 1.55rem);
+      line-height:1.35;
+      font-weight:600;
+    }
+    .awards-copy{
+      display:grid;
+      gap:10px;
+      max-width:760px;
+      margin:0 0 20px;
+    }
+    .awards-copy p{
+      margin:0;
+      color:rgba(234,244,255,0.92);
+      font-size:clamp(1rem, 1.44vw, 1.15rem);
+      line-height:1.64;
+    }
+    .awards-visual{
+      position:relative;
+      min-height:clamp(260px, 30vw, 390px);
+      border-radius:8px;
+      overflow:hidden;
+      border:1px solid rgba(255,190,96,0.34);
+      background:#02070d;
+      box-shadow:
+        0 22px 58px rgba(0,0,0,0.42),
+        0 0 42px rgba(255,138,0,0.13);
+    }
+    .awards-visual img{
+      width:100%;
+      height:100%;
+      min-height:inherit;
+      object-fit:cover;
+      object-position:center;
+      filter:saturate(1.04) contrast(1.03);
+    }
+    .awards-actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      align-items:center;
+    }
+    .awards-visual::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(180deg, transparent 54%, rgba(0,0,0,0.34));
+      pointer-events:none;
+    }
     #fan-app .feature-panel{
       background:
         linear-gradient(155deg, rgba(9,41,65,0.95), rgba(6,31,50,0.95)),
@@ -2471,6 +2594,53 @@ section[id]{
     }
     #live-profile .live-profile-intro{
       margin:0 0 14px;
+    }
+    @media (max-width: 760px){
+      .awards-spotlight{
+        margin-top:12px;
+        padding:18px 14px;
+      }
+      .awards-spotlight-grid{
+        grid-template-columns:1fr;
+        gap:18px;
+      }
+      .awards-spotlight h2{
+        font-size:clamp(3rem, 17vw, 4.3rem) !important;
+        line-height:1.02 !important;
+        letter-spacing:-0.025em;
+        margin-bottom:12px !important;
+      }
+      .awards-subline{
+        font-size:1rem;
+        line-height:1.45;
+        margin-bottom:16px;
+      }
+      .awards-copy{
+        gap:8px;
+        margin-bottom:16px;
+      }
+      .awards-copy p{
+        font-size:0.96rem;
+        line-height:1.54;
+      }
+      .awards-spotlight .btn{
+        width:100%;
+        justify-content:center;
+        min-height:48px;
+        padding:12px 14px;
+      }
+      .awards-actions{
+        display:grid;
+        grid-template-columns:1fr;
+        gap:10px;
+      }
+      .awards-visual{
+        min-height:240px;
+        order:-1;
+      }
+      .awards-visual img{
+        object-position:center 58%;
+      }
     }
   </style>
 </head>
@@ -2524,11 +2694,10 @@ section[id]{
           <p class="hero-recommendation">For people building something worth owning. Creator profiles, fan discovery, publishing, and direct-to-fan commerce.</p>
 
           <div class="hero-actions hero-cta">
-            <a class="btn primary" href="#early-access">Join Network</a>
             <a class="btn" href="https://fan.certifyd.me" target="_blank" rel="noreferrer">Discover</a>
+            <a class="btn primary" href="#early-access">Join Network</a>
           </div>
-          <h3 class="hero-subheader">Build direct relationships with fans, collaborators, and communities on infrastructure you control.</h3>
-          <div id="build" class="feature-panel flow-inline" style="margin-top:18px;">
+          <div id="build" class="feature-panel flow-inline" style="margin-top:14px;">
             <h2 class="flow-divider">
               <span class="flow-line"><span>CREATE</span><span class="flow-arrow" aria-hidden="true">→</span><span>PUBLISH</span></span>
               <span class="flow-line"><span>SELL</span><span class="flow-arrow" aria-hidden="true">→</span><span>GET PAID</span></span>
@@ -2592,25 +2761,6 @@ section[id]{
             referrerpolicy="strict-origin-when-cross-origin"
             allowfullscreen
           ></iframe>
-        </div>
-      </div>
-    </section>
-
-    <!-- DISCOVER -->
-    <section id="discover" class="wrap declaration-section network-section">
-      <div class="feature-panel distribution-manifesto">
-        <h2 class="network-headline">Discover creators, scenes, and communities</h2>
-        <div class="declaration-copy">
-          <p class="network-body" style="margin-top:10px;">Spotify discovers songs. Certifyd discovers scenes.</p>
-          <p class="network-body" style="margin-top:10px;">
-            A fan discovers a creator.<br />
-            A creator discovers a collaborator.<br />
-            A label discovers an artist.<br />
-            A community discovers a movement.
-          </p>
-          <p class="network-body" style="margin-top:10px;">Discovery should come from labels, creators, communities, local scenes, and trusted relationships — not only centralized content services.</p>
-          <p class="network-body" style="margin-top:10px;">The future is not just bigger algorithms. It is stronger relationships.</p>
-          <p class="network-body" style="margin-top:14px;"><a class="btn primary" href="https://fan.certifyd.me" target="_blank" rel="noreferrer">Discover</a></p>
         </div>
       </div>
     </section>
@@ -2701,10 +2851,42 @@ section[id]{
           <div id="early-access-status" class="ea-status" role="status" aria-live="polite"></div>
         </form>
       </div>
-      <div class="card" style="margin-top:16px;">
-        <p>Already running Bitcoin / Lightning infrastructure?</p>
-        <p style="margin-top:10px;"><a class="btn" href="./network.html">Register Node →</a></p>
+    </section>
+
+    <!-- REGISTER NODE -->
+    <section id="register-node" class="wrap">
+      <div class="feature-panel distribution-manifesto register-node-panel">
+        <p class="live-profile-eyebrow">Register Node</p>
+        <h2>Bring your creator node into the Certifyd Network.</h2>
+        <p class="network-body">Run infrastructure, publish creator profiles, support discovery, and help independent creators stay reachable without platform lock-in.</p>
+        <div class="register-node-actions">
+          <a class="btn primary" href="./network.html">Register Node</a>
+          <a class="btn" href="#network">Learn about the network</a>
+        </div>
       </div>
+    </section>
+
+    <section class="wrap">
+      <section class="awards-spotlight" aria-labelledby="awards-heading">
+        <div class="awards-spotlight-grid">
+          <div>
+            <h2 id="awards-heading">Certifyd<br />Awards</h2>
+            <p class="awards-subline">Creators. Work. Credits. Culture.</p>
+            <div class="awards-copy">
+              <p>Every creator hopes their work is remembered.</p>
+              <p>The Certifyd Awards celebrate outstanding creators, remarkable content, and the people who help bring it to life—from artists and authors to producers, publishers, engineers, platforms, and creator innovators.</p>
+              <p>A two-day annual celebration of Creative Excellence and Creator Innovation.</p>
+            </div>
+            <div class="awards-actions">
+              <a class="btn primary" href="https://awards.certifyd.me" target="_blank" rel="noreferrer">Explore the Awards</a>
+              <a class="btn secondary" href="https://awards.certifyd.me/nominate" target="_blank" rel="noreferrer">Submit a Nomination</a>
+            </div>
+          </div>
+          <figure class="awards-visual" aria-label="Certifyd Awards trophy">
+            <img src="images/awards/music-note-artist-award.webp" alt="Certifyd Awards gold music note trophy" loading="lazy" decoding="async" />
+          </figure>
+        </div>
+      </section>
     </section>
 
     <!-- Lightboxes -->
