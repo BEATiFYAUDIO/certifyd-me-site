@@ -2966,6 +2966,15 @@ section[id]{
     const yearEl = document.getElementById("year");
     if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
+    // Slow ambient background motion.
+    (function () {
+      const backgroundVideo = document.querySelector(".site-background-video");
+      if (!backgroundVideo) return;
+      const setPlaybackRate = () => { backgroundVideo.playbackRate = 0.45; };
+      setPlaybackRate();
+      backgroundVideo.addEventListener("loadedmetadata", setPlaybackRate, { once: true });
+    })();
+
     // Mobile menu auto-close (link click, outside click, Escape)
     (function () {
       const menu = document.querySelector(".nav-mobile");
