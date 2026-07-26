@@ -12,7 +12,8 @@
     "test:dashboard": "node --test test/content-dashboard.test.js",
     "build:blog": "node scripts/build-blog.js",
     "test:blog": "node --test test/blog-build.test.js",
-    "test": "npm run test:blog && npm run test:dashboard"
+    "test": "npm run test:blog && npm run test:dashboard && npm run test:generation",
+    "test:generation": "node --test test/content-generation-provider.test.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.10.0",

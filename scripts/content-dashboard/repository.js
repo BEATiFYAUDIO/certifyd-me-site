@@ -33,6 +33,8 @@ export class ContentRunRepository {
     const claimLedger = await this.readJson(base, 'claim-ledgers/v2.json', null) || await this.readJson(base, 'claim-ledgers/v1.json', null) || await this.readJson(base, 'claim-ledger.json', {});
     const lifecycle = await this.readJson(base, 'lifecycle.json', {});
     const modelRequests = await this.readModelRequests(base);
+    const modelProvider = modelRequests[0]?.provider || 'deterministic';
+    const deterministicFallback = modelProvider === 'deterministic' || modelRequests[0]?.deterministicFallbackUsed;
     const claims = Array.isArray(claimLedger.claims) ? claimLedger.claims : [];
     const blockingClaims = claims.filter((claim) => ['BLOCKED', 'PROHIBITED', 'UNRESOLVED'].includes(claim.status));
     return {
@@ -46,8 +48,8 @@ export class ContentRunRepository {
       audience: intake.targetAudience || '',
       topic: intake.primaryTopic || '',
       contentType: intake.contentType || '',
-      modelProvider: modelRequests[0]?.provider || 'deterministic',
-      modelMode: modelRequests[0]?.deterministicFallbackUsed ? 'Deterministic fallback' : (modelRequests[0]?.provider ? 'Live model' : 'Deterministic fallback'),
+      modelProvider,
+      modelMode: deterministicFallback ? 'Deterministic fallback' : 'Live model',
       unresolvedIssueCount: blockingClaims.length,
       claimCount: claims.length,
       reviewStatus: review.reviewStatus || 'PENDING_FOUNDER_REVIEW',

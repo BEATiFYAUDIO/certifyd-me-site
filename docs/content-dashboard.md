@@ -92,6 +92,50 @@ Current adapters:
 
 The GitHub adapter uses a GitHub App, creates a draft branch and opens a draft pull request. It does not merge, force-push, deploy directly or use a personal access token.
 
+## Local AI Generation
+
+The production blog-writing provider is local Ollama running Qwen 3. The deterministic generator remains available as the explicit offline/test fallback.
+
+Install and verify the model on the machine running the dashboard:
+
+```bash
+ollama pull qwen3:8b
+ollama run qwen3:8b
+```
+
+Dashboard environment:
+
+```bash
+CONTENT_MODEL_PROVIDER=ollama
+OLLAMA_ENABLED=true
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+OLLAMA_CONTENT_MODEL=qwen3:8b
+OLLAMA_REQUEST_TIMEOUT_MS=180000
+OLLAMA_MAX_OUTPUT_TOKENS=5000
+OLLAMA_TEMPERATURE=0.35
+OLLAMA_CONTEXT_LIMIT=24000
+OLLAMA_THINK=false
+OLLAMA_MAX_CONCURRENT_GENERATIONS=1
+```
+
+Operational rules:
+
+- Ollama is called only from the Node dashboard server. Browser code must never call `:11434` directly.
+- `OLLAMA_BASE_URL` must be localhost or a private-network origin. Do not expose Ollama through Cloudflare.
+- Generation requires `content.article.create`; publishing remains a separate founder/PR workflow.
+- Qwen receives targeted approved Brain context, article intake fields and source IDs. It must not receive secrets, tokens, GitHub keys, Cloudflare keys or full private logs.
+- Qwen output is saved as `status: "draft"` and `PENDING_FOUNDER_REVIEW`. The model cannot approve, publish, create GitHub branches, merge PRs or set public status.
+- Claim validation rejects unknown Brain source IDs and blocks model-supplied publication state. Unsupported claims and risky wording remain warnings until founder review.
+- One active local generation is allowed per user. The default global concurrency is one generation at a time.
+- The Local AI health endpoint is protected at `/app/content/model-health` and returns only enabled/reachable/model/modelInstalled status.
+
+Troubleshooting:
+
+- `modelInstalled: false`: run `ollama pull qwen3:8b`.
+- `reachable: false` or connection errors: start Ollama locally and confirm `OLLAMA_BASE_URL`.
+- timeout errors: increase `OLLAMA_REQUEST_TIMEOUT_MS` only if the machine is slow; do not add retries that can create duplicate drafts.
+- busy errors: wait for the active generation to finish or cancel it in the browser.
+
 ## Current Run
 
 The dashboard is designed to show the existing Content Engine run:

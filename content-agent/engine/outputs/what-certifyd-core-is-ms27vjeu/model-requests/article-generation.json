@@ -1,0 +1,26 @@
+{
+  "provider": "deterministic",
+  "model": "template-generated",
+  "stage": "article-generation",
+  "promptTemplateVersion": "dashboard-ollama-qwen-v1",
+  "inputHashes": {
+    "input": "97396c6eba83916ed653aa41de290ae2a014d04846ad25ab0fe9ad30fb584092",
+    "groundedContext": "9aed1fec22f19b1964c69aa4c3e8168c98bc91109ecc7ae4f32c047e7c360f03"
+  },
+  "knowledgeEvidenceIds": [
+    "brain:facts/approved-public-claims",
+    "brain:founder-decisions",
+    "brain:capabilities/awards",
+    "brain:capabilities/catalog-management",
+    "brain:capabilities/partner-integrations",
+    "brain:capabilities/access",
+    "brain:capabilities/analytics",
+    "brain:capabilities/discovery",
+    "brain:capabilities/fan",
+    "brain:capabilities/identity"
+  ],
+  "timestamp": "2026-07-26T19:54:36.678Z",
+  "timeoutMs": 180000,
+  "responseStatus": "SUCCESS",
+  "deterministicFallbackUsed": true
+}

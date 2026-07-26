@@ -1,0 +1,20 @@
+{
+  "claims": [
+    {
+      "claimId": "claim-1",
+      "text": "Certifyd article draft about What Certifyd Core Is.",
+      "sourceIds": [
+        "brain:facts/approved-public-claims",
+        "brain:founder-decisions",
+        "brain:capabilities/awards",
+        "brain:capabilities/catalog-management"
+      ],
+      "confidence": "needs-review",
+      "status": "NEEDS_REVIEW",
+      "reviewerNote": "Generated draft claim. Founder review required before publishing."
+    }
+  ],
+  "warnings": [
+    "Template-generated draft requiring editorial review."
+  ]
+}

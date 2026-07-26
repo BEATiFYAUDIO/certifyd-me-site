@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import { validateRunId, validateVersion } from './security.js';
 import { ContentRunRepository } from './repository.js';
 import { createPublisher } from './publisher.js';
+import { buildGroundedContext, createGenerationProvider, normalizeProviderName, persistGeneratedArticleRun } from './generation-provider.js';
 
 const execFileAsync = promisify(execFile);
 const RESULT_LIMIT = 12000;
@@ -40,9 +41,53 @@ export class ContentDashboardActions {
     this.publisher = createPublisher(config, this.runs);
   }
 
+  async generateDraft({ actor, form, signal }) {
+    const providerName = normalizeProviderName(form.get('provider') || 'deterministic');
+    const input = {
+      actorUserId: actor.id,
+      actorEmail: actor.email,
+      topic: cleanString(form.get('topic') || form.get('workingTitle'), 160),
+      audience: cleanString(form.get('audience') || form.get('targetAudience'), 160),
+      objective: cleanString(form.get('objective') || form.get('businessObjective'), 360),
+      writingStyle: cleanString(form.get('writingStyle'), 240),
+      sourceRestrictions: cleanString(form.get('sourceRestrictions'), 800),
+      contentType: cleanString(form.get('contentType') || 'article', 80),
+      channel: cleanString(form.get('channel') || 'Blog', 80),
+    };
+    if (!input.topic || !input.audience || !input.objective) {
+      throw Object.assign(new Error('Topic, audience and objective are required.'), { statusCode: 400 });
+    }
+    const provider = createGenerationProvider(this.config, { provider: providerName });
+    const groundedContext = await buildGroundedContext(this.config, input);
+    try {
+      const article = await provider.generateArticle(input, groundedContext, signal);
+      const result = await persistGeneratedArticleRun(this.config, article, input, groundedContext, provider);
+      await this.audit.append({ action: 'article_generation', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId: result.runId, result: 'SUCCESS', note: `${provider.providerName}:${provider.modelName}` });
+      return result;
+    } catch (error) {
+      await this.audit.append({ action: 'article_generation', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, result: 'FAILED', note: `${provider.providerName}:${safeError(error)}` });
+      throw error;
+    }
+  }
+
   async generateDeterministic({ actor, inputPath = 'engine/fixtures/core-article-request.json' }) {
     this.assertSafeRelativeInput(inputPath);
-    return this.runEngine(actor, 'article_generation', ['content:generate:model', '--', '--input', inputPath, '--deterministic-fallback']);
+    return this.runEngine(actor, 'article_generation_legacy', ['content:generate:model', '--', '--input', inputPath, '--deterministic-fallback']);
+  }
+
+  async generationHealth({ provider = 'ollama' } = {}) {
+    const providerName = normalizeProviderName(provider);
+    const generator = createGenerationProvider(this.config, { provider: providerName });
+    try {
+      return await generator.healthCheck();
+    } catch {
+      return {
+        enabled: providerName === 'deterministic' || Boolean(this.config.ollama?.enabled),
+        reachable: false,
+        model: generator.modelName || providerName,
+        modelInstalled: false,
+      };
+    }
   }
 
   async startReview({ actor, runId }) {
@@ -117,4 +162,12 @@ export class ContentDashboardActions {
 
 function cryptoRandomId() {
   return `req-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+}
+
+function cleanString(value, maxLength) {
+  return String(value || '').replace(/[\u0000-\u001f]+/g, ' ').trim().slice(0, maxLength);
+}
+
+function safeError(error) {
+  return String(error?.message || error || 'Generation failed.').replace(/sk-[a-zA-Z0-9_-]+/g, '[redacted]').slice(0, 600);
 }

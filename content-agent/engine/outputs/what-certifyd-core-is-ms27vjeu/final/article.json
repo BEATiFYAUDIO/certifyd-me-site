@@ -1,0 +1,31 @@
+{
+  "title": "What Certifyd Core Is",
+  "slug": "what-certifyd-core-is",
+  "excerpt": "A draft Certifyd article about What Certifyd Core Is.",
+  "author": "Certifyd",
+  "tags": [
+    "Certifyd",
+    "creator ownership"
+  ],
+  "seoTitle": "What Certifyd Core Is | Certifyd",
+  "seoDescription": "A draft Certifyd article about What Certifyd Core Is.",
+  "bodyMarkdown": "# What Certifyd Core Is\n\n> Template-generated draft. Founder review is required before publishing.\n\nThis draft is for Creators, partners and investors.\n\nObjective: Explain Certifyd Core without overstating current capabilities.\n\n## Grounded context\n\n- brain:facts/approved-public-claims: # Approved Public Claims\n\n## Product Hierarchy\n\n### Certifyd\n\nThe overall brand and ecosystem for creator publishing, discovery, ownership, direct commerce, profiles, network participation, and recognition surfaces.\n\n- **Live/publicly demonstrated:** The public website, Join Network path, Register Node page, Certifyd Fan link, Certifyd Awards link, and a live public Certifyd profile link are present in the source mat\n- brain:capabilities/awards: # Awards\n\n## Definition\n\nAwards is the recognition capability and public product surface for creators, works, partners, and infrastructure activity. Nominations, verification, scoring, fan participation, voting, payments, rewards, Network data, and proof-backed ranking are separate capabilities.\n\n## Why It Exists\n\nAwards exists to recognize creative, cultural, technical, and ecosystem contribution while connecting re\n- brain:capabilities/catalog-management: # Catalog Management\n\n## Definition\n\nCatalog management is the capability for organizing work, release, profile, and metadata records. It is separate from media hosting, rights administration, royalties, analytics, and discovery.\n\n## Why It Exists\n\nCatalog management exists so creators can maintain structured context around works and releases that can appear across profiles, Fan, Awards, commerce, and partner surface\n- brain:capabilities/partner-integrations: # Partner Integrations\n\n## Definition\n\nPartner integrations are relationships or technical connections with creators, operators, businesses, developers, agencies, labels, institutions, or service providers that extend Certifyd capabilities.\n\n## Why It Exists\n\nPartner integrations exist so Certifyd can support more creators and commerce use cases without every function being operated centrally.\n\n## Architectural Role\n\n\n## Draft direction\n\nUse approved Certifyd Brain records to explain the topic plainly. Distinguish live capabilities from planned capabilities, avoid legal or financial guarantees, and keep factual claims tied to source material.",
+  "claims": [
+    {
+      "text": "Certifyd article draft about What Certifyd Core Is.",
+      "sourceIds": [
+        "brain:facts/approved-public-claims",
+        "brain:founder-decisions",
+        "brain:capabilities/awards",
+        "brain:capabilities/catalog-management"
+      ],
+      "confidence": "needs-review"
+    }
+  ],
+  "warnings": [
+    "Template-generated draft requiring editorial review."
+  ],
+  "status": "draft",
+  "version": "v1",
+  "canonicalUrl": "https://certifyd.me/blog/what-certifyd-core-is/"
+}

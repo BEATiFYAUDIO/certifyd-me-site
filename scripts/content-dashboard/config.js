@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { getDefaultOllamaConfig, normalizeProviderName } from './generation-provider.js';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const defaultAgentRoot = path.resolve(siteRoot, '../contentbox/content-agent');
@@ -67,6 +68,8 @@ export const CONTENT_PERMISSIONS = {
 
 export function getDashboardConfig(env = process.env) {
   const roles = parseRoleConfig(env.CONTENT_DASHBOARD_ALLOWED_ROLES || '');
+  const modelProvider = normalizeProviderName(env.CONTENT_MODEL_PROVIDER || env.CONTENT_DASHBOARD_GENERATION_PROVIDER || 'deterministic');
+  const ollama = getDefaultOllamaConfig(env);
   return {
     siteRoot,
     enabled: env.CONTENT_DASHBOARD_ENABLED === 'true',
@@ -94,8 +97,9 @@ export function getDashboardConfig(env = process.env) {
     },
     agentRoot: path.resolve(env.CONTENT_AGENT_ROOT || defaultAgentRoot),
     outputDir: path.resolve(env.CONTENT_AGENT_OUTPUT_DIR || path.join(env.CONTENT_AGENT_ROOT || defaultAgentRoot, 'engine/outputs')),
-    modelProvider: env.CONTENT_MODEL_PROVIDER || 'not configured',
-    modelConfigured: Boolean(env.CONTENT_MODEL_PROVIDER && (env.CONTENT_MODEL_PROVIDER === 'deterministic' || env.CONTENT_MODEL_API_KEY)),
+    modelProvider,
+    modelConfigured: modelProvider === 'deterministic' || (modelProvider === 'ollama' && ollama.enabled),
+    ollama,
     externalResearchProvider: env.CONTENT_RESEARCH_PROVIDER || 'fixture',
     founderEmails: parseList(env.CONTENT_DASHBOARD_FOUNDER_EMAILS),
     founderUserIds: parseList(env.CONTENT_DASHBOARD_FOUNDER_USER_IDS),
