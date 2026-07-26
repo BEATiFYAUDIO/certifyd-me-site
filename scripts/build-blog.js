@@ -352,6 +352,7 @@ Sitemap: ${BASE_URL}/sitemap.xml
 }
 
 async function writeFeed(articles) {
+  const lastBuildDate = articles[0]?.updated || articles[0]?.date || new Date('2026-01-01T00:00:00Z');
   const items = articles.map((article) => `    <item>
       <title>${escapeXml(article.title)}</title>
       <link>${escapeXml(articleUrl(article))}</link>
@@ -367,7 +368,7 @@ async function writeFeed(articles) {
     <link>${BASE_URL}/blog/</link>
     <description>Articles from Certifyd on creator-owned publishing, attribution, discovery and direct commerce.</description>
     <language>en</language>
-    <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
+    <lastBuildDate>${lastBuildDate.toUTCString()}</lastBuildDate>
 ${items}
   </channel>
 </rss>
