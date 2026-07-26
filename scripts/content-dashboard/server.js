@@ -202,7 +202,8 @@ async function getUser(req, ctx) {
 
 async function handleAction(req, res, url, ctx) {
   const abortController = new AbortController();
-  req.on('close', () => {
+  req.on('aborted', () => abortController.abort());
+  res.on('close', () => {
     if (!res.writableEnded) abortController.abort();
   });
   const form = await readForm(req);
@@ -233,9 +234,11 @@ async function handlePage(req, res, url, ctx) {
   if (pathName === '/app/content' || pathName === '/app/content/') { allow('content.dashboard.view'); return sendHtml(res, await renderOverview(ctx, csrf, url)); }
   if (pathName === '/app/content/articles' || pathName === '/app/content/blog-engine') { allow('content.article.view'); return sendHtml(res, await renderArticles(ctx, url)); }
   if (pathName === '/app/content/model-health') { allow('content.article.create'); return sendJson(res, await ctx.actions.generationHealth({ provider: 'ollama' })); }
-  if (pathName === '/app/content/brain') { allow('brain.read'); return sendHtml(res, await renderBrain(ctx)); }
+  if (pathName === '/app/content/brain') { allow('brain.read'); return sendHtml(res, await renderBrain(ctx, url)); }
   if (pathName === '/app/content/topics') { allow('content.article.view'); return redirect(res, '/app/content/articles?view=ideas'); }
   if (pathName === '/app/content/publishing') { allow('content.publishing.view'); return redirect(res, '/app/content/articles?view=approved'); }
+  if (pathName === '/app/content/review') { allow('content.article.review'); return redirect(res, '/app/content/articles?view=review'); }
+  if (pathName === '/app/content/knowledge-review') { allow('brain.read'); return redirect(res, '/app/content/brain?view=suggestions'); }
   if (pathName === '/app/content/distribution') { allow('content.distribution.view'); return sendHtml(res, await renderDistribution(ctx)); }
   if (pathName === '/app/content/analytics') { allow('content.analytics.view'); return redirect(res, '/app/content/settings#advanced-diagnostics'); }
   if (pathName === '/app/content/settings') { allow('content.settings.manage'); return sendHtml(res, renderSettings(ctx)); }
@@ -248,69 +251,76 @@ async function handlePage(req, res, url, ctx) {
   return sendStatus(res, 404, 'Not found');
 }
 
-async function renderOverview(ctx, csrf, url) {
+async function renderOverview(ctx, csrf) {
   const runs = await ctx.runRepo.listRuns();
-  const selectedCategory = String(url.searchParams.get('category') || 'All');
-  const opportunities = trendingOpportunities(selectedCategory);
-  const drafts = runs.filter((run) => ['DRAFT', 'GENERATED', 'PENDING_FOUNDER_REVIEW'].includes(run.status)).slice(0, 6);
-  const published = runs.filter((run) => run.status === 'PUBLISHED').slice(0, 5);
+  const drafts = runs.filter((run) => ['DRAFT', 'GENERATED'].includes(run.status));
+  const inReview = runs.filter((run) => run.status === 'PENDING_FOUNDER_REVIEW');
+  const published = runs.filter((run) => run.status === 'PUBLISHED').slice(0, 4);
+  const needsAttention = runs.filter((run) => articleMatchesView(run, 'attention'));
+  const recent = runs
+    .slice()
+    .sort((a, b) => String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || '')))
+    .slice(0, 5);
   const canCreate = ctx.permissions.includes('content.article.create');
-  const canWriteBrain = ctx.permissions.includes('brain.write');
-  const promptExamples = [
-    'Compare Certifyd to Spotify',
-    'Explain creator ownership',
-    'Respond to this article',
-    'Write about local AI',
-    'Turn this document into a blog article',
-  ];
-  const body = `<section class="editorial-prompt panel">
-    <p class="eyebrow">Editorial workspace</p>
-    <h1>What should Certifyd write about?</h1>
-    <p>Ask Qwen for a grounded article draft. The Blog Engine handles Brain context, approved research settings, draft creation and founder review.</p>
-    ${canCreate ? `<form class="prompt-form" method="post" action="/app/content/actions/generate">
-      <input type="hidden" name="_csrf" value="${escapeHtml(csrf)}">
-      <input type="hidden" name="provider" value="ollama">
-      <input type="hidden" name="contentType" value="article">
-      <input type="hidden" name="audience" value="Creators, partners and investors">
-      <input type="hidden" name="objective" value="Create a grounded Certifyd article using approved Brain context. Keep current capabilities distinct from planned capabilities.">
-      <label class="sr-only" for="qwen-topic">Article prompt</label>
-      <textarea id="qwen-topic" class="prompt-input" name="topic" required maxlength="300" placeholder="Tell Qwen what to write. Paste a topic, angle, document notes or article response request."></textarea>
-      <div class="actions"><button class="primary">Ask Qwen</button><a class="ghost" href="/app/content/model-health">Check Qwen</a></div>
-    </form>
-    <div class="example-chips" aria-label="Prompt examples">${promptExamples.map((example) => quickGenerateForm({ csrf, label: example, topic: example })).join('')}</div>` : '<p class="notice">You can review articles, but this role cannot generate new drafts.</p>'}
+  const statusText = ctx.config.ollama.enabled ? `Qwen ready: ${ctx.config.ollama.model}` : 'Qwen not configured';
+  const body = `<section class="mission-head">
+    <p class="eyebrow">Dashboard</p>
+    <h1>What needs attention?</h1>
+    <p>Compact status for article generation, review, Brain suggestions and publishing readiness.</p>
   </section>
 
-  <section class="workspace-section" aria-labelledby="trending-title">
-    <div class="section-head">
-      <div><p class="eyebrow">Trending Opportunities</p><h2 id="trending-title">What Qwen should watch.</h2></div>
-      <div class="tabs compact"><a class="tab ${selectedCategory === 'All' ? 'active' : ''}" href="/app/content">All</a>${TRENDING_CATEGORIES.map((category) => `<a class="tab ${category === selectedCategory ? 'active' : ''}" href="/app/content?category=${encodeURIComponent(category)}">${escapeHtml(category)}</a>`).join('')}</div>
+  <section class="editorial-prompt panel compact-prompt">
+    <div>
+      <p class="eyebrow">Ask Qwen</p>
+      <h2>What should Certifyd write about?</h2>
     </div>
-    <div class="opportunity-grid">${opportunities.map((item) => opportunityCard(item, csrf, canCreate)).join('')}</div>
+    ${canCreate ? qwenPromptForm({ csrf, compact: true }) : '<p class="notice">You can review content, but this role cannot generate new drafts.</p>'}
   </section>
 
-  <section class="workspace-section panel" aria-labelledby="drafts-title">
-    <div class="section-head"><div><p class="eyebrow">Drafts Awaiting Review</p><h2 id="drafts-title">What needs a founder decision.</h2></div><a class="ghost" href="/app/content/articles?view=review">Open review queue</a></div>
-    ${drafts.length ? `<div class="review-list">${drafts.map((run) => draftRow(run, ctx.permissions)).join('')}</div>` : '<p class="empty">No generated drafts are waiting for review yet.</p>'}
+  <section class="attention-grid" aria-label="Attention summary">
+    ${summaryCard('Trending opportunities', TRENDING_OPPORTUNITIES.length, 'Blog Engine Ideas', '/app/content/articles?view=ideas')}
+    ${summaryCard('Drafts', drafts.length, 'Open drafts', '/app/content/articles?view=drafts')}
+    ${summaryCard('In review', inReview.length, 'Review queue', '/app/content/articles?view=review')}
+    ${summaryCard('Brain suggestions', KNOWLEDGE_SUGGESTIONS.length, 'Review Brain', '/app/content/brain?view=suggestions')}
+    ${summaryCard('Needs attention', needsAttention.length, 'Distribution status', '/app/content/distribution?view=attention')}
   </section>
 
-  <section class="workspace-section panel" aria-labelledby="knowledge-title">
-    <div class="section-head"><div><p class="eyebrow">Knowledge Suggestions</p><h2 id="knowledge-title">What the Brain may need next.</h2></div><a class="ghost" href="/app/content/brain">Open Brain</a></div>
-    <p>Qwen can suggest Brain changes, but it cannot update approved knowledge automatically.</p>
-    <div class="review-list">${KNOWLEDGE_SUGGESTIONS.map((suggestion) => knowledgeSuggestionRow(suggestion, canWriteBrain)).join('')}</div>
+  <section class="workspace-section grid dashboard-grid">
+    ${card('Recent Activity', recent.length ? `<div class="review-list compact-list">${recent.map((run) => compactRunRow(run)).join('')}</div>` : '<p>No recent activity yet.</p>')}
+    ${card('Recently Published', published.length ? `<div class="review-list compact-list">${published.map((run) => publishedRow(run)).join('')}</div>` : '<p>No published articles yet.</p>')}
   </section>
 
-  <section class="workspace-section grid">
-    ${card('Recently Published', published.length ? `<div class="review-list">${published.map((run) => publishedRow(run)).join('')}</div>` : '<p>No published articles yet.</p>')}
-    ${card('Article Management', `<p>Markdown remains the canonical source. Use these queues to create, edit, preview, publish, unpublish, archive, delete drafts and view live articles.</p><div class="management-grid">
-      <a class="ghost" href="/app/content/articles#create-with-qwen">Create</a>
-      <a class="ghost" href="/app/content/articles?view=drafts">Edit drafts</a>
-      <a class="ghost" href="/app/content/articles?view=drafts">Preview</a>
-      <a class="ghost" href="/app/content/articles?view=approved">Publish</a>
-      <a class="ghost" href="/app/content/articles?view=published">View live</a>
-      <a class="ghost" href="/app/content/articles?view=archived">Archive</a>
-    </div>`)}
+  <section class="status-strip panel" aria-label="System status">
+    <span>${escapeHtml(statusText)}</span>
+    <span>Brain: approved knowledge source</span>
+    <span>Publishing: ${escapeHtml(ctx.config.githubPublishing.enabled ? 'draft PRs enabled' : 'disabled')}</span>
   </section>`;
   return layout({ title: 'Dashboard', user: ctx.user, permissions: ctx.permissions, active: 'Dashboard', body });
+}
+
+function summaryCard(title, count, label, href) {
+  return `<a class="summary-card" href="${escapeHtml(href)}"><span>${escapeHtml(title)}</span><strong>${escapeHtml(count)}</strong><em>${escapeHtml(label)} →</em></a>`;
+}
+
+function compactRunRow(run) {
+  return `<article class="review-item compact-row"><div><h3>${escapeHtml(run.title || 'Untitled article')}</h3><p>${statusPill(run.status)} <span class="muted">${escapeHtml(formatDashboardDate(run.updatedAt || run.createdAt))}</span></p></div><a class="ghost" href="/app/content/articles/${escapeHtml(run.runId)}">Open</a></article>`;
+}
+
+function qwenPromptForm({ csrf, compact = false, advanced = false } = {}) {
+  const promptId = compact ? 'dashboard-qwen-topic' : 'blog-qwen-topic';
+  const body = `<form class="prompt-form ${compact ? 'prompt-form-compact' : ''}" method="post" action="/app/content/actions/generate" data-generating-form data-primary-generation-form>
+    <input type="hidden" name="_csrf" value="${escapeHtml(csrf)}">
+    <input type="hidden" name="provider" value="ollama">
+    ${advanced ? '' : '<input type="hidden" name="contentType" value="article">'}
+    <input type="hidden" name="audience" value="Creators, partners and investors">
+    <input type="hidden" name="objective" value="Create a grounded Certifyd article using approved Brain context. Keep current capabilities distinct from planned capabilities.">
+    <label class="sr-only" for="${promptId}">Article prompt</label>
+    <textarea id="${promptId}" class="prompt-input" name="topic" required maxlength="300" placeholder="Tell Qwen what to write. Paste a topic, angle, document notes or article response request."></textarea>
+    ${advanced ? `<details><summary>Advanced options</summary><label>Working title<input name="workingTitle" maxlength="160"></label><label>Article type<select name="contentType"><option value="article">Article</option><option value="brief">Brief</option><option value="explainer">Explainer</option></select></label><label>Style<input name="writingStyle" maxlength="240" value="Plain, factual, investor-safe Certifyd editorial"></label><label>Source restrictions<textarea name="sourceRestrictions" maxlength="800">Use Certifyd Brain and approved public claims only. Distinguish live features from planned capabilities.</textarea></label><label><input type="checkbox" name="externalResearchAllowed" value="true"> Approved external research allowed when configured</label></details>` : ''}
+    <div class="generation-progress" role="status" aria-live="polite" hidden><span>Qwen is generating. This can take about one to two minutes.</span><i></i></div>
+    <div class="actions"><button class="primary" type="submit">Ask Qwen</button><a class="ghost" href="/app/content/model-health">Check Qwen</a></div>
+  </form>`;
+  return compact ? `${body}<div class="example-chips" aria-label="Prompt examples">${['Compare Certifyd to Spotify', 'Explain creator ownership', 'Respond to this article', 'Write about local AI', 'Turn this document into a blog article'].map((example) => quickGenerateForm({ csrf, label: example, topic: example })).join('')}</div>` : body;
 }
 
 function trendingOpportunities(category) {
@@ -337,7 +347,7 @@ function brainCoveragePill(value) {
 }
 
 function quickGenerateForm({ csrf, label, topic, className = 'example-chip' }) {
-  return `<form method="post" action="/app/content/actions/generate">
+  return `<form method="post" action="/app/content/actions/generate" data-generating-form>
     <input type="hidden" name="_csrf" value="${escapeHtml(csrf)}">
     <input type="hidden" name="provider" value="ollama">
     <input type="hidden" name="contentType" value="article">
@@ -389,6 +399,7 @@ function formatDashboardDate(value) {
 async function renderArticles(ctx, url) {
   const runs = await ctx.runRepo.listRuns();
   const view = String(url.searchParams.get('view') || 'drafts');
+  const selectedCategory = String(url.searchParams.get('category') || 'All');
   const search = String(url.searchParams.get('q') || '').trim().toLowerCase();
   const tabs = [
     ['ideas', 'Ideas'],
@@ -413,10 +424,12 @@ async function renderArticles(ctx, url) {
     <td><span class="muted">Canonical first. Distribution generated after approval.</span></td>
     <td><div class="actions"><a class="ghost" href="/app/content/articles/${escapeHtml(run.runId)}">Open</a><a class="ghost" href="/app/content/articles/${escapeHtml(run.runId)}/preview">Preview</a>${ctx.permissions.includes('content.article.review') ? `<a class="ghost" href="/app/content/review/${escapeHtml(run.runId)}">Review</a>` : ''}</div></td>
   </tr>`).join('');
-  const ideaState = view === 'ideas' ? card('Topic ideas', '<p class="empty">No topic opportunities are available yet. Add a manual topic or connect a real trend source in Settings.</p>') : '';
-  const create = ctx.permissions.includes('content.article.create') ? card('Create with Qwen', `<div id="create-with-qwen"></div><p>Write a grounded Certifyd article from approved Brain context. If Qwen is unavailable, generation stops and explains the problem instead of silently substituting another provider.</p><div class="notice"><strong>Generation stages:</strong> Checking trends → Finding approved Brain sources → Gathering approved research → Preparing context → Writing with Qwen → Checking claims → Saving draft.</div><form class="intake" method="post" action="/app/content/actions/generate"><input type="hidden" name="_csrf" value="CSRF_PLACEHOLDER"><input type="hidden" name="provider" value="ollama"><label>What should Certifyd write about?<input name="topic" required maxlength="160" value="What Certifyd Core Is"></label><label>Audience<input name="audience" required maxlength="160" value="Creators, partners and investors"></label><label>Purpose<textarea name="objective" required maxlength="360">Explain Certifyd Core without overstating current capabilities.</textarea></label><details><summary>Advanced</summary><label>Working title<input name="workingTitle" maxlength="160"></label><label>Article type<select name="contentType"><option value="article">Article</option><option value="brief">Brief</option><option value="explainer">Explainer</option></select></label><label>Style<input name="writingStyle" maxlength="240" value="Plain, factual, investor-safe Certifyd editorial"></label><label>Source restrictions<textarea name="sourceRestrictions" maxlength="800">Use Certifyd Brain and approved public claims only. Distinguish live features from planned capabilities.</textarea></label><label><input type="checkbox" name="externalResearchAllowed" value="true"> Approved external research allowed when configured</label><p class="muted">Local AI: ${escapeHtml(ctx.config.ollama.enabled ? 'enabled' : 'disabled')}. Model: ${escapeHtml(ctx.config.ollama.model)}. Deterministic generation is available only if explicitly selected by an operator in a future advanced control.</p><p><a href="/app/content/model-health">Check Qwen availability</a></p></details><div class="actions"><button class="primary">Generate with Qwen</button></div></form>`).replace('CSRF_PLACEHOLDER', createCsrfToken(ctx.config.sessionSecret, ctx.user.sid)) : '';
+  const opportunities = trendingOpportunities(selectedCategory);
+  const categoryTabs = `<div class="tabs compact"><a class="tab ${selectedCategory === 'All' ? 'active' : ''}" href="/app/content/articles?view=ideas">All</a>${TRENDING_CATEGORIES.map((category) => `<a class="tab ${category === selectedCategory ? 'active' : ''}" href="/app/content/articles?view=ideas&category=${encodeURIComponent(category)}">${escapeHtml(category)}</a>`).join('')}</div>`;
+  const ideas = view === 'ideas' ? `<section class="workspace-section" aria-labelledby="ideas-title"><div class="section-head"><div><p class="eyebrow">Trending Opportunities</p><h2 id="ideas-title">What Qwen should watch.</h2></div>${categoryTabs}</div><div class="opportunity-grid">${opportunities.map((item) => opportunityCard(item, createCsrfToken(ctx.config.sessionSecret, ctx.user.sid), ctx.permissions.includes('content.article.create'))).join('')}</div></section>` : '';
+  const create = ctx.permissions.includes('content.article.create') ? card('Create with Qwen', `<div id="create-with-qwen"></div><p>Start with one prompt. Advanced options stay tucked away until needed.</p><div class="notice"><strong>Generation stages:</strong> Checking trends → Finding approved Brain sources → Preparing context → Writing with Qwen → Checking claims → Saving draft.</div>${qwenPromptForm({ csrf: createCsrfToken(ctx.config.sessionSecret, ctx.user.sid), advanced: true })}`) : '';
   const filters = `<section class="panel"><div class="tabs">${tabs.map(([key, label]) => `<a class="tab ${key === view ? 'active' : ''}" href="/app/content/articles?view=${escapeHtml(key)}">${escapeHtml(label)}</a>`).join('')}</div><form class="search-row" method="get" action="/app/content/articles"><input type="hidden" name="view" value="${escapeHtml(view)}"><label>Search<input name="q" value="${escapeHtml(search)}" placeholder="Title, slug, topic, source or author"></label><button class="ghost" type="submit">Search</button></form></section>`;
-  return layout({ title: 'Blog Engine', user: ctx.user, permissions: ctx.permissions, active: 'Blog Engine', body: `<p class="eyebrow">Blog Engine</p><h1>Editorial workspace</h1>${filters}${ideaState}${create}<section class="panel"><table class="table"><thead><tr><th>Title</th><th>Status</th><th>Updated</th><th>Author</th><th>Canonical URL</th><th>Sources</th><th>Distribution</th><th>Actions</th></tr></thead><tbody>${rows || '<tr><td colspan="8"><p class="empty">No articles match this view.</p></td></tr>'}</tbody></table></section>` });
+  return layout({ title: 'Blog Engine', user: ctx.user, permissions: ctx.permissions, active: 'Blog Engine', body: `<p class="eyebrow">Blog Engine</p><h1>Article workspace</h1>${filters}${create}${ideas}<section class="panel"><table class="table"><thead><tr><th>Title</th><th>Status</th><th>Updated</th><th>Author</th><th>Canonical URL</th><th>Sources</th><th>Distribution</th><th>Actions</th></tr></thead><tbody>${rows || '<tr><td colspan="8"><p class="empty">No articles match this view.</p></td></tr>'}</tbody></table></section>` });
 }
 
 async function renderArticle(ctx, runId, csrf) {
@@ -448,10 +461,24 @@ async function renderPreview(ctx, runId) {
   return layout({ title: 'Preview', user: ctx.user, permissions: ctx.permissions, active: 'Blog Engine', body });
 }
 
-async function renderBrain(ctx) {
+async function renderBrain(ctx, url = new URL('http://localhost/app/content/brain')) {
+  const view = String(url.searchParams.get('view') || 'knowledge');
   const files = await ctx.brainRepo.listFiles();
-  const rows = files.map((file) => `<tr><td>${escapeHtml(file.name)}</td><td>${escapeHtml(humanizeLabel(file.classification))}</td><td>${escapeHtml(file.lastUpdated)}</td><td>${escapeHtml(file.evidenceUsageCount)}</td><td>${escapeHtml(humanizeLabel(file.staleStatus))}</td></tr>`).join('');
-  return layout({ title: 'Brain', user: ctx.user, permissions: ctx.permissions, active: 'Brain', body: `<p class="eyebrow">Brain</p><h1>Approved knowledge</h1><p>Editorial reference for approved Certifyd facts, vocabulary and founder decisions. Raw Brain editing is intentionally not enabled in this pass.</p><section class="panel"><form class="search-row"><label>Filter Brain records<input placeholder="Search by file, status or topic" disabled></label><button class="ghost" disabled>Search</button></form></section><section class="panel"><table class="table"><thead><tr><th>File</th><th>Classification</th><th>Updated</th><th>Usage</th><th>Review state</th></tr></thead><tbody>${rows || '<tr><td colspan="5">No Brain records found.</td></tr>'}</tbody></table></section>` });
+  const canWriteBrain = ctx.permissions.includes('brain.write');
+  const tabs = [['knowledge', 'Knowledge'], ['suggestions', 'Suggestions'], ['stale', 'Stale'], ['conflicts', 'Conflicts']];
+  const tabHtml = `<div class="tabs">${tabs.map(([key, label]) => `<a class="tab ${key === view ? 'active' : ''}" href="/app/content/brain?view=${escapeHtml(key)}">${escapeHtml(label)}</a>`).join('')}</div>`;
+  let content = '';
+  if (view === 'suggestions') {
+    content = `<section class="panel"><div class="section-head"><div><p class="eyebrow">Knowledge Suggestions</p><h2>Founder-reviewed Brain updates.</h2></div></div><p>Qwen can suggest Brain changes, but approved knowledge is never updated automatically.</p><div class="review-list">${KNOWLEDGE_SUGGESTIONS.map((suggestion) => knowledgeSuggestionRow(suggestion, canWriteBrain)).join('')}</div></section>`;
+  } else if (view === 'stale') {
+    content = `<section class="panel"><p class="empty">No stale Brain records are queued in this pass.</p></section>`;
+  } else if (view === 'conflicts') {
+    content = `<section class="panel"><p class="empty">No Brain conflicts are queued in this pass.</p></section>`;
+  } else {
+    const rows = files.map((file) => `<tr><td>${escapeHtml(file.name)}</td><td>${escapeHtml(humanizeLabel(file.classification))}</td><td>${escapeHtml(file.lastUpdated)}</td><td>${escapeHtml(file.evidenceUsageCount)}</td><td>${escapeHtml(humanizeLabel(file.staleStatus))}</td></tr>`).join('');
+    content = `<section class="panel"><form class="search-row"><label>Filter Brain records<input placeholder="Search by file, status or topic" disabled></label><button class="ghost" disabled>Search</button></form></section><section class="panel"><table class="table"><thead><tr><th>File</th><th>Classification</th><th>Updated</th><th>Usage</th><th>Review state</th></tr></thead><tbody>${rows || '<tr><td colspan="5">No Brain records found.</td></tr>'}</tbody></table></section>`;
+  }
+  return layout({ title: 'Brain', user: ctx.user, permissions: ctx.permissions, active: 'Brain', body: `<p class="eyebrow">Brain</p><h1>Knowledge system</h1>${tabHtml}${content}` });
 }
 
 async function renderTopics(ctx) {

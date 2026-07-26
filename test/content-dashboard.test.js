@@ -68,16 +68,47 @@ test('4 founder can view dashboard', async () => withServer(async (base) => {
   const response = await fetch(`${base}/app/content`, { headers: { cookie } });
   assert.equal(response.status, 200);
   const html = await response.text();
-  assert.match(html, /Certifyd Blog Engine/);
+  assert.match(html, /What needs attention\?/);
   assert.match(html, /What should Certifyd write about\?/);
   assert.match(html, /Ask Qwen/);
+  assert.match(html, /Trending opportunities/);
+  assert.match(html, /\/app\/content\/articles\?view=ideas/);
+  assert.match(html, /Brain suggestions/);
+  assert.match(html, /\/app\/content\/brain\?view=suggestions/);
+  assert.match(html, /Recently Published/);
+  assert.match(html, /data-generating-form/);
+  assert.match(html, /Compare Certifyd to Spotify/);
+  assert.doesNotMatch(html, /Clarify Certifyd Core responsibilities/);
+  assert.doesNotMatch(html, /Article Management/);
+  assert.doesNotMatch(html, /Review Queue/);
+}));
+
+test('4b article workspace owns full Qwen generation and trending opportunities', async () => withServer(async (base) => {
+  const cookie = await login(base, 'founder@example.test');
+  const response = await fetch(`${base}/app/content/articles?view=ideas`, { headers: { cookie } });
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /Blog Engine/);
+  assert.match(html, /Article workspace/);
+  assert.match(html, /Create with Qwen/);
   assert.match(html, /Trending Opportunities/);
   assert.match(html, /Compare Certifyd to Spotify/);
+  assert.match(html, /Music/);
+  assert.match(html, /Creator Economy/);
+  assert.match(html, /data-primary-generation-form/);
+  assert.equal((html.match(/data-primary-generation-form/g) || []).length, 1);
+  assert.match(html, /generation-progress/);
+}));
+
+test('4c Brain suggestions live in the Brain workspace', async () => withServer(async (base) => {
+  const cookie = await login(base, 'founder@example.test');
+  const response = await fetch(`${base}/app/content/brain?view=suggestions`, { headers: { cookie } });
+  assert.equal(response.status, 200);
+  const html = await response.text();
   assert.match(html, /Knowledge Suggestions/);
-  assert.match(html, /Drafts Awaiting Review/);
-  assert.match(html, /Recently Published/);
-  assert.match(html, /Article Management/);
-  assert.doesNotMatch(html, /Review Queue/);
+  assert.match(html, /Founder-reviewed Brain updates/);
+  assert.match(html, /Approve/);
+  assert.match(html, /Reject/);
 }));
 
 test('5 founder can see explicit approval control for a pending article', async () => withServer(async (base) => {
@@ -136,7 +167,7 @@ test('9 writer can access create draft action page path but cannot approve', asy
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /Create with Qwen/);
-  assert.match(html, /Check Qwen availability/);
+  assert.match(html, /Check Qwen/);
   assert.doesNotMatch(html, /<button class="primary" type="submit">Approve<\/button>/);
 }));
 
@@ -213,6 +244,14 @@ test('21 no dashboard page offers live PUBLISHED action', async () => withServer
 
 test('21b stale dashboard section routes redirect instead of rendering broken pages', async () => withServer(async (base) => {
   const cookie = await login(base, 'founder@example.test');
+  const review = await fetch(`${base}/app/content/review`, { headers: { cookie }, redirect: 'manual' });
+  assert.equal(review.status, 303);
+  assert.equal(review.headers.get('location'), '/app/content/articles?view=review');
+
+  const knowledgeReview = await fetch(`${base}/app/content/knowledge-review`, { headers: { cookie }, redirect: 'manual' });
+  assert.equal(knowledgeReview.status, 303);
+  assert.equal(knowledgeReview.headers.get('location'), '/app/content/brain?view=suggestions');
+
   const topics = await fetch(`${base}/app/content/topics`, { headers: { cookie }, redirect: 'manual' });
   assert.equal(topics.status, 303);
   assert.equal(topics.headers.get('location'), '/app/content/articles?view=ideas');

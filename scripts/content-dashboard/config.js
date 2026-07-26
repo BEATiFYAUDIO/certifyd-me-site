@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { getDefaultOllamaConfig, normalizeProviderName } from './generation-provider.js';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const defaultAgentRoot = path.resolve(siteRoot, '../contentbox/content-agent');
+const defaultAgentRoot = path.resolve(siteRoot, 'content-agent');
 
 export const CONTENT_PERMISSIONS = {
   founder: [

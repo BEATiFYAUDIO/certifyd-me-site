@@ -3,8 +3,9 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 
 const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
-const DEFAULT_OLLAMA_MODEL = 'qwen3:8b';
-const SAFE_SOURCE_LIMIT = 80;
+const DEFAULT_OLLAMA_MODEL = 'qwen2.5:1.5b';
+const SAFE_SOURCE_LIMIT = 12;
+const MAX_INTERACTIVE_OUTPUT_TOKENS = 900;
 const SECRET_PATTERN = /(?:api[_-]?key|secret|token|password|private[_-]?key|session|credential|jwt|bearer|cloudflare|github_app_private_key)/i;
 const activeUsers = new Set();
 let activeGlobalGenerations = 0;
@@ -37,12 +38,12 @@ export class GenerationRateLimitError extends Error {
 export const ARTICLE_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['title', 'suggestedSlug', 'excerpt', 'author', 'tags', 'seoTitle', 'seoDescription', 'bodyMarkdown', 'claims', 'warnings'],
+  required: ['title', 'suggestedSlug', 'excerpt', 'bodyMarkdown'],
   properties: {
     title: { type: 'string' },
     suggestedSlug: { type: 'string' },
     excerpt: { type: 'string' },
-    author: { type: 'string', const: 'Certifyd' },
+    author: { type: 'string' },
     tags: { type: 'array', items: { type: 'string' } },
     seoTitle: { type: 'string' },
     seoDescription: { type: 'string' },
@@ -215,7 +216,9 @@ export class OllamaQwenGenerationProvider {
       };
       return validateGeneratedArticle(parseJsonContent(content), groundedContext);
     } catch (error) {
-      if (error?.name === 'AbortError') throw Object.assign(new Error('Qwen generation was cancelled or timed out.'), { statusCode: 408 });
+      if (error?.name === 'AbortError' || /aborted due to timeout|timed out|timeout/i.test(error?.message || '')) {
+        throw Object.assign(new Error('Qwen generation timed out. Try a shorter prompt or reduce the requested draft size.'), { statusCode: 408 });
+      }
       if (error instanceof GenerationConfigurationError || error instanceof GenerationValidationError || error instanceof GenerationRateLimitError) throw error;
       throw Object.assign(new Error(sanitizeLogMessage(error?.message || 'Qwen generation failed.')), { statusCode: 502 });
     } finally {
@@ -262,22 +265,26 @@ export function validateGeneratedArticle(value, groundedContext) {
   if ('status' in value || 'published' in value || 'approved' in value || 'publicationDate' in value || 'githubBranch' in value || 'mergeState' in value) {
     throw new GenerationValidationError('Generated article cannot set publication, approval, GitHub or merge state.');
   }
-  const required = ['title', 'suggestedSlug', 'excerpt', 'author', 'tags', 'seoTitle', 'seoDescription', 'bodyMarkdown', 'claims', 'warnings'];
+  const required = ['title', 'suggestedSlug', 'excerpt', 'bodyMarkdown'];
   for (const key of required) {
     if (!(key in value)) throw new GenerationValidationError(`Generated article missing ${key}.`);
   }
-  if (value.author !== 'Certifyd') throw new GenerationValidationError('Generated article author must be Certifyd.');
+  if (value.author && value.author !== 'Certifyd') throw new GenerationValidationError('Generated article author must be Certifyd.');
   const slug = slugify(value.suggestedSlug);
   if (!slug) throw new GenerationValidationError('Generated slug is invalid.');
-  if (!Array.isArray(value.tags) || !Array.isArray(value.claims) || !Array.isArray(value.warnings)) throw new GenerationValidationError('Generated arrays are malformed.');
-  for (const textField of ['title', 'excerpt', 'seoTitle', 'seoDescription', 'bodyMarkdown']) {
+  if (value.tags && !Array.isArray(value.tags)) throw new GenerationValidationError('Generated tags are malformed.');
+  if (value.claims && !Array.isArray(value.claims)) throw new GenerationValidationError('Generated claims are malformed.');
+  if (value.warnings && !Array.isArray(value.warnings)) throw new GenerationValidationError('Generated warnings are malformed.');
+  for (const textField of ['title', 'excerpt', 'bodyMarkdown']) {
     if (typeof value[textField] !== 'string' || !value[textField].trim()) throw new GenerationValidationError(`Generated ${textField} is empty.`);
   }
+  if (value.seoTitle && typeof value.seoTitle !== 'string') throw new GenerationValidationError('Generated seoTitle is malformed.');
+  if (value.seoDescription && typeof value.seoDescription !== 'string') throw new GenerationValidationError('Generated seoDescription is malformed.');
   if (value.bodyMarkdown.length > 18000) throw new GenerationValidationError('Generated article is too long.');
   const sourceIds = new Set(groundedContext.sourceRecords.map((source) => source.id));
-  const warnings = [...value.warnings.map(String).map((warning) => warning.trim()).filter(Boolean)];
+  const warnings = [...(value.warnings || []).map(String).map((warning) => warning.trim()).filter(Boolean)];
   const normalizedClaims = [];
-  for (const claim of value.claims) {
+  for (const claim of value.claims || []) {
     if (!claim || typeof claim.text !== 'string' || !Array.isArray(claim.sourceIds) || !['supported', 'needs-review'].includes(claim.confidence)) {
       throw new GenerationValidationError('Each generated claim must include text, sourceIds and confidence.');
     }
@@ -300,9 +307,9 @@ export function validateGeneratedArticle(value, groundedContext) {
     slug,
     excerpt: clampText(value.excerpt, 260),
     author: 'Certifyd',
-    tags: value.tags.map(String).map((tag) => tag.trim()).filter(Boolean).slice(0, 8),
-    seoTitle: clampText(value.seoTitle, 70),
-    seoDescription: clampText(value.seoDescription, 165),
+    tags: (value.tags || ['Certifyd']).map(String).map((tag) => tag.trim()).filter(Boolean).slice(0, 8),
+    seoTitle: clampText(value.seoTitle || `${value.title} | Certifyd`, 70),
+    seoDescription: clampText(value.seoDescription || value.excerpt, 165),
     bodyMarkdown: value.bodyMarkdown.trim(),
     claims: normalizedClaims,
     warnings: [...new Set(warnings)].slice(0, 30),
@@ -413,10 +420,10 @@ export function getDefaultOllamaConfig(env = process.env) {
     enabled: env.OLLAMA_ENABLED === 'true',
     baseUrl: env.OLLAMA_BASE_URL || DEFAULT_OLLAMA_BASE_URL,
     model: env.OLLAMA_CONTENT_MODEL || DEFAULT_OLLAMA_MODEL,
-    timeoutMs: positiveNumber(env.OLLAMA_REQUEST_TIMEOUT_MS, 180000),
-    maxOutputTokens: positiveNumber(env.OLLAMA_MAX_OUTPUT_TOKENS, 5000),
+    timeoutMs: positiveNumber(env.OLLAMA_REQUEST_TIMEOUT_MS, 120000),
+    maxOutputTokens: boundedNumber(env.OLLAMA_MAX_OUTPUT_TOKENS, 700, 192, MAX_INTERACTIVE_OUTPUT_TOKENS),
     temperature: boundedNumber(env.OLLAMA_TEMPERATURE, 0.35, 0, 1),
-    maxContextChars: positiveNumber(env.OLLAMA_CONTEXT_LIMIT, 24000),
+    maxContextChars: boundedNumber(env.OLLAMA_CONTEXT_LIMIT, 4096, 2000, 8000),
     think: env.OLLAMA_THINK === 'true',
     maxConcurrentGenerations: positiveNumber(env.OLLAMA_MAX_CONCURRENT_GENERATIONS, 1),
   };
@@ -432,9 +439,10 @@ function buildSystemInstruction() {
     'Clearly distinguish live, beta and planned features.',
     'Use “network” rather than “platform” when describing Certifyd unless a source explicitly requires another term.',
     'Write naturally, without generic AI filler, repeated conclusions or excessive headings.',
+    'Keep drafts concise. Prefer a short outline or compact article body over a long article.',
     'Do not mention this generation process.',
-    'Return only JSON matching the supplied schema.',
-    'Attach relevant source IDs to every factual Certifyd claim.',
+    'Return only JSON matching the supplied schema. Required keys are title, suggestedSlug, excerpt and bodyMarkdown.',
+    'Use claims and source IDs only when you are certain they match the supplied Brain evidence.',
     'Put uncertain material in warnings rather than stating it as fact.',
   ].join('\n');
 }
