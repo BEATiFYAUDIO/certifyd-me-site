@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://certifyd.me/schemas/blog-article.schema.json",
+  "title": "Certifyd Blog Article Front Matter",
+  "type": "object",
+  "required": ["title", "slug", "date", "author", "excerpt", "status"],
+  "properties": {
+    "title": { "type": "string", "minLength": 1 },
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "date": { "type": "string", "format": "date" },
+    "updated": { "type": "string", "format": "date" },
+    "author": { "type": "string", "minLength": 1 },
+    "excerpt": { "type": "string", "minLength": 1 },
+    "coverImage": { "type": "string", "pattern": "^/images/[^\\\\]+$" },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "status": { "type": "string", "enum": ["published", "draft"] },
+    "seoTitle": { "type": "string" },
+    "seoDescription": { "type": "string" }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,21 @@
+[Unit]
+Description=Certifyd Content Dashboard
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/srv/certifyd/certifyd-me-site
+EnvironmentFile=/etc/certifyd/content-dashboard.env
+ExecStart=/usr/bin/npm run start:admin
+Restart=on-failure
+RestartSec=5
+User=certifyd
+Group=certifyd
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/srv/certifyd/content-agent /srv/certifyd/certifyd-me-site
+
+[Install]
+WantedBy=multi-user.target

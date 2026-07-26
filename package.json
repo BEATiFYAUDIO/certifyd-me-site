@@ -1,0 +1,22 @@
+{
+  "name": "certifyd-me-site",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:insights": "node scripts/build-blog.js",
+    "build": "npm run build:blog",
+    "serve": "python3 -m http.server 8000",
+    "serve:dashboard": "node scripts/content-dashboard-server.js",
+    "start:admin": "node scripts/content-dashboard-server.js",
+    "test:dashboard": "node --test test/content-dashboard.test.js",
+    "build:blog": "node scripts/build-blog.js",
+    "test:blog": "node --test test/blog-build.test.js",
+    "test": "npm run test:blog && npm run test:dashboard"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "gray-matter": "^4.0.3",
+    "marked": "^14.1.4"
+  }
+}

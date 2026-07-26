@@ -1,0 +1,14 @@
+tunnel: certifyd-admin
+credentials-file: /etc/cloudflared/certifyd-admin.json
+
+ingress:
+  - hostname: admin.certifyd.me
+    service: http://127.0.0.1:8000
+    originRequest:
+      noTLSVerify: false
+  # Recommended separate staging dashboard. Run staging on a separate port/env/database.
+  - hostname: staging-admin.certifyd.me
+    service: http://127.0.0.1:8001
+    originRequest:
+      noTLSVerify: false
+  - service: http_status:404
