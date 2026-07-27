@@ -7,7 +7,7 @@ updated: "2026-07-27"
 excerpt: "Why Certifyd is a Good Solution to Bot Farming In today's digital landscape, creators are constantly striving for authentic engagement with their audience. Fake followers, bots, and automated streams can significantly un"
 coverImage: "/images/certifyd-main-image-independent-scene-20260613.png"
 tags: ["Certifyd", "trust", "AI"]
-status: "published"
+status: "archived"
 seoTitle: "### Why Certifyd is a Good Solution to Bot Farming | Certifyd"
 seoDescription: "Why Certifyd is a Good Solution to Bot Farming In today's digital landscape, creators are constantly striving for authentic engagement with their audience. Fake foll"
 ---
