@@ -638,6 +638,7 @@ function sendStatus(res, status, message) {
 function sendError(res, error) {
   if (res.headersSent) return res.end();
   const status = error.statusCode || 500;
+  const message = status < 500 || status === 503 || error.expose ? error.message : 'Internal server error';
   res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8' });
-  res.end(status >= 500 ? 'Internal server error' : error.message);
+  res.end(message);
 }
