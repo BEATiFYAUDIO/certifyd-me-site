@@ -81,6 +81,68 @@ export class GitHubPullRequestPublisher {
     };
   }
 
+  async createUnpublishPullRequest({ actor, runId }) {
+    validateRunId(runId);
+    if (!this.isConfigured()) {
+      throw Object.assign(new Error('GitHub publishing is not configured. Provide either GitHub App credentials or CONTENT_DASHBOARD_GITHUB_TOKEN.'), { statusCode: 503 });
+    }
+    const run = await this.runs.readRun(runId);
+    const pkg = run.blogPackage || {};
+    const slug = safeSlug(pkg.slug || run.summary.slug || runId);
+    const markdown = buildBlogMarkdown(pkg, run, { status: 'archived' });
+    const generatedFiles = await this.buildGeneratedSiteFiles(slug, markdown, { includeArticlePage: false });
+    const installationToken = await this.createInstallationToken();
+    const branchName = `${this.config.branchPrefix}/unpublish-${slug}-${Date.now()}`;
+    const baseRef = await githubJson(this.config, installationToken, `/repos/${this.config.owner}/${this.config.repo}/git/ref/heads/${this.config.baseBranch}`, {}, 'GitHub base branch lookup failed');
+    await githubJson(this.config, installationToken, `/repos/${this.config.owner}/${this.config.repo}/git/refs`, {
+      method: 'POST',
+      body: {
+        ref: `refs/heads/${branchName}`,
+        sha: baseRef.object.sha,
+      },
+    }, 'GitHub branch creation failed');
+    for (const file of generatedFiles) {
+      await putRepositoryFile({
+        config: this.config,
+        token: installationToken,
+        branchName,
+        filePath: file.path,
+        content: file.content,
+        message: `Unpublish blog article: ${pkg.title || run.summary.title}`,
+      });
+    }
+    await deleteRepositoryFileIfExists({
+      config: this.config,
+      token: installationToken,
+      branchName,
+      filePath: `blog/${slug}/index.html`,
+      message: `Remove generated blog article page: ${pkg.title || run.summary.title}`,
+    });
+    const pull = await githubJson(this.config, installationToken, `/repos/${this.config.owner}/${this.config.repo}/pulls`, {
+      method: 'POST',
+      body: {
+        title: `Unpublish content: ${pkg.title || run.summary.title}`,
+        head: branchName,
+        base: this.config.baseBranch,
+        draft: true,
+        body: [
+          `Prepared by ${actor.email} from Content Engine run \`${runId}\`.`,
+          '',
+          'This PR archives the canonical Markdown, regenerates public blog listings, and removes the generated article route. Review before merging.',
+        ].join('\n'),
+      },
+    }, 'GitHub draft PR creation failed');
+    return {
+      ok: true,
+      output: `Draft unpublish PR created: ${pull.html_url}`,
+      pullRequestUrl: pull.html_url,
+      branchName,
+      repositoryPath: `content/blog/${slug}.md`,
+      removedPath: `blog/${slug}/index.html`,
+      canonicalUrl: pkg.canonicalUrl || run.summary.canonicalUrl || `https://certifyd.me/blog/${slug}/`,
+    };
+  }
+
   async createInstallationToken() {
     if (this.config.token) return this.config.token;
     const appJwt = createGitHubAppJwt(this.config);
@@ -93,7 +155,7 @@ export class GitHubPullRequestPublisher {
     return json.token;
   }
 
-  async buildGeneratedSiteFiles(slug, markdown) {
+  async buildGeneratedSiteFiles(slug, markdown, options = {}) {
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-blog-publish-'));
     try {
       await fs.mkdir(path.join(tempRoot, 'content'), { recursive: true });
@@ -105,12 +167,12 @@ export class GitHubPullRequestPublisher {
       const paths = [
         `content/blog/${slug}.md`,
         'blog/index.html',
-        `blog/${slug}/index.html`,
         'feed.xml',
         'index.html',
         'robots.txt',
         'sitemap.xml',
       ];
+      if (options.includeArticlePage !== false) paths.splice(2, 0, `blog/${slug}/index.html`);
       const files = [];
       for (const filePath of paths) {
         const fullPath = path.join(tempRoot, filePath);
@@ -135,6 +197,10 @@ export class DisabledPublisher {
   async createPullRequest() {
     throw Object.assign(new Error('Publishing adapter is disabled.'), { statusCode: 503 });
   }
+
+  async createUnpublishPullRequest() {
+    throw Object.assign(new Error('Publishing adapter is disabled.'), { statusCode: 503 });
+  }
 }
 
 export function createPublisher(config, runs) {
@@ -142,7 +208,7 @@ export function createPublisher(config, runs) {
   return new DisabledPublisher();
 }
 
-function buildBlogMarkdown(pkg, run) {
+function buildBlogMarkdown(pkg, run, options = {}) {
   const today = new Date().toISOString().slice(0, 10);
   const tags = Array.isArray(pkg.tags)
     ? pkg.tags
@@ -158,7 +224,7 @@ function buildBlogMarkdown(pkg, run) {
     excerpt: pkg.excerpt || pkg.description || run.summary.summary || '',
     coverImage: pkg.coverImage || pkg.image || '/images/certifyd-main-image-independent-scene-20260613.png',
     tags,
-    status: 'published',
+    status: options.status || 'published',
     seoTitle: pkg.seoTitle || '',
     seoDescription: pkg.seoDescription || pkg.description || '',
   };
@@ -222,6 +288,31 @@ async function putRepositoryFile({ config, token, branchName, filePath, content,
       },
     },
   }, `GitHub file write failed for ${filePath}`);
+}
+
+async function deleteRepositoryFileIfExists({ config, token, branchName, filePath, message }) {
+  const encodedPath = filePath.split('/').map(encodeURIComponent).join('/');
+  const lookup = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/${encodedPath}?ref=${encodeURIComponent(branchName)}`, {
+    headers: githubHeaders(token),
+  });
+  if (lookup.status === 404) return;
+  if (!lookup.ok) {
+    const text = await lookup.text();
+    throw Object.assign(new Error(`GitHub file lookup failed for ${filePath}: HTTP ${lookup.status}. ${text.slice(0, 300)}`), { statusCode: lookup.status === 401 || lookup.status === 403 ? 403 : 502 });
+  }
+  const existing = await lookup.json();
+  await githubJson(config, token, `/repos/${config.owner}/${config.repo}/contents/${encodedPath}`, {
+    method: 'DELETE',
+    body: {
+      message,
+      sha: existing.sha,
+      branch: branchName,
+      committer: {
+        name: 'Certifyd Content Dashboard',
+        email: 'content-dashboard@certifyd.me',
+      },
+    },
+  }, `GitHub file delete failed for ${filePath}`);
 }
 
 function runBuildBlog(siteRoot, tempRoot) {

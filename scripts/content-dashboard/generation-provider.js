@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 
 const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
 const DEFAULT_OLLAMA_MODEL = 'qwen2.5:1.5b';
+const DEFAULT_BLOG_COVER_IMAGE = '/images/certifyd-main-image-independent-scene-20260613.png';
 const SAFE_SOURCE_LIMIT = 12;
 const MAX_INTERACTIVE_OUTPUT_TOKENS = 900;
 const SECRET_PATTERN = /(?:api[_-]?key|secret|token|password|private[_-]?key|session|credential|jwt|bearer|cloudflare|github_app_private_key)/i;
@@ -47,6 +48,7 @@ export const ARTICLE_SCHEMA = {
     tags: { type: 'array', items: { type: 'string' } },
     seoTitle: { type: 'string' },
     seoDescription: { type: 'string' },
+    coverImage: { type: 'string' },
     bodyMarkdown: { type: 'string' },
     claims: {
       type: 'array',
@@ -280,6 +282,7 @@ export function validateGeneratedArticle(value, groundedContext) {
   }
   if (value.seoTitle && typeof value.seoTitle !== 'string') throw new GenerationValidationError('Generated seoTitle is malformed.');
   if (value.seoDescription && typeof value.seoDescription !== 'string') throw new GenerationValidationError('Generated seoDescription is malformed.');
+  if (value.coverImage && typeof value.coverImage !== 'string') throw new GenerationValidationError('Generated coverImage is malformed.');
   if (value.bodyMarkdown.length > 18000) throw new GenerationValidationError('Generated article is too long.');
   const sourceIds = new Set(groundedContext.sourceRecords.map((source) => source.id));
   const warnings = [...(value.warnings || []).map(String).map((warning) => warning.trim()).filter(Boolean)];
@@ -310,6 +313,7 @@ export function validateGeneratedArticle(value, groundedContext) {
     tags: (value.tags || ['Certifyd']).map(String).map((tag) => tag.trim()).filter(Boolean).slice(0, 8),
     seoTitle: clampText(value.seoTitle || `${value.title} | Certifyd`, 70),
     seoDescription: clampText(value.seoDescription || value.excerpt, 165),
+    coverImage: normalizeBlogCoverImage(value.coverImage),
     bodyMarkdown: value.bodyMarkdown.trim(),
     claims: normalizedClaims,
     warnings: [...new Set(warnings)].slice(0, 30),
@@ -337,7 +341,7 @@ export async function persistGeneratedArticleRun(config, article, input, grounde
     `updated: ${JSON.stringify(timestamp.slice(0, 10))}`,
     `author: ${JSON.stringify(article.author)}`,
     `excerpt: ${JSON.stringify(article.excerpt)}`,
-    'coverImage: "/images/certifyd-main-image-independent-scene-20260613.png"',
+    `coverImage: ${JSON.stringify(article.coverImage || DEFAULT_BLOG_COVER_IMAGE)}`,
     `tags: ${JSON.stringify(article.tags)}`,
     'status: "draft"',
     `seoTitle: ${JSON.stringify(article.seoTitle)}`,
@@ -515,13 +519,36 @@ async function ollamaErrorMessage(response, modelName) {
   return `Ollama generation failed with HTTP ${response.status}.`;
 }
 
-function parseJsonContent(content) {
-  const clean = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+export function parseJsonContent(content) {
+  const clean = extractJsonCandidate(content);
   try {
     return JSON.parse(clean);
   } catch {
     throw new GenerationValidationError('Qwen returned malformed JSON.');
   }
+}
+
+function extractJsonCandidate(content) {
+  const clean = String(content || '')
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+  if (clean.startsWith('{') && clean.endsWith('}')) return clean;
+  const fenced = clean.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced?.[1]) return fenced[1].trim();
+  const firstBrace = clean.indexOf('{');
+  const lastBrace = clean.lastIndexOf('}');
+  if (firstBrace >= 0 && lastBrace > firstBrace) return clean.slice(firstBrace, lastBrace + 1).trim();
+  return clean;
+}
+
+function normalizeBlogCoverImage(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return DEFAULT_BLOG_COVER_IMAGE;
+  if (!raw.startsWith('/images/')) return DEFAULT_BLOG_COVER_IMAGE;
+  if (raw.includes('\\') || raw.includes('..') || /%2f|%5c/i.test(raw)) return DEFAULT_BLOG_COVER_IMAGE;
+  return raw;
 }
 
 function selectRelevantSources(sources, input) {

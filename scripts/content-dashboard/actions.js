@@ -350,6 +350,89 @@ export class ContentDashboardActions {
     return { ok: true, output: `Live article verified: ${canonicalUrl}` };
   }
 
+  async unpublishFromCertifyd({ actor, runId, confirmUnpublish = '' }) {
+    validateRunId(runId);
+    if (String(confirmUnpublish || '').trim().toLowerCase() !== 'unpublish') {
+      throw Object.assign(new Error('Type unpublish to confirm removal from the live Certifyd Blog.'), { statusCode: 400 });
+    }
+    try {
+      const run = await this.runs.readRun(runId);
+      const canonicalUrl = run.summary.canonicalUrl || run.blogPackage?.canonicalUrl;
+      if (!canonicalUrl || !/^https:\/\/certifyd\.me\/blog\/[a-z0-9-]+\/$/.test(canonicalUrl)) {
+        throw Object.assign(new Error('A valid Certifyd Blog canonical URL is required before unpublishing.'), { statusCode: 409 });
+      }
+      if (run.summary.status === 'ARCHIVED' || run.summary.publishability === 'REMOVED_FROM_LIVE_SITE') {
+        throw Object.assign(new Error('This article is already archived or removed from the live site.'), { statusCode: 409 });
+      }
+      const result = await this.publisher.createUnpublishPullRequest({ actor, runId });
+      const base = this.runs.runPath(runId);
+      const now = new Date().toISOString();
+      const manifest = await this.readRunJson(base, 'publication-manifest.json', {});
+      const unpublishing = {
+        status: 'UNPUBLISHING_REVIEW',
+        pullRequestUrl: result.pullRequestUrl || '',
+        branchName: result.branchName || '',
+        repositoryPath: result.repositoryPath || manifest.repositoryPath || '',
+        removedPath: result.removedPath || '',
+        canonicalUrl: result.canonicalUrl || manifest.canonicalUrl || '',
+        startedBy: actor.email,
+        startedAt: now,
+      };
+      await this.writeRunJson(base, 'publishing/unpublish-pr.json', unpublishing);
+      await this.writeRunJson(base, 'publication-manifest.json', {
+        ...manifest,
+        currentStatus: 'UNPUBLISHING',
+        publishability: 'UNPUBLISHING_REVIEW',
+        unpublishing,
+        canonicalUrl: unpublishing.canonicalUrl || manifest.canonicalUrl || '',
+        updatedAt: now,
+      });
+      await this.touchLifecycle(base, {
+        type: 'UNPUBLISHING',
+        actor: actor.email,
+        note: result.pullRequestUrl ? `Draft unpublish PR created: ${result.pullRequestUrl}` : 'Unpublishing started.',
+        at: now,
+      });
+      await this.audit.append({ action: 'publishing_unpublish_pull_request', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: 'SUCCESS' });
+      return result;
+    } catch (error) {
+      await this.audit.append({ action: 'publishing_unpublish_pull_request', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: 'FAILED', note: error.message });
+      throw error;
+    }
+  }
+
+  async verifyUnpublishedPublication({ actor, runId }) {
+    validateRunId(runId);
+    const run = await this.runs.readRun(runId);
+    const canonicalUrl = run.summary.canonicalUrl || run.blogPackage?.canonicalUrl;
+    if (!canonicalUrl || !/^https:\/\/certifyd\.me\/blog\/[a-z0-9-]+\/$/.test(canonicalUrl)) {
+      throw Object.assign(new Error('A valid Certifyd Blog canonical URL is required before removal verification.'), { statusCode: 409 });
+    }
+    const response = await fetch(canonicalUrl, { method: 'GET', redirect: 'manual' });
+    if (response.status !== 404) {
+      throw Object.assign(new Error(`Live article is still reachable: HTTP ${response.status}`), { statusCode: 409 });
+    }
+    const base = this.runs.runPath(runId);
+    const manifest = await this.readRunJson(base, 'publication-manifest.json', {});
+    const now = new Date().toISOString();
+    await this.writeRunJson(base, 'publication-manifest.json', {
+      ...manifest,
+      currentStatus: 'ARCHIVED',
+      publishability: 'REMOVED_FROM_LIVE_SITE',
+      unpublishedAt: now,
+      liveRemovedVerifiedAt: now,
+      updatedAt: now,
+    });
+    await this.touchLifecycle(base, {
+      type: 'UNPUBLISHED',
+      actor: actor.email,
+      note: `Live article removal verified: ${canonicalUrl}`,
+      at: now,
+    });
+    await this.audit.append({ action: 'publishing_unpublish_verify', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: 'SUCCESS', note: canonicalUrl });
+    return { ok: true, output: `Live article removal verified: ${canonicalUrl}` };
+  }
+
   async archiveArticle({ actor, runId }) {
     validateRunId(runId);
     const run = await this.runs.readRun(runId);

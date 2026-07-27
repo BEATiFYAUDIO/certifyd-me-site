@@ -222,6 +222,8 @@ async function handleAction(req, res, url, ctx) {
   else if (action.endsWith('/publishing/validate')) { needs('content.article.publish.prepare'); result = await ctx.actions.validatePublishing({ actor: ctx.user, runId: form.get('runId') }); }
   else if (action.endsWith('/publishing/pr')) { needs('content.article.publish.prepare'); result = await ctx.actions.publishToCertifyd({ actor: ctx.user, runId: form.get('runId'), version: form.get('version') }); }
   else if (action.endsWith('/publishing/verify-live')) { needs('content.article.publish.prepare'); result = await ctx.actions.verifyLivePublication({ actor: ctx.user, runId: form.get('runId') }); }
+  else if (action.endsWith('/publishing/unpublish')) { needs('content.article.publish.prepare'); result = await ctx.actions.unpublishFromCertifyd({ actor: ctx.user, runId: form.get('runId'), confirmUnpublish: form.get('confirmUnpublish') }); }
+  else if (action.endsWith('/publishing/verify-unpublished')) { needs('content.article.publish.prepare'); result = await ctx.actions.verifyUnpublishedPublication({ actor: ctx.user, runId: form.get('runId') }); }
   else if (action.endsWith('/article/archive')) { needs('content.article.archive'); result = await ctx.actions.archiveArticle({ actor: ctx.user, runId: form.get('runId') }); }
   else if (action.endsWith('/article/delete-draft')) { needs('content.article.delete'); result = await ctx.actions.deleteDraft({ actor: ctx.user, runId: form.get('runId'), confirmDelete: form.get('confirmDelete') }); }
   else return sendStatus(res, 404, 'Unknown action');
@@ -569,6 +571,7 @@ function actionButtons(run, csrf, permissions, config = {}) {
   const version = run.version || 'v1';
   const status = String(run.status || '');
   const publishability = String(run.publishability || '');
+  const hasCertifydBlogUrl = /^https:\/\/certifyd\.me\/blog\/[a-z0-9-]+\/$/.test(String(run.canonicalUrl || ''));
   const forms = [];
   if (permissions.includes('content.article.review')) forms.push(form('/app/content/actions/review/start', 'Open Review', { runId, _csrf: csrf }), form('/app/content/actions/review/revise', 'Request Revision', { runId, _csrf: csrf }), form('/app/content/actions/review/reject', 'Reject', { runId, note: 'Rejected from dashboard.', _csrf: csrf }));
   if (permissions.includes('content.article.approve')) forms.push(form('/app/content/actions/review/approve', 'Approve', { runId, version, confirm: 'true', _csrf: csrf }, 'primary'));
@@ -580,7 +583,11 @@ function actionButtons(run, csrf, permissions, config = {}) {
       if (!config.githubPublishing?.enabled) forms.push('<span class="muted">GitHub publishing is disabled in Settings.</span>');
     }
     if (status === 'PUBLISHING') forms.push(form('/app/content/actions/publishing/verify-live', 'Verify Live', { runId, _csrf: csrf }, 'primary'));
-    if (status === 'PUBLISHED' && run.canonicalUrl) forms.push(`<a class="primary" href="${escapeHtml(run.canonicalUrl)}">View Live</a>`);
+    if (status === 'UNPUBLISHING') forms.push(form('/app/content/actions/publishing/verify-unpublished', 'Verify Removed', { runId, _csrf: csrf }, 'primary'));
+    if (hasCertifydBlogUrl && !['ARCHIVED', 'UNPUBLISHING'].includes(status) && publishability !== 'REMOVED_FROM_LIVE_SITE') {
+      forms.push(`<a class="primary" href="${escapeHtml(run.canonicalUrl)}">View Live</a>`);
+      forms.push(`<form class="inline-confirm" method="post" action="/app/content/actions/publishing/unpublish"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><label class="sr-only" for="confirm-unpublish-${escapeHtml(runId)}">Type unpublish to confirm live article removal</label><input id="confirm-unpublish-${escapeHtml(runId)}" name="confirmUnpublish" placeholder="type unpublish" autocomplete="off"><button class="ghost danger" type="submit">Unpublish from Certifyd</button></form>`);
+    }
   }
   forms.push(compactLifecycleForms(run, csrf, permissions, config));
   forms.push(`<a class="ghost" href="/app/content/articles/${escapeHtml(runId)}/preview">Preview</a>`);

@@ -9,6 +9,7 @@ import {
   GenerationConfigurationError,
   GenerationValidationError,
   OllamaQwenGenerationProvider,
+  parseJsonContent,
   persistGeneratedArticleRun,
   resetGenerationState,
 } from '../scripts/content-dashboard/generation-provider.js';
@@ -166,6 +167,35 @@ test('malformed Qwen JSON is rejected', async () => {
     () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context),
     /malformed JSON/,
   );
+});
+
+test('Qwen JSON parser accepts fenced and prefixed JSON responses', () => {
+  assert.deepEqual(parseJsonContent('```json\n{"title":"A"}\n```'), { title: 'A' });
+  assert.deepEqual(parseJsonContent('<think>drafting</think>\nHere is the JSON:\n{"title":"B"}\nDone.'), { title: 'B' });
+});
+
+test('generated article cover image is persisted when safe', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OllamaQwenGenerationProvider(config, {
+    fetchImpl: makeOllamaFetch(validArticle(sourceId, { coverImage: '/images/certifyd-tab-icon.svg' })),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
+  const result = await persistGeneratedArticleRun(config, article, { topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context, provider);
+  const markdown = await fs.readFile(path.join(config.outputDir, result.runId, 'final/article.md'), 'utf8');
+  assert.ok(markdown.includes('coverImage: "/images/certifyd-tab-icon.svg"'));
+});
+
+test('unsafe generated cover image falls back to default site image', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OllamaQwenGenerationProvider(config, {
+    fetchImpl: makeOllamaFetch(validArticle(sourceId, { coverImage: 'https://evil.example/tracker.png' })),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
+  assert.equal(article.coverImage, '/images/certifyd-main-image-independent-scene-20260613.png');
 });
 
 test('invented Brain source IDs are rejected', async () => {

@@ -312,7 +312,54 @@ test('20b READY_TO_PUBLISH articles expose Publish to Certifyd and create a trac
   assert.equal(prRecord.repositoryPath, 'content/blog/local-publish-test.md');
 });
 
-test('20c archive and draft delete actions mutate run storage safely', async () => {
+test('20c live articles can create a tracked unpublish PR state', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-unpublish-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const runId = 'local-unpublish-001';
+  const runDir = path.join(outputDir, runId);
+  await createMinimalRun(runDir, {
+    title: 'Local Unpublish Test',
+    slug: 'local-unpublish-test',
+    status: 'REJECTED',
+    publishability: 'BLOCKED_REJECTED',
+    markdown: '# Local Unpublish Test\n\nBody.',
+  });
+
+  const actions = new ContentDashboardActions(getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  }));
+  actions.publisher = {
+    createUnpublishPullRequest: async () => ({
+      ok: true,
+      output: 'Draft unpublish PR created: https://github.test/certifyd/pull/2',
+      pullRequestUrl: 'https://github.test/certifyd/pull/2',
+      branchName: 'content-dashboard/unpublish-local-unpublish-test',
+      repositoryPath: 'content/blog/local-unpublish-test.md',
+      removedPath: 'blog/local-unpublish-test/index.html',
+      canonicalUrl: 'https://certifyd.me/blog/local-unpublish-test/',
+    }),
+  };
+  const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+
+  await assert.rejects(
+    actions.unpublishFromCertifyd({ actor, runId }),
+    /Type unpublish/
+  );
+  const result = await actions.unpublishFromCertifyd({ actor, runId, confirmUnpublish: 'unpublish' });
+  assert.match(result.output, /Draft unpublish PR created/);
+  const manifest = JSON.parse(await fs.readFile(path.join(runDir, 'publication-manifest.json'), 'utf8'));
+  assert.equal(manifest.currentStatus, 'UNPUBLISHING');
+  assert.equal(manifest.publishability, 'UNPUBLISHING_REVIEW');
+  assert.equal(manifest.unpublishing.pullRequestUrl, 'https://github.test/certifyd/pull/2');
+  assert.equal(manifest.unpublishing.removedPath, 'blog/local-unpublish-test/index.html');
+  const prRecord = JSON.parse(await fs.readFile(path.join(runDir, 'publishing', 'unpublish-pr.json'), 'utf8'));
+  assert.equal(prRecord.repositoryPath, 'content/blog/local-unpublish-test.md');
+});
+
+test('20d archive and draft delete actions mutate run storage safely', async () => {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-lifecycle-'));
   const outputDir = path.join(tmpRoot, 'engine', 'outputs');
   const archiveRunId = 'local-archive-001';
