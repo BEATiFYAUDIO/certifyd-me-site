@@ -8,6 +8,7 @@
     "build": "npm run build:blog",
     "serve": "python3 -m http.server 8000",
     "serve:dashboard": "node scripts/content-dashboard-server.js",
+    "start:blog-engine": "bash scripts/start-blog-engine-local.sh",
     "start:admin": "node scripts/content-dashboard-server.js",
     "test:dashboard": "node --test test/content-dashboard.test.js",
     "build:blog": "node scripts/build-blog.js",
