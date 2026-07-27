@@ -112,7 +112,7 @@ function buildBlogMarkdown(pkg, run) {
     excerpt: pkg.excerpt || pkg.description || run.summary.summary || '',
     coverImage: pkg.coverImage || pkg.image || '/images/certifyd-main-image-independent-scene-20260613.png',
     tags,
-    status: 'draft',
+    status: 'published',
     seoTitle: pkg.seoTitle || '',
     seoDescription: pkg.seoDescription || pkg.description || '',
   };
