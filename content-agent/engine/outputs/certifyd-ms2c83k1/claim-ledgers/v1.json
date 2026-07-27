@@ -1,0 +1,27 @@
+{
+  "claims": [
+    {
+      "claimId": "claim-1",
+      "text": "Certifyd can support publishing context where implemented.",
+      "sourceIds": [
+        "brain:capabilities/publishing"
+      ],
+      "confidence": "supported",
+      "status": "APPROVED_WITH_SOURCE",
+      "reviewerNote": "Generated draft claim. Founder review required before publishing."
+    },
+    {
+      "claimId": "claim-2",
+      "text": "Certifyd may use receipts to provide transaction or access context when implemented.",
+      "sourceIds": [
+        "brain:capabilities/receipts"
+      ],
+      "confidence": "supported",
+      "status": "APPROVED_WITH_SOURCE",
+      "reviewerNote": "Generated draft claim. Founder review required before publishing."
+    }
+  ],
+  "warnings": [
+    "## Open Questions\n\n- Are payouts live?\n- Who controls payout t"
+  ]
+}

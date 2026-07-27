@@ -1,0 +1,17 @@
+{
+  "primaryTarget": {
+    "channel": "Certifyd Blog",
+    "url": "https://certifyd.me/blog/certifyd/",
+    "repositoryPath": "content/blog/certifyd.md",
+    "status": "READY_TO_PUBLISH"
+  },
+  "targets": [
+    {
+      "channel": "Certifyd Blog",
+      "url": "https://certifyd.me/blog/certifyd/",
+      "repositoryPath": "content/blog/certifyd.md",
+      "status": "READY_TO_PUBLISH"
+    }
+  ],
+  "updatedAt": "2026-07-26T23:08:55.460Z"
+}

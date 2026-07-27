@@ -107,11 +107,17 @@ export function getDashboardConfig(env = process.env) {
     ollama,
     externalResearchProvider: env.CONTENT_RESEARCH_PROVIDER || 'fixture',
     trendResearch: {
-      provider: env.CONTENT_TREND_PROVIDER || env.CONTENT_TREND_RESEARCH_PROVIDER || 'fixture',
-      sourceUrls: parseList(env.CONTENT_TREND_SOURCE_URLS || env.CONTENT_TREND_RSS_URLS || ''),
-      timeoutMs: Number.isFinite(Number(env.CONTENT_TREND_REQUEST_TIMEOUT_MS)) ? Math.max(1000, Number(env.CONTENT_TREND_REQUEST_TIMEOUT_MS)) : 8000,
+      provider: env.CONTENT_TREND_PROVIDER || env.CONTENT_TREND_RESEARCH_PROVIDER || 'composite',
+      sourceUrls: parseListPreserveCase(env.CONTENT_TREND_SOURCE_URLS || env.CONTENT_TREND_RSS_URLS || ''),
+      timeoutMs: positiveInt(env.CONTENT_TREND_SCAN_TIMEOUT_MS || env.CONTENT_TREND_REQUEST_TIMEOUT_MS, 20000, 1000),
+      maxItemsPerSource: positiveInt(env.CONTENT_TREND_SCAN_MAX_ITEMS_PER_SOURCE, 30, 1),
+      maxItemAgeDays: positiveInt(env.CONTENT_TREND_MAX_ITEM_AGE_DAYS, 7, 1),
+      maxConcurrentFetches: positiveInt(env.CONTENT_TREND_MAX_CONCURRENT_FETCHES, 3, 1),
+      defaultLocale: env.CONTENT_TREND_DEFAULT_LOCALE || 'en-CA',
+      dailyScanEnabled: env.CONTENT_TREND_DAILY_SCAN_ENABLED === 'true',
+      scanHour: positiveInt(env.CONTENT_TREND_SCAN_HOUR, 7, 0),
     },
-    trendResearchProvider: env.CONTENT_TREND_PROVIDER || env.CONTENT_TREND_RESEARCH_PROVIDER || 'fixture',
+    trendResearchProvider: env.CONTENT_TREND_PROVIDER || env.CONTENT_TREND_RESEARCH_PROVIDER || 'composite',
     founderEmails: parseList(env.CONTENT_DASHBOARD_FOUNDER_EMAILS),
     founderUserIds: parseList(env.CONTENT_DASHBOARD_FOUNDER_USER_IDS),
     bootstrapRoleEmails: roles,
@@ -120,6 +126,16 @@ export function getDashboardConfig(env = process.env) {
 
 function parseList(value = '') {
   return value.split(',').map((item) => item.trim().toLowerCase()).filter(Boolean);
+}
+
+function parseListPreserveCase(value = '') {
+  return value.split(',').map((item) => item.trim()).filter(Boolean);
+}
+
+function positiveInt(value, fallback, min = 1) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(min, Math.floor(parsed));
 }
 
 function normalizeAuthMode(value) {

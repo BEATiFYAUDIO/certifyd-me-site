@@ -1,0 +1,17 @@
+{
+  "primaryTarget": {
+    "channel": "Certifyd Blog",
+    "url": "https://certifyd.me/blog/why-certifyd-is-a-good-solution-to-bot-farming/",
+    "repositoryPath": "content/blog/why-certifyd-is-a-good-solution-to-bot-farming.md",
+    "status": "READY_TO_PUBLISH"
+  },
+  "targets": [
+    {
+      "channel": "Certifyd Blog",
+      "url": "https://certifyd.me/blog/why-certifyd-is-a-good-solution-to-bot-farming/",
+      "repositoryPath": "content/blog/why-certifyd-is-a-good-solution-to-bot-farming.md",
+      "status": "READY_TO_PUBLISH"
+    }
+  ],
+  "updatedAt": "2026-07-27T03:04:06.878Z"
+}

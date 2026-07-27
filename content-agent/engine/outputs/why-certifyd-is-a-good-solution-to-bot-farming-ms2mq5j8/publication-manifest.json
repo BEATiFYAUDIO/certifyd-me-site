@@ -1,0 +1,39 @@
+{
+  "runId": "why-certifyd-is-a-good-solution-to-bot-farming-ms2mq5j8",
+  "title": "### Why Certifyd is a Good Solution to Bot Farming",
+  "slug": "why-certifyd-is-a-good-solution-to-bot-farming",
+  "version": "v1",
+  "status": "PENDING_FOUNDER_REVIEW",
+  "publishability": "APPROVED_READY",
+  "canonicalUrl": "https://certifyd.me/blog/why-certifyd-is-a-good-solution-to-bot-farming/",
+  "audience": "Creators, partners and investors",
+  "topic": "write a blog explain why certifyd is a good solution to bot farming.",
+  "contentType": "article",
+  "modelProvider": "ollama",
+  "modelMode": "Local AI",
+  "unresolvedIssueCount": 0,
+  "lastUpdated": "2026-07-27T02:50:19.652Z",
+  "currentStatus": "FOUNDER_APPROVED",
+  "updatedAt": "2026-07-27T03:44:29.992Z",
+  "approvedBy": "darryl@example.com",
+  "approvedAt": "2026-07-27T03:44:29.992Z",
+  "publishing": {
+    "status": "PUBLISHING_REVIEW",
+    "pullRequestUrl": "https://github.com/BEATiFYAUDIO/certifyd-me-site/pull/5",
+    "branchName": "content-dashboard/why-certifyd-is-a-good-solution-to-bot-farming-1785121450315",
+    "repositoryPath": "content/blog/why-certifyd-is-a-good-solution-to-bot-farming.md",
+    "canonicalUrl": "https://certifyd.me/blog/why-certifyd-is-a-good-solution-to-bot-farming/",
+    "startedBy": "darryl@example.com",
+    "startedAt": "2026-07-27T03:04:17.682Z"
+  },
+  "unpublishing": {
+    "status": "UNPUBLISHING_REVIEW",
+    "pullRequestUrl": "https://github.com/BEATiFYAUDIO/certifyd-me-site/pull/7",
+    "branchName": "content-dashboard/unpublish-why-certifyd-is-a-good-solution-to-bot-farming-1785121823763",
+    "repositoryPath": "content/blog/why-certifyd-is-a-good-solution-to-bot-farming.md",
+    "removedPath": "blog/why-certifyd-is-a-good-solution-to-bot-farming/index.html",
+    "canonicalUrl": "https://certifyd.me/blog/why-certifyd-is-a-good-solution-to-bot-farming/",
+    "startedBy": "darryl@example.com",
+    "startedAt": "2026-07-27T03:10:30.426Z"
+  }
+}

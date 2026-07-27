@@ -1,0 +1,87 @@
+{
+  "createdAt": "2026-07-27T02:50:19.652Z",
+  "updatedAt": "2026-07-27T03:44:29.992Z",
+  "status": "PENDING_FOUNDER_REVIEW",
+  "events": [
+    {
+      "type": "FOUNDER_APPROVED",
+      "actor": "darryl@example.com",
+      "version": "v1",
+      "at": "2026-07-27T02:53:16.710Z"
+    },
+    {
+      "type": "READY_TO_PUBLISH",
+      "actor": "darryl@example.com",
+      "note": "Prepared for Certifyd Blog.",
+      "at": "2026-07-27T02:53:41.221Z"
+    },
+    {
+      "type": "FOUNDER_APPROVED",
+      "actor": "darryl@example.com",
+      "version": "v1",
+      "at": "2026-07-27T02:55:23.294Z"
+    },
+    {
+      "type": "READY_TO_PUBLISH",
+      "actor": "darryl@example.com",
+      "note": "Prepared for Certifyd Blog.",
+      "at": "2026-07-27T02:55:28.547Z"
+    },
+    {
+      "type": "PUBLISHING",
+      "actor": "darryl@example.com",
+      "version": "v1",
+      "note": "Draft PR created: https://github.com/BEATiFYAUDIO/certifyd-me-site/pull/4",
+      "at": "2026-07-27T03:00:30.960Z"
+    },
+    {
+      "type": "FOUNDER_APPROVED",
+      "actor": "darryl@example.com",
+      "version": "v1",
+      "at": "2026-07-27T03:04:02.528Z"
+    },
+    {
+      "type": "READY_TO_PUBLISH",
+      "actor": "darryl@example.com",
+      "note": "Prepared for Certifyd Blog.",
+      "at": "2026-07-27T03:04:06.879Z"
+    },
+    {
+      "type": "PUBLISHING",
+      "actor": "darryl@example.com",
+      "version": "v1",
+      "note": "Draft PR created: https://github.com/BEATiFYAUDIO/certifyd-me-site/pull/5",
+      "at": "2026-07-27T03:04:17.682Z"
+    },
+    {
+      "type": "UNPUBLISHING",
+      "actor": "darryl@example.com",
+      "note": "Draft unpublish PR created: https://github.com/BEATiFYAUDIO/certifyd-me-site/pull/7",
+      "at": "2026-07-27T03:10:30.426Z"
+    },
+    {
+      "type": "FOUNDER_APPROVED",
+      "actor": "darryl@example.com",
+      "version": "v1",
+      "at": "2026-07-27T03:43:35.089Z"
+    },
+    {
+      "type": "PENDING_FOUNDER_REVIEW",
+      "actor": "darryl@example.com",
+      "note": "Ready for founder review.",
+      "at": "2026-07-27T03:43:43.982Z"
+    },
+    {
+      "type": "REVISION_REQUESTED",
+      "actor": "darryl@example.com",
+      "note": "Revision requested.",
+      "at": "2026-07-27T03:43:48.504Z"
+    },
+    {
+      "type": "FOUNDER_APPROVED",
+      "actor": "darryl@example.com",
+      "version": "v1",
+      "at": "2026-07-27T03:44:29.992Z"
+    }
+  ]
+}

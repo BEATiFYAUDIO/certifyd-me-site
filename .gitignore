@@ -1,6 +1,11 @@
 .DS_Store
 Thumbs.db
 node_modules/
+.env.blog-engine.local
+deploy/admin/local.env
 content-agent/dashboard/*.sqlite
 content-agent/dashboard/*.log
 content-agent/review/*.log.jsonl
+
+content-agent/dashboard/trends/
+content-agent/dashboard/trash/

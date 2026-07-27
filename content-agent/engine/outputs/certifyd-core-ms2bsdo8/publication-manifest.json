@@ -1,0 +1,31 @@
+{
+  "runId": "certifyd-core-ms2bsdo8",
+  "title": "Certifyd Core: A Comprehensive Overview",
+  "slug": "certifyd-core",
+  "version": "v1",
+  "status": "PENDING_FOUNDER_REVIEW",
+  "publishability": "BLOCKED_REJECTED",
+  "canonicalUrl": "https://certifyd.me/blog/certifyd-core/",
+  "audience": "Creators",
+  "topic": "Creator ownership basics",
+  "contentType": "brief",
+  "modelProvider": "ollama",
+  "modelMode": "Local AI",
+  "unresolvedIssueCount": 0,
+  "lastUpdated": "2026-07-26T21:44:07.736Z",
+  "currentStatus": "REJECTED",
+  "updatedAt": "2026-07-27T01:10:08.885Z",
+  "approvedBy": "darryl@example.com",
+  "approvedAt": "2026-07-27T00:29:57.033Z",
+  "publishing": {
+    "status": "PUBLISHING_REVIEW",
+    "pullRequestUrl": "https://github.com/BEATiFYAUDIO/certifyd-me-site/pull/1",
+    "branchName": "content-dashboard/certifyd-core-1785112579615",
+    "repositoryPath": "content/blog/certifyd-core.md",
+    "canonicalUrl": "https://certifyd.me/blog/certifyd-core/",
+    "startedBy": "darryl@example.com",
+    "startedAt": "2026-07-27T00:36:21.873Z"
+  },
+  "publishedAt": "2026-07-27T00:54:36.514Z",
+  "liveVerifiedAt": "2026-07-27T00:54:36.514Z"
+}

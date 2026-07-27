@@ -4,12 +4,22 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { getDashboardConfig, permissionsForRole } from './config.js';
 import { ContentRunRepository, ContentBrainRepository } from './repository.js';
-import { ContentDashboardActions, AuditLogRepository } from './actions.js';
+import { approvedBrainEvidence, ContentDashboardActions, AuditLogRepository } from './actions.js';
 import { createCsrfToken, escapeHtml, parseCookies, safeReturnPath, validateRunId, verifyCsrf, verifySession, signSession } from './security.js';
 import { card, humanizeLabel, layout, loginPage, renderMarkdown, statusPill } from './render.js';
 import { verifyCloudflareAccessRequest } from './cloudflare-access.js';
 import { DashboardUserRepository } from './users.js';
-import { filterTrendingOpportunities, getTrendingOpportunities, TRENDING_CATEGORIES } from './trends.js';
+import {
+  buildSourceRegistry,
+  dismissTrendOpportunity,
+  filterTrendingOpportunities,
+  getTrendingOpportunities,
+  readTrendSourceDetail,
+  scanTrendOpportunities,
+  saveTrendOpportunity,
+  startTrendDailyScheduler,
+  TRENDING_CATEGORIES,
+} from './trends.js';
 
 const STATIC_TYPES = new Map([['.html','text/html; charset=utf-8'],['.css','text/css; charset=utf-8'],['.js','text/javascript; charset=utf-8'],['.svg','image/svg+xml'],['.png','image/png'],['.jpg','image/jpeg'],['.jpeg','image/jpeg'],['.webp','image/webp'],['.xml','application/xml; charset=utf-8'],['.txt','text/plain; charset=utf-8'],['.mp4','video/mp4']]);
 
@@ -51,8 +61,9 @@ export function createContentDashboardServer(options = {}) {
   const actions = new ContentDashboardActions(config);
   const audit = new AuditLogRepository(config);
   const userRepo = new DashboardUserRepository(config);
+  const trendScheduler = startTrendDailyScheduler(config);
 
-  return http.createServer(async (req, res) => {
+  const server = http.createServer(async (req, res) => {
     const requestId = crypto.randomUUID();
     try {
       setSecurityHeaders(res);
@@ -70,6 +81,8 @@ export function createContentDashboardServer(options = {}) {
       sendError(res, error);
     }
   });
+  server.on('close', () => trendScheduler?.stop?.());
+  return server;
 }
 
 function isAdminHost(host = '') {
@@ -156,6 +169,9 @@ async function handleAction(req, res, url, ctx) {
   };
   let result;
   if (action.endsWith('/generate')) { needs('content.article.create'); validateIntake(form); result = await ctx.actions.generateDraft({ actor: ctx.user, form, signal: abortController.signal }); }
+  else if (action.endsWith('/trends/scan')) { needs('content.article.create'); result = await scanTrendOpportunities(ctx.config); }
+  else if (action.endsWith('/trends/dismiss')) { needs('content.article.edit'); result = await dismissTrendOpportunity(ctx.config, String(form.get('opportunityId') || '')); }
+  else if (action.endsWith('/trends/save')) { needs('content.article.edit'); result = await saveTrendOpportunity(ctx.config, String(form.get('opportunityId') || ''), ctx.user); }
   else if (action.endsWith('/review/start')) { needs('content.article.review'); result = await ctx.actions.startReview({ actor: ctx.user, runId: form.get('runId') }); }
   else if (action.endsWith('/review/revise')) { needs('content.article.review'); result = await ctx.actions.requestRevision({ actor: ctx.user, runId: form.get('runId') }); }
   else if (action.endsWith('/review/approve')) { needs('content.article.approve'); result = await ctx.actions.approve({ actor: ctx.user, runId: form.get('runId'), version: form.get('version'), confirm: form.get('confirm') }); }
@@ -180,6 +196,8 @@ async function handlePage(req, res, url, ctx) {
   };
   if (pathName === '/app/content' || pathName === '/app/content/') { allow('content.dashboard.view'); return sendHtml(res, await renderOverview(ctx, csrf, url)); }
   if (pathName === '/app/content/articles' || pathName === '/app/content/blog-engine') { allow('content.article.view'); return sendHtml(res, await renderArticles(ctx, url)); }
+  const trendSourcesMatch = pathName.match(/^\/app\/content\/trends\/([^/]+)\/sources$/);
+  if (trendSourcesMatch) { allow('content.article.view'); return sendHtml(res, await renderTrendSources(ctx, trendSourcesMatch[1])); }
   if (pathName === '/app/content/model-health') { allow('content.article.create'); return sendJson(res, await ctx.actions.generationHealth({ provider: 'ollama' })); }
   if (pathName === '/app/content/brain') { allow('brain.read'); return sendHtml(res, await renderBrain(ctx, url)); }
   if (pathName === '/app/content/topics') { allow('content.article.view'); return redirect(res, '/app/content/articles?view=ideas'); }
@@ -262,14 +280,33 @@ function qwenPromptForm({ csrf, compact = false, advanced = false } = {}) {
 }
 
 function opportunityCard(item, csrf, canCreate) {
+  const publishers = Array.isArray(item.sourcePublishers) && item.sourcePublishers.length ? item.sourcePublishers.join(', ') : item.sourceLabel || item.sourceType || 'Source';
+  const sourceCount = Number(item.sourceCount || item.sourceItemIds?.length || 0);
+  const riskFlags = Array.isArray(item.riskFlags) ? item.riskFlags : [];
+  const sourceIds = Array.isArray(item.sourceItemIds) ? item.sourceItemIds.join(',') : '';
+  const brainIds = Array.isArray(item.brainRecordIds) ? item.brainRecordIds.join(',') : '';
+  const restrictions = [
+    `Trend opportunity: ${item.id || item.title}.`,
+    sourceIds ? `Use only these approved source summaries: ${sourceIds}.` : 'Use approved Brain context only; no live source summaries are attached.',
+    brainIds ? `Relevant approved Brain records: ${brainIds}.` : 'If approved Brain context is weak, qualify claims and request review.',
+    'Do not claim live web research beyond the attached source summaries.'
+  ].join(' ');
   return `<article class="opportunity-card">
-    <div class="meta-row"><span class="pill warn">${escapeHtml(item.category)}</span>${brainCoveragePill(item.brainCoverage)}<span class="pill">${escapeHtml(item.sourceLabel || item.sourceType || 'Source')}</span></div>
+    <div class="meta-row"><span class="pill warn">${escapeHtml(item.category)}</span>${brainCoveragePill(item.brainCoverage)}<span class="pill">${escapeHtml(item.evidenceLabel || item.sourceLabel || 'Source-backed')}</span>${item.saved ? '<span class="pill good">Saved</span>' : ''}</div>
     <h3>${escapeHtml(item.title)}</h3>
+    <p>${escapeHtml(item.summary || item.suggestedAngle || '')}</p>
     <dl>
-      <dt>Why it is trending</dt><dd>${escapeHtml(item.whyTrending)}</dd>
-      <dt>Why it matters to Certifyd</dt><dd>${escapeHtml(item.whyCertifyd)}</dd>
+      <dt>Why it is trending</dt><dd>${escapeHtml(item.whyTrending || 'Source activity detected.')}</dd>
+      <dt>Why it matters to Certifyd</dt><dd>${escapeHtml(item.whyItMattersToCertifyd || item.whyCertifyd || '')}</dd>
+      <dt>Evidence</dt><dd>${escapeHtml(sourceCount ? `${sourceCount} source item${sourceCount === 1 ? '' : 's'} · ${publishers}` : publishers)}${item.newestSourceDate ? ` · ${escapeHtml(formatDashboardDate(item.newestSourceDate))}` : ''}</dd>
+      <dt>Risk</dt><dd>${riskFlags.length ? riskFlags.map((flag) => `<span class="pill bad">${escapeHtml(flag)}</span>`).join(' ') : '<span class="pill good">No source risk flagged</span>'}</dd>
     </dl>
-    ${canCreate ? quickGenerateForm({ csrf, label: 'Generate Article', topic: item.topic, className: 'primary' }) : '<p class="muted">Generation unavailable for this role.</p>'}
+    <div class="mini-actions">
+      ${canCreate ? quickGenerateForm({ csrf, label: 'Generate Article', topic: item.topic || item.title, className: 'primary', extraFields: { trendOpportunityId: item.id || '', trendSourceItemIds: sourceIds, trendBrainRecordIds: brainIds, sourceRestrictions: restrictions } }) : '<p class="muted">Generation unavailable for this role.</p>'}
+      ${sourceIds ? `<a class="ghost" href="/app/content/trends/${encodeURIComponent(item.id || '')}/sources">View Sources</a>` : ''}
+      <form method="post" action="/app/content/actions/trends/save"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="opportunityId" value="${escapeHtml(item.id || '')}"><button class="ghost" type="submit">${item.saved ? 'Saved' : 'Save'}</button></form>
+      <form method="post" action="/app/content/actions/trends/dismiss"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="opportunityId" value="${escapeHtml(item.id || '')}"><button class="ghost" type="submit">Dismiss</button></form>
+    </div>
   </article>`;
 }
 
@@ -279,7 +316,8 @@ function brainCoveragePill(value) {
   return `<span class="pill ${tone}">Brain: ${escapeHtml(value || 'Unknown')}</span>`;
 }
 
-function quickGenerateForm({ csrf, label, topic, className = 'example-chip' }) {
+function quickGenerateForm({ csrf, label, topic, className = 'example-chip', extraFields = {} }) {
+  const hidden = Object.entries(extraFields || {}).map(([name, value]) => `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`).join('');
   return `<form method="post" action="/app/content/actions/generate" data-generating-form>
     <input type="hidden" name="_csrf" value="${escapeHtml(csrf)}">
     <input type="hidden" name="provider" value="ollama">
@@ -287,6 +325,7 @@ function quickGenerateForm({ csrf, label, topic, className = 'example-chip' }) {
     <input type="hidden" name="topic" value="${escapeHtml(topic)}">
     <input type="hidden" name="audience" value="Creators, partners and investors">
     <input type="hidden" name="objective" value="Create a grounded Certifyd article using approved Brain context. Keep current capabilities distinct from planned capabilities.">
+    ${hidden}
     <button class="${escapeHtml(className)}" type="submit">${escapeHtml(label)}</button>
   </form>`;
 }
@@ -362,8 +401,12 @@ async function renderArticles(ctx, url) {
   const opportunities = filterTrendingOpportunities(trends, selectedCategory);
   const canCreate = ctx.permissions.includes('content.article.create');
   const categoryTabs = `<div class="tabs compact"><a class="tab ${selectedCategory === 'All' ? 'active' : ''}" href="/app/content/articles?view=ideas">All</a>${TRENDING_CATEGORIES.map((category) => `<a class="tab ${category === selectedCategory ? 'active' : ''}" href="/app/content/articles?view=ideas&category=${encodeURIComponent(category)}">${escapeHtml(category)}</a>`).join('')}</div>`;
-  const trendMeta = `<p class="muted">Provider: ${escapeHtml(trends.provider)}${trends.lastScannedAt ? ` · Last scanned: ${escapeHtml(formatDashboardDate(trends.lastScannedAt))}` : ''}${trends.sourceLabels?.length ? ` · Sources: ${escapeHtml(trends.sourceLabels.join(', '))}` : ''}</p>${trends.note ? `<p class="notice">${escapeHtml(trends.note)}</p>` : ''}`;
-  const ideas = view === 'ideas' ? `<section class="workspace-section" aria-labelledby="ideas-title"><div class="section-head"><div><p class="eyebrow">Trending Opportunities</p><h2 id="ideas-title">What Qwen should watch.</h2>${trendMeta}</div>${categoryTabs}</div><div class="opportunity-grid">${opportunities.map((item) => opportunityCard(item, csrf, canCreate)).join('')}</div></section>` : '';
+  const sourceStatus = Array.isArray(trends.providerStatus) ? trends.providerStatus : [];
+  const sourceHealth = sourceStatus.length ? `<div class="meta-row">${sourceStatus.slice(0, 6).map((source) => `<span class="pill ${source.status === 'ok' ? 'good' : source.status === 'unavailable' ? 'bad' : 'warn'}">${escapeHtml(source.publisher || source.id)}: ${escapeHtml(source.status || 'unknown')}</span>`).join('')}</div>` : '';
+  const trendMeta = `<p class="muted">Provider: ${escapeHtml(trends.provider)}${trends.lastScannedAt ? ` · Last scanned: ${escapeHtml(formatDashboardDate(trends.lastScannedAt))}` : ' · Not scanned yet'}${trends.sourceLabels?.length ? ` · Sources: ${escapeHtml(trends.sourceLabels.join(', '))}` : ''} · Saved ideas: ${escapeHtml(String(trends.savedIdeas?.length || 0))}</p>${sourceHealth}${trends.note ? `<p class="notice">${escapeHtml(trends.note)}</p>` : ''}`;
+  const scanControls = `<form method="post" action="/app/content/actions/trends/scan" data-generating-form><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><button class="primary" type="submit">Find trends now</button><div class="generation-progress" role="status" aria-live="polite" hidden><span>Scanning approved sources and ranking opportunities.</span><i></i></div></form><button class="ghost" type="button" disabled>Add idea manually</button>`;
+  const emptyIdeas = `<p class="empty panel">No source-backed opportunities match this view. Run Find trends now, change category, or add an idea manually later.</p>`;
+  const ideas = view === 'ideas' ? `<section class="workspace-section" aria-labelledby="ideas-title"><div class="section-head"><div><p class="eyebrow">Trending Opportunities</p><h2 id="ideas-title">Source-backed article opportunities.</h2>${trendMeta}</div><div class="mini-actions">${scanControls}</div></div>${categoryTabs}<div class="opportunity-grid">${opportunities.length ? opportunities.map((item) => opportunityCard(item, csrf, canCreate)).join('') : emptyIdeas}</div></section>` : '';
   const create = `<section class="editorial-prompt panel compact-prompt">
     <div>
       <p class="eyebrow">Ask Qwen</p>
@@ -375,16 +418,25 @@ async function renderArticles(ctx, url) {
   return layout({ title: 'Blog Engine', user: ctx.user, permissions: ctx.permissions, active: 'Blog Engine', body: `<p class="eyebrow">Blog Engine</p><h1>Article workspace</h1>${filters}${create}${ideas}<section class="panel"><table class="table"><thead><tr><th>Title</th><th>Status</th><th>Updated</th><th>Author</th><th>Canonical URL</th><th>Sources</th><th>Distribution</th><th>Actions</th></tr></thead><tbody>${rows || '<tr><td colspan="8"><p class="empty">No articles match this view.</p></td></tr>'}</tbody></table></section>` });
 }
 
+async function renderTrendSources(ctx, opportunityId) {
+  const detail = await readTrendSourceDetail(ctx.config, opportunityId);
+  const opportunity = detail.opportunity || {};
+  const sources = Array.isArray(detail.sources) ? detail.sources : [];
+  const sourceRows = sources.map((source) => `<article class="review-item"><div><div class="meta-row"><span class="pill warn">${escapeHtml(source.publisher || source.sourceId || 'Source')}</span>${source.publishedAt ? `<span class="pill">${escapeHtml(formatDashboardDate(source.publishedAt))}</span>` : ''}</div><h3>${escapeHtml(source.title || 'Untitled source item')}</h3><p>${escapeHtml(source.summary || source.description || '')}</p><p class="muted">Feed: ${escapeHtml(source.feedUrl || source.sourceFeedUrl || '')}</p></div><a class="ghost" href="${escapeHtml(source.link || '#')}" rel="noreferrer" target="_blank">Open source</a></article>`).join('');
+  const body = `<p class="eyebrow">Trend sources</p><h1>${escapeHtml(opportunity.title || 'Opportunity')}</h1><p>${escapeHtml(opportunity.summary || opportunity.whyTrending || '')}</p><div class="grid">${card('Opportunity', `<p><strong>Category:</strong> ${escapeHtml(opportunity.category || 'Unknown')}</p><p><strong>Brain coverage:</strong> ${escapeHtml(opportunity.brainCoverage || 'Unknown')}</p><p><strong>Source items:</strong> ${sources.length}</p>`)}${card('Relevant Brain records', Array.isArray(opportunity.brainRecords) && opportunity.brainRecords.length ? `<ul class="source-list">${opportunity.brainRecords.map((record) => `<li><strong>${escapeHtml(record.title || record.id)}</strong><br><code>${escapeHtml(record.path || record.id)}</code></li>`).join('')}</ul>` : '<p>No approved Brain records were matched. Generation should qualify claims or require review.</p>')}</div><section class="panel"><h2>Source evidence</h2>${sourceRows || '<p>No source records found for this opportunity.</p>'}</section>`;
+  return layout({ title: 'Trend sources', user: ctx.user, permissions: ctx.permissions, active: 'Blog Engine', body });
+}
+
 async function renderArticle(ctx, runId, csrf) {
   validateRunId(runId);
   const run = await ctx.runRepo.readRun(runId);
   const summary = run.summary || {};
   const claims = Array.isArray(run.claimLedger?.claims) ? run.claimLedger.claims : [];
-  const evidenceCount = Array.isArray(run.research?.evidence) ? run.research.evidence.length : 0;
+  const brainEvidence = approvedBrainEvidence(run);
   const externalCount = Array.isArray(run.externalResearch?.items) ? run.externalResearch.items.length : 0;
   const distributionAssets = Array.isArray(run.distribution?.assets) ? run.distribution.assets : [];
   const versions = Array.isArray(run.versions) ? run.versions : [];
-  const body = `<p class="eyebrow">Article Workspace</p><h1>${escapeHtml(summary.title || 'Untitled article')}</h1>${runSummaryHtml(summary)}${actionButtons(summary, csrf, ctx.permissions, ctx.config)}<div class="workspace-tabs"><a href="#write">Write</a><a href="#preview">Preview</a><a href="#sources">Sources</a><a href="#distribution">Distribution</a><a href="#history">History</a></div><section id="write" class="workspace-section">${card('Write', `<p class="muted">Editing persistence is intentionally staged. Review and approval use the exact generated version shown here.</p><textarea rows="16">${escapeHtml(run.articleMarkdown || run.draftMarkdown || '')}</textarea>`)}</section><section id="preview" class="workspace-section">${card('Preview', articlePreviewHtml(run))}</section><section id="sources" class="workspace-section"><div class="grid">${card('Source coverage', `<p>Claims: ${claims.length}</p><p>Unresolved blockers: ${escapeHtml(summary.unresolvedIssueCount ?? 0)}</p>`)}${card('Approved Brain context', `<pre>${escapeHtml(JSON.stringify({ brain: evidenceCount, external: externalCount }, null, 2))}</pre>`)}${card('Claims', claimTable(claims))}</div></section><section id="distribution" class="workspace-section">${card('Distribution', distributionList(distributionAssets, run.distribution?.plan))}</section><section id="history" class="workspace-section">${card('History', versions.map((item) => `<p>${escapeHtml(item.version)}</p>`).join('') || '<p>No versions found.</p>')}</section>`;
+  const body = `<p class="eyebrow">Article Workspace</p><h1>${escapeHtml(summary.title || 'Untitled article')}</h1>${runSummaryHtml(summary)}${brainContextWarning(brainEvidence)}${actionButtons(summary, csrf, ctx.permissions, ctx.config)}<div class="workspace-tabs"><a href="#write">Write</a><a href="#preview">Preview</a><a href="#sources">Sources</a><a href="#distribution">Distribution</a><a href="#history">History</a></div><section id="write" class="workspace-section">${card('Write', `<p class="muted">Editing persistence is intentionally staged. Review and approval use the exact generated version shown here.</p><textarea rows="16">${escapeHtml(run.articleMarkdown || run.draftMarkdown || '')}</textarea>`)}</section><section id="preview" class="workspace-section">${card('Preview', articlePreviewHtml(run))}</section><section id="sources" class="workspace-section"><div class="grid">${card('Source coverage', `<p>Claims: ${claims.length}</p><p>Unresolved blockers: ${escapeHtml(summary.unresolvedIssueCount ?? 0)}</p><p>Approved Brain records: ${brainEvidence.length}</p><p>External research items: ${externalCount}</p>`)}${card('Approved Brain context', brainContextList(brainEvidence))}${card('Claims', claimTable(claims))}</div></section><section id="distribution" class="workspace-section">${card('Distribution', distributionList(distributionAssets, run.distribution?.plan))}</section><section id="history" class="workspace-section">${card('History', versions.map((item) => `<p>${escapeHtml(item.version)}</p>`).join('') || '<p>No versions found.</p>')}</section>`;
   return layout({ title: summary.title || 'Article', user: ctx.user, permissions: ctx.permissions, active: 'Blog Engine', body });
 }
 
@@ -392,7 +444,8 @@ async function renderFounderReview(ctx, runId, csrf) {
   const run = await ctx.runRepo.readRun(validateRunId(runId));
   const summary = run.summary || {};
   const claims = Array.isArray(run.claimLedger?.claims) ? run.claimLedger.claims : [];
-  const body = `<p class="eyebrow">Founder Review</p><h1>${escapeHtml(summary.title || 'Untitled article')}</h1><p class="notice">Approval requires founder permission, exact displayed version, zero blocking claims and explicit confirmation. This approves version ${escapeHtml(summary.version || 'v1')} for Certifyd Blog publishing preparation.</p>${runSummaryHtml(summary)}${card('Final Checklist', `<ul><li>Version: ${escapeHtml(summary.version || 'v1')}</li><li>Blocking claims: ${escapeHtml(summary.unresolvedIssueCount ?? 0)}</li><li>Canonical URL: ${escapeHtml(summary.canonicalUrl || 'Not set')}</li><li>Publishability: ${escapeHtml(humanizeLabel(summary.publishability || 'UNKNOWN'))}</li></ul>`)}${card('Blocked or Qualified Claims', claimTable(claims.filter((claim) => claim.status !== 'APPROVED')))}${card('Article Preview', articlePreviewHtml(run))}${actionButtons(summary, csrf, ctx.permissions, ctx.config)}`;
+  const brainEvidence = approvedBrainEvidence(run);
+  const body = `<p class="eyebrow">Founder Review</p><h1>${escapeHtml(summary.title || 'Untitled article')}</h1><p class="notice">Approval requires founder permission, exact displayed version, zero blocking claims, approved Brain context and explicit confirmation. This approves version ${escapeHtml(summary.version || 'v1')} for Certifyd Blog publishing preparation.</p>${runSummaryHtml(summary)}${brainContextWarning(brainEvidence)}${card('Final Checklist', `<ul><li>Version: ${escapeHtml(summary.version || 'v1')}</li><li>Blocking claims: ${escapeHtml(summary.unresolvedIssueCount ?? 0)}</li><li>Approved Brain records: ${brainEvidence.length}</li><li>Canonical URL: ${escapeHtml(summary.canonicalUrl || 'Not set')}</li><li>Publishability: ${escapeHtml(humanizeLabel(summary.publishability || 'UNKNOWN'))}</li></ul>`)}${card('Approved Brain context', brainContextList(brainEvidence))}${card('Blocked or Qualified Claims', claimTable(claims.filter((claim) => claim.status !== 'APPROVED')))}${card('Article Preview', articlePreviewHtml(run))}${actionButtons(summary, csrf, ctx.permissions, ctx.config)}`;
   return layout({ title: 'Founder Review', user: ctx.user, permissions: ctx.permissions, active: 'Blog Engine', body });
 }
 
@@ -461,8 +514,9 @@ function renderAnalytics(ctx) {
 }
 
 function renderSettings(ctx) {
-  const safe = { dashboardEnabled: ctx.config.enabled, authMode: ctx.config.authMode, publicAdminUrl: ctx.config.publicAdminUrl, database: ctx.config.databasePath === ':memory:' ? 'memory' : 'sqlite configured', userCount: ctx.userRepo.listUsers().length, localAi: { enabled: ctx.config.ollama.enabled, model: ctx.config.ollama.model, baseUrl: ctx.config.ollama.baseUrl ? 'configured' : 'not configured' }, trendResearch: ctx.config.trendResearchProvider || 'manual only', trendSourceCount: ctx.config.trendResearch?.sourceUrls?.length || 0, externalResearch: ctx.config.externalResearchProvider || 'not configured', brain: 'content-agent/knowledge', githubPublishing: ctx.config.githubPublishing.enabled ? 'draft pull requests' : 'disabled', githubRepositoryConfigured: Boolean(ctx.config.githubPublishing.owner && ctx.config.githubPublishing.repo), distributionAccounts: 'none connected', cloudflareAccessConfigured: Boolean(ctx.config.cloudflareAccess.teamDomain && ctx.config.cloudflareAccess.audience), environment: ctx.config.environmentName };
-  return layout({ title: 'Settings', user: ctx.user, permissions: ctx.permissions, active: 'Settings', body: `<p class="eyebrow">Settings</p><h1>Configuration</h1><p>Secrets, tokens and raw session data are never displayed.</p><div class="grid">${['Local AI','Trend research','External research','Brain','GitHub publishing','Distribution accounts','Access','Advanced diagnostics'].map((name) => card(name, `<p>${escapeHtml(settingsSummary(name, safe))}</p>`)).join('')}</div><section id="advanced-diagnostics" class="panel"><h2>Advanced diagnostics</h2><pre>${escapeHtml(JSON.stringify(safe, null, 2))}</pre></section>` });
+  const trendSources = buildSourceRegistry(ctx.config);
+  const safe = { dashboardEnabled: ctx.config.enabled, authMode: ctx.config.authMode, publicAdminUrl: ctx.config.publicAdminUrl, database: ctx.config.databasePath === ':memory:' ? 'memory' : 'sqlite configured', userCount: ctx.userRepo.listUsers().length, localAi: { enabled: ctx.config.ollama.enabled, model: ctx.config.ollama.model, baseUrl: ctx.config.ollama.baseUrl ? 'configured' : 'not configured' }, trendResearch: ctx.config.trendResearchProvider || ctx.config.trendResearch?.provider || 'manual only', trendSourceCount: trendSources.length, trendSources: trendSources.map((source) => ({ id: source.id, publisher: source.publisher, category: source.category, feedUrl: source.feedUrl })), trendScan: { maxItemsPerSource: ctx.config.trendResearch?.maxItemsPerSource, maxItemAgeDays: ctx.config.trendResearch?.maxItemAgeDays, timeoutMs: ctx.config.trendResearch?.timeoutMs, maxConcurrentFetches: ctx.config.trendResearch?.maxConcurrentFetches, dailyScanEnabled: ctx.config.trendResearch?.dailyScanEnabled, scanHour: ctx.config.trendResearch?.scanHour, manualCommand: 'npm run trends:scan' }, externalResearch: ctx.config.externalResearchProvider || 'not configured', brain: 'content-agent/knowledge', githubPublishing: ctx.config.githubPublishing.enabled ? 'draft pull requests' : 'disabled', githubRepositoryConfigured: Boolean(ctx.config.githubPublishing.owner && ctx.config.githubPublishing.repo), distributionAccounts: 'none connected', cloudflareAccessConfigured: Boolean(ctx.config.cloudflareAccess.teamDomain && ctx.config.cloudflareAccess.audience), environment: ctx.config.environmentName };
+  return layout({ title: 'Settings', user: ctx.user, permissions: ctx.permissions, active: 'Settings', body: `<p class="eyebrow">Settings</p><h1>Configuration</h1><p>Secrets, tokens and raw session data are never displayed.</p><div class="grid">${['Local AI','Trend research','External research','Brain','GitHub publishing','Distribution accounts','Access','Advanced diagnostics'].map((name) => card(name, `<p>${escapeHtml(settingsSummary(name, safe))}</p>`)).join('')}</div><section class="panel"><h2>Trend sources</h2><p>Trend scanning uses approved RSS/Atom sources. Search and social providers are placeholders until official integrations are configured.</p><div class="review-list">${safe.trendSources.map((source) => `<article class="review-item compact-row"><div><h3>${escapeHtml(source.publisher)}</h3><p>${escapeHtml(source.category)} · ${escapeHtml(source.feedUrl)}</p></div><span class="pill good">Approved</span></article>`).join('') || '<p>No approved trend feeds configured.</p>'}</div></section><section id="advanced-diagnostics" class="panel"><h2>Advanced diagnostics</h2><pre>${escapeHtml(JSON.stringify(safe, null, 2))}</pre></section>` });
 }
 
 function articleMatchesView(run, view) {
@@ -481,7 +535,7 @@ function articleMatchesView(run, view) {
 function settingsSummary(name, safe) {
   const summaries = {
     'Local AI': safe.localAi.enabled ? `Qwen configured (${safe.localAi.model}).` : 'Qwen is unavailable until Ollama is configured.',
-    'Trend research': safe.trendResearch === 'fixture' ? 'Seeded opportunities only. Configure approved RSS/search sources for live scans.' : `${safe.trendResearch} configured with ${safe.trendSourceCount} approved source${safe.trendSourceCount === 1 ? '' : 's'}.`,
+    'Trend research': ['seeded','fixture'].includes(safe.trendResearch) ? 'Seeded examples only. Use RSS or composite for source-backed scans.' : `${safe.trendResearch} configured with ${safe.trendSourceCount} approved source${safe.trendSourceCount === 1 ? '' : 's'}.`,
     'External research': safe.externalResearch === 'fixture' ? 'No live external research provider is connected.' : `${safe.externalResearch} configured.`,
     Brain: 'Approved Certifyd knowledge powers grounded drafts.',
     'GitHub publishing': safe.githubPublishing === 'draft pull requests' ? 'Draft PR publishing is configured.' : 'Publishing is disabled.',
@@ -554,6 +608,18 @@ function form(action, label, fields, className = 'ghost') {
 function claimTable(claims) {
   if (!claims.length) return '<p>No claims found.</p>';
   return `<table class="table"><thead><tr><th>Claim</th><th>Status</th><th>Classification</th><th>Note</th></tr></thead><tbody>${claims.map((claim) => `<tr><td>${escapeHtml(claim.text || claim.claim || '')}</td><td>${statusPill(claim.status)}</td><td>${escapeHtml(claim.classification || '')}</td><td>${escapeHtml(claim.reviewerNote || claim.requiredQualification || claim.blockingReason || '')}</td></tr>`).join('')}</tbody></table>`;
+}
+
+function brainContextWarning(records) {
+  if (records.length) return '';
+  return '<div class="notice danger"><strong>Approved Brain context required.</strong><p>This draft cannot be approved or published until it is regenerated or revised with relevant approved Brain records.</p></div>';
+}
+
+function brainContextList(records) {
+  if (!records.length) {
+    return '<p class="notice danger">No approved Brain records were attached to this draft.</p>';
+  }
+  return `<ol class="source-list">${records.map((record) => `<li><strong>${escapeHtml(record.title || record.id || 'Brain record')}</strong><p><code>${escapeHtml(record.path || record.id || '')}</code></p>${record.excerpt ? `<p class="muted">${escapeHtml(String(record.excerpt).slice(0, 260))}</p>` : ''}</li>`).join('')}</ol>`;
 }
 
 function distributionList(assets, plan = {}) {
@@ -638,6 +704,7 @@ function sendStatus(res, status, message) {
 function sendError(res, error) {
   if (res.headersSent) return res.end();
   const status = error.statusCode || 500;
+  const message = status < 500 || status === 503 || error.expose ? error.message : 'Internal server error';
   res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8' });
-  res.end(status >= 500 ? 'Internal server error' : error.message);
+  res.end(message);
 }

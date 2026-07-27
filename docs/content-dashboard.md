@@ -136,6 +136,52 @@ Troubleshooting:
 - timeout errors: increase `OLLAMA_REQUEST_TIMEOUT_MS` only if the machine is slow; do not add retries that can create duplicate drafts.
 - busy errors: wait for the active generation to finish or cancel it in the browser.
 
+## Trend Research
+
+The Blog Engine can suggest source-backed article opportunities from approved RSS/Atom feeds. Qwen evaluates source summaries supplied by the dashboard; it must not claim it searched the web itself.
+
+Provider IDs:
+
+- `seeded`: development examples only.
+- `rss`: approved RSS/Atom feeds.
+- `composite`: RSS/Atom now, with explicit unavailable placeholders for future search and social providers.
+- `manual`: founder-entered ideas.
+- `search`: future provider placeholder; no live search data is fabricated.
+- `social`: future provider placeholder; X/social trends are not claimed without an approved integration.
+
+Environment:
+
+```bash
+CONTENT_TREND_PROVIDER=composite
+CONTENT_TREND_SOURCE_URLS=
+CONTENT_TREND_SCAN_MAX_ITEMS_PER_SOURCE=30
+CONTENT_TREND_MAX_ITEM_AGE_DAYS=7
+CONTENT_TREND_SCAN_TIMEOUT_MS=20000
+CONTENT_TREND_MAX_CONCURRENT_FETCHES=3
+CONTENT_TREND_DEFAULT_LOCALE=en-CA
+CONTENT_TREND_DAILY_SCAN_ENABLED=false
+CONTENT_TREND_SCAN_HOUR=7
+```
+
+Manual scan:
+
+```bash
+npm run trends:scan
+```
+
+Operational rules:
+
+- Source fetching is server-side only and rejects localhost, loopback, private-network and link-local feed URLs unless test mode explicitly permits them.
+- Fetching uses timeouts, redirect limits, response-size limits and feed parsing for RSS 2.0 and Atom.
+- The dashboard stores feed titles, summaries, links and source attribution only; it does not copy full article bodies.
+- One unavailable source does not fail the entire scan.
+- Source-backed opportunities show source counts, publishers, freshness, risk flags and Brain coverage.
+- Generating from a trend passes opportunity ID, source item IDs and Brain record IDs into the article run for provenance.
+- Saving a trend idea persists it in `content-agent/dashboard/trends/trend-state.json`; saved ideas are deduplicated by opportunity ID and survive later scans.
+- Trend scanning defaults to `composite`, which uses approved RSS/news sources first. Use `CONTENT_TREND_PROVIDER=seeded` only for local fixture demos; seeded scans are prevented from overwriting existing source-backed scan results.
+- A trend scan never approves or publishes an article automatically.
+- Daily scans are disabled by default. When `CONTENT_TREND_DAILY_SCAN_ENABLED=true`, the dashboard process schedules one local scan per day at `CONTENT_TREND_SCAN_HOUR`. Use `npm run trends:scan` for a manual scan or external cron/systemd if the dashboard process is not expected to stay running.
+
 ## Current Run
 
 The dashboard is designed to show the existing Content Engine run:

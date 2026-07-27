@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT_DIR"
+
+for env_file in \
+  "$ROOT_DIR/.env.blog-engine.local" \
+  "$ROOT_DIR/deploy/admin/local.env"
+do
+  if [[ -f "$env_file" ]]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "$env_file"
+    set +a
+  fi
+done
+
+export HOST="${HOST:-127.0.0.1}"
+export PORT="${PORT:-8000}"
+
+export CONTENT_DASHBOARD_ENABLED="${CONTENT_DASHBOARD_ENABLED:-true}"
+export CONTENT_DASHBOARD_ENV="${CONTENT_DASHBOARD_ENV:-local}"
+export CONTENT_DASHBOARD_AUTH_MODE="${CONTENT_DASHBOARD_AUTH_MODE:-local}"
+export ALLOW_TEMPORARY_TUNNEL_TESTING="${ALLOW_TEMPORARY_TUNNEL_TESTING:-false}"
+export CONTENT_DASHBOARD_PUBLIC_URL="${CONTENT_DASHBOARD_PUBLIC_URL:-http://127.0.0.1:8000}"
+
+export CONTENT_MODEL_PROVIDER="${CONTENT_MODEL_PROVIDER:-ollama}"
+export OLLAMA_ENABLED="${OLLAMA_ENABLED:-true}"
+export OLLAMA_BASE_URL="${OLLAMA_BASE_URL:-http://127.0.0.1:11434}"
+export OLLAMA_CONTENT_MODEL="${OLLAMA_CONTENT_MODEL:-qwen2.5:1.5b}"
+export OLLAMA_CONTEXT_LIMIT="${OLLAMA_CONTEXT_LIMIT:-4096}"
+export OLLAMA_MAX_OUTPUT_TOKENS="${OLLAMA_MAX_OUTPUT_TOKENS:-700}"
+export OLLAMA_REQUEST_TIMEOUT_MS="${OLLAMA_REQUEST_TIMEOUT_MS:-120000}"
+export OLLAMA_THINK="${OLLAMA_THINK:-false}"
+export OLLAMA_MAX_CONCURRENT_GENERATIONS="${OLLAMA_MAX_CONCURRENT_GENERATIONS:-1}"
+
+if [[ -z "${CONTENT_DASHBOARD_GITHUB_PUBLISHING_ENABLED:-}" ]]; then
+  if [[ -n "${GITHUB_APP_ID:-}" || -n "${CONTENT_DASHBOARD_GITHUB_TOKEN:-}" || -n "${GITHUB_TOKEN:-}" ]]; then
+    export CONTENT_DASHBOARD_GITHUB_PUBLISHING_ENABLED=true
+  else
+    export CONTENT_DASHBOARD_GITHUB_PUBLISHING_ENABLED=false
+  fi
+fi
+export CONTENT_DASHBOARD_GITHUB_OWNER="${CONTENT_DASHBOARD_GITHUB_OWNER:-BEATiFYAUDIO}"
+export CONTENT_DASHBOARD_GITHUB_REPO="${CONTENT_DASHBOARD_GITHUB_REPO:-certifyd-me-site}"
+export CONTENT_DASHBOARD_GITHUB_BASE_BRANCH="${CONTENT_DASHBOARD_GITHUB_BASE_BRANCH:-main}"
+export CONTENT_DASHBOARD_GITHUB_BRANCH_PREFIX="${CONTENT_DASHBOARD_GITHUB_BRANCH_PREFIX:-content-dashboard}"
+
+if [[ -z "${CONTENT_DASHBOARD_LOCAL_LOGIN_TOKEN:-}" && "$CONTENT_DASHBOARD_AUTH_MODE" == "local" ]]; then
+  echo "ERROR: CONTENT_DASHBOARD_LOCAL_LOGIN_TOKEN is required for local dashboard login." >&2
+  echo "Set it in .env.blog-engine.local, deploy/admin/local.env, or the shell before running this script." >&2
+  exit 1
+fi
+
+echo "Starting Certifyd Blog Engine at http://${HOST}:${PORT}"
+echo "Dashboard enabled: ${CONTENT_DASHBOARD_ENABLED}"
+echo "Auth mode: ${CONTENT_DASHBOARD_AUTH_MODE}"
+echo "Model provider: ${CONTENT_MODEL_PROVIDER}"
+echo "Ollama model: ${OLLAMA_CONTENT_MODEL}"
+echo "GitHub publishing: ${CONTENT_DASHBOARD_GITHUB_PUBLISHING_ENABLED}"
+
+exec node scripts/content-dashboard-server.js

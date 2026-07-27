@@ -1,0 +1,42 @@
+{
+  "provider": "deterministic",
+  "model": "template-generated",
+  "stage": "article-generation",
+  "promptTemplateVersion": "dashboard-ollama-qwen-v1",
+  "inputHashes": {
+    "input": "35b0f0ba1dce2d8c439cc1dba73380ebd7bd368d68004f46a865a6b13917506d",
+    "groundedContext": "fb7b96c1f0d2614bbc5b9cc8883aaca9352e553563bcd880a2cd558d07119b59"
+  },
+  "knowledgeEvidenceIds": [
+    "brain:founder-decisions",
+    "brain:investors/investor-claims-review",
+    "brain:vocabulary",
+    "brain:capabilities/catalog-management",
+    "brain:capabilities/identity",
+    "brain:capabilities/payouts",
+    "brain:capabilities/provenance",
+    "brain:capabilities/publishing"
+  ],
+  "trendProvenance": {
+    "opportunityId": "opp-7e2b03a6ee0bab",
+    "sourceItemIds": [
+      "src-93ca9a4c63c18f35",
+      "src-cd5c81e0eaa3cae9",
+      "src-83798cd476073a49"
+    ],
+    "brainRecordIds": [
+      "brain:founder-decisions",
+      "brain:constitution",
+      "brain:investorsinvestment-thesis",
+      "brain:factsapproved-public-claims",
+      "brain:investorsinvestor-claims-review"
+    ],
+    "generatedAt": "2026-07-27T03:56:36.762Z",
+    "modelProvider": "deterministic",
+    "model": "template-generated"
+  },
+  "timestamp": "2026-07-27T03:56:36.762Z",
+  "timeoutMs": 120000,
+  "responseStatus": "SUCCESS",
+  "deterministicFallbackUsed": true
+}

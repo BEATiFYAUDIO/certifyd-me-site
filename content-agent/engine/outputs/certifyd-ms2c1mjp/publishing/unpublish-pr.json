@@ -1,0 +1,10 @@
+{
+  "status": "UNPUBLISHING_REVIEW",
+  "pullRequestUrl": "https://github.com/BEATiFYAUDIO/certifyd-me-site/pull/6",
+  "branchName": "content-dashboard/unpublish-certifyd-1785121602333",
+  "repositoryPath": "content/blog/certifyd.md",
+  "removedPath": "blog/certifyd/index.html",
+  "canonicalUrl": "https://certifyd.me/blog/certifyd/",
+  "startedBy": "darryl@example.com",
+  "startedAt": "2026-07-27T03:06:48.579Z"
+}

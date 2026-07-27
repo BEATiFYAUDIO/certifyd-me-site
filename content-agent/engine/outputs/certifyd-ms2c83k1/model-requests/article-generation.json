@@ -1,0 +1,30 @@
+{
+  "provider": "ollama",
+  "model": "qwen2.5:1.5b",
+  "stage": "article-generation",
+  "promptTemplateVersion": "dashboard-ollama-qwen-v1",
+  "inputHashes": {
+    "input": "68065a27e683aa9c2bc08031ddfdf90335e57cc2901eb70872ab315bdddc794e",
+    "groundedContext": "bc34c599e7cabc76ea443b38efd2fb4d9c6a2b29067e25105fdf501f274e76c2"
+  },
+  "knowledgeEvidenceIds": [
+    "brain:capabilities/awards",
+    "brain:capabilities/catalog-management",
+    "brain:capabilities/fan",
+    "brain:capabilities/payouts",
+    "brain:capabilities/publishing",
+    "brain:capabilities/receipts",
+    "brain:capabilities/splits",
+    "brain:facts/approved-public-claims"
+  ],
+  "timestamp": "2026-07-26T21:56:21.121Z",
+  "timeoutMs": 120000,
+  "responseStatus": "SUCCESS",
+  "tokenUsage": {
+    "promptTokens": 2050,
+    "completionTokens": 412,
+    "totalTokens": 2462
+  },
+  "durationMs": 40415,
+  "deterministicFallbackUsed": false
+}

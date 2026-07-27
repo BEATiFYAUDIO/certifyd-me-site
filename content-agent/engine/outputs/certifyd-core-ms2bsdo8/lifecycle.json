@@ -1,0 +1,50 @@
+{
+  "createdAt": "2026-07-26T21:44:07.736Z",
+  "updatedAt": "2026-07-27T01:10:08.886Z",
+  "status": "PENDING_FOUNDER_REVIEW",
+  "events": [
+    {
+      "type": "FOUNDER_APPROVED",
+      "actor": "darryl@example.com",
+      "version": "v1",
+      "at": "2026-07-27T00:27:00.559Z"
+    },
+    {
+      "type": "FOUNDER_APPROVED",
+      "actor": "darryl@example.com",
+      "version": "v1",
+      "at": "2026-07-27T00:29:57.033Z"
+    },
+    {
+      "type": "READY_TO_PUBLISH",
+      "actor": "darryl@example.com",
+      "note": "Prepared for Certifyd Blog.",
+      "at": "2026-07-27T00:31:51.198Z"
+    },
+    {
+      "type": "PUBLISHING",
+      "actor": "darryl@example.com",
+      "version": "v1",
+      "note": "Draft PR created: https://github.com/BEATiFYAUDIO/certifyd-me-site/pull/1",
+      "at": "2026-07-27T00:36:21.873Z"
+    },
+    {
+      "type": "PUBLISHED",
+      "actor": "darryl@example.com",
+      "note": "Live URL verified: https://certifyd.me/blog/certifyd-core/",
+      "at": "2026-07-27T00:54:36.514Z"
+    },
+    {
+      "type": "ARCHIVED",
+      "actor": "darryl@example.com",
+      "note": "Article archived.",
+      "at": "2026-07-27T01:09:59.285Z"
+    },
+    {
+      "type": "REJECTED",
+      "actor": "darryl@example.com",
+      "note": "Rejected from dashboard.",
+      "at": "2026-07-27T01:10:08.886Z"
+    }
+  ]
+}

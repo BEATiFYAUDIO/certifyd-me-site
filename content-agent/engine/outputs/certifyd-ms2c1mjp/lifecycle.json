@@ -1,0 +1,19 @@
+{
+  "createdAt": "2026-07-26T21:51:19.141Z",
+  "updatedAt": "2026-07-27T03:06:48.579Z",
+  "status": "PENDING_FOUNDER_REVIEW",
+  "events": [
+    {
+      "type": "FOUNDER_APPROVED",
+      "actor": "darryl@example.com",
+      "version": "v1",
+      "at": "2026-07-27T00:17:07.323Z"
+    },
+    {
+      "type": "UNPUBLISHING",
+      "actor": "darryl@example.com",
+      "note": "Draft unpublish PR created: https://github.com/BEATiFYAUDIO/certifyd-me-site/pull/6",
+      "at": "2026-07-27T03:06:48.579Z"
+    }
+  ]
+}
