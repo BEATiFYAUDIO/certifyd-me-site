@@ -9,6 +9,7 @@ import { buildGroundedContext, createGenerationProvider, normalizeProviderName, 
 
 const execFileAsync = promisify(execFile);
 const RESULT_LIMIT = 12000;
+const REQUIRED_BRAIN_CONTEXT_ERROR = 'Approved Brain context is required before approval or publishing. Regenerate or revise the draft with relevant approved Brain records.';
 
 export class AuditLogRepository {
   constructor(config) {
@@ -50,7 +51,10 @@ export class ContentDashboardActions {
       audience: cleanString(form.get('audience') || form.get('targetAudience'), 160),
       objective: cleanString(form.get('objective') || form.get('businessObjective'), 360),
       writingStyle: cleanString(form.get('writingStyle'), 240),
-      sourceRestrictions: cleanString(form.get('sourceRestrictions'), 800),
+      sourceRestrictions: cleanString(form.get('sourceRestrictions'), 1800),
+      trendOpportunityId: cleanString(form.get('trendOpportunityId'), 140),
+      trendSourceItemIds: cleanString(form.get('trendSourceItemIds'), 1400),
+      trendBrainRecordIds: cleanString(form.get('trendBrainRecordIds'), 1400),
       contentType: cleanString(form.get('contentType') || 'article', 80),
       channel: cleanString(form.get('channel') || 'Blog', 80),
     };
@@ -110,6 +114,7 @@ export class ContentDashboardActions {
     const run = await this.runs.readRun(runId);
     if (run.summary.version !== version) throw Object.assign(new Error('Approval requires the exact displayed version.'), { statusCode: 409 });
     if (run.summary.unresolvedIssueCount > 0) throw Object.assign(new Error('Blocking claims must be resolved before approval.'), { statusCode: 409 });
+    assertApprovedBrainContext(run);
     const now = new Date().toISOString();
     const base = this.runs.runPath(runId);
     const manifest = await this.readRunJson(base, 'publication-manifest.json', {});
@@ -195,6 +200,7 @@ export class ContentDashboardActions {
     if (!['FOUNDER_APPROVED', 'READY_TO_PUBLISH'].includes(run.summary.status)) {
       throw Object.assign(new Error('Founder approval is required before publishing preparation.'), { statusCode: 409 });
     }
+    assertApprovedBrainContext(run);
     const base = this.runs.runPath(runId);
     const slug = safeSlug(run.blogPackage?.slug || run.summary.slug || run.summary.title || runId);
     const title = run.blogPackage?.title || run.summary.title || 'Untitled article';
@@ -261,6 +267,7 @@ export class ContentDashboardActions {
     if (!run.blogPackage?.repositoryPath && !run.blogPackage?.body) errors.push('Blog package has not been prepared.');
     if (!stripFrontmatter(run.articleMarkdown || run.draftMarkdown || run.blogPackage?.body || '')) errors.push('Article body is empty.');
     if (!slug) errors.push('Article slug is missing.');
+    if (!approvedBrainEvidence(run).length) errors.push(REQUIRED_BRAIN_CONTEXT_ERROR);
     await this.audit.append({ action: 'publishing_validation', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: errors.length ? 'FAILED' : 'SUCCESS', note: errors.join(' ') });
     if (errors.length) throw Object.assign(new Error(errors.join(' ')), { statusCode: 409 });
     return { ok: true, output: `Publishing package is ready for Certifyd Blog: ${blogUrl(slug)}` };
@@ -576,4 +583,24 @@ function blogUrl(slug) {
 
 function stripFrontmatter(markdown) {
   return String(markdown || '').replace(/^\uFEFF?---\s*[\r\n][\s\S]*?[\r\n]---\s*[\r\n]?/, '').trimStart();
+}
+
+export function approvedBrainEvidence(runOrResearch) {
+  const research = runOrResearch?.research || runOrResearch || {};
+  const records = Array.isArray(research.selectedEvidence)
+    ? research.selectedEvidence
+    : Array.isArray(research.evidence)
+      ? research.evidence
+      : [];
+  return records.filter((record) => {
+    const id = String(record?.id || '');
+    const recordPath = String(record?.path || '');
+    return id.startsWith('brain:') || recordPath.startsWith('content-agent/knowledge/');
+  });
+}
+
+export function assertApprovedBrainContext(run) {
+  if (!approvedBrainEvidence(run).length) {
+    throw Object.assign(new Error(REQUIRED_BRAIN_CONTEXT_ERROR), { statusCode: 409 });
+  }
 }

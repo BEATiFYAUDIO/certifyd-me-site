@@ -160,6 +160,35 @@ test('8b approval fails when blocking claims remain', async () => {
   );
 });
 
+test('8c approval fails without approved Brain context', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-no-brain-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const runId = 'no-brain-001';
+  const runDir = path.join(outputDir, runId);
+  await createMinimalRun(runDir, {
+    title: 'No Brain Test',
+    slug: 'no-brain-test',
+    status: 'PENDING_FOUNDER_REVIEW',
+    publishability: 'NEEDS_FOUNDER_REVIEW',
+    selectedEvidence: [],
+  });
+  const actions = new ContentDashboardActions(getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  }));
+  await assert.rejects(
+    actions.approve({
+      actor: { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' },
+      runId,
+      version: 'v1',
+      confirm: 'true',
+    }),
+    /Approved Brain context is required/,
+  );
+});
+
 test('9 writer can access create draft action page path but cannot approve', async () => withServer(async (base) => {
   const cookie = await login(base, 'writer@example.test');
   const response = await fetch(`${base}/app/content/articles`, { headers: { cookie } });
@@ -242,6 +271,7 @@ test('20 approved articles can become READY_TO_PUBLISH locally', async () => {
   await fs.writeFile(path.join(runDir, 'final', 'article.json'), JSON.stringify({ title: 'Local Approval Test', slug: 'local-approval-test', version: 'v1' }));
   await fs.writeFile(path.join(runDir, 'final', 'article.md'), '---\ntitle: "Local Approval Test"\n---\n\n# Local Approval Test\n\nBody.');
   await fs.writeFile(path.join(runDir, 'claim-ledger.json'), JSON.stringify({ claims: [{ text: 'Safe claim', status: 'APPROVED' }] }));
+  await fs.writeFile(path.join(runDir, 'research-record.json'), JSON.stringify({ selectedEvidence: [approvedBrainRecord()], claimsThatMustNotBeMade: [] }));
 
   const actions = new ContentDashboardActions(getDashboardConfig({
     ...env,
@@ -268,6 +298,30 @@ test('20 approved articles can become READY_TO_PUBLISH locally', async () => {
 
   const validated = await actions.validatePublishing({ actor, runId });
   assert.match(validated.output, /Publishing package is ready/);
+});
+
+test('20a publishing validation fails without approved Brain context', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-no-brain-publish-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const runId = 'no-brain-publish-001';
+  const runDir = path.join(outputDir, runId);
+  await createMinimalRun(runDir, {
+    title: 'No Brain Publish',
+    slug: 'no-brain-publish',
+    status: 'READY_TO_PUBLISH',
+    publishability: 'READY_TO_PUBLISH',
+    selectedEvidence: [],
+  });
+  const actions = new ContentDashboardActions(getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  }));
+  await assert.rejects(
+    actions.validatePublishing({ actor: { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' }, runId }),
+    /Approved Brain context is required/,
+  );
 });
 
 test('20b READY_TO_PUBLISH articles expose Publish to Certifyd and create a tracked draft PR state', async () => {
@@ -400,6 +454,29 @@ test('21 no dashboard page offers live PUBLISHED action', async () => withServer
   const response = await fetch(`${base}/app/content/publishing`, { headers: { cookie } });
   assert.doesNotMatch(await response.text(), /Publish Live<\/button>/);
 }));
+
+test('21a article workspace shows exact approved Brain records and zero-context warning', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-brain-ui-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  await createMinimalRun(path.join(outputDir, 'core-explainer-001'), {
+    title: 'Brain UI Test',
+    slug: 'brain-ui-test',
+    selectedEvidence: [approvedBrainRecord({ title: 'Approved Public Claims', path: 'content-agent/knowledge/facts/approved-public-claims.md' })],
+  });
+  await withServer(async (base) => {
+    const cookie = await login(base, 'founder@example.test');
+    const response = await fetch(`${base}/app/content/articles/core-explainer-001`, { headers: { cookie } });
+    const html = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(html, /Approved Brain records: 1/);
+    assert.match(html, /Approved Public Claims/);
+    assert.match(html, /content-agent\/knowledge\/facts\/approved-public-claims\.md/);
+  }, {
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  });
+});
 
 test('21b stale dashboard section routes redirect instead of rendering broken pages', async () => withServer(async (base) => {
   const cookie = await login(base, 'founder@example.test');
@@ -645,6 +722,7 @@ async function createMinimalRun(runDir, options = {}) {
   await fs.mkdir(path.join(runDir, 'final'), { recursive: true });
   const title = options.title || 'Minimal Run';
   const slug = options.slug || 'minimal-run';
+  const selectedEvidence = options.selectedEvidence === undefined ? [approvedBrainRecord()] : options.selectedEvidence;
   await fs.writeFile(path.join(runDir, 'intake.json'), JSON.stringify({ workingTitle: title, targetAudience: 'Investors', primaryTopic: 'Certifyd Blog' }));
   await fs.writeFile(path.join(runDir, 'publication-manifest.json'), JSON.stringify({
     title,
@@ -656,4 +734,15 @@ async function createMinimalRun(runDir, options = {}) {
   await fs.writeFile(path.join(runDir, 'final', 'article.json'), JSON.stringify({ title, slug, version: 'v1' }));
   await fs.writeFile(path.join(runDir, 'final', 'article.md'), options.markdown || `# ${title}\n\nBody.`);
   await fs.writeFile(path.join(runDir, 'claim-ledger.json'), JSON.stringify({ claims: [{ text: 'Safe claim', status: 'APPROVED' }] }));
+  await fs.writeFile(path.join(runDir, 'research-record.json'), JSON.stringify({ selectedEvidence, claimsThatMustNotBeMade: [] }));
+}
+
+function approvedBrainRecord(overrides = {}) {
+  return {
+    id: 'brain:facts/approved-public-claims',
+    path: 'content-agent/knowledge/facts/approved-public-claims.md',
+    title: 'Approved Public Claims',
+    excerpt: 'Approved Certifyd public claims for grounded article generation.',
+    ...overrides,
+  };
 }

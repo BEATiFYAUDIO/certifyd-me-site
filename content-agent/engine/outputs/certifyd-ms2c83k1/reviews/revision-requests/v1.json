@@ -1,0 +1,7 @@
+{
+  "reviewStatus": "REVISION_REQUESTED",
+  "articleVersion": "v1",
+  "reviewer": "darryl@example.com",
+  "timestamp": "2026-07-26T23:05:00.349Z",
+  "note": "Revision requested from dashboard."
+}

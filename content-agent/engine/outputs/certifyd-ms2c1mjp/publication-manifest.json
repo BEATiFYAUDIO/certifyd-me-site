@@ -1,0 +1,30 @@
+{
+  "runId": "certifyd-ms2c1mjp",
+  "title": "Certifyd Catalog",
+  "slug": "certifyd",
+  "version": "v1",
+  "status": "PENDING_FOUNDER_REVIEW",
+  "publishability": "UNPUBLISHING_REVIEW",
+  "canonicalUrl": "https://certifyd.me/blog/certifyd/",
+  "audience": "Creators",
+  "topic": "Creator ownership basics",
+  "contentType": "brief",
+  "modelProvider": "ollama",
+  "modelMode": "Local AI",
+  "unresolvedIssueCount": 0,
+  "lastUpdated": "2026-07-26T21:51:19.141Z",
+  "currentStatus": "UNPUBLISHING",
+  "updatedAt": "2026-07-27T03:06:48.579Z",
+  "approvedBy": "darryl@example.com",
+  "approvedAt": "2026-07-27T00:17:07.323Z",
+  "unpublishing": {
+    "status": "UNPUBLISHING_REVIEW",
+    "pullRequestUrl": "https://github.com/BEATiFYAUDIO/certifyd-me-site/pull/6",
+    "branchName": "content-dashboard/unpublish-certifyd-1785121602333",
+    "repositoryPath": "content/blog/certifyd.md",
+    "removedPath": "blog/certifyd/index.html",
+    "canonicalUrl": "https://certifyd.me/blog/certifyd/",
+    "startedBy": "darryl@example.com",
+    "startedAt": "2026-07-27T03:06:48.579Z"
+  }
+}

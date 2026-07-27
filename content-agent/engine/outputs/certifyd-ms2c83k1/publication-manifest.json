@@ -1,0 +1,20 @@
+{
+  "runId": "certifyd-ms2c83k1",
+  "title": "Certifyd",
+  "slug": "certifyd",
+  "version": "v1",
+  "status": "PENDING_FOUNDER_REVIEW",
+  "publishability": "READY_TO_PUBLISH",
+  "canonicalUrl": "https://certifyd.me/blog/certifyd/",
+  "audience": "Creators, partners and investors",
+  "topic": "Compare Certifyd to Spotify",
+  "contentType": "article",
+  "modelProvider": "ollama",
+  "modelMode": "Local AI",
+  "unresolvedIssueCount": 1,
+  "lastUpdated": "2026-07-26T21:56:21.121Z",
+  "currentStatus": "READY_TO_PUBLISH",
+  "updatedAt": "2026-07-26T23:08:55.460Z",
+  "approvedBy": "darryl@example.com",
+  "approvedAt": "2026-07-26T23:08:50.502Z"
+}

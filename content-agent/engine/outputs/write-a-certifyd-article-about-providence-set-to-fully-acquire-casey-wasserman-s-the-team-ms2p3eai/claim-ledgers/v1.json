@@ -1,0 +1,20 @@
+{
+  "claims": [
+    {
+      "claimId": "claim-1",
+      "text": "Certifyd article draft about Write a Certifyd article about: Providence set to fully acquire Casey Wasserman’s THE•TEAM, valuing agency at $3.4B (report). Use this angle: This connects to c.",
+      "sourceIds": [
+        "brain:founder-decisions",
+        "brain:investors/investor-claims-review",
+        "brain:vocabulary",
+        "brain:capabilities/catalog-management"
+      ],
+      "confidence": "needs-review",
+      "status": "NEEDS_REVIEW",
+      "reviewerNote": "Generated draft claim. Founder review required before publishing."
+    }
+  ],
+  "warnings": [
+    "Template-generated draft requiring editorial review."
+  ]
+}

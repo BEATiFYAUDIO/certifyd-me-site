@@ -4,3 +4,6 @@ node_modules/
 content-agent/dashboard/*.sqlite
 content-agent/dashboard/*.log
 content-agent/review/*.log.jsonl
+
+content-agent/dashboard/trends/
+content-agent/dashboard/trash/

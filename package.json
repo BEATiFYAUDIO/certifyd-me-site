@@ -14,7 +14,8 @@
     "test:blog": "node --test test/blog-build.test.js",
     "test": "npm run test:blog && npm run test:dashboard && npm run test:generation && npm run test:trends",
     "test:generation": "node --test test/content-generation-provider.test.js",
-    "test:trends": "node --test test/content-trends.test.js"
+    "test:trends": "node --test test/content-trends.test.js",
+    "trends:scan": "node scripts/trends-scan.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.10.0",

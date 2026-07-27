@@ -137,9 +137,12 @@ test('successful Qwen response creates draft engine output and never publishes',
   const result = await persistGeneratedArticleRun(config, article, { topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context, provider);
   const manifest = JSON.parse(await fs.readFile(path.join(config.outputDir, result.runId, 'publication-manifest.json'), 'utf8'));
   const finalArticle = JSON.parse(await fs.readFile(path.join(config.outputDir, result.runId, 'final/article.json'), 'utf8'));
+  const researchRecord = JSON.parse(await fs.readFile(path.join(config.outputDir, result.runId, 'research-record.json'), 'utf8'));
   assert.equal(manifest.currentStatus, 'PENDING_FOUNDER_REVIEW');
   assert.equal(manifest.publishability, 'BLOCKED_PENDING_APPROVAL');
   assert.equal(finalArticle.status, 'draft');
+  assert.ok(Array.isArray(researchRecord.selectedEvidence));
+  assert.equal(researchRecord.selectedEvidence[0].id, sourceId);
 });
 
 test('model cannot set publication, approval or GitHub state', async () => {

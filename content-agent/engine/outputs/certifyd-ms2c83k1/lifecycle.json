@@ -1,0 +1,25 @@
+{
+  "createdAt": "2026-07-26T21:56:21.121Z",
+  "updatedAt": "2026-07-26T23:08:55.461Z",
+  "status": "PENDING_FOUNDER_REVIEW",
+  "events": [
+    {
+      "type": "REVISION_REQUESTED",
+      "actor": "darryl@example.com",
+      "note": "Revision requested.",
+      "at": "2026-07-26T23:05:00.351Z"
+    },
+    {
+      "type": "FOUNDER_APPROVED",
+      "actor": "darryl@example.com",
+      "version": "v1",
+      "at": "2026-07-26T23:08:50.502Z"
+    },
+    {
+      "type": "READY_TO_PUBLISH",
+      "actor": "darryl@example.com",
+      "note": "Prepared for Certifyd Blog.",
+      "at": "2026-07-26T23:08:55.461Z"
+    }
+  ]
+}

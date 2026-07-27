@@ -363,6 +363,7 @@ export async function persistGeneratedArticleRun(config, article, input, grounde
     warnings: article.warnings,
   };
   const unresolvedIssueCount = claimLedger.claims.filter((claim) => claim.status !== 'APPROVED_WITH_SOURCE').length + article.warnings.length;
+  const trendProvenance = buildTrendProvenance(input, timestamp, provider);
   const summary = {
     runId,
     title: article.title,
@@ -376,6 +377,7 @@ export async function persistGeneratedArticleRun(config, article, input, grounde
     contentType: input.contentType || 'article',
     modelProvider: provider.providerName,
     modelMode: provider.supportsLiveGeneration ? 'Local AI' : 'Deterministic fallback',
+    trendProvenance,
     unresolvedIssueCount,
     lastUpdated: timestamp,
   };
@@ -384,10 +386,10 @@ export async function persistGeneratedArticleRun(config, article, input, grounde
   await fs.writeFile(path.join(dir, 'drafts', 'v1.md'), articleMarkdown);
   await fs.writeFile(path.join(dir, 'final-article.md'), articleMarkdown);
   await fs.writeFile(path.join(dir, 'final', 'article.md'), articleMarkdown);
-  await fs.writeFile(path.join(dir, 'final', 'article.json'), JSON.stringify({ ...article, version: 'v1', status: 'draft', canonicalUrl: summary.canonicalUrl }, null, 2));
+  await fs.writeFile(path.join(dir, 'final', 'article.json'), JSON.stringify({ ...article, version: 'v1', status: 'draft', canonicalUrl: summary.canonicalUrl, trendProvenance }, null, 2));
   await fs.writeFile(path.join(dir, 'claim-ledger.json'), JSON.stringify(claimLedger, null, 2));
   await fs.writeFile(path.join(dir, 'claim-ledgers', 'v1.json'), JSON.stringify(claimLedger, null, 2));
-  await fs.writeFile(path.join(dir, 'research-record.json'), JSON.stringify({ selectedEvidence: groundedContext.sourceRecords, claimsThatMustNotBeMade: groundedContext.prohibitedClaims }, null, 2));
+  await fs.writeFile(path.join(dir, 'research-record.json'), JSON.stringify({ selectedEvidence: groundedContext.sourceRecords, claimsThatMustNotBeMade: groundedContext.prohibitedClaims, trendProvenance }, null, 2));
   await fs.writeFile(path.join(dir, 'seo-package.json'), JSON.stringify({ seoTitle: article.seoTitle, metaDescription: article.seoDescription, suggestedSlug: article.slug }, null, 2));
   await fs.writeFile(path.join(dir, 'seo', 'seo-package.json'), JSON.stringify({ seoTitle: article.seoTitle, metaDescription: article.seoDescription, suggestedSlug: article.slug }, null, 2));
   await fs.writeFile(path.join(dir, 'publication-manifest.json'), JSON.stringify({ ...summary, currentStatus: 'PENDING_FOUNDER_REVIEW', publishability: 'BLOCKED_PENDING_APPROVAL', updatedAt: timestamp }, null, 2));
@@ -402,6 +404,7 @@ export async function persistGeneratedArticleRun(config, article, input, grounde
     promptTemplateVersion: 'dashboard-ollama-qwen-v1',
     inputHashes: { input: hashJson(redactInput(input)), groundedContext: hashJson(groundedContext) },
     knowledgeEvidenceIds: groundedContext.sourceRecords.map((source) => source.id),
+    trendProvenance,
     timestamp,
     timeoutMs: config.ollama.timeoutMs,
     responseStatus: 'SUCCESS',
@@ -877,6 +880,32 @@ function hashJson(value) {
 
 function redactInput(input) {
   return Object.fromEntries(Object.entries(input).filter(([key]) => !SECRET_PATTERN.test(key)));
+}
+
+function buildTrendProvenance(input, timestamp, provider) {
+  return {
+    opportunityId: cleanId(input.trendOpportunityId),
+    sourceItemIds: parseIdList(input.trendSourceItemIds, 40),
+    brainRecordIds: parseIdList(input.trendBrainRecordIds, 40),
+    generatedAt: timestamp,
+    modelProvider: provider.providerName,
+    model: provider.modelName,
+  };
+}
+
+function parseIdList(value, limit) {
+  return String(value || '')
+    .split(',')
+    .map((item) => cleanId(item))
+    .filter(Boolean)
+    .slice(0, limit);
+}
+
+function cleanId(value) {
+  return String(value || '')
+    .trim()
+    .replace(/[^a-zA-Z0-9:._-]/g, '')
+    .slice(0, 180);
 }
 
 function sanitizeLogMessage(message) {

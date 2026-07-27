@@ -1,0 +1,34 @@
+{
+  "title": "Certifyd",
+  "slug": "certifyd",
+  "excerpt": "Certifyd is a decentralized platform that provides creator publishing, discovery, ownership, direct commerce, profiles, network participation, and recognition surfaces. It aims to empower creators by providing them with the tools they need to build their own c",
+  "author": "Certifyd",
+  "tags": [
+    "Certifyd"
+  ],
+  "seoTitle": "Certifyd - Empowering Creators with Decentralized Publishing, Discover",
+  "seoDescription": "Certifyd is a decentralized platform that provides creator publishing, discovery, ownership, direct commerce, profiles, network participation, and recognition surfac",
+  "bodyMarkdown": "Certifyd is a decentralized platform that provides creator publishing, discovery, ownership, direct commerce, profiles, network participation, and recognition surfaces. It aims to empower creators by providing them with the tools they need to build their own communities and connect with their audience. Certifyd's ecosystem includes features such as identity management, publishing capabilities, provenance tracking, creator profiles, release records, access, and direct commerce. The platform is designed to be open and accessible, allowing creators to control their own data and monetize their work through various revenue streams.",
+  "claims": [
+    {
+      "text": "Certifyd can support publishing context where implemented.",
+      "sourceIds": [
+        "brain:capabilities/publishing"
+      ],
+      "confidence": "supported"
+    },
+    {
+      "text": "Certifyd may use receipts to provide transaction or access context when implemented.",
+      "sourceIds": [
+        "brain:capabilities/receipts"
+      ],
+      "confidence": "supported"
+    }
+  ],
+  "warnings": [
+    "## Open Questions\n\n- Are payouts live?\n- Who controls payout t"
+  ],
+  "status": "draft",
+  "version": "v1",
+  "canonicalUrl": "https://certifyd.me/blog/certifyd/"
+}

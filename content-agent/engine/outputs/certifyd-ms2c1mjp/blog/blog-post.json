@@ -1,0 +1,15 @@
+{
+  "title": "Certifyd Catalog",
+  "slug": "certifyd",
+  "excerpt": "Certifyd is an open-source catalog management platform that helps creators and businesses manage, discover, and monetize their work. It provides a set of tools and features to help users find and connect with each other on the web.",
+  "author": "Certifyd",
+  "tags": [
+    "Certifyd"
+  ],
+  "seoTitle": "Certifyd Catalog",
+  "seoDescription": "Discover how Certifyd can help you manage, discover, and monetize your work with our open-source catalog management platform.",
+  "bodyMarkdown": "# Certifyd Catalog\n\n## Overview\n\nCertifyd is an open-source catalog management platform designed for creators and businesses looking to manage, discover, and monetize their work. The platform offers a suite of tools and features that enable users to easily find and connect with each other on the web.\n\n## Features\n\n- **Catalog Management**: Create, organize, and publish catalogs that showcase your work or products.\n- **Discovery Tools**: Use advanced search and discovery capabilities to help people find creators, works, profiles, or ecosystem activity.\n- **Profile Creation**: Build official public identities for creators through Certifyd Core-powered surfaces.\n- **Provenance Tracking**: Provide evidence about the origin, source, publisher, timestamp, contribution context, release history, or record history of a work.\n- **Receipts and Payments**: Track purchases, payments, access events, and content interactions to provide clearer transaction and access context for creators and buyers.\n\n## Getting Started\n\n1. Sign up on the Certifyd website.\n2. Choose your preferred catalog management solution (e.g., WordPress plugin, custom code).\n3. Install and configure the platform according to the documentation provided by Certifyd.\n4. Start creating catalogs, profiles, and other resources that showcase your work or products.",
+  "claims": [],
+  "warnings": [],
+  "status": "draft"
+}
