@@ -69,15 +69,13 @@ test('4 founder can view dashboard', async () => withServer(async (base) => {
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /What needs attention\?/);
-  assert.match(html, /What should Certifyd write about\?/);
-  assert.match(html, /Ask Qwen/);
   assert.match(html, /Trending opportunities/);
   assert.match(html, /\/app\/content\/articles\?view=ideas/);
   assert.match(html, /Brain suggestions/);
   assert.match(html, /\/app\/content\/brain\?view=suggestions/);
   assert.match(html, /Recently Published/);
-  assert.match(html, /data-generating-form/);
-  assert.match(html, /Compare Certifyd to Spotify/);
+  assert.doesNotMatch(html, /What should Certifyd write about\?/);
+  assert.doesNotMatch(html, /data-generating-form/);
   assert.doesNotMatch(html, /Clarify Certifyd Core responsibilities/);
   assert.doesNotMatch(html, /Article Management/);
   assert.doesNotMatch(html, /Review Queue/);
@@ -90,7 +88,8 @@ test('4b article workspace owns full Qwen generation and trending opportunities'
   const html = await response.text();
   assert.match(html, /Blog Engine/);
   assert.match(html, /Article workspace/);
-  assert.match(html, /Create with Qwen/);
+  assert.match(html, /What should Certifyd write about\?/);
+  assert.match(html, /Ask Qwen/);
   assert.match(html, /Trending Opportunities/);
   assert.match(html, /Compare Certifyd to Spotify/);
   assert.match(html, /Music/);
@@ -166,7 +165,7 @@ test('9 writer can access create draft action page path but cannot approve', asy
   const response = await fetch(`${base}/app/content/articles`, { headers: { cookie } });
   assert.equal(response.status, 200);
   const html = await response.text();
-  assert.match(html, /Create with Qwen/);
+  assert.match(html, /What should Certifyd write about\?/);
   assert.match(html, /Check Qwen/);
   assert.doesNotMatch(html, /<button class="primary" type="submit">Approve<\/button>/);
 }));
@@ -232,8 +231,121 @@ test('19 Blog package preparation remains visibly blocked before approval', asyn
   assert.match(await response.text(), /Approved|No articles match this view|Ready to publish/);
 }));
 
-test('20 approved articles can become READY_TO_PUBLISH at engine level', async () => {
-  assert.ok(true, 'covered by content-agent Phase 2 test suite');
+test('20 approved articles can become READY_TO_PUBLISH locally', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-run-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const runId = 'local-approval-001';
+  const runDir = path.join(outputDir, runId);
+  await fs.mkdir(path.join(runDir, 'final'), { recursive: true });
+  await fs.writeFile(path.join(runDir, 'intake.json'), JSON.stringify({ workingTitle: 'Local Approval Test', targetAudience: 'Investors', primaryTopic: 'Certifyd Blog' }));
+  await fs.writeFile(path.join(runDir, 'publication-manifest.json'), JSON.stringify({ title: 'Local Approval Test', slug: 'local-approval-test', currentStatus: 'PENDING_FOUNDER_REVIEW', publishability: 'NEEDS_FOUNDER_REVIEW' }));
+  await fs.writeFile(path.join(runDir, 'final', 'article.json'), JSON.stringify({ title: 'Local Approval Test', slug: 'local-approval-test', version: 'v1' }));
+  await fs.writeFile(path.join(runDir, 'final', 'article.md'), '---\ntitle: "Local Approval Test"\n---\n\n# Local Approval Test\n\nBody.');
+  await fs.writeFile(path.join(runDir, 'claim-ledger.json'), JSON.stringify({ claims: [{ text: 'Safe claim', status: 'APPROVED' }] }));
+
+  const actions = new ContentDashboardActions(getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  }));
+  const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+
+  const approved = await actions.approve({ actor, runId, version: 'v1', confirm: 'true' });
+  assert.match(approved.output, /Approved/);
+  let manifest = JSON.parse(await fs.readFile(path.join(runDir, 'publication-manifest.json'), 'utf8'));
+  assert.equal(manifest.currentStatus, 'FOUNDER_APPROVED');
+  assert.equal(manifest.publishability, 'APPROVED_READY');
+
+  const prepared = await actions.preparePublishing({ actor, runId });
+  assert.match(prepared.output, /https:\/\/certifyd\.me\/blog\/local-approval-test\//);
+  manifest = JSON.parse(await fs.readFile(path.join(runDir, 'publication-manifest.json'), 'utf8'));
+  assert.equal(manifest.currentStatus, 'READY_TO_PUBLISH');
+  assert.equal(manifest.publishability, 'READY_TO_PUBLISH');
+  const plan = JSON.parse(await fs.readFile(path.join(runDir, 'distribution', 'distribution-plan.json'), 'utf8'));
+  assert.equal(plan.primaryTarget.channel, 'Certifyd Blog');
+  assert.equal(plan.primaryTarget.repositoryPath, 'content/blog/local-approval-test.md');
+
+  const validated = await actions.validatePublishing({ actor, runId });
+  assert.match(validated.output, /Publishing package is ready/);
+});
+
+test('20b READY_TO_PUBLISH articles expose Publish to Certifyd and create a tracked draft PR state', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-publish-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const runId = 'local-publish-001';
+  const runDir = path.join(outputDir, runId);
+  await createMinimalRun(runDir, {
+    title: 'Local Publish Test',
+    slug: 'local-publish-test',
+    status: 'READY_TO_PUBLISH',
+    publishability: 'READY_TO_PUBLISH',
+    markdown: '# Local Publish Test\n\nBody.',
+  });
+
+  const actions = new ContentDashboardActions(getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  }));
+  actions.publisher = {
+    createPullRequest: async () => ({
+      ok: true,
+      output: 'Draft PR created: https://github.test/certifyd/pull/1',
+      pullRequestUrl: 'https://github.test/certifyd/pull/1',
+      branchName: 'content-dashboard/local-publish-test',
+      repositoryPath: 'content/blog/local-publish-test.md',
+      canonicalUrl: 'https://certifyd.me/blog/local-publish-test/',
+    }),
+  };
+  const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+  await actions.preparePublishing({ actor, runId });
+
+  const result = await actions.publishToCertifyd({ actor, runId, version: 'v1' });
+  assert.match(result.output, /Draft PR created/);
+  const manifest = JSON.parse(await fs.readFile(path.join(runDir, 'publication-manifest.json'), 'utf8'));
+  assert.equal(manifest.currentStatus, 'PUBLISHING');
+  assert.equal(manifest.publishability, 'PUBLISHING_REVIEW');
+  assert.equal(manifest.publishing.pullRequestUrl, 'https://github.test/certifyd/pull/1');
+  const prRecord = JSON.parse(await fs.readFile(path.join(runDir, 'publishing', 'github-pr.json'), 'utf8'));
+  assert.equal(prRecord.repositoryPath, 'content/blog/local-publish-test.md');
+});
+
+test('20c archive and draft delete actions mutate run storage safely', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-lifecycle-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const archiveRunId = 'local-archive-001';
+  const deleteRunId = 'local-delete-001';
+  const archiveDir = path.join(outputDir, archiveRunId);
+  const deleteDir = path.join(outputDir, deleteRunId);
+  await createMinimalRun(archiveDir, { title: 'Archive Test', slug: 'archive-test', status: 'GENERATED', publishability: 'NEEDS_FOUNDER_REVIEW' });
+  await createMinimalRun(deleteDir, { title: 'Delete Test', slug: 'delete-test', status: 'DRAFT', publishability: 'NEEDS_FOUNDER_REVIEW' });
+
+  const actions = new ContentDashboardActions(getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  }));
+  const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+
+  const archived = await actions.archiveArticle({ actor, runId: archiveRunId });
+  assert.match(archived.output, /Archived/);
+  const archiveManifest = JSON.parse(await fs.readFile(path.join(archiveDir, 'publication-manifest.json'), 'utf8'));
+  assert.equal(archiveManifest.currentStatus, 'ARCHIVED');
+  assert.equal(archiveManifest.publishability, 'ARCHIVED');
+
+  await assert.rejects(
+    actions.deleteDraft({ actor, runId: deleteRunId }),
+    /Type delete to confirm draft deletion/
+  );
+  const deleted = await actions.deleteDraft({ actor, runId: deleteRunId, confirmDelete: 'delete' });
+  assert.match(deleted.output, /Deleted draft/);
+  await assert.rejects(fs.stat(deleteDir));
+  const trashEntries = await fs.readdir(path.join(tmpRoot, 'dashboard', 'trash'));
+  assert.equal(trashEntries.length, 1);
+  assert.match(trashEntries[0], /^local-delete-001-/);
 });
 
 test('21 no dashboard page offers live PUBLISHED action', async () => withServer(async (base) => {
@@ -480,4 +592,21 @@ function signTestAccessJwt(privateKey, claims) {
   })).toString('base64url');
   const signature = crypto.sign('RSA-SHA256', Buffer.from(`${header}.${payload}`), privateKey).toString('base64url');
   return `${header}.${payload}.${signature}`;
+}
+
+async function createMinimalRun(runDir, options = {}) {
+  await fs.mkdir(path.join(runDir, 'final'), { recursive: true });
+  const title = options.title || 'Minimal Run';
+  const slug = options.slug || 'minimal-run';
+  await fs.writeFile(path.join(runDir, 'intake.json'), JSON.stringify({ workingTitle: title, targetAudience: 'Investors', primaryTopic: 'Certifyd Blog' }));
+  await fs.writeFile(path.join(runDir, 'publication-manifest.json'), JSON.stringify({
+    title,
+    slug,
+    currentStatus: options.status || 'DRAFT',
+    publishability: options.publishability || 'NEEDS_FOUNDER_REVIEW',
+    canonicalUrl: `https://certifyd.me/blog/${slug}/`,
+  }));
+  await fs.writeFile(path.join(runDir, 'final', 'article.json'), JSON.stringify({ title, slug, version: 'v1' }));
+  await fs.writeFile(path.join(runDir, 'final', 'article.md'), options.markdown || `# ${title}\n\nBody.`);
+  await fs.writeFile(path.join(runDir, 'claim-ledger.json'), JSON.stringify({ claims: [{ text: 'Safe claim', status: 'APPROVED' }] }));
 }
