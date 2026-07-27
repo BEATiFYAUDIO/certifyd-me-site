@@ -17,6 +17,7 @@ import {
   scanTrendOpportunities,
   startTrendDailyScheduler,
 } from '../scripts/content-dashboard/trends.js';
+import { getDashboardConfig } from '../scripts/content-dashboard/config.js';
 
 async function tempAgentRoot() {
   const agentRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-trends-'));
@@ -79,6 +80,12 @@ test('trend opportunities default to clearly labeled seeded examples only when s
   assert.equal(trends.items[0].sourceType, 'seeded');
 });
 
+test('dashboard trend configuration defaults to source-backed composite scanning', () => {
+  const dashboardConfig = getDashboardConfig({});
+  assert.equal(dashboardConfig.trendResearch.provider, 'composite');
+  assert.equal(dashboardConfig.trendResearchProvider, 'composite');
+});
+
 test('RSS scans approved sources, categorizes opportunities, persists state and exposes source details', async () => {
   const agentRoot = await tempAgentRoot();
   const feed = rssFeed([
@@ -102,6 +109,32 @@ test('RSS scans approved sources, categorizes opportunities, persists state and 
   const detail = await readTrendSourceDetail(config(agentRoot), scan.items[0].id);
   assert.equal(detail.sources.length, scan.items[0].sourceItemIds.length);
   assert.match(detail.sources[0].title, /bot farms/i);
+});
+
+test('seeded scans do not overwrite existing source-backed trend results', async () => {
+  const agentRoot = await tempAgentRoot();
+  const trendStateDir = path.join(agentRoot, 'dashboard', 'trends');
+  await fs.mkdir(trendStateDir, { recursive: true });
+  await fs.writeFile(path.join(trendStateDir, 'trend-state.json'), JSON.stringify({
+    provider: 'rss',
+    lastScannedAt: '2026-07-27T00:00:00.000Z',
+    summary: { provider: 'rss', sourcesChecked: 1, opportunitiesCreated: 1 },
+    sourceItems: [{ id: 'source-1', title: 'Source-backed story' }],
+    opportunities: [{ id: 'rss-opportunity', title: 'Source-backed opportunity', category: 'Music' }],
+    errors: [],
+    dismissed: [],
+    savedIdeas: [],
+  }, null, 2));
+
+  const scan = await scanTrendOpportunities(config(agentRoot, {
+    trendResearchProvider: 'seeded',
+    trendResearch: { provider: 'seeded', sourceUrls: [] },
+  }));
+
+  assert.equal(scan.provider, 'rss');
+  assert.equal(scan.items.length, 1);
+  assert.equal(scan.items[0].id, 'rss-opportunity');
+  assert.match(scan.errors[0], /Seeded scan ignored/);
 });
 
 test('RSS scan reports unavailable sources without replacing them with fake live trends', async () => {

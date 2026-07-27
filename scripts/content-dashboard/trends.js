@@ -47,7 +47,7 @@ let activeScan = null;
 const schedulerHandles = new WeakMap();
 
 export function getTrendProvider(config, options = {}) {
-  const provider = String(config.trendResearch?.provider || config.trendResearchProvider || 'seeded').toLowerCase();
+  const provider = String(config.trendResearch?.provider || config.trendResearchProvider || 'composite').toLowerCase();
   if (provider === 'fixture') return new SeededTrendProvider(config, options);
   if (provider === 'seeded') return new SeededTrendProvider(config, options);
   if (provider === 'manual') return new ManualTrendProvider(config, options);
@@ -89,6 +89,13 @@ async function runTrendScan(config, options) {
   const provider = getTrendProvider(config, options);
   const scan = await provider.scan({ ...options, force: true });
   const previousState = await readTrendState(config).catch(() => null);
+  if (shouldPreserveSourceBackedState(scan, previousState)) {
+    const warning = 'Seeded scan ignored because source-backed trend results already exist. Configure CONTENT_TREND_PROVIDER=composite or rss to refresh live sources.';
+    return trendStateResult({
+      ...previousState,
+      errors: [warning, ...(previousState.errors || []).filter((error) => error !== warning)],
+    });
+  }
   const state = {
     provider: scan.provider,
     lastScannedAt: new Date().toISOString(),
@@ -115,6 +122,13 @@ async function runTrendScan(config, options) {
   state.opportunities = state.opportunities.filter((item) => !state.dismissed.includes(item.id));
   await writeTrendState(config, state);
   return trendStateResult(state);
+}
+
+function shouldPreserveSourceBackedState(scan, previousState) {
+  if (scan.provider !== 'seeded') return false;
+  if (!previousState?.opportunities?.length) return false;
+  if (previousState.provider && previousState.provider !== 'seeded') return true;
+  return Boolean(previousState.sourceItems?.length);
 }
 
 export async function dismissTrendOpportunity(config, id) {

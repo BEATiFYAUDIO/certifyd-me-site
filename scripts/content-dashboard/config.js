@@ -107,7 +107,7 @@ export function getDashboardConfig(env = process.env) {
     ollama,
     externalResearchProvider: env.CONTENT_RESEARCH_PROVIDER || 'fixture',
     trendResearch: {
-      provider: env.CONTENT_TREND_PROVIDER || env.CONTENT_TREND_RESEARCH_PROVIDER || 'seeded',
+      provider: env.CONTENT_TREND_PROVIDER || env.CONTENT_TREND_RESEARCH_PROVIDER || 'composite',
       sourceUrls: parseListPreserveCase(env.CONTENT_TREND_SOURCE_URLS || env.CONTENT_TREND_RSS_URLS || ''),
       timeoutMs: positiveInt(env.CONTENT_TREND_SCAN_TIMEOUT_MS || env.CONTENT_TREND_REQUEST_TIMEOUT_MS, 20000, 1000),
       maxItemsPerSource: positiveInt(env.CONTENT_TREND_SCAN_MAX_ITEMS_PER_SOURCE, 30, 1),
@@ -117,7 +117,7 @@ export function getDashboardConfig(env = process.env) {
       dailyScanEnabled: env.CONTENT_TREND_DAILY_SCAN_ENABLED === 'true',
       scanHour: positiveInt(env.CONTENT_TREND_SCAN_HOUR, 7, 0),
     },
-    trendResearchProvider: env.CONTENT_TREND_PROVIDER || env.CONTENT_TREND_RESEARCH_PROVIDER || 'seeded',
+    trendResearchProvider: env.CONTENT_TREND_PROVIDER || env.CONTENT_TREND_RESEARCH_PROVIDER || 'composite',
     founderEmails: parseList(env.CONTENT_DASHBOARD_FOUNDER_EMAILS),
     founderUserIds: parseList(env.CONTENT_DASHBOARD_FOUNDER_USER_IDS),
     bootstrapRoleEmails: roles,

@@ -178,6 +178,7 @@ Operational rules:
 - Source-backed opportunities show source counts, publishers, freshness, risk flags and Brain coverage.
 - Generating from a trend passes opportunity ID, source item IDs and Brain record IDs into the article run for provenance.
 - Saving a trend idea persists it in `content-agent/dashboard/trends/trend-state.json`; saved ideas are deduplicated by opportunity ID and survive later scans.
+- Trend scanning defaults to `composite`, which uses approved RSS/news sources first. Use `CONTENT_TREND_PROVIDER=seeded` only for local fixture demos; seeded scans are prevented from overwriting existing source-backed scan results.
 - A trend scan never approves or publishes an article automatically.
 - Daily scans are disabled by default. When `CONTENT_TREND_DAILY_SCAN_ENABLED=true`, the dashboard process schedules one local scan per day at `CONTENT_TREND_SCAN_HOUR`. Use `npm run trends:scan` for a manual scan or external cron/systemd if the dashboard process is not expected to stay running.
 
