@@ -9,67 +9,9 @@ import { createCsrfToken, escapeHtml, parseCookies, safeReturnPath, validateRunI
 import { card, humanizeLabel, layout, loginPage, renderMarkdown, statusPill } from './render.js';
 import { verifyCloudflareAccessRequest } from './cloudflare-access.js';
 import { DashboardUserRepository } from './users.js';
+import { filterTrendingOpportunities, getTrendingOpportunities, TRENDING_CATEGORIES } from './trends.js';
 
 const STATIC_TYPES = new Map([['.html','text/html; charset=utf-8'],['.css','text/css; charset=utf-8'],['.js','text/javascript; charset=utf-8'],['.svg','image/svg+xml'],['.png','image/png'],['.jpg','image/jpeg'],['.jpeg','image/jpeg'],['.webp','image/webp'],['.xml','application/xml; charset=utf-8'],['.txt','text/plain; charset=utf-8'],['.mp4','video/mp4']]);
-
-const TRENDING_CATEGORIES = ['Music', 'Technology', 'AI', 'Creator Economy', 'Media', 'Sports'];
-
-const TRENDING_OPPORTUNITIES = [
-  {
-    id: 'spotify-creator-business',
-    category: 'Music',
-    title: 'Compare Certifyd to Spotify',
-    whyTrending: 'Artists keep looking for better ways to earn beyond streaming payout models.',
-    whyCertifyd: 'This lets Certifyd explain the difference between renting attention and building a creator business.',
-    brainCoverage: 'Strong',
-    topic: 'Compare Certifyd to Spotify',
-  },
-  {
-    id: 'creator-ownership-explainer',
-    category: 'Creator Economy',
-    title: 'Explain creator ownership',
-    whyTrending: 'Creators increasingly sell memberships, releases, services and direct access.',
-    whyCertifyd: 'This is the cleanest way to explain why Certifyd reduces platform dependency.',
-    brainCoverage: 'Strong',
-    topic: 'Explain what creator ownership means in Certifyd',
-  },
-  {
-    id: 'local-ai-publishing',
-    category: 'AI',
-    title: 'Write about local AI',
-    whyTrending: 'Teams are adopting local models for private workflows and lower operating costs.',
-    whyCertifyd: 'Certifyd can show how local AI supports internal editorial work without turning it into a public claim about automation.',
-    brainCoverage: 'Partial',
-    topic: 'Write about local AI and Certifyd editorial workflows',
-  },
-  {
-    id: 'media-response',
-    category: 'Media',
-    title: 'Respond to this article',
-    whyTrending: 'Industry articles often surface problems around attribution, payments and platform dependency.',
-    whyCertifyd: 'This creates timely commentary when a source is supplied and approved for research.',
-    brainCoverage: 'Needs source',
-    topic: 'Respond to this article from a Certifyd perspective',
-  },
-  {
-    id: 'sports-creator-commerce',
-    category: 'Sports',
-    title: 'Creator-owned sports media',
-    whyTrending: 'Athletes, teams and independent sports publishers are becoming direct media businesses.',
-    whyCertifyd: 'This can position Certifyd as infrastructure for identity, discovery and direct commerce without overstating live sports features.',
-    brainCoverage: 'Partial',
-    topic: 'Write about creator-owned sports media and direct fan commerce',
-  },
-  {
-    id: 'open-web-publishing',
-    category: 'Technology',
-    title: 'Why publishing should be portable',
-    whyTrending: 'More companies want content and commerce systems that are not locked inside one platform.',
-    whyCertifyd: 'This connects Certifyd Core, public profiles and discovery surfaces into one business story.',
-    brainCoverage: 'Strong',
-    topic: 'Explain why creator publishing should be portable',
-  },
-];
 
 const KNOWLEDGE_SUGGESTIONS = [
   {
@@ -258,6 +200,7 @@ async function handlePage(req, res, url, ctx) {
 
 async function renderOverview(ctx, csrf) {
   const runs = await ctx.runRepo.listRuns();
+  const trends = await getTrendingOpportunities(ctx.config);
   const drafts = runs.filter((run) => ['DRAFT', 'GENERATED'].includes(run.status));
   const inReview = runs.filter((run) => run.status === 'PENDING_FOUNDER_REVIEW');
   const published = runs.filter((run) => run.status === 'PUBLISHED').slice(0, 4);
@@ -273,7 +216,7 @@ async function renderOverview(ctx, csrf) {
   </section>
 
   <section class="attention-grid" aria-label="Attention summary">
-    ${summaryCard('Trending opportunities', TRENDING_OPPORTUNITIES.length, 'Blog Engine Ideas', '/app/content/articles?view=ideas')}
+    ${summaryCard('Trending opportunities', trends.items.length, trends.provider === 'rss' ? 'Live source scan' : 'Seeded ideas', '/app/content/articles?view=ideas')}
     ${summaryCard('Drafts', drafts.length, 'Open drafts', '/app/content/articles?view=drafts')}
     ${summaryCard('In review', inReview.length, 'Review queue', '/app/content/articles?view=review')}
     ${summaryCard('Brain suggestions', KNOWLEDGE_SUGGESTIONS.length, 'Review Brain', '/app/content/brain?view=suggestions')}
@@ -318,14 +261,9 @@ function qwenPromptForm({ csrf, compact = false, advanced = false } = {}) {
   return compact ? `${body}<div class="example-chips" aria-label="Prompt examples">${['Compare Certifyd to Spotify', 'Explain creator ownership', 'Respond to this article', 'Write about local AI', 'Turn this document into a blog article'].map((example) => quickGenerateForm({ csrf, label: example, topic: example })).join('')}</div>` : body;
 }
 
-function trendingOpportunities(category) {
-  if (!category || category === 'All') return TRENDING_OPPORTUNITIES;
-  return TRENDING_OPPORTUNITIES.filter((item) => item.category === category);
-}
-
 function opportunityCard(item, csrf, canCreate) {
   return `<article class="opportunity-card">
-    <div class="meta-row"><span class="pill warn">${escapeHtml(item.category)}</span>${brainCoveragePill(item.brainCoverage)}</div>
+    <div class="meta-row"><span class="pill warn">${escapeHtml(item.category)}</span>${brainCoveragePill(item.brainCoverage)}<span class="pill">${escapeHtml(item.sourceLabel || item.sourceType || 'Source')}</span></div>
     <h3>${escapeHtml(item.title)}</h3>
     <dl>
       <dt>Why it is trending</dt><dd>${escapeHtml(item.whyTrending)}</dd>
@@ -395,6 +333,7 @@ async function renderArticles(ctx, url) {
   const runs = await ctx.runRepo.listRuns();
   const view = String(url.searchParams.get('view') || 'drafts');
   const selectedCategory = String(url.searchParams.get('category') || 'All');
+  const trends = await getTrendingOpportunities(ctx.config);
   const search = String(url.searchParams.get('q') || '').trim().toLowerCase();
   const csrf = createCsrfToken(ctx.config.sessionSecret, ctx.user.sid);
   const tabs = [
@@ -420,10 +359,11 @@ async function renderArticles(ctx, url) {
     <td><span class="muted">Canonical first. Distribution generated after approval.</span></td>
     <td>${articleRowActions(run, csrf, ctx.permissions, ctx.config)}</td>
   </tr>`).join('');
-  const opportunities = trendingOpportunities(selectedCategory);
+  const opportunities = filterTrendingOpportunities(trends, selectedCategory);
   const canCreate = ctx.permissions.includes('content.article.create');
   const categoryTabs = `<div class="tabs compact"><a class="tab ${selectedCategory === 'All' ? 'active' : ''}" href="/app/content/articles?view=ideas">All</a>${TRENDING_CATEGORIES.map((category) => `<a class="tab ${category === selectedCategory ? 'active' : ''}" href="/app/content/articles?view=ideas&category=${encodeURIComponent(category)}">${escapeHtml(category)}</a>`).join('')}</div>`;
-  const ideas = view === 'ideas' ? `<section class="workspace-section" aria-labelledby="ideas-title"><div class="section-head"><div><p class="eyebrow">Trending Opportunities</p><h2 id="ideas-title">What Qwen should watch.</h2></div>${categoryTabs}</div><div class="opportunity-grid">${opportunities.map((item) => opportunityCard(item, csrf, canCreate)).join('')}</div></section>` : '';
+  const trendMeta = `<p class="muted">Provider: ${escapeHtml(trends.provider)}${trends.lastScannedAt ? ` · Last scanned: ${escapeHtml(formatDashboardDate(trends.lastScannedAt))}` : ''}${trends.sourceLabels?.length ? ` · Sources: ${escapeHtml(trends.sourceLabels.join(', '))}` : ''}</p>${trends.note ? `<p class="notice">${escapeHtml(trends.note)}</p>` : ''}`;
+  const ideas = view === 'ideas' ? `<section class="workspace-section" aria-labelledby="ideas-title"><div class="section-head"><div><p class="eyebrow">Trending Opportunities</p><h2 id="ideas-title">What Qwen should watch.</h2>${trendMeta}</div>${categoryTabs}</div><div class="opportunity-grid">${opportunities.map((item) => opportunityCard(item, csrf, canCreate)).join('')}</div></section>` : '';
   const create = `<section class="editorial-prompt panel compact-prompt">
     <div>
       <p class="eyebrow">Ask Qwen</p>
@@ -521,7 +461,7 @@ function renderAnalytics(ctx) {
 }
 
 function renderSettings(ctx) {
-  const safe = { dashboardEnabled: ctx.config.enabled, authMode: ctx.config.authMode, publicAdminUrl: ctx.config.publicAdminUrl, database: ctx.config.databasePath === ':memory:' ? 'memory' : 'sqlite configured', userCount: ctx.userRepo.listUsers().length, localAi: { enabled: ctx.config.ollama.enabled, model: ctx.config.ollama.model, baseUrl: ctx.config.ollama.baseUrl ? 'configured' : 'not configured' }, trendResearch: ctx.config.trendResearchProvider || 'manual only', externalResearch: ctx.config.externalResearchProvider || 'not configured', brain: 'content-agent/knowledge', githubPublishing: ctx.config.githubPublishing.enabled ? 'draft pull requests' : 'disabled', githubRepositoryConfigured: Boolean(ctx.config.githubPublishing.owner && ctx.config.githubPublishing.repo), distributionAccounts: 'none connected', cloudflareAccessConfigured: Boolean(ctx.config.cloudflareAccess.teamDomain && ctx.config.cloudflareAccess.audience), environment: ctx.config.environmentName };
+  const safe = { dashboardEnabled: ctx.config.enabled, authMode: ctx.config.authMode, publicAdminUrl: ctx.config.publicAdminUrl, database: ctx.config.databasePath === ':memory:' ? 'memory' : 'sqlite configured', userCount: ctx.userRepo.listUsers().length, localAi: { enabled: ctx.config.ollama.enabled, model: ctx.config.ollama.model, baseUrl: ctx.config.ollama.baseUrl ? 'configured' : 'not configured' }, trendResearch: ctx.config.trendResearchProvider || 'manual only', trendSourceCount: ctx.config.trendResearch?.sourceUrls?.length || 0, externalResearch: ctx.config.externalResearchProvider || 'not configured', brain: 'content-agent/knowledge', githubPublishing: ctx.config.githubPublishing.enabled ? 'draft pull requests' : 'disabled', githubRepositoryConfigured: Boolean(ctx.config.githubPublishing.owner && ctx.config.githubPublishing.repo), distributionAccounts: 'none connected', cloudflareAccessConfigured: Boolean(ctx.config.cloudflareAccess.teamDomain && ctx.config.cloudflareAccess.audience), environment: ctx.config.environmentName };
   return layout({ title: 'Settings', user: ctx.user, permissions: ctx.permissions, active: 'Settings', body: `<p class="eyebrow">Settings</p><h1>Configuration</h1><p>Secrets, tokens and raw session data are never displayed.</p><div class="grid">${['Local AI','Trend research','External research','Brain','GitHub publishing','Distribution accounts','Access','Advanced diagnostics'].map((name) => card(name, `<p>${escapeHtml(settingsSummary(name, safe))}</p>`)).join('')}</div><section id="advanced-diagnostics" class="panel"><h2>Advanced diagnostics</h2><pre>${escapeHtml(JSON.stringify(safe, null, 2))}</pre></section>` });
 }
 
@@ -541,7 +481,7 @@ function articleMatchesView(run, view) {
 function settingsSummary(name, safe) {
   const summaries = {
     'Local AI': safe.localAi.enabled ? `Qwen configured (${safe.localAi.model}).` : 'Qwen is unavailable until Ollama is configured.',
-    'Trend research': safe.trendResearch === 'fixture' ? 'Manual topics only. No live trend provider is connected.' : `${safe.trendResearch} configured.`,
+    'Trend research': safe.trendResearch === 'fixture' ? 'Seeded opportunities only. Configure approved RSS/search sources for live scans.' : `${safe.trendResearch} configured with ${safe.trendSourceCount} approved source${safe.trendSourceCount === 1 ? '' : 's'}.`,
     'External research': safe.externalResearch === 'fixture' ? 'No live external research provider is connected.' : `${safe.externalResearch} configured.`,
     Brain: 'Approved Certifyd knowledge powers grounded drafts.',
     'GitHub publishing': safe.githubPublishing === 'draft pull requests' ? 'Draft PR publishing is configured.' : 'Publishing is disabled.',

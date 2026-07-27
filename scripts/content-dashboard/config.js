@@ -106,6 +106,12 @@ export function getDashboardConfig(env = process.env) {
     modelConfigured: modelProvider === 'deterministic' || (modelProvider === 'ollama' && ollama.enabled),
     ollama,
     externalResearchProvider: env.CONTENT_RESEARCH_PROVIDER || 'fixture',
+    trendResearch: {
+      provider: env.CONTENT_TREND_PROVIDER || env.CONTENT_TREND_RESEARCH_PROVIDER || 'fixture',
+      sourceUrls: parseList(env.CONTENT_TREND_SOURCE_URLS || env.CONTENT_TREND_RSS_URLS || ''),
+      timeoutMs: Number.isFinite(Number(env.CONTENT_TREND_REQUEST_TIMEOUT_MS)) ? Math.max(1000, Number(env.CONTENT_TREND_REQUEST_TIMEOUT_MS)) : 8000,
+    },
+    trendResearchProvider: env.CONTENT_TREND_PROVIDER || env.CONTENT_TREND_RESEARCH_PROVIDER || 'fixture',
     founderEmails: parseList(env.CONTENT_DASHBOARD_FOUNDER_EMAILS),
     founderUserIds: parseList(env.CONTENT_DASHBOARD_FOUNDER_USER_IDS),
     bootstrapRoleEmails: roles,

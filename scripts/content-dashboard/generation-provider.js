@@ -199,10 +199,10 @@ export class OllamaQwenGenerationProvider {
             { role: 'system', content: buildSystemInstruction() },
             { role: 'user', content: buildUserPrompt(input, groundedContext) },
           ],
-          format: ARTICLE_SCHEMA,
           options: {
             temperature: this.config.ollama.temperature,
             num_predict: this.config.ollama.maxOutputTokens,
+            num_ctx: this.config.ollama.maxContextChars,
           },
         }),
       }, this.config.ollama.timeoutMs);
@@ -216,7 +216,7 @@ export class OllamaQwenGenerationProvider {
         durationMs: Date.now() - started,
         tokenUsage: normalizeOllamaUsage(body),
       };
-      return validateGeneratedArticle(parseJsonContent(content), groundedContext);
+      return validateGeneratedArticle(articleFromQwenDraft(content, input, groundedContext), groundedContext);
     } catch (error) {
       if (error?.name === 'AbortError' || /aborted due to timeout|timed out|timeout/i.test(error?.message || '')) {
         throw Object.assign(new Error('Qwen generation timed out. Try a shorter prompt or reduce the requested draft size.'), { statusCode: 408 });
@@ -293,9 +293,10 @@ export function validateGeneratedArticle(value, groundedContext) {
     }
     const ids = claim.sourceIds.map(String).map((id) => id.trim()).filter(Boolean);
     const missing = ids.filter((id) => !sourceIds.has(id));
-    if (missing.length) throw new GenerationValidationError(`Generated claim references unknown Brain source IDs: ${missing.join(', ')}`);
-    if (!ids.length) warnings.push(`Unsupported claim needs review: ${claim.text.slice(0, 160)}`);
-    normalizedClaims.push({ text: claim.text.trim(), sourceIds: ids, confidence: ids.length ? claim.confidence : 'needs-review' });
+    const validIds = ids.filter((id) => sourceIds.has(id));
+    if (missing.length) warnings.push(`Generated claim referenced unknown Brain source IDs and was downgraded for review: ${missing.join(', ')}`);
+    if (!validIds.length) warnings.push(`Unsupported claim needs review: ${claim.text.slice(0, 160)}`);
+    normalizedClaims.push({ text: claim.text.trim(), sourceIds: validIds, confidence: validIds.length && !missing.length ? claim.confidence : 'needs-review' });
   }
   const prohibitedHits = detectProhibitedLanguage(value.bodyMarkdown, groundedContext.prohibitedClaims);
   warnings.push(...prohibitedHits);
@@ -435,36 +436,75 @@ export function getDefaultOllamaConfig(env = process.env) {
 
 function buildSystemInstruction() {
   return [
-    'You are the Certifyd editorial drafting provider running inside an internal dashboard.',
-    'Write as the Certifyd editorial team.',
-    'Use only the supplied Certifyd Brain evidence for factual company claims.',
-    'Do not rely on model memory for Certifyd facts.',
+    'Write a concise Certifyd blog draft in Markdown only.',
+    'Use only the supplied Certifyd context for company facts.',
     'Do not invent customers, partnerships, revenue, adoption, launch dates, technical capabilities or legal claims.',
+    'If the prompt mentions bots, bot farming, fake engagement, fake streams or fraud, frame Certifyd as an alternative to fake attention metrics and direct the draft toward real customer activity, direct commerce, attribution and review-safe anti-fraud commentary.',
+    'Never describe Certifyd as a tool for creating, running, controlling, automating or scaling bots.',
     'Clearly distinguish live, beta and planned features.',
     'Use “network” rather than “platform” when describing Certifyd unless a source explicitly requires another term.',
-    'Write naturally, without generic AI filler, repeated conclusions or excessive headings.',
-    'Keep drafts concise. Prefer a short outline or compact article body over a long article.',
-    'Do not mention this generation process.',
-    'Return only JSON matching the supplied schema. Required keys are title, suggestedSlug, excerpt and bodyMarkdown.',
-    'Use claims and source IDs only when you are certain they match the supplied Brain evidence.',
-    'Put uncertain material in warnings rather than stating it as fact.',
+    'Keep it short: one H1 title, 3 to 5 short sections, no JSON, no YAML, no code fences.',
+    'Do not mention this generation process or source IDs.',
   ].join('\n');
 }
 
 function buildUserPrompt(input, groundedContext) {
-  return JSON.stringify({
-    requestedArticle: {
-      topic: input.topic || input.workingTitle,
-      audience: input.audience || input.targetAudience,
-      objective: input.objective || input.businessObjective,
-      writingStyle: input.writingStyle || 'Plain, factual, investor-safe Certifyd editorial.',
-      sourceRestrictions: input.sourceRestrictions || 'Use approved Certifyd Brain records only.',
-      contentType: input.contentType || 'article',
-      channel: input.channel || 'Blog',
-    },
-    schema: ARTICLE_SCHEMA,
-    groundedContext,
-  });
+  const context = compactGroundedContextForModel(groundedContext);
+  const guardrails = buildTopicGuardrails(input).map((item) => `- ${item}`).join('\n');
+  const claims = context.approvedClaims.map((item) => `- ${item}`).join('\n') || '- No approved claims selected.';
+  const productFacts = context.productFacts.map((item) => `- ${item}`).join('\n') || '- No product facts selected.';
+  const prohibited = context.prohibitedClaims.map((item) => `- ${item}`).join('\n') || '- Avoid unsupported claims.';
+  return [
+    `Topic: ${input.topic || input.workingTitle || 'Certifyd article'}`,
+    `Audience: ${input.audience || input.targetAudience || 'Certifyd readers'}`,
+    `Objective: ${input.objective || input.businessObjective || 'Create a grounded Certifyd article.'}`,
+    `Angle: ${input.angle || 'Explain the business relevance clearly.'}`,
+    '',
+    'Guardrails:',
+    guardrails,
+    '',
+    'Approved Certifyd claims:',
+    claims,
+    '',
+    'Product facts:',
+    productFacts,
+    '',
+    'Do not claim:',
+    prohibited,
+    '',
+    'Write the draft now in Markdown only. Keep it concise and useful.',
+  ].join('\n');
+}
+
+function compactGroundedContextForModel(groundedContext) {
+  const compactList = (values, limit, chars) => (values || []).slice(0, limit).map((value) => clampText(value, chars));
+  return {
+    approvedClaims: compactList(groundedContext.approvedClaims, 4, 260),
+    productFacts: compactList(groundedContext.productFacts, 3, 240),
+    terminology: compactList(groundedContext.terminology, 2, 180),
+    prohibitedClaims: compactList(groundedContext.prohibitedClaims, 4, 260),
+    sources: (groundedContext.sourceRecords || []).slice(0, 6).map((source) => ({
+      id: source.id,
+      title: source.title,
+      path: source.path,
+    })),
+  };
+}
+
+function buildTopicGuardrails(input) {
+  const text = `${input.topic || ''} ${input.objective || ''} ${input.sourceRestrictions || ''}`.toLowerCase();
+  const guardrails = [
+    'Make the business relevance clear before implementation details.',
+    'Avoid unsupported claims and label uncertain ideas as review notes.',
+  ];
+  if (/\b(bot|bots|bot farming|fake engagement|fake stream|fake streams|fraud|click farm|stream farm|payola)\b/.test(text)) {
+    guardrails.push(
+      'This topic is about reducing the business value of fake engagement, not enabling automation.',
+      'Do not say Certifyd creates, manages, controls, monitors or secures bot farms.',
+      'Position Certifyd around real customer activity, direct creator commerce, attribution, receipts and review-safe trust signals.',
+    );
+  }
+  return guardrails;
 }
 
 function assertGroundedContextReady(groundedContext) {
@@ -526,6 +566,183 @@ export function parseJsonContent(content) {
   } catch {
     throw new GenerationValidationError('Qwen returned malformed JSON.');
   }
+}
+
+function parseGeneratedArticleContent(content, input, groundedContext) {
+  try {
+    return completeGeneratedArticleFields(parseJsonContent(content), input);
+  } catch (error) {
+    if (!(error instanceof GenerationValidationError)) throw error;
+    return coerceArticleFromMalformedOutput(content, input, groundedContext, error.message);
+  }
+}
+
+function articleFromQwenDraft(content, input, groundedContext) {
+  if (looksLikeStructuredJson(content)) {
+    try {
+      return parseGeneratedArticleContent(content, input, groundedContext);
+    } catch (error) {
+      if (!(error instanceof GenerationValidationError)) throw error;
+    }
+  }
+  const clean = cleanMarkdownDraftText(content);
+  const title = titleFromMalformedOutput(clean) || input.workingTitle || input.topic || 'Certifyd Draft';
+  const bodyMarkdown = ensureMarkdownTitle(clean || `This draft needs founder review before it can be published.`, title);
+  const excerpt = excerptFromBody(bodyMarkdown, title);
+  return {
+    title,
+    suggestedSlug: slugify(title),
+    excerpt,
+    author: 'Certifyd',
+    tags: tagsFromTopic(`${input.topic || ''} ${title}`),
+    seoTitle: `${title} | Certifyd`,
+    seoDescription: excerpt,
+    coverImage: DEFAULT_BLOG_COVER_IMAGE,
+    bodyMarkdown,
+    claims: [],
+    warnings: [],
+  };
+}
+
+function looksLikeStructuredJson(content) {
+  const clean = String(content || '').replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+  return clean.startsWith('{') || /^```json/i.test(clean) || /\bHere is the JSON\b/i.test(clean);
+}
+
+function completeGeneratedArticleFields(value, input) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const nested = value.article && typeof value.article === 'object' && !Array.isArray(value.article) ? value.article : null;
+  const completed = nested ? { ...value, ...nested } : { ...value };
+  if (!completed.title) completed.title = input.workingTitle || input.topic || 'Certifyd Draft';
+  if (!completed.bodyMarkdown && typeof completed.article === 'string') completed.bodyMarkdown = completed.article;
+  if (!completed.bodyMarkdown && typeof completed.draft === 'string') completed.bodyMarkdown = completed.draft;
+  if (!completed.bodyMarkdown && typeof completed.markdown === 'string') completed.bodyMarkdown = completed.markdown;
+  if (!completed.bodyMarkdown && typeof completed.body_markdown === 'string') completed.bodyMarkdown = completed.body_markdown;
+  if (!completed.bodyMarkdown && typeof completed.contentMarkdown === 'string') completed.bodyMarkdown = completed.contentMarkdown;
+  if (!completed.bodyMarkdown && typeof completed.body === 'string') completed.bodyMarkdown = completed.body;
+  if (!completed.bodyMarkdown && typeof completed.content === 'string') completed.bodyMarkdown = completed.content;
+  if (!Array.isArray(completed.warnings)) completed.warnings = [];
+  if (!completed.bodyMarkdown) {
+    completed.bodyMarkdown = [
+      `# ${completed.title}`,
+      '',
+      completed.excerpt || `Draft requested: ${input.topic || completed.title}.`,
+      '',
+      'The local AI provider returned structured metadata but did not return a usable article body. This placeholder keeps the draft recoverable for founder review instead of failing generation.',
+    ].join('\n');
+    completed.warnings.push('Qwen returned structured JSON without a usable bodyMarkdown field. Founder revision is required.');
+  }
+  if (!completed.suggestedSlug && completed.title) completed.suggestedSlug = slugify(completed.title);
+  if (!completed.excerpt && completed.bodyMarkdown) completed.excerpt = excerptFromBody(completed.bodyMarkdown, completed.title);
+  if (!completed.author) completed.author = 'Certifyd';
+  if (!Array.isArray(completed.tags)) completed.tags = tagsFromTopic(`${input.topic || ''} ${completed.title || ''}`);
+  if (!completed.seoTitle && completed.title) completed.seoTitle = `${completed.title} | Certifyd`;
+  if (!completed.seoDescription && completed.excerpt) completed.seoDescription = completed.excerpt;
+  if (!completed.coverImage) completed.coverImage = DEFAULT_BLOG_COVER_IMAGE;
+  if (!Array.isArray(completed.claims)) completed.claims = [];
+  return completed;
+}
+
+function coerceArticleFromMalformedOutput(content, input, groundedContext, reason) {
+  const clean = cleanModelDraftText(content);
+  const title = titleFromMalformedOutput(clean) || input.workingTitle || input.topic || 'Certifyd Draft';
+  const bodyMarkdown = bodyFromMalformedOutput(clean, title, input);
+  const fallbackSourceIds = groundedContext.sourceRecords.slice(0, 3).map((source) => source.id);
+  return {
+    title,
+    suggestedSlug: slugify(title),
+    excerpt: excerptFromBody(bodyMarkdown, title),
+    author: 'Certifyd',
+    tags: tagsFromTopic(input.topic || title),
+    seoTitle: `${title} | Certifyd`,
+    seoDescription: excerptFromBody(bodyMarkdown, title),
+    coverImage: DEFAULT_BLOG_COVER_IMAGE,
+    bodyMarkdown,
+    claims: fallbackSourceIds.length ? [{
+      text: `Draft generated from a malformed local AI response for founder review: ${title}`,
+      sourceIds: fallbackSourceIds,
+      confidence: 'needs-review',
+    }] : [],
+    warnings: [
+      reason,
+      'Qwen did not return valid JSON. The dashboard recovered the response into a review-only draft.',
+      'Founder review is required before approval or publishing.',
+    ],
+  };
+}
+
+function cleanModelDraftText(content) {
+  return String(content || '')
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/^```(?:json|markdown|md)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .replace(/^\s*[{[]/, '')
+    .replace(/[}\]]\s*$/, '')
+    .replace(/\r/g, '')
+    .trim();
+}
+
+function cleanMarkdownDraftText(content) {
+  return String(content || '')
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/^```(?:markdown|md)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .replace(/^---[\s\S]*?---\s*/m, '')
+    .replace(/\r/g, '')
+    .trim();
+}
+
+function titleFromMalformedOutput(text) {
+  const markdownTitle = text.match(/^#\s+(.+)$/m)?.[1];
+  if (markdownTitle) return markdownTitle.trim();
+  const jsonishTitle = text.match(/["']?title["']?\s*:\s*["']([^"']+)["']/i)?.[1];
+  if (jsonishTitle) return jsonishTitle.trim();
+  const firstLine = text.split('\n').map((line) => line.trim()).find(Boolean);
+  return firstLine && firstLine.length < 120 ? firstLine.replace(/^title:\s*/i, '').trim() : '';
+}
+
+function bodyFromMalformedOutput(text, title, input) {
+  const bodyMatch = text.match(/["']?bodyMarkdown["']?\s*:\s*["']([\s\S]+)$/i)?.[1];
+  const candidate = bodyMatch || text;
+  const withoutFrontmatterLike = candidate
+    .replace(/["']?(title|suggestedSlug|slug|excerpt|author|tags|seoTitle|seoDescription|coverImage|claims|warnings)["']?\s*:\s*["'][^"']*["'],?/gi, '')
+    .trim();
+  if (withoutFrontmatterLike.length > 120) {
+    return ensureMarkdownTitle(withoutFrontmatterLike.replace(/\\n/g, '\n'), title);
+  }
+  return [
+    `# ${title}`,
+    '',
+    `This is a recovered draft about ${input.topic || title}.`,
+    '',
+    'The local AI provider returned malformed JSON, so the dashboard preserved the usable text and marked the draft for founder review.',
+    '',
+    'Use the Certifyd Brain evidence and editorial review before publishing.',
+  ].join('\n');
+}
+
+function ensureMarkdownTitle(body, title) {
+  const clean = body.trim();
+  return /^#\s+/m.test(clean) ? clean : `# ${title}\n\n${clean}`;
+}
+
+function excerptFromBody(bodyMarkdown, title) {
+  const clean = String(bodyMarkdown || '')
+    .replace(/^#\s+.+$/m, '')
+    .replace(/[#>*_`-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return clampText(clean || `A Certifyd draft about ${title}.`, 220);
+}
+
+function tagsFromTopic(topic) {
+  const tags = ['Certifyd'];
+  const text = String(topic || '').toLowerCase();
+  if (/bot|fake|fraud|farming/.test(text)) tags.push('trust');
+  if (/music|spotify|artist|streaming/.test(text)) tags.push('music');
+  if (/ai|qwen|local/.test(text)) tags.push('AI');
+  if (/ownership|creator/.test(text)) tags.push('creator ownership');
+  return [...new Set(tags)].slice(0, 6);
 }
 
 function extractJsonCandidate(content) {

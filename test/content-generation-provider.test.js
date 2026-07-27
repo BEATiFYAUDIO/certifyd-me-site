@@ -154,24 +154,54 @@ test('model cannot set publication, approval or GitHub state', async () => {
   );
 });
 
-test('malformed Qwen JSON is rejected', async () => {
+test('malformed Qwen JSON is recovered into a review-only draft', async () => {
   const config = await makeConfig();
   const context = await makeContext(config);
   const provider = new OllamaQwenGenerationProvider(config, {
     fetchImpl: async (url) => {
       if (String(url).endsWith('/api/tags')) return mockResponse({ models: [{ name: 'qwen3:8b' }] });
-      return mockResponse({ message: { content: '{not-json' } });
+      return mockResponse({ message: { content: '{"title": "Bot Farming and Certifyd", "bodyMarkdown": "Certifyd can help creators focus on commerce instead of fake engagement."' } });
     },
   });
-  await assert.rejects(
-    () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context),
-    /malformed JSON/,
-  );
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'why certifyd is a good solution to bot farming', audience: 'Creators', objective: 'Explain clearly.' }, context);
+  assert.equal(article.status, 'draft');
+  assert.match(article.title, /Bot Farming|certifyd/i);
+  assert.match(article.warnings.join('\n'), /malformed JSON|recovered/i);
 });
 
 test('Qwen JSON parser accepts fenced and prefixed JSON responses', () => {
   assert.deepEqual(parseJsonContent('```json\n{"title":"A"}\n```'), { title: 'A' });
   assert.deepEqual(parseJsonContent('<think>drafting</think>\nHere is the JSON:\n{"title":"B"}\nDone.'), { title: 'B' });
+});
+
+test('Qwen JSON missing generated helper fields is completed safely', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const provider = new OllamaQwenGenerationProvider(config, {
+    fetchImpl: makeOllamaFetch({
+      title: 'Bot Farming and Real Creator Commerce',
+      bodyMarkdown: 'Certifyd should be discussed as a way to emphasize real customer activity, direct commerce and attribution instead of fake engagement metrics.',
+    }),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'bot farming', audience: 'Creators', objective: 'Explain the issue.' }, context);
+  assert.equal(article.slug, 'bot-farming-and-real-creator-commerce');
+  assert.match(article.excerpt, /real customer activity/);
+  assert.equal(article.author, 'Certifyd');
+});
+
+test('Qwen JSON without an article body becomes a review-only placeholder draft', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const provider = new OllamaQwenGenerationProvider(config, {
+    fetchImpl: makeOllamaFetch({
+      title: 'Bot Farming and Certifyd',
+      excerpt: 'A draft about fake engagement and real customer activity.',
+    }),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'bot farming', audience: 'Creators', objective: 'Explain the issue.' }, context);
+  assert.equal(article.slug, 'bot-farming-and-certifyd');
+  assert.match(article.bodyMarkdown, /did not return a usable article body/i);
+  assert.match(article.warnings.join('\n'), /without a usable bodyMarkdown/i);
 });
 
 test('generated article cover image is persisted when safe', async () => {
@@ -198,16 +228,16 @@ test('unsafe generated cover image falls back to default site image', async () =
   assert.equal(article.coverImage, '/images/certifyd-main-image-independent-scene-20260613.png');
 });
 
-test('invented Brain source IDs are rejected', async () => {
+test('invented Brain source IDs are downgraded instead of killing generation', async () => {
   const config = await makeConfig();
   const context = await makeContext(config);
   const provider = new OllamaQwenGenerationProvider(config, {
     fetchImpl: makeOllamaFetch(validArticle('brain:made-up-source')),
   });
-  await assert.rejects(
-    () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context),
-    /unknown Brain source IDs/,
-  );
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
+  assert.equal(article.claims[0].confidence, 'needs-review');
+  assert.deepEqual(article.claims[0].sourceIds, []);
+  assert.match(article.warnings.join('\n'), /unknown Brain source IDs/);
 });
 
 test('unsupported claims and risky wording are preserved as warnings', async () => {
@@ -247,6 +277,27 @@ test('browser input cannot override the configured Ollama URL', async () => {
     ollamaBaseUrl: 'https://evil.example',
   }, context);
   assert.ok(calls.every((call) => call.url.startsWith('http://127.0.0.1:11434/')));
+});
+
+test('bot farming prompts are sent to Qwen with explicit anti-fraud guardrails', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  const prompt = 'write a blog explain why certifyd is a good solution to bot farming';
+  const context = await makeContext(config, { topic: prompt, objective: 'Explain the business issue clearly.' });
+  const provider = new OllamaQwenGenerationProvider(config, { fetchImpl: makeOllamaFetch(validArticle(context.sourceRecords[0].id), calls) });
+  await provider.generateArticle({
+    actorEmail: 'writer@example.test',
+    topic: prompt,
+    audience: 'Creators',
+    objective: 'Explain the business issue clearly.',
+  }, context);
+
+  const chatCall = calls.find((call) => call.url.endsWith('/api/chat'));
+  const payload = JSON.parse(chatCall.options.body);
+  const outboundPrompt = JSON.stringify(payload.messages);
+  assert.match(outboundPrompt, /not enabling automation/i);
+  assert.match(outboundPrompt, /Do not say Certifyd creates, manages, controls, monitors or secures bot farms/i);
+  assert.match(outboundPrompt, /real customer activity/i);
 });
 
 test('one active local generation per user is enforced', async () => {
