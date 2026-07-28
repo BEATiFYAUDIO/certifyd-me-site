@@ -4,7 +4,7 @@ slug: "ariana-grande-sues-unnamed-hackers-over-theft-of-unreleased-music-sold-on
 author: "Certifyd"
 date: "2026-07-28"
 updated: "2026-07-28"
-excerpt: "Provenance: The Foundation of Trust in Digital Content In today’s digital landscape, creators rely on robust systems to ensure the authenticity and provenance of their work. One such system that is gaining traction is Ce"
+excerpt: "Provenance: The Foundation of Trust in Digital Content In today’s digital landscape, creators rely on robust systems to ensure the authenticity and provenance of their work. One such system that is gaining traction is Certifyd"
 coverImage: "/images/blog/ariana-grande-sues-unnamed-hackers-over-theft-of-unreleased-music-sold-on-the-dark-web-1785251347829.webp"
 coverImageAlt: ""
 coverImageCredit: ""
