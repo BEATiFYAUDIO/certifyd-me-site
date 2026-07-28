@@ -9,6 +9,7 @@ import { createContentDashboardServer } from '../scripts/content-dashboard/serve
 import { getDashboardConfig } from '../scripts/content-dashboard/config.js';
 import { validateRunId, safeReturnPath } from '../scripts/content-dashboard/security.js';
 import { AuditLogRepository, ContentDashboardActions } from '../scripts/content-dashboard/actions.js';
+import { ContentBrainRepository } from '../scripts/content-dashboard/repository.js';
 
 const env = {
   ...process.env,
@@ -723,6 +724,35 @@ test('21a article workspace shows exact approved Brain records and zero-context 
     CONTENT_AGENT_OUTPUT_DIR: outputDir,
     CONTENT_DASHBOARD_DB_PATH: ':memory:',
   });
+});
+
+test('21c Brain workspace reflects review state and usage from generated runs', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-brain-connected-'));
+  const knowledgeDir = path.join(tmpRoot, 'knowledge');
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  await fs.mkdir(path.join(knowledgeDir, 'facts'), { recursive: true });
+  await fs.mkdir(path.join(knowledgeDir, 'capabilities'), { recursive: true });
+  await fs.writeFile(path.join(knowledgeDir, 'facts', 'approved.md'), '# Approved\n\n`APPROVED`\n');
+  await fs.writeFile(path.join(knowledgeDir, 'capabilities', 'unclear.md'), '# Unclear\n\n## Current Status\n\n`UNCLEAR`\n\n## Confidence\n\n`LOW`\n');
+  await createMinimalRun(path.join(outputDir, 'brain-usage-001'), {
+    title: 'Brain Usage Test',
+    slug: 'brain-usage-test',
+    selectedEvidence: [{ id: 'brain:facts/approved', path: 'content-agent/knowledge/facts/approved.md', excerpt: '`APPROVED`' }],
+  });
+  const config = getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  });
+  const files = await new ContentBrainRepository(config).listFiles();
+  const approved = files.find((file) => file.name === 'facts/approved.md');
+  const unclear = files.find((file) => file.name === 'capabilities/unclear.md');
+  assert.equal(approved.staleStatus, 'APPROVED');
+  assert.equal(approved.evidenceUsageCount, 1);
+  assert.deepEqual(approved.affectedArticles, ['Brain Usage Test']);
+  assert.equal(unclear.staleStatus, 'NEEDS_REVIEW');
+  assert.equal(unclear.evidenceUsageCount, 0);
 });
 
 test('21b stale dashboard section routes redirect instead of rendering broken pages', async () => withServer(async (base) => {

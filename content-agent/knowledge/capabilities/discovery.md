@@ -98,3 +98,17 @@ monetization enabled
 ## Update History
 
 - 2026-07-26: First-pass capability file created from existing public and investor knowledge. Approval status: internal knowledge draft, not public claim approval.
+
+## Scrape Update — 2026-07-28
+
+Fan discovery is better supported than previously captured. The Fan PWA reads public discoverable content from creator origins and can load creator origins from a static registry and environment configuration. It has UI concepts for topic chips, search by title/creator/topic/type, watch routes, creator spotlights, network pulse, active creator ecosystems, recently published, top selling, top connected, fastest moving, free drops, and premium works.
+
+- **Classification:** `LIVE` as Fan app/repository behavior, subject to deployment status.
+- **Source:** `BEATiFYAUDIO/certifyd-fan-pwa README.md`; `src/routes/HomePage.tsx`; `docs/DISCOVERY_RANKING.md`; `docs/certifyd-player-mvp.md`.
+
+### Discovery Authority Boundary
+
+Fan discovery ranking is presentation-only. It must not decide entitlement, payment, payout, settlement, receipt validity, content access, or commerce authority. It only sorts already-discoverable public items returned to the Fan PWA.
+
+- **Approved claim:** Certifyd Fan can rank and present public-safe discovery signals.
+- **Prohibited claim:** Certifyd Fan determines payment, entitlement, settlement, receipt validity, payout, split, or proof authority.

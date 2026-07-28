@@ -106,3 +106,16 @@ monetization enabled
 ## Update History
 
 - 2026-07-26: First-pass capability file created from existing public and investor knowledge. Approval status: internal knowledge draft, not public claim approval.
+
+## Scrape Update — 2026-07-28
+
+The Network join page states that a node operator provides commerce services to creators and that the network starts with commerce because creators need control over how they get paid. The page lists commerce service, settlement service, network availability, provider public key, canonical provider URL, and reachable public route as operator-provided concepts.
+
+- **Classification:** `BETA` / early network.
+- **Source:** `https://network.certifyd.me/join`.
+- **Limit:** The page supports commerce-service positioning, not mature payment volume, guaranteed earnings, or universal availability.
+
+Fan is not the commerce authority. The Fan PWA routes fans to creator buy pages and reads public content but does not use payment POST routes, buyer claim routes, receipt/access write routes, provider/payout/split routes, or creator dashboard routes.
+
+- **Classification:** `LIVE` for Fan scope boundary.
+- **Source:** `BEATiFYAUDIO/certifyd-fan-pwa README.md`.

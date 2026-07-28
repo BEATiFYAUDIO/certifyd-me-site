@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { validateRunId, validateVersion, safeJsonParse } from './security.js';
 import { normalizeArticleTitle } from './article-utils.js';
+import { brainRecordId, brainReviewState } from './brain-utils.js';
 
 const READ_LIMIT_BYTES = 1024 * 1024;
 
@@ -138,33 +139,84 @@ export class ContentRunRepository {
 export class ContentBrainRepository {
   constructor(config) {
     this.root = path.resolve(config.agentRoot, 'knowledge');
+    this.outputDir = config.outputDir;
   }
 
   async listFiles() {
     const files = [];
-    await this.walk(this.root, files);
+    const usage = await this.readUsageIndex();
+    await this.walk(this.root, files, usage);
     return files.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  async walk(dir, files) {
+  async walk(dir, files, usage) {
     const entries = await fs.readdir(dir, { withFileTypes: true }).catch(() => []);
     for (const entry of entries) {
       const full = path.join(dir, entry.name);
       if (!full.startsWith(this.root)) continue;
-      if (entry.isDirectory()) await this.walk(full, files);
+      if (entry.isDirectory()) await this.walk(full, files, usage);
       if (entry.isFile() && entry.name.endsWith('.md')) {
         const stat = await fs.stat(full);
+        const relative = path.relative(this.root, full).replace(/\\/g, '/');
+        const id = brainRecordId(relative);
+        const text = await fs.readFile(full, 'utf8').catch(() => '');
+        const usageItem = usage.get(id) || { count: 0, articles: [] };
         files.push({
-          name: path.relative(this.root, full),
-          classification: classifyKnowledgePath(path.relative(this.root, full)),
+          id,
+          name: relative,
+          classification: classifyKnowledgePath(relative),
           lastUpdated: stat.mtime.toISOString(),
-          evidenceUsageCount: 0,
-          affectedArticles: [],
-          staleStatus: 'NOT_EVALUATED',
+          evidenceUsageCount: usageItem.count,
+          affectedArticles: usageItem.articles,
+          staleStatus: brainReviewState(relative, text),
         });
       }
     }
   }
+
+  async readUsageIndex() {
+    const usage = new Map();
+    const entries = await fs.readdir(this.outputDir, { withFileTypes: true }).catch(() => []);
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const base = path.join(this.outputDir, entry.name);
+      if (!base.startsWith(this.outputDir)) continue;
+      const research = await readJson(path.join(base, 'research-record.json'), {});
+      const manifest = await readJson(path.join(base, 'publication-manifest.json'), {});
+      const articleTitle = manifest.title || entry.name;
+      const records = Array.isArray(research.selectedEvidence) ? research.selectedEvidence : [];
+      for (const record of records) {
+        const id = normalizeBrainReference(record.id || record.path);
+        if (!id) continue;
+        const item = usage.get(id) || { count: 0, articles: [] };
+        item.count += 1;
+        if (!item.articles.includes(articleTitle)) item.articles.push(articleTitle);
+        usage.set(id, item);
+      }
+      const ids = Array.isArray(research.trendProvenance?.brainRecordIds) ? research.trendProvenance.brainRecordIds : [];
+      for (const rawId of ids) {
+        const id = normalizeBrainReference(rawId);
+        if (!id) continue;
+        const item = usage.get(id) || { count: 0, articles: [] };
+        if (!item.articles.includes(articleTitle)) item.articles.push(articleTitle);
+        usage.set(id, item);
+      }
+    }
+    return usage;
+  }
+}
+
+async function readJson(file, fallback) {
+  const text = await fs.readFile(file, 'utf8').catch(() => '');
+  return text ? safeJsonParse(text, fallback) : fallback;
+}
+
+function normalizeBrainReference(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (raw.startsWith('brain:')) return raw.replace(/\\/g, '/').replace(/\.md$/, '');
+  const match = raw.match(/content-agent\/knowledge\/(.+?)(?:\.md)?$/);
+  return match ? brainRecordId(match[1]) : '';
 }
 
 function classifyKnowledgePath(relative) {

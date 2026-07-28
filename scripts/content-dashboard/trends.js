@@ -581,7 +581,7 @@ function extractKeywords(text, categories) {
 const STOPWORDS = new Set(['about', 'after', 'again', 'their', 'there', 'these', 'those', 'which', 'while', 'would', 'could', 'should', 'through', 'because', 'company', 'announced', 'latest', 'first', 'using']);
 
 async function loadApprovedBrainRecords(config) {
-  const brainRoot = path.resolve(config.siteRoot, 'content-agent', 'knowledge');
+  const brainRoot = path.resolve(config.agentRoot || path.join(config.siteRoot, 'content-agent'), 'knowledge');
   const records = [];
   await walkMarkdown(brainRoot, async (file) => {
     const relative = path.relative(brainRoot, file);

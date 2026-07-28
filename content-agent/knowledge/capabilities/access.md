@@ -99,3 +99,20 @@ monetization enabled
 ## Update History
 
 - 2026-07-26: First-pass capability file created from existing public and investor knowledge. Approval status: internal knowledge draft, not public claim approval.
+
+## Scrape Update — 2026-07-28
+
+The Fan player docs state that Contentbox owns the canonical playback contract and offer/playback authorization. Fan fetches canonical offers and plays only authorized `offer.playback` streams. Fan must not infer entitlement, ownership, price, or unlock eligibility.
+
+- **Classification:** `BETA` / repository-described behavior.
+- **Source:** `BEATiFYAUDIO/certifyd-fan-pwa docs/certifyd-player-mvp.md`.
+
+### Supported Current Claims
+
+- Fan can display public-safe access labels such as locked, unlocked, owned, preview, or full playback where provided by the authoritative offer/playback contract.
+- Contentbox/Core-side systems remain the authority for access and entitlement decisions.
+
+### Additional Prohibited Claims
+
+- Fan independently decides entitlement.
+- Fan independently decides ownership, price, unlock eligibility, or full-media authorization.

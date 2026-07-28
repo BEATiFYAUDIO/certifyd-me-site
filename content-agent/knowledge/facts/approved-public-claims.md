@@ -395,3 +395,37 @@ These ideas may be discussed only as a direction, model, goal, intended capabili
 12. Current versus proposed revenue streams.
 13. Transaction and ownership details for Core technology and related intellectual property.
 14. The exact replacement wording for older public assets that still use `Certifyd Creator` inconsistently.
+
+## Scrape Update — 2026-07-28
+
+### Claim: Current public homepage positions Certifyd around creator profiles, discovery, publishing and direct-to-fan commerce.
+
+- **Approved wording:** Certifyd’s public homepage positions the product around creator profiles, fan discovery, publishing, and direct-to-fan commerce.
+- **Product or layer:** Certifyd ecosystem.
+- **Supporting source file:** `https://certifyd.me/`; `content-agent/knowledge/source-scrapes-2026-07-28.md`.
+- **Confidence:** High for page positioning.
+- **Notes or limits:** This is positioning and visible website copy. It does not prove every underlying commerce, payout, publishing, or discovery capability is generally available.
+
+### Claim: Network node operators provide commerce services to creators.
+
+- **Approved wording:** The public Network join page defines a node operator as a participant that provides commerce services to creators.
+- **Product or layer:** Certifyd Network.
+- **Supporting source file:** `https://network.certifyd.me/join`; `content-agent/knowledge/source-scrapes-2026-07-28.md`.
+- **Confidence:** High for public-page definition.
+- **Notes or limits:** The page says the network is early. Do not describe node operation as broadly available or fully mature.
+
+### Claim: Certifyd Fan is discovery and routing, not commerce authority.
+
+- **Approved wording:** Certifyd Fan is a discovery, playback UI, and routing surface that reads public discoverable content and routes fans to creator-owned or creator-operated flows; Fan itself is not the authority for payments, receipts, payouts, splits, settlement, creator dashboards, or commerce writes.
+- **Product or layer:** Certifyd Fan / Discovery.
+- **Supporting source file:** `BEATiFYAUDIO/certifyd-fan-pwa README.md`; `docs/DISCOVERY_RANKING.md`; `docs/certifyd-player-mvp.md`; `content-agent/knowledge/source-scrapes-2026-07-28.md`.
+- **Confidence:** High for repository-described scope.
+- **Notes or limits:** Fan can display public-safe signals and route users, but Contentbox/Core-side systems remain the authority for commerce and access decisions.
+
+### Claim: Preview-site stronger ownership and distribution language is not approved as final production wording.
+
+- **Approved wording:** Preview copy contains stronger claims around total ownership, worldwide distribution, IP earnings, and direct Lightning payments, but those phrases should be treated as staging language unless separately approved for production.
+- **Product or layer:** Public marketing / preview site.
+- **Supporting source file:** `BEATiFYAUDIO/certifyd-me-site-preview`; `content-agent/knowledge/source-scrapes-2026-07-28.md`.
+- **Confidence:** High that preview copy exists; low as final public-claim approval.
+- **Notes or limits:** Prefer production-safe dependency-reduction wording over absolute ownership, guaranteed worldwide distribution, royalty, or payment claims.

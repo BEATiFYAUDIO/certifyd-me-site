@@ -50,6 +50,7 @@ export function humanizeLabel(value) {
     BLOCKED_PENDING_APPROVAL: 'Needs approval',
     BLOCKED_CLAIMS: 'Needs attention',
     APPROVED_READY: 'Approved',
+    NEEDS_REVIEW: 'Needs review',
     NOT_EVALUATED: 'Not reviewed',
     NOT_AVAILABLE: 'Not available',
     UNKNOWN: 'Unknown',

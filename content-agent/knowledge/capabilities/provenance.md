@@ -104,3 +104,21 @@ no monetization identified
 ## Update History
 
 - 2026-07-26: First-pass capability file created from existing public and investor knowledge. Approval status: internal knowledge draft, not public claim approval.
+
+## Scrape Update — 2026-07-28
+
+The Network join page includes proof capability and proof history as public metadata/readiness concepts for node operators. Awards repository code and public data also reference verification/scoring contexts.
+
+- **Classification:** `UNCLEAR` / implementation-specific.
+- **Source:** `https://network.certifyd.me/join`; `BEATiFYAUDIO/certifyd-awards-site`; `content-agent/knowledge/source-scrapes-2026-07-28.md`.
+
+### Qualified Claims
+
+- Certifyd Network can describe proof capability and proof history as metadata/readiness concepts where exposed.
+- Awards can use proof or verification context for recognition UX where implemented.
+
+### Additional Prohibited Claims
+
+- Proof capability means legal authorship proof.
+- Awards verification proves legal ownership or rights.
+- Network proof history is immutable or universally accepted.

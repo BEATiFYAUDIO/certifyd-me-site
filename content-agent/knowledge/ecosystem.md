@@ -144,3 +144,38 @@ Enterprise readiness, broader partner programs, expanded Network participation, 
 - What is the exact Core-to-Network runtime architecture?
 - Which revenue streams are current versus proposed?
 - What is the legally safe definition of creator-owned infrastructure?
+
+## Scrape Update — 2026-07-28
+
+### Public Website Positioning
+
+The production homepage currently emphasizes creator profiles, fan discovery, publishing, direct-to-fan commerce, audience independence, and the problem of platform dependency.
+
+- **Classification:** `LIVE` as website positioning.
+- **Source:** `https://certifyd.me/`.
+- **Limit:** Website positioning does not prove every capability is generally available.
+
+### Fan / Contentbox Boundary
+
+The Fan PWA repository defines Fan as a lightweight discovery and routing app. It reads public discoverable content, supports discovery/playback/library-style user experience, and routes fans to creator buy/support pages.
+
+Fan explicitly does not own commerce authority, creator management, payment POST routes, buyer claim routes, receipt/access write routes, provider/payout/split routes, or creator dashboard routes.
+
+- **Classification:** `LIVE` for repository-described app scope.
+- **Source:** `BEATiFYAUDIO/certifyd-fan-pwa README.md`; `docs/DISCOVERY_RANKING.md`; `docs/certifyd-player-mvp.md`.
+- **Architecture note:** Contentbox owns canonical playback contract, offer/playback authorization, public creator/profile pages, buy/support pages, and APIs. Fan is a client of those systems.
+
+### Network Operator Boundary
+
+The Network join page defines node operators around creator commerce services and public metadata/readiness, including provider URL, node ID, public key, provider profile ID if available, reachable metadata, identity capability, content capability, proof capability, commerce/settlement status, and optional region/operator/profile/proof-history details.
+
+- **Classification:** `BETA` / early network.
+- **Source:** `https://network.certifyd.me/join`.
+- **Limit:** The page states the network is early and small. Avoid mature-network claims.
+
+### Awards Boundary
+
+The Awards repository supports a public recognition and nomination surface. Awards can use fan, network, proof, and scoring data for recognition contexts, but Awards is not authority for legal ownership, payments, settlement, entitlement, or rights.
+
+- **Classification:** `LIVE` as public Awards surface/program; `PLANNED` / `UNCLEAR` for deeper integrations.
+- **Source:** `BEATiFYAUDIO/certifyd-awards-site`.

@@ -104,3 +104,15 @@ monetization enabled
 ## Update History
 
 - 2026-07-26: First-pass capability file created from existing public and investor knowledge. Approval status: internal knowledge draft, not public claim approval.
+
+## Scrape Update — 2026-07-28
+
+The Fan PWA docs explicitly place receipts outside Fan authority. Fan discovery ranking must not decide receipt validity, and Fan does not use receipt/access write routes.
+
+- **Classification:** `UNCLEAR` for receipt implementation; `LIVE` for Fan boundary.
+- **Source:** `BEATiFYAUDIO/certifyd-fan-pwa README.md`; `docs/DISCOVERY_RANKING.md`.
+
+### Additional Qualified Claims
+
+- Receipts may be used by Contentbox/Core-side systems where implemented.
+- Fan may display public-safe labels or route users, but receipt validity remains outside Fan.

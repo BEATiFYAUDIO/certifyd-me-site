@@ -8,6 +8,7 @@ import { createPublisher } from './publisher.js';
 import { buildGroundedContext, createGenerationProvider, normalizeProviderName, persistGeneratedArticleRun } from './generation-provider.js';
 import { isSafeImagePath, normalizeArticleTitle, selectArticleCoverImage } from './article-utils.js';
 import { selectAutomatedCoverImage } from './cover-image-provider.js';
+import { isApprovedBrainRecord } from './brain-utils.js';
 
 const execFileAsync = promisify(execFile);
 const RESULT_LIMIT = 12000;
@@ -707,7 +708,7 @@ export function approvedBrainEvidence(runOrResearch) {
   return records.filter((record) => {
     const id = String(record?.id || '');
     const recordPath = String(record?.path || '');
-    return id.startsWith('brain:') || recordPath.startsWith('content-agent/knowledge/');
+    return (id.startsWith('brain:') || recordPath.startsWith('content-agent/knowledge/')) && isApprovedBrainRecord(record);
   });
 }
 

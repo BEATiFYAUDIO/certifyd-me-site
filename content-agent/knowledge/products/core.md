@@ -123,3 +123,21 @@ Avoid these until verified:
 - What is the exact Core-to-Network runtime architecture?
 - Which implementations currently expose identity, access, commerce, receipts, and release records?
 - What is the legal and technical boundary of provenance in Core?
+
+## Scrape Update — 2026-07-28
+
+### Contentbox / Fan Authority Split
+
+The Fan PWA source clarifies an important Core-adjacent boundary: Fan owns discovery, playback UI, persistent player dock, continuous playback, and collection/support experience. Contentbox owns canonical playback contract, offer/playback authorization, public creator/profile pages, buy/support pages, and APIs.
+
+- **Classification:** `BETA` / repository-supported architecture.
+- **Source:** `BEATiFYAUDIO/certifyd-fan-pwa docs/certifyd-player-mvp.md`; `BEATiFYAUDIO/contentbox` repository.
+- **Impact:** When writing about Core or Fan, do not imply the Fan PWA is the commerce, entitlement, receipt, payout, split, settlement, or creator-dashboard authority.
+
+### Network Operator Requirements
+
+The Network join page supports a concrete early operator model: provider URL, provider node ID, provider public key, optional provider profile ID, reachable public metadata, identity capability, content capability, proof capability, and commerce/settlement status.
+
+- **Classification:** `BETA` / early network.
+- **Source:** `https://network.certifyd.me/join`.
+- **Impact:** Core-to-Network architecture remains implementation-specific, but public node-operator readiness language is now source-backed.

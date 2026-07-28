@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { DEFAULT_BLOG_COVER_IMAGE, isSafeImagePath, normalizeArticleTitle, selectArticleCoverImage } from './article-utils.js';
+import { brainRecordId, brainReviewState } from './brain-utils.js';
 
 const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
 const DEFAULT_OLLAMA_MODEL = 'qwen2.5:1.5b';
@@ -230,7 +231,7 @@ export class OllamaQwenGenerationProvider {
 }
 
 export async function buildGroundedContext(config, input) {
-  const brainRoot = path.resolve(config.siteRoot, 'content-agent', 'knowledge');
+  const brainRoot = path.resolve(config.agentRoot || path.join(config.siteRoot, 'content-agent'), 'knowledge');
   const sourceRecords = [];
   await walkMarkdown(brainRoot, async (file) => {
     const relative = path.relative(brainRoot, file);
@@ -241,6 +242,7 @@ export async function buildGroundedContext(config, input) {
       path: `content-agent/knowledge/${relative}`,
       title: titleFromMarkdown(relative, text),
       excerpt: cleanText(text).slice(0, 1800),
+      reviewState: brainReviewState(relative, text),
     });
   });
   const selected = selectRelevantSources(sourceRecords, input).slice(0, SAFE_SOURCE_LIMIT);
@@ -859,7 +861,7 @@ function cleanText(text) {
 }
 
 function sourceId(relative) {
-  return `brain:${relative.replace(/\\/g, '/').replace(/\.md$/, '').replace(/[^a-zA-Z0-9/_-]+/g, '-').toLowerCase()}`;
+  return brainRecordId(relative);
 }
 
 function slugify(value) {
