@@ -392,16 +392,7 @@ async function renderArticles(ctx, url) {
     if (!search) return true;
     return [run.title, run.runId, run.slug, run.audience, run.topic, run.canonicalUrl, run.modelProvider, run.modelMode].some((value) => String(value || '').toLowerCase().includes(search));
   });
-  const rows = filteredRuns.map((run) => `<tr>
-    <td><a href="/app/content/articles/${escapeHtml(run.runId)}"><strong>${escapeHtml(run.title || 'Untitled draft')}</strong></a><br><span class="muted">${escapeHtml(run.runId)}</span></td>
-    <td>${statusPill(run.status)}<br><span class="muted">${statusPill(run.publishability)}</span></td>
-    <td>${escapeHtml(run.updatedAt || run.createdAt || run.version || 'Unknown')}</td>
-    <td>${escapeHtml(run.author || 'Certifyd')}</td>
-    <td>${run.canonicalUrl ? `<a href="${escapeHtml(run.canonicalUrl)}">${escapeHtml(run.canonicalUrl)}</a>` : '<span class="muted">Not set</span>'}</td>
-    <td>${Number(run.unresolvedIssueCount || 0) > 0 ? statusPill('Needs attention') : statusPill('READY')}</td>
-    <td><span class="muted">Canonical first. Distribution generated after approval.</span></td>
-    <td>${articleRowActions(run, csrf, ctx.permissions, ctx.config)}</td>
-  </tr>`).join('');
+  const articleCards = filteredRuns.map((run) => articleListCard(run, csrf, ctx.permissions, ctx.config)).join('');
   const opportunities = filterTrendingOpportunities(trends, selectedCategory);
   const canCreate = ctx.permissions.includes('content.article.create');
   const categoryTabs = `<div class="tabs compact"><a class="tab ${selectedCategory === 'All' ? 'active' : ''}" href="/app/content/articles?view=ideas">All</a>${TRENDING_CATEGORIES.map((category) => `<a class="tab ${category === selectedCategory ? 'active' : ''}" href="/app/content/articles?view=ideas&category=${encodeURIComponent(category)}">${escapeHtml(category)}</a>`).join('')}</div>`;
@@ -419,7 +410,7 @@ async function renderArticles(ctx, url) {
     ${canCreate ? qwenPromptForm({ csrf, compact: true }) : '<p class="notice">You can review content, but this role cannot generate new drafts.</p>'}
   </section>`;
   const filters = `<section class="panel"><div class="tabs">${tabs.map(([key, label]) => `<a class="tab ${key === view ? 'active' : ''}" href="/app/content/articles?view=${escapeHtml(key)}">${escapeHtml(label)}</a>`).join('')}</div><form class="search-row" method="get" action="/app/content/articles"><input type="hidden" name="view" value="${escapeHtml(view)}"><label>Search<input name="q" value="${escapeHtml(search)}" placeholder="Title, slug, topic, source or author"></label><button class="ghost" type="submit">Search</button></form></section>`;
-  return layout({ title: 'Blog Engine', user: ctx.user, permissions: ctx.permissions, active: 'Blog Engine', body: `<p class="eyebrow">Blog Engine</p><h1>Article workspace</h1>${filters}${create}${ideas}<section class="panel"><table class="table"><thead><tr><th>Title</th><th>Status</th><th>Updated</th><th>Author</th><th>Canonical URL</th><th>Sources</th><th>Distribution</th><th>Actions</th></tr></thead><tbody>${rows || '<tr><td colspan="8"><p class="empty">No articles match this view.</p></td></tr>'}</tbody></table></section>` });
+  return layout({ title: 'Blog Engine', user: ctx.user, permissions: ctx.permissions, active: 'Blog Engine', body: `<p class="eyebrow">Blog Engine</p><h1>Article workspace</h1>${filters}${create}${ideas}<section class="article-list">${articleCards || '<p class="empty panel">No articles match this view.</p>'}</section>` });
 }
 
 async function renderTrendSources(ctx, opportunityId) {
@@ -451,6 +442,42 @@ async function renderFounderReview(ctx, runId, csrf) {
   const brainEvidence = approvedBrainEvidence(run);
   const body = `<p class="eyebrow">Founder Review</p><h1>${escapeHtml(summary.title || 'Untitled article')}</h1><p class="notice">Approval requires founder permission, exact displayed version, zero blocking claims, approved Brain context and explicit confirmation. This approves version ${escapeHtml(summary.version || 'v1')} for Certifyd Blog publishing preparation.</p>${runSummaryHtml(summary)}${brainContextWarning(brainEvidence)}${card('Final Checklist', `<ul><li>Version: ${escapeHtml(summary.version || 'v1')}</li><li>Blocking claims: ${escapeHtml(summary.unresolvedIssueCount ?? 0)}</li><li>Approved Brain records: ${brainEvidence.length}</li><li>Canonical URL: ${escapeHtml(summary.canonicalUrl || 'Not set')}</li><li>Publishability: ${escapeHtml(humanizeLabel(summary.publishability || 'UNKNOWN'))}</li></ul>`)}${card('Approved Brain context', brainContextList(brainEvidence))}${card('Blocked or Qualified Claims', claimTable(claims.filter((claim) => claim.status !== 'APPROVED')))}${card('Article Preview', articlePreviewHtml(run))}${actionButtons(summary, csrf, ctx.permissions, ctx.config)}`;
   return layout({ title: 'Founder Review', user: ctx.user, permissions: ctx.permissions, active: 'Blog Engine', body });
+}
+
+function articleListCard(run, csrf, permissions, config = {}) {
+  const runId = escapeHtml(run.runId);
+  const title = escapeHtml(run.title || 'Untitled draft');
+  const updated = escapeHtml(formatDashboardDate(run.lastUpdated || run.updatedAt || run.createdAt));
+  const issueCount = Number(run.unresolvedIssueCount || 0);
+  const canonical = run.canonicalUrl
+    ? `<a href="${escapeHtml(run.canonicalUrl)}" class="article-card-url">${escapeHtml(run.canonicalUrl)}</a>`
+    : '<span class="muted">No canonical URL yet</span>';
+  const distribution = distributionSummary(run);
+  return `<article class="article-card">
+    <div class="article-card-main">
+      <div class="article-card-kicker"><span>${escapeHtml(run.contentType || 'Article')}</span><span>${updated}</span><span>${escapeHtml(run.modelMode || run.modelProvider || 'Unknown provider')}</span></div>
+      <h2><a href="/app/content/articles/${runId}">${title}</a></h2>
+      <p class="muted article-card-slug">${escapeHtml(run.slug || run.runId || '')}</p>
+      <div class="article-card-meta">
+        ${statusPill(run.status)}
+        ${statusPill(run.publishability)}
+        <span class="pill ${issueCount > 0 ? 'bad' : 'good'}">${issueCount > 0 ? `${issueCount} issue${issueCount === 1 ? '' : 's'}` : 'Sources ready'}</span>
+      </div>
+      <div class="article-card-detail"><strong>Canonical</strong>${canonical}</div>
+      <div class="article-card-detail"><strong>Distribution</strong><span>${escapeHtml(distribution)}</span></div>
+    </div>
+    <div class="article-card-actions">${articleRowActions(run, csrf, permissions, config)}</div>
+  </article>`;
+}
+
+function distributionSummary(run) {
+  const status = String(run.status || '').toUpperCase();
+  const publishability = String(run.publishability || '').toUpperCase();
+  if (status === 'PUBLISHED') return 'Live on Certifyd Blog.';
+  if (publishability === 'READY_TO_PUBLISH') return 'Ready to publish to Certifyd Blog.';
+  if (status === 'FOUNDER_APPROVED') return 'Approved; prepare package next.';
+  if (status === 'ARCHIVED') return 'Archived; hidden from active publishing flow.';
+  return 'Canonical first. Distribution generated after approval.';
 }
 
 async function renderPreview(ctx, runId) {
@@ -580,7 +607,11 @@ function articleRowActions(run, csrf, permissions, config = {}) {
     `<a class="ghost" href="/app/content/articles/${runId}/preview">Preview</a>`,
   ];
   if (permissions.includes('content.article.review')) links.push(`<a class="ghost" href="/app/content/review/${runId}">Review</a>`);
-  return `<div class="actions">${links.join('')}${compactLifecycleForms(run, csrf, permissions, config)}</div>`;
+  const status = String(run.status || '');
+  if (permissions.includes('content.article.archive') && status !== 'ARCHIVED') {
+    links.push(form('/app/content/actions/article/archive', 'Archive', { runId: run.runId, _csrf: csrf }));
+  }
+  return `<div class="actions compact-actions">${links.join('')}</div>`;
 }
 
 function actionButtons(run, csrf, permissions, config = {}) {
