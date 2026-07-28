@@ -19,6 +19,8 @@
     "test": "npm run test:blog && npm run test:dashboard && npm run test:generation && npm run test:trends",
     "test:generation": "node --test test/content-generation-provider.test.js",
     "test:trends": "node --test test/content-trends.test.js",
+    "seo:validate": "node scripts/validate-seo.js",
+    "indexnow:test": "node scripts/indexnow-submit.js",
     "trends:scan": "node scripts/trends-scan.js"
   },
   "dependencies": {

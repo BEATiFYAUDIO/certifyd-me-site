@@ -9,6 +9,7 @@ import { buildGroundedContext, createGenerationProvider, normalizeProviderName, 
 import { cleanArticlePromptText, isSafeImagePath, normalizeArticleTitle, selectArticleCoverImage } from './article-utils.js';
 import { appendGlobalPexelsHistory, selectAutomatedCoverImage } from './cover-image-provider.js';
 import { isApprovedBrainRecord } from './brain-utils.js';
+import { submitIndexNow } from './indexnow.js';
 
 const execFileAsync = promisify(execFile);
 const RESULT_LIMIT = 12000;
@@ -384,6 +385,10 @@ export class ContentDashboardActions {
       if (republish) await this.validateRepublishing({ actor, runId });
       else await this.validatePublishing({ actor, runId });
       const result = await this.publisher.createPullRequest({ actor, runId });
+      const indexNow = await submitIndexNow(this.config, {
+        url: result.canonicalUrl,
+        action: republish ? 'update' : 'publish',
+      });
       const base = this.runs.runPath(runId);
       const now = new Date().toISOString();
       const manifest = await this.readRunJson(base, 'publication-manifest.json', {});
@@ -397,6 +402,7 @@ export class ContentDashboardActions {
         canonicalUrl: result.canonicalUrl || manifest.canonicalUrl || '',
         commitUrls: result.commitUrls || [],
         mirrors: result.mirrors || [],
+        indexNow,
         startedBy: actor.email,
         startedAt: now,
       };
@@ -416,7 +422,7 @@ export class ContentDashboardActions {
         note: directPublish ? `Published directly to ${publishing.branchName || 'base branch'}.` : result.pullRequestUrl ? `Draft PR created: ${result.pullRequestUrl}` : 'Publishing started.',
         at: now,
       });
-      await this.audit.append({ action: 'publishing_pull_request', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, version, result: 'SUCCESS' });
+      await this.audit.append({ action: 'publishing_pull_request', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, version, result: 'SUCCESS', note: indexNow.submitted ? `IndexNow ${indexNow.ok ? 'ok' : 'failed'}` : '' });
       return result;
     } catch (error) {
       await this.audit.append({ action: 'publishing_pull_request', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, version, result: 'FAILED', note: error.message });
@@ -481,6 +487,10 @@ export class ContentDashboardActions {
         throw Object.assign(new Error('This article is already archived or removed from the live site.'), { statusCode: 409 });
       }
       const result = await this.publisher.createUnpublishPullRequest({ actor, runId });
+      const indexNow = await submitIndexNow(this.config, {
+        url: result.canonicalUrl || canonicalUrl,
+        action: 'remove',
+      });
       const base = this.runs.runPath(runId);
       const now = new Date().toISOString();
       const manifest = await this.readRunJson(base, 'publication-manifest.json', {});
@@ -494,6 +504,7 @@ export class ContentDashboardActions {
         removedPath: result.removedPath || '',
         canonicalUrl: result.canonicalUrl || manifest.canonicalUrl || '',
         commitUrls: result.commitUrls || [],
+        indexNow,
         startedBy: actor.email,
         startedAt: now,
       };
@@ -512,7 +523,7 @@ export class ContentDashboardActions {
         note: directPublish ? `Unpublished directly from ${unpublishing.branchName || 'base branch'}.` : result.pullRequestUrl ? `Draft unpublish PR created: ${result.pullRequestUrl}` : 'Unpublishing started.',
         at: now,
       });
-      await this.audit.append({ action: 'publishing_unpublish_pull_request', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: 'SUCCESS' });
+      await this.audit.append({ action: 'publishing_unpublish_pull_request', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: 'SUCCESS', note: indexNow.submitted ? `IndexNow ${indexNow.ok ? 'ok' : 'failed'}` : '' });
       return result;
     } catch (error) {
       await this.audit.append({ action: 'publishing_unpublish_pull_request', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: 'FAILED', note: error.message });

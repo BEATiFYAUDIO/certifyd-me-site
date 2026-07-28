@@ -1,4 +1,9 @@
 User-agent: *
 Allow: /
+Disallow: /app/
+Disallow: /admin/
+Disallow: /login
+Disallow: /content-agent/
+Disallow: /deploy/
 
 Sitemap: https://certifyd.me/sitemap.xml

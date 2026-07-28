@@ -102,6 +102,7 @@ export function getDashboardConfig(env = process.env) {
       token: env.CONTENT_DASHBOARD_GITHUB_TOKEN || env.GITHUB_TOKEN || '',
       mirrors: buildGithubPublishingMirrors(env),
     },
+    indexNow: buildIndexNowConfig(env),
     coverImages: {
       provider: normalizeCoverImageProvider(env.CONTENT_DASHBOARD_COVER_IMAGE_PROVIDER || (env.CONTENT_DASHBOARD_PEXELS_API_KEY || env.PEXELS_API_KEY ? 'pexels' : 'local')),
       pexelsApiKey: env.CONTENT_DASHBOARD_PEXELS_API_KEY || env.PEXELS_API_KEY || '',
@@ -159,6 +160,21 @@ function buildGithubPublishingMirrors(env = {}) {
 
 function normalizeOrigin(value = '') {
   return String(value || '').trim().replace(/\/+$/, '');
+}
+
+function buildIndexNowConfig(env = {}) {
+  const key = env.CONTENT_DASHBOARD_INDEXNOW_KEY || env.INDEXNOW_KEY || '';
+  const enabled = env.CONTENT_DASHBOARD_INDEXNOW_ENABLED === 'true' || Boolean(key);
+  const host = env.CONTENT_DASHBOARD_INDEXNOW_HOST || 'certifyd.me';
+  const publicUrl = normalizeOrigin(env.CONTENT_DASHBOARD_INDEXNOW_PUBLIC_URL || `https://${host}`);
+  return {
+    enabled,
+    key,
+    host,
+    publicUrl,
+    keyLocation: key ? `${publicUrl}/${key}.txt` : '',
+    endpoint: env.CONTENT_DASHBOARD_INDEXNOW_ENDPOINT || 'https://api.indexnow.org/indexnow',
+  };
 }
 
 function positiveInt(value, fallback, min = 1) {

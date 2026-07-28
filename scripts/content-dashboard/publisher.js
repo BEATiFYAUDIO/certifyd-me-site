@@ -278,6 +278,8 @@ export class GitHubPullRequestPublisher {
         'robots.txt',
         'sitemap.xml',
       ];
+      const indexNowFile = indexNowKeyFileName();
+      if (indexNowFile) paths.push(indexNowFile);
       if (options.includeArticlePage !== false) paths.splice(2, 0, `blog/${slug}/index.html`);
       const files = [];
       for (const filePath of paths) {
@@ -563,6 +565,12 @@ function coverImagePathFromMarkdown(markdown) {
   if (!match?.[1]) return '';
   if (match[1].includes('\\') || match[1].includes('..') || /%2f|%5c/i.test(match[1])) return '';
   return match[1];
+}
+
+function indexNowKeyFileName() {
+  const key = String(process.env.CONTENT_DASHBOARD_INDEXNOW_KEY || process.env.INDEXNOW_KEY || '').trim();
+  if (!/^[A-Za-z0-9_-]{8,128}$/.test(key)) return '';
+  return `${key}.txt`;
 }
 
 function githubHeaders(token) {

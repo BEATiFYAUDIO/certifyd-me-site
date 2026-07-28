@@ -693,6 +693,120 @@ test('20bb direct publishing can republish a published article', async () => {
   assert.deepEqual(manifest.publishing.commitUrls, ['https://github.test/certifyd/commit/2']);
 });
 
+test('20bc IndexNow submits only after publish, update and removal', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-indexnow-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const runId = 'indexnow-publish-001';
+  const runDir = path.join(outputDir, runId);
+  await createMinimalRun(runDir, {
+    title: 'IndexNow Publish Test',
+    slug: 'indexnow-publish-test',
+    status: 'READY_TO_PUBLISH',
+    publishability: 'READY_TO_PUBLISH',
+    markdown: '# IndexNow Publish Test\n\nBody.',
+  });
+
+  const config = getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+    CONTENT_DASHBOARD_INDEXNOW_KEY: 'indexnow_test_key',
+  });
+  const calls = [];
+  config.indexNow.fetchImpl = async (_url, options) => {
+    calls.push(JSON.parse(options.body));
+    return { status: 202 };
+  };
+  const actions = new ContentDashboardActions(config);
+  actions.publisher = {
+    createPullRequest: async () => ({
+      ok: true,
+      output: 'Published directly to main: https://certifyd.me/blog/indexnow-publish-test/',
+      publishMode: 'direct',
+      commitUrls: ['https://github.test/certifyd/commit/indexnow'],
+      branchName: 'main',
+      repositoryPath: 'content/blog/indexnow-publish-test.md',
+      canonicalUrl: 'https://certifyd.me/blog/indexnow-publish-test/',
+    }),
+    createUnpublishPullRequest: async () => ({
+      ok: true,
+      output: 'Unpublished directly from main: https://certifyd.me/blog/indexnow-publish-test/',
+      publishMode: 'direct',
+      commitUrls: ['https://github.test/certifyd/commit/indexnow-remove'],
+      branchName: 'main',
+      repositoryPath: 'content/blog/indexnow-publish-test.md',
+      removedPath: 'blog/indexnow-publish-test/index.html',
+      canonicalUrl: 'https://certifyd.me/blog/indexnow-publish-test/',
+    }),
+  };
+  const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+  await actions.preparePublishing({ actor, runId });
+  assert.equal(calls.length, 0);
+
+  await actions.publishToCertifyd({ actor, runId, version: 'v1' });
+  let manifest = JSON.parse(await fs.readFile(path.join(runDir, 'publication-manifest.json'), 'utf8'));
+  assert.equal(manifest.publishing.indexNow.action, 'publish');
+  assert.equal(manifest.publishing.indexNow.ok, true);
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0].urlList, ['https://certifyd.me/blog/indexnow-publish-test/']);
+
+  await actions.republishToCertifyd({ actor, runId, version: 'v1' });
+  manifest = JSON.parse(await fs.readFile(path.join(runDir, 'publication-manifest.json'), 'utf8'));
+  assert.equal(manifest.publishing.indexNow.action, 'update');
+  assert.equal(calls.length, 2);
+
+  await actions.unpublishFromCertifyd({ actor, runId, confirmUnpublish: 'unpublish' });
+  manifest = JSON.parse(await fs.readFile(path.join(runDir, 'publication-manifest.json'), 'utf8'));
+  assert.equal(manifest.unpublishing.indexNow.action, 'remove');
+  assert.equal(calls.length, 3);
+});
+
+test('20bd IndexNow failure does not break publishing', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-indexnow-fail-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const runId = 'indexnow-fail-001';
+  const runDir = path.join(outputDir, runId);
+  await createMinimalRun(runDir, {
+    title: 'IndexNow Failure Test',
+    slug: 'indexnow-fail-test',
+    status: 'READY_TO_PUBLISH',
+    publishability: 'READY_TO_PUBLISH',
+    markdown: '# IndexNow Failure Test\n\nBody.',
+  });
+
+  const config = getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+    CONTENT_DASHBOARD_INDEXNOW_KEY: 'indexnow_test_key',
+  });
+  config.indexNow.fetchImpl = async () => {
+    throw new Error('network down');
+  };
+  const actions = new ContentDashboardActions(config);
+  actions.publisher = {
+    createPullRequest: async () => ({
+      ok: true,
+      output: 'Published directly to main: https://certifyd.me/blog/indexnow-fail-test/',
+      publishMode: 'direct',
+      commitUrls: ['https://github.test/certifyd/commit/indexnow-fail'],
+      branchName: 'main',
+      repositoryPath: 'content/blog/indexnow-fail-test.md',
+      canonicalUrl: 'https://certifyd.me/blog/indexnow-fail-test/',
+    }),
+  };
+  const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+  await actions.preparePublishing({ actor, runId });
+  const result = await actions.publishToCertifyd({ actor, runId, version: 'v1' });
+  assert.match(result.output, /Published directly/);
+  const manifest = JSON.parse(await fs.readFile(path.join(runDir, 'publication-manifest.json'), 'utf8'));
+  assert.equal(manifest.publishing.indexNow.submitted, true);
+  assert.equal(manifest.publishing.indexNow.ok, false);
+  assert.match(manifest.publishing.indexNow.error, /network down/);
+});
+
 test('20c live articles can create a tracked unpublish PR state', async () => {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-unpublish-'));
   const outputDir = path.join(tmpRoot, 'engine', 'outputs');

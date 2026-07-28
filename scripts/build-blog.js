@@ -10,6 +10,17 @@ const TEMPLATE_DIR = path.join(ROOT, 'templates');
 const OUT_DIR = path.join(ROOT, 'blog');
 const BASE_URL = 'https://certifyd.me';
 const DEFAULT_IMAGE = '/images/certifyd-main-image-independent-scene-20260613.png';
+const ORGANIZATION = {
+  name: 'Certifyd',
+  url: BASE_URL,
+  logo: `${BASE_URL}/images/certifyd-tab-icon.svg`,
+  description: 'Certifyd provides creator-owned publishing, identity, attribution and direct commerce infrastructure.',
+};
+const IMPORTANT_PUBLIC_PAGES = [
+  { path: '/', file: 'index.html', priority: '1.0' },
+  { path: '/network.html', file: 'network.html', priority: '0.7' },
+  { path: '/blog/', file: 'blog/index.html', priority: '0.8' },
+];
 const HOME_FILE = path.join(ROOT, 'index.html');
 const HOME_CSS_START = '/* BLOG_STYLES_START */';
 const HOME_CSS_END = '/* BLOG_STYLES_END */';
@@ -29,6 +40,16 @@ function escapeHtml(value) {
 
 function escapeXml(value) {
   return escapeHtml(value);
+}
+
+function envValue(name) {
+  return String(process.env[name] || '').trim();
+}
+
+function canonicalUrlForPath(pathname) {
+  const normalized = String(pathname || '/').startsWith('/') ? pathname : `/${pathname}`;
+  if (normalized === '/') return `${BASE_URL}/`;
+  return `${BASE_URL}${normalized}`;
 }
 
 function asArray(value) {
@@ -71,10 +92,37 @@ function validateImagePath(value, file) {
   return raw;
 }
 
+function isNoindex(value) {
+  return value === true || String(value || '').trim().toLowerCase() === 'true' || String(value || '').trim().toLowerCase() === 'noindex';
+}
+
 function absoluteUrl(value) {
   const raw = String(value || DEFAULT_IMAGE).trim();
   if (/^https?:\/\//i.test(raw)) return raw;
   return `${BASE_URL}${raw.startsWith('/') ? raw : `/${raw}`}`;
+}
+
+function verificationMeta() {
+  const value = envValue('GOOGLE_SITE_VERIFICATION') || envValue('CONTENT_DASHBOARD_GOOGLE_SITE_VERIFICATION');
+  if (!value) return '';
+  if (!/^[A-Za-z0-9_-]{8,128}$/.test(value)) throw new Error('GOOGLE_SITE_VERIFICATION must contain only letters, numbers, underscores and hyphens.');
+  return `<meta name="google-site-verification" content="${escapeHtml(value)}" />`;
+}
+
+function indexNowKey() {
+  const key = envValue('INDEXNOW_KEY') || envValue('CONTENT_DASHBOARD_INDEXNOW_KEY');
+  if (!key) return '';
+  if (!/^[A-Za-z0-9_-]{8,128}$/.test(key)) throw new Error('INDEXNOW_KEY must contain only letters, numbers, underscores and hyphens.');
+  return key;
+}
+
+function googleVerificationFile() {
+  const name = envValue('GOOGLE_SITE_VERIFICATION_FILE') || envValue('GOOGLE_SITE_VERIFICATION_FILE_NAME');
+  const content = envValue('GOOGLE_SITE_VERIFICATION_FILE_CONTENT') || envValue('GOOGLE_SITE_VERIFICATION_CONTENT');
+  if (!name && !content) return null;
+  if (!/^google[A-Za-z0-9_-]+\.html$/.test(name)) throw new Error('GOOGLE_SITE_VERIFICATION_FILE must look like google-site-verification HTML filename.');
+  if (!content) throw new Error('GOOGLE_SITE_VERIFICATION_FILE_CONTENT is required when GOOGLE_SITE_VERIFICATION_FILE is set.');
+  return { name, content };
 }
 
 function validateOptionalUrl(value, file) {
@@ -90,7 +138,9 @@ function validateOptionalUrl(value, file) {
 }
 
 function renderTemplate(template, replacements) {
-  return template.replace(/\{\{([a-zA-Z0-9]+)\}\}/g, (_, key) => replacements[key] ?? '');
+  return template
+    .replace(/\{\{([a-zA-Z0-9]+)\}\}/g, (_, key) => replacements[key] ?? '')
+    .replace(/^[ \t]+$/gm, '');
 }
 
 async function ensureEmptyDir(dir) {
@@ -120,6 +170,7 @@ async function readArticles() {
     const data = parsed.data || {};
     const status = String(data.status || (data.draft === true ? 'draft' : 'published')).trim().toLowerCase();
     if (status !== 'published') continue;
+    if (isNoindex(data.noindex || data.robots)) continue;
 
     const title = String(data.title || '').trim();
     if (!title) throw new Error(`${file}: missing title`);
@@ -152,6 +203,7 @@ async function readArticles() {
       coverImageProvider,
       tags,
       status,
+      noindex: false,
       seoTitle: String(data.seoTitle || '').trim(),
       seoDescription: String(data.seoDescription || '').trim(),
       body,
@@ -204,23 +256,63 @@ function renderCategoryTags(articles) {
   return tags.map((tag) => `<span class="category-tag">${escapeHtml(tag)}</span>`).join('\n');
 }
 
-function jsonLdForArticle(article) {
-  return JSON.stringify({
+function jsonLdScript(data) {
+  return `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`;
+}
+
+function organizationJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: ORGANIZATION.name,
+    url: ORGANIZATION.url,
+    logo: {
+      '@type': 'ImageObject',
+      url: ORGANIZATION.logo,
+    },
+    description: ORGANIZATION.description,
+  };
+}
+
+function articleJsonLd(article) {
+  const canonicalUrl = articleUrl(article);
+  return {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
+    '@id': `${canonicalUrl}#article`,
+    url: canonicalUrl,
     headline: article.title,
     description: article.seoDescription || article.excerpt,
     image: [absoluteUrl(article.coverImage)],
-    author: { '@type': 'Organization', name: article.author },
+    author: { '@type': 'Organization', name: article.author, url: BASE_URL },
     publisher: {
       '@type': 'Organization',
-      name: 'Certifyd',
-      logo: { '@type': 'ImageObject', url: `${BASE_URL}/images/certifyd-tab-icon.svg` },
+      name: ORGANIZATION.name,
+      logo: { '@type': 'ImageObject', url: ORGANIZATION.logo },
     },
     datePublished: article.date.toISOString(),
     dateModified: article.updated.toISOString(),
-    mainEntityOfPage: articleUrl(article),
-  }).replace(/</g, '\\u003c');
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': canonicalUrl,
+    },
+  };
+}
+
+function breadcrumbJsonLd(article) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE_URL}/` },
+      { '@type': 'ListItem', position: 2, name: 'Blog', item: `${BASE_URL}/blog/` },
+      { '@type': 'ListItem', position: 3, name: article.title, item: articleUrl(article) },
+    ],
+  };
+}
+
+function jsonLdScriptsForArticle(article) {
+  return [articleJsonLd(article), organizationJsonLd(), breadcrumbJsonLd(article)].map(jsonLdScript).join('\n  ');
 }
 
 function imageCreditHtml(article) {
@@ -239,6 +331,7 @@ async function writeBlogIndex(articles, template) {
     metaTitle: 'Certifyd Blog | Creator-Owned Commerce Infrastructure',
     metaDescription: 'Articles from Certifyd on creator ownership, publishing, discovery, attribution and direct commerce.',
     canonicalUrl: `${BASE_URL}/blog/`,
+    googleVerificationMeta: verificationMeta(),
     socialImage: absoluteUrl(DEFAULT_IMAGE),
     categories: renderCategoryTags(articles),
     articles: articles.length ? articles.map(renderArticleCard).join('\n') : '<p class="empty-state">No published articles yet.</p>',
@@ -257,12 +350,15 @@ async function writeArticle(article, template) {
     ogTitle: escapeHtml(article.title),
     metaDescription: escapeHtml(metaDescription),
     canonicalUrl: articleUrl(article),
+    robotsMeta: '',
+    googleVerificationMeta: verificationMeta(),
     ogImage: absoluteUrl(article.coverImage),
     publishedIso: article.date.toISOString(),
     updatedIso: article.updated.toISOString(),
     author: escapeHtml(article.author),
+    articleTagMeta: article.tags.map((tag) => `<meta property="article:tag" content="${escapeHtml(tag)}" />`).join('\n  '),
     keywordMeta: article.tags.length ? `<meta name="keywords" content="${escapeHtml(article.tags.join(', '))}" />` : '',
-    jsonLd: jsonLdForArticle(article),
+    jsonLdScripts: jsonLdScriptsForArticle(article),
     title: escapeHtml(article.title),
     excerpt: escapeHtml(article.excerpt),
     publishedAt: escapeHtml(formatDisplayDate(article.date)),
@@ -357,15 +453,33 @@ async function updateHomepage(articles) {
 }
 
 async function writeSitemap(articles) {
+  const staticUrls = [];
+  for (const page of IMPORTANT_PUBLIC_PAGES) {
+    const fullPath = path.join(ROOT, page.file);
+    const html = await fs.readFile(fullPath, 'utf8').catch(() => '');
+    if (!html || pageHasNoindex(html)) continue;
+    const stat = await fs.stat(fullPath).catch(() => null);
+    staticUrls.push({
+      loc: canonicalUrlForPath(page.path),
+      lastmod: page.path === '/blog/'
+        ? (articles[0]?.updated || stat?.mtime || new Date()).toISOString().slice(0, 10)
+        : (stat?.mtime || new Date()).toISOString().slice(0, 10),
+      priority: page.priority,
+    });
+  }
   const urls = [
-    { loc: `${BASE_URL}/`, priority: '1.0' },
-    { loc: `${BASE_URL}/network.html`, priority: '0.7' },
-    { loc: `${BASE_URL}/blog/`, priority: '0.8' },
+    ...staticUrls,
     ...articles.map((article) => ({ loc: articleUrl(article), lastmod: article.updated.toISOString().slice(0, 10), priority: '0.6' })),
   ];
+  const seen = new Set();
+  const uniqueUrls = urls.filter((url) => {
+    if (seen.has(url.loc)) return false;
+    seen.add(url.loc);
+    return true;
+  });
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.map((url) => `  <url>
+${uniqueUrls.map((url) => `  <url>
     <loc>${escapeXml(url.loc)}</loc>
 ${url.lastmod ? `    <lastmod>${escapeXml(url.lastmod)}</lastmod>\n` : ''}    <priority>${escapeXml(url.priority)}</priority>
   </url>`).join('\n')}
@@ -377,9 +491,18 @@ ${url.lastmod ? `    <lastmod>${escapeXml(url.lastmod)}</lastmod>\n` : ''}    <p
 async function writeRobots() {
   await fs.writeFile(path.join(ROOT, 'robots.txt'), `User-agent: *
 Allow: /
+Disallow: /app/
+Disallow: /admin/
+Disallow: /login
+Disallow: /content-agent/
+Disallow: /deploy/
 
 Sitemap: ${BASE_URL}/sitemap.xml
 `);
+}
+
+function pageHasNoindex(html) {
+  return /<meta[^>]+name=["']robots["'][^>]+content=["'][^"']*noindex/i.test(String(html || ''));
 }
 
 async function writeFeed(articles) {
@@ -407,6 +530,21 @@ ${items}
   await fs.writeFile(path.join(ROOT, 'feed.xml'), xml);
 }
 
+async function writeGoogleVerificationFile() {
+  const file = googleVerificationFile();
+  if (!file) return '';
+  await fs.writeFile(path.join(ROOT, file.name), file.content.endsWith('\n') ? file.content : `${file.content}\n`);
+  return file.name;
+}
+
+async function writeIndexNowKeyFile() {
+  const key = indexNowKey();
+  if (!key) return '';
+  const fileName = `${key}.txt`;
+  await fs.writeFile(path.join(ROOT, fileName), `${key}\n`);
+  return fileName;
+}
+
 export async function buildBlog() {
   const [indexTemplate, articleTemplate] = await Promise.all([
     fs.readFile(path.join(TEMPLATE_DIR, 'blog-index.html'), 'utf8'),
@@ -420,6 +558,8 @@ export async function buildBlog() {
   await writeSitemap(articles);
   await writeRobots();
   await writeFeed(articles);
+  await writeGoogleVerificationFile();
+  await writeIndexNowKeyFile();
   console.log(`Built ${articles.length} published blog article${articles.length === 1 ? '' : 's'}.`);
   return articles;
 }
