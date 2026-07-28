@@ -7,7 +7,7 @@ updated: "2026-07-27"
 excerpt: "Certifyd Core is a central component of the platform designed to support creators, creators, partners, and businesses. It provides a public and official way for creators to present their work, identity, and context. The Core is a publicly approved and live pub"
 coverImage: "/images/certifyd-main-image-independent-scene-20260613.png"
 tags: ["Certifyd"]
-status: "published"
+status: "archived"
 seoTitle: "Certifyd Core: A Comprehensive Overview | Certifyd"
 seoDescription: "Certifyd Core is a central component of the platform designed to support creators, creators, partners, and businesses. It provides a public and official way for crea"
 ---

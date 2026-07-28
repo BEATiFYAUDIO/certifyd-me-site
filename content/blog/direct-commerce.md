@@ -9,7 +9,7 @@ coverImage: "/images/creator-commerce-raw-20260601-edgefix.jpeg"
 tags:
   - commerce
   - creator economy
-status: "published"
+status: "archived"
 ---
 
 > Sample content requiring editorial review before production use.

@@ -7,7 +7,7 @@ updated: "2026-07-28"
 excerpt: "From 90,000 AI Tracks Hitting Deezer Daily to Suno’s User Data Breach: It's MBW's Weekly Round Up In this week's round up, we're diving into some of the most interesting developments in the world of digital content and m"
 coverImage: "/images/certifyd-main-image-independent-scene-20260613.png"
 tags: ["Certifyd", "AI"]
-status: "published"
+status: "archived"
 seoTitle: "From 90,000 AI Tracks Hitting Deezer Daily to Suno’s User Data Bre"
 seoDescription: "From 90,000 AI Tracks Hitting Deezer Daily to Suno’s User Data Breach: It's MBW's Weekly Round Up In this week's round up, we're diving into some of the most interes"
 ---

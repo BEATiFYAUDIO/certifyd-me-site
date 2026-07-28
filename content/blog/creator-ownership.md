@@ -9,7 +9,7 @@ coverImage: "/images/certifyd-main-image-independent-scene-20260613.png"
 tags:
   - creator ownership
   - publishing
-status: "published"
+status: "archived"
 seoTitle: "What Creator Ownership Actually Means | Certifyd Blog"
 seoDescription: "A sample Certifyd article on creator ownership, identity, publishing context and direct creator commerce."
 ---
