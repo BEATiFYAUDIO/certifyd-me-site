@@ -4,6 +4,7 @@ import { selectArticleCoverImage } from './article-utils.js';
 
 const PEXELS_SEARCH_URL = 'https://api.pexels.com/v1/search';
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const GLOBAL_HISTORY_LIMIT = 250;
 
 export async function selectAutomatedCoverImage(config, run) {
   const localCover = selectArticleCoverImage({ ...coverSignals(run), requestedCoverImage: '' });
@@ -24,6 +25,7 @@ export async function fetchPexelsCoverImage(config, run) {
   const fetchImpl = config.coverImages?.fetchImpl || globalThis.fetch;
   if (typeof fetchImpl !== 'function') return null;
   const query = buildPexelsCoverQuery(run);
+  const excludedIds = await pexelsExclusionSet(config, run);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.coverImages?.timeoutMs || 12000);
   try {
@@ -31,7 +33,7 @@ export async function fetchPexelsCoverImage(config, run) {
     searchUrl.searchParams.set('query', query);
     searchUrl.searchParams.set('orientation', 'landscape');
     searchUrl.searchParams.set('size', 'large');
-    searchUrl.searchParams.set('per_page', '10');
+    searchUrl.searchParams.set('per_page', '20');
     searchUrl.searchParams.set('locale', config.coverImages?.pexelsLocale || 'en-US');
     const searchResponse = await fetchImpl(searchUrl, {
       headers: { Authorization: apiKey },
@@ -39,7 +41,7 @@ export async function fetchPexelsCoverImage(config, run) {
     });
     if (!searchResponse.ok) return null;
     const searchJson = await searchResponse.json();
-    const photo = pickPexelsPhoto(searchJson?.photos);
+    const photo = pickPexelsPhoto(searchJson?.photos, excludedIds);
     const sourceUrl = photo?.src?.large2x || photo?.src?.landscape || photo?.src?.large || photo?.src?.original;
     if (!photo || !isAllowedPexelsImageUrl(sourceUrl)) return null;
     const imageResponse = await fetchImpl(sourceUrl, { signal: controller.signal });
@@ -95,9 +97,11 @@ function coverSignals(run) {
   };
 }
 
-function pickPexelsPhoto(photos) {
+function pickPexelsPhoto(photos, excludedIds = new Set()) {
   if (!Array.isArray(photos)) return null;
-  return photos.find((photo) => Number(photo?.width || 0) >= Number(photo?.height || 0) && photo?.src?.large2x) || photos[0] || null;
+  const candidates = photos.filter((photo) => !excludedIds.has(String(photo?.id || '').trim()));
+  const pool = candidates.length ? candidates : photos.filter((photo) => String(photo?.id || '').trim() !== [...excludedIds][0]);
+  return pool.find((photo) => Number(photo?.width || 0) >= Number(photo?.height || 0) && photo?.src?.large2x) || pool[0] || null;
 }
 
 function isAllowedPexelsImageUrl(value) {
@@ -118,6 +122,57 @@ function imageExtension(contentType) {
 
 function safeSlug(value) {
   return String(value || '').toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 70) || 'article';
+}
+
+async function pexelsExclusionSet(config, run) {
+  const ids = new Set();
+  const currentId = String(run.blogPackage?.coverImagePexelsId || '').trim();
+  if (currentId) ids.add(currentId);
+  for (const item of Array.isArray(run.blogPackage?.coverImageHistory) ? run.blogPackage.coverImageHistory : []) {
+    const id = String(item?.pexelsId || item?.coverImagePexelsId || '').trim();
+    if (id) ids.add(id);
+  }
+  for (const item of await readGlobalPexelsHistory(config)) {
+    const id = String(item?.pexelsId || '').trim();
+    if (id) ids.add(id);
+  }
+  return ids;
+}
+
+export async function readGlobalPexelsHistory(config) {
+  const file = globalPexelsHistoryFile(config);
+  if (!file) return [];
+  try {
+    const parsed = JSON.parse(await fs.readFile(file, 'utf8'));
+    return Array.isArray(parsed.items) ? parsed.items.slice(0, GLOBAL_HISTORY_LIMIT) : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function appendGlobalPexelsHistory(config, record) {
+  const pexelsId = String(record?.pexelsId || '').trim();
+  if (!pexelsId) return;
+  const file = globalPexelsHistoryFile(config);
+  if (!file) return;
+  const previous = await readGlobalPexelsHistory(config);
+  const next = [
+    {
+      pexelsId,
+      coverImage: String(record.coverImage || ''),
+      query: String(record.query || ''),
+      runId: String(record.runId || ''),
+      selectedAt: new Date().toISOString(),
+    },
+    ...previous.filter((item) => String(item?.pexelsId || '') !== pexelsId),
+  ].slice(0, GLOBAL_HISTORY_LIMIT);
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  await fs.writeFile(file, `${JSON.stringify({ items: next }, null, 2)}\n`, 'utf8');
+}
+
+function globalPexelsHistoryFile(config) {
+  const root = config.agentRoot ? path.resolve(config.agentRoot, 'dashboard') : '';
+  return root ? path.join(root, 'cover-image-history.json') : '';
 }
 
 const STOP_WORDS = new Set(['about', 'after', 'and', 'are', 'but', 'for', 'from', 'how', 'into', 'its', 'that', 'the', 'this', 'with', 'your']);

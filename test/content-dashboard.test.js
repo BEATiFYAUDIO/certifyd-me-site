@@ -411,16 +411,28 @@ test('20ac automatic cover can use Pexels and download a local image', async () 
     calls.push(String(url));
     if (String(url).startsWith('https://api.pexels.com/v1/search')) {
       return new Response(JSON.stringify({
-        photos: [{
-          id: 12345,
-          width: 1600,
-          height: 900,
-          url: 'https://www.pexels.com/photo/test-photo-12345/',
-          photographer: 'Test Photographer',
-          photographer_url: 'https://www.pexels.com/@test-photographer',
-          src: { large2x: 'https://images.pexels.com/photos/12345/test.jpeg?auto=compress&cs=tinysrgb' },
-          alt: 'A creator business workspace',
-        }],
+        photos: [
+          {
+            id: 12345,
+            width: 1600,
+            height: 900,
+            url: 'https://www.pexels.com/photo/test-photo-12345/',
+            photographer: 'Test Photographer',
+            photographer_url: 'https://www.pexels.com/@test-photographer',
+            src: { large2x: 'https://images.pexels.com/photos/12345/test.jpeg?auto=compress&cs=tinysrgb' },
+            alt: 'A creator business workspace',
+          },
+          {
+            id: 67890,
+            width: 1800,
+            height: 1000,
+            url: 'https://www.pexels.com/photo/test-photo-67890/',
+            photographer: 'Second Photographer',
+            photographer_url: 'https://www.pexels.com/@second-photographer',
+            src: { large2x: 'https://images.pexels.com/photos/67890/test.jpeg?auto=compress&cs=tinysrgb' },
+            alt: 'A second creator business workspace',
+          },
+        ],
       }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
     return new Response(Buffer.from([0xff, 0xd8, 0xff, 0xd9]), { status: 200, headers: { 'content-type': 'image/jpeg' } });
@@ -439,13 +451,22 @@ test('20ac automatic cover can use Pexels and download a local image', async () 
   const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
 
   await actions.updateCoverImage({ actor, runId, mode: 'auto' });
-  const blogPackage = JSON.parse(await fs.readFile(path.join(runDir, 'blog', 'blog-post.json'), 'utf8'));
+  let blogPackage = JSON.parse(await fs.readFile(path.join(runDir, 'blog', 'blog-post.json'), 'utf8'));
   assert.equal(blogPackage.coverImage, '/images/blog/creator-commerce-cover-test-pexels-12345.jpg');
   assert.equal(blogPackage.coverImageProvider, 'pexels');
   assert.equal(blogPackage.coverImageCredit, 'Photo by Test Photographer on Pexels');
   assert.equal(blogPackage.coverImageAlt, 'A creator business workspace');
   assert.equal(calls.length, 2);
   await fs.stat(path.join(siteRoot, 'images', 'blog', 'creator-commerce-cover-test-pexels-12345.jpg'));
+
+  await actions.updateCoverImage({ actor, runId, mode: 'auto' });
+  blogPackage = JSON.parse(await fs.readFile(path.join(runDir, 'blog', 'blog-post.json'), 'utf8'));
+  assert.equal(blogPackage.coverImage, '/images/blog/creator-commerce-cover-test-pexels-67890.jpg');
+  assert.equal(blogPackage.coverImagePexelsId, '67890');
+  assert.equal(blogPackage.coverImageHistory[0].pexelsId, '12345');
+  assert.equal(calls.length, 4);
+  const globalHistory = JSON.parse(await fs.readFile(path.join(tmpRoot, 'dashboard', 'cover-image-history.json'), 'utf8'));
+  assert.deepEqual(globalHistory.items.map((item) => item.pexelsId), ['67890', '12345']);
 });
 
 test('20ad cover image can be uploaded from a file picker', async () => {

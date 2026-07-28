@@ -684,7 +684,9 @@ function coverImageControls(run, csrf, permissions, config = {}) {
   const credit = run.blogPackage?.coverImageCredit || '';
   const creditUrl = run.blogPackage?.coverImageCreditUrl || '';
   const query = run.blogPackage?.coverImageQuery || '';
-  const autoLabel = config.coverImages?.provider === 'pexels' && config.coverImages?.pexelsApiKey ? 'Use Pexels Auto Cover' : 'Use Auto Cover';
+  const autoLabel = config.coverImages?.provider === 'pexels' && config.coverImages?.pexelsApiKey
+    ? (provider === 'pexels' ? 'Find Different Pexels Cover' : 'Use Pexels Auto Cover')
+    : 'Use Auto Cover';
   const details = [
     provider ? `Provider: ${escapeHtml(provider)}` : '',
     query ? `Query: ${escapeHtml(query)}` : '',

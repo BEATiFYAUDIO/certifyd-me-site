@@ -7,7 +7,7 @@ import { ContentRunRepository } from './repository.js';
 import { createPublisher } from './publisher.js';
 import { buildGroundedContext, createGenerationProvider, normalizeProviderName, persistGeneratedArticleRun } from './generation-provider.js';
 import { cleanArticlePromptText, isSafeImagePath, normalizeArticleTitle, selectArticleCoverImage } from './article-utils.js';
-import { selectAutomatedCoverImage } from './cover-image-provider.js';
+import { appendGlobalPexelsHistory, selectAutomatedCoverImage } from './cover-image-provider.js';
 import { isApprovedBrainRecord } from './brain-utils.js';
 
 const execFileAsync = promisify(execFile);
@@ -300,6 +300,7 @@ export class ContentDashboardActions {
     }
     const autoCover = mode === 'auto' ? await selectAutomatedCoverImage(this.config, run) : null;
     const selectedCover = autoCover?.coverImage || manualCover;
+    const coverImageHistory = appendCoverHistory(run.blogPackage?.coverImageHistory, run.blogPackage, runId);
     const blogPackage = {
       ...run.blogPackage,
       title: normalizeArticleTitle(run.blogPackage?.title || run.summary.title),
@@ -315,10 +316,19 @@ export class ContentDashboardActions {
       coverImagePexelsId: autoCover?.coverImagePexelsId || '',
       coverImageQuery: autoCover?.coverImageQuery || '',
       coverImageFetchedAt: autoCover?.coverImageFetchedAt || '',
+      coverImageHistory,
       coverImageUpdatedAt: new Date().toISOString(),
       coverImageUpdatedBy: actor.email,
     };
     await this.writeRunJson(base, 'blog/blog-post.json', blogPackage);
+    if (blogPackage.coverImageProvider === 'pexels') {
+      await appendGlobalPexelsHistory(this.config, {
+        pexelsId: blogPackage.coverImagePexelsId,
+        coverImage: selectedCover,
+        query: blogPackage.coverImageQuery,
+        runId,
+      });
+    }
     await this.audit.append({ action: 'cover_image_update', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: 'SUCCESS', note: `${blogPackage.coverImageMode}:${selectedCover}` });
     return { ok: true, output: `Cover image set to ${selectedCover}.` };
   }
@@ -761,6 +771,25 @@ function blogUrl(slug) {
 
 function stripFrontmatter(markdown) {
   return String(markdown || '').replace(/^\uFEFF?---\s*[\r\n][\s\S]*?[\r\n]---\s*[\r\n]?/, '').trimStart();
+}
+
+function appendCoverHistory(history, current, runId) {
+  const previous = Array.isArray(history) ? history : [];
+  const pexelsId = String(current?.coverImagePexelsId || '').trim();
+  const coverImage = String(current?.coverImage || '').trim();
+  if (!pexelsId && !coverImage) return previous.slice(0, 30);
+  const record = {
+    coverImage,
+    provider: String(current?.coverImageProvider || ''),
+    pexelsId,
+    query: String(current?.coverImageQuery || ''),
+    runId,
+    selectedAt: String(current?.coverImageFetchedAt || current?.coverImageUpdatedAt || new Date().toISOString()),
+  };
+  return [
+    record,
+    ...previous.filter((item) => String(item?.pexelsId || item?.coverImagePexelsId || item?.coverImage || '') !== (pexelsId || coverImage)),
+  ].slice(0, 30);
 }
 
 function frontmatterValue(markdown, key) {
