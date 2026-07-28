@@ -118,7 +118,7 @@
           <div class="payment-options">
             <label class="payment-option"><input type="radio" name="payment" value="stripe" /> <span><strong>Credit or debit card — Stripe</strong><br /><span class="muted">Integration pending. Card details are not collected on this page.</span></span></label>
             <label class="payment-option"><input type="radio" name="payment" value="paypal" /> <span><strong>PayPal</strong><br /><span class="muted">Integration pending.</span></span></label>
-            <label class="payment-option"><input type="radio" name="payment" value="bitcoin" /> <span><strong>Bitcoin</strong><br /><span class="muted">Bitcoin on-chain. Lightning where supported. Fan Discovery receives a 10% Bitcoin discount. Treasury address is shown when Bitcoin is selected.</span></span></label>
+            <label class="payment-option"><input type="radio" name="payment" value="bitcoin" /> <span><strong>Bitcoin</strong><br /><span class="muted">Bitcoin checkout is available. Fan Discovery receives a 10% Bitcoin discount when paid with Bitcoin. The treasury address is shown when Bitcoin is selected.</span></span></label>
           </div>
         </fieldset>
 
@@ -196,7 +196,7 @@
           return '<div class="summary-item"><div><strong>'+service.name+'</strong><span>'+service.type+'</span><span>'+service.price+'</span>'+discount+'</div><button class="remove-button" type="button" data-remove="'+service.id+'">Remove</button></div>';
         }).join('');
         const discountRow = bitcoinDiscount > 0 ? '<div class="summary-item"><div><strong>Bitcoin discount</strong><span>10% discount on Fan Discovery</span></div><strong>-'+formatMonthlyCad(bitcoinDiscount)+'</strong></div>' : '';
-        const bitcoinAddressRow = paymentMethod === 'bitcoin' && hasPricedService ? '<div class="summary-item"><div><strong>Bitcoin treasury address</strong><span>'+TREASURY_BTC_ADDRESS+'</span><span>Use only after checkout confirmation. On-chain BTC address from the local LND wallet.</span></div></div>' : '';
+        const bitcoinAddressRow = paymentMethod === 'bitcoin' && hasPricedService ? '<div class="summary-item"><div><strong>Bitcoin treasury address</strong><span>'+TREASURY_BTC_ADDRESS+'</span><span>Bitcoin checkout is available through this on-chain treasury address from the local LND wallet.</span></div></div>' : '';
         summary.innerHTML = '<div class="summary-item"><div><strong>Certifyd Core</strong><span>Included</span></div><strong>$0 CAD</strong></div>' + summaryItems + discountRow + bitcoinAddressRow;
         subtotal.textContent = hasPricedService ? formatMonthlyCad(monthlySubtotal) : (hasQuoteService ? 'Pricing confirmed before payment' : '$0.00 CAD');
         total.textContent = hasPricedService ? formatMonthlyCad(monthlyTotal) : (hasQuoteService ? 'Quote required' : '$0.00 CAD');
@@ -253,7 +253,7 @@
           return;
         }
         if (needsPayment && selectedPaymentMethod() === 'bitcoin') {
-          error.textContent = 'Bitcoin checkout is configured to use treasury address ' + TREASURY_BTC_ADDRESS + '. Server-side payment verification is still pending.';
+          error.textContent = 'Bitcoin checkout is available through treasury address ' + TREASURY_BTC_ADDRESS + '.';
           error.classList.add('show');
           return;
         }
