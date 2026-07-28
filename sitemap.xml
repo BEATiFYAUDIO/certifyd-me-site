@@ -6,14 +6,14 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://certifyd.me/network.html</loc>
-    <lastmod>2026-07-14</lastmod>
-    <priority>0.7</priority>
-  </url>
-  <url>
     <loc>https://certifyd.me/blog/</loc>
     <lastmod>2026-07-28</lastmod>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://certifyd.me/blog/ariana-grande-sues-unnamed-hackers-over-theft-of-unreleased-music-sold-on-the-dark-web/</loc>
+    <lastmod>2026-07-28</lastmod>
+    <priority>0.6</priority>
   </url>
   <url>
     <loc>https://certifyd.me/blog/respect-your-fans-above-everything-else-why/</loc>
