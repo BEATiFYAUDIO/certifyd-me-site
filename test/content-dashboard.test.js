@@ -391,6 +391,46 @@ test('20ab article cover can be set manually or automatically', async () => {
   );
 });
 
+test('20aba cover image actions return to article cover section', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-cover-redirect-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const runId = 'cover-redirect-001';
+  await createMinimalRun(path.join(outputDir, runId), {
+    title: 'Cover Redirect Test',
+    slug: 'cover-redirect-test',
+    status: 'READY_TO_PUBLISH',
+    publishability: 'READY_TO_PUBLISH',
+  });
+
+  await withServer(async (base) => {
+    const cookie = await login(base, 'founder@example.test');
+    const article = await fetch(`${base}/app/content/articles/${runId}`, { headers: { cookie } });
+    const html = await article.text();
+    assert.equal(article.status, 200);
+    assert.match(html, /id="cover-image"/);
+    const csrf = html.match(/name="_csrf" value="([^"]+)"/)?.[1] || '';
+    assert.ok(csrf);
+
+    const response = await fetch(`${base}/app/content/actions/publishing/cover`, {
+      method: 'POST',
+      redirect: 'manual',
+      headers: { cookie, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        _csrf: csrf,
+        runId,
+        mode: 'manual',
+        coverImage: '/images/creator-commerce-raw-20260601-edgefix.jpeg',
+      }),
+    });
+    assert.equal(response.status, 303);
+    assert.equal(response.headers.get('location'), `/app/content/articles/${runId}#cover-image`);
+  }, {
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  });
+});
+
 test('20ac automatic cover can use Pexels and download a local image', async () => {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-pexels-cover-'));
   const siteRoot = path.join(tmpRoot, 'site');
