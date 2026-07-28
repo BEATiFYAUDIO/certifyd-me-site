@@ -42,22 +42,23 @@ export class GitHubPullRequestPublisher {
     const generatedFiles = await this.buildGeneratedSiteFiles(slug, markdown);
     const installationToken = await this.createInstallationToken();
     if (this.config.mode === 'direct') {
-      const commits = [];
-      for (const file of generatedFiles) {
-        commits.push(await putRepositoryFile({
-          config: this.config,
-          token: installationToken,
-          branchName: this.config.baseBranch,
-          filePath: file.path,
-          content: file.content,
-          message: `Publish blog article: ${title}`,
-        }));
-      }
+      const commits = await putGeneratedFiles({
+        config: this.config,
+        token: installationToken,
+        branchName: this.config.baseBranch,
+        files: generatedFiles,
+        message: `Publish blog article: ${title}`,
+      });
+      const mirrors = await this.publishMirrors({ files: generatedFiles, message: `Publish blog article: ${title}`, action: 'publish' });
       return {
         ok: true,
-        output: `Published directly to ${this.config.baseBranch}: ${pkg.canonicalUrl || run.summary.canonicalUrl || `https://certifyd.me/blog/${slug}/`}`,
+        output: [
+          `Published directly to ${this.config.baseBranch}: ${pkg.canonicalUrl || run.summary.canonicalUrl || `https://certifyd.me/blog/${slug}/`}`,
+          ...mirrorOutputLines(mirrors, 'Mirrored to', 'Preview mirror failed'),
+        ].join('\n'),
         publishMode: 'direct',
-        commitUrls: commits.map((commit) => commit?.content?.html_url || commit?.commit?.html_url || '').filter(Boolean),
+        commitUrls: commitUrls(commits),
+        mirrors,
         branchName: this.config.baseBranch,
         repositoryPath: `content/blog/${slug}.md`,
         canonicalUrl: pkg.canonicalUrl || run.summary.canonicalUrl || `https://certifyd.me/blog/${slug}/`,
@@ -119,17 +120,13 @@ export class GitHubPullRequestPublisher {
     const generatedFiles = await this.buildGeneratedSiteFiles(slug, markdown, { includeArticlePage: false });
     const installationToken = await this.createInstallationToken();
     if (this.config.mode === 'direct') {
-      const commits = [];
-      for (const file of generatedFiles) {
-        commits.push(await putRepositoryFile({
-          config: this.config,
-          token: installationToken,
-          branchName: this.config.baseBranch,
-          filePath: file.path,
-          content: file.content,
-          message: `Unpublish blog article: ${title}`,
-        }));
-      }
+      const commits = await putGeneratedFiles({
+        config: this.config,
+        token: installationToken,
+        branchName: this.config.baseBranch,
+        files: generatedFiles,
+        message: `Unpublish blog article: ${title}`,
+      });
       const deleted = await deleteRepositoryFileIfExists({
         config: this.config,
         token: installationToken,
@@ -137,11 +134,16 @@ export class GitHubPullRequestPublisher {
         filePath: `blog/${slug}/index.html`,
         message: `Remove generated blog article page: ${title}`,
       });
+      const mirrors = await this.publishMirrors({ files: generatedFiles, message: `Unpublish blog article: ${title}`, action: 'unpublish', removedPath: `blog/${slug}/index.html` });
       return {
         ok: true,
-        output: `Unpublished directly from ${this.config.baseBranch}: ${pkg.canonicalUrl || run.summary.canonicalUrl || `https://certifyd.me/blog/${slug}/`}`,
+        output: [
+          `Unpublished directly from ${this.config.baseBranch}: ${pkg.canonicalUrl || run.summary.canonicalUrl || `https://certifyd.me/blog/${slug}/`}`,
+          ...mirrorOutputLines(mirrors, 'Mirrored unpublish to', 'Preview unpublish mirror failed'),
+        ].join('\n'),
         publishMode: 'direct',
-        commitUrls: [...commits, deleted].map((commit) => commit?.content?.html_url || commit?.commit?.html_url || '').filter(Boolean),
+        commitUrls: commitUrls([...commits, deleted]),
+        mirrors,
         branchName: this.config.baseBranch,
         repositoryPath: `content/blog/${slug}.md`,
         removedPath: `blog/${slug}/index.html`,
@@ -209,6 +211,53 @@ export class GitHubPullRequestPublisher {
     if (!response.ok) throw Object.assign(new Error(`GitHub authentication failed: installation token returned HTTP ${response.status}.`), { statusCode: response.status === 401 || response.status === 403 ? 403 : 502 });
     const json = await response.json();
     return json.token;
+  }
+
+  async publishMirrors({ files, message, action, removedPath = '' }) {
+    const mirrors = Array.isArray(this.config.mirrors) ? this.config.mirrors.filter((mirror) => mirror?.enabled) : [];
+    if (!mirrors.length) return [];
+    const results = [];
+    for (const mirror of mirrors) {
+      try {
+        const mirrorToken = mirror.token || await this.createInstallationToken();
+        const mirrorFiles = filesForMirror(files, mirror);
+        const commits = await putGeneratedFiles({
+          config: mirror,
+          token: mirrorToken,
+          branchName: mirror.baseBranch || this.config.baseBranch,
+          files: mirrorFiles,
+          message,
+        });
+        let deleted;
+        if (action === 'unpublish' && removedPath) {
+          deleted = await deleteRepositoryFileIfExists({
+            config: mirror,
+            token: mirrorToken,
+            branchName: mirror.baseBranch || this.config.baseBranch,
+            filePath: removedPath,
+            message: `Remove generated blog article page from mirror`,
+          });
+        }
+        results.push({
+          ok: true,
+          owner: mirror.owner,
+          repo: mirror.repo,
+          branchName: mirror.baseBranch || this.config.baseBranch,
+          publicUrl: mirror.publicUrl || '',
+          commitUrls: commitUrls([...commits, deleted]),
+        });
+      } catch (error) {
+        results.push({
+          ok: false,
+          owner: mirror.owner,
+          repo: mirror.repo,
+          branchName: mirror.baseBranch || this.config.baseBranch,
+          publicUrl: mirror.publicUrl || '',
+          error: error.message,
+        });
+      }
+    }
+    return results;
   }
 
   async buildGeneratedSiteFiles(slug, markdown, options = {}) {
@@ -363,6 +412,48 @@ async function putRepositoryFile({ config, token, branchName, filePath, content,
       },
     },
   }, `GitHub file write failed for ${filePath}`);
+}
+
+async function putGeneratedFiles({ config, token, branchName, files, message }) {
+  const commits = [];
+  for (const file of files) {
+    commits.push(await putRepositoryFile({
+      config,
+      token,
+      branchName,
+      filePath: file.path,
+      content: file.content,
+      message,
+    }));
+  }
+  return commits;
+}
+
+function filesForMirror(files, mirror = {}) {
+  const sourceOrigin = mirror.sourceOrigin || 'https://certifyd.me';
+  const targetOrigin = mirror.publicUrl || '';
+  const exclude = new Set(['index.html', ...(mirror.excludePaths || [])]);
+  return files
+    .filter((file) => !exclude.has(file.path))
+    .map((file) => ({
+      path: file.path,
+      content: rewriteMirrorContent(file.content, sourceOrigin, targetOrigin),
+    }));
+}
+
+function rewriteMirrorContent(content, sourceOrigin, targetOrigin) {
+  if (!targetOrigin || Buffer.isBuffer(content)) return content;
+  return String(content).replaceAll(sourceOrigin, targetOrigin);
+}
+
+function commitUrls(commits) {
+  return commits.map((commit) => commit?.content?.html_url || commit?.commit?.html_url || '').filter(Boolean);
+}
+
+function mirrorOutputLines(mirrors, successPrefix, failurePrefix) {
+  return mirrors.map((mirror) => mirror.ok
+    ? `${successPrefix} ${mirror.owner}/${mirror.repo}@${mirror.branchName}: ${mirror.publicUrl}`
+    : `${failurePrefix} for ${mirror.owner}/${mirror.repo}@${mirror.branchName}: ${mirror.error}`);
 }
 
 async function deleteRepositoryFileIfExists({ config, token, branchName, filePath, message }) {

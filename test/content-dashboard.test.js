@@ -219,6 +219,24 @@ test('12 dashboard settings never expose API keys or secrets', async () => withS
   assert.doesNotMatch(html, /CONTENT_MODEL_API_KEY|test-secret|test-token/);
 }));
 
+test('12b GitHub publishing can configure a Vassal preview mirror', () => {
+  const config = getDashboardConfig({
+    ...env,
+    CONTENT_DASHBOARD_GITHUB_PUBLISHING_ENABLED: 'true',
+    CONTENT_DASHBOARD_GITHUB_OWNER: 'BEATiFYAUDIO',
+    CONTENT_DASHBOARD_GITHUB_REPO: 'certifyd-me-site',
+    CONTENT_DASHBOARD_GITHUB_TOKEN: 'test-token',
+    CONTENT_DASHBOARD_GITHUB_MIRROR_ENABLED: 'true',
+    CONTENT_DASHBOARD_GITHUB_MIRROR_REPO: 'certifyd-me-site-preview',
+    CONTENT_DASHBOARD_GITHUB_MIRROR_PUBLIC_URL: 'https://vassal.certifyd.me/',
+  });
+  assert.equal(config.githubPublishing.mirrors.length, 1);
+  assert.equal(config.githubPublishing.mirrors[0].owner, 'BEATiFYAUDIO');
+  assert.equal(config.githubPublishing.mirrors[0].repo, 'certifyd-me-site-preview');
+  assert.equal(config.githubPublishing.mirrors[0].publicUrl, 'https://vassal.certifyd.me');
+  assert.deepEqual(config.githubPublishing.mirrors[0].excludePaths, ['index.html']);
+});
+
 test('13 dashboard does not return absolute engine paths in settings', async () => withServer(async (base) => {
   const cookie = await login(base, 'founder@example.test');
   const response = await fetch(`${base}/app/content/settings`, { headers: { cookie } });

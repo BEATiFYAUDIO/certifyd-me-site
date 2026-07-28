@@ -100,6 +100,7 @@ export function getDashboardConfig(env = process.env) {
       installationId: env.GITHUB_APP_INSTALLATION_ID || '',
       privateKey: env.GITHUB_APP_PRIVATE_KEY || '',
       token: env.CONTENT_DASHBOARD_GITHUB_TOKEN || env.GITHUB_TOKEN || '',
+      mirrors: buildGithubPublishingMirrors(env),
     },
     coverImages: {
       provider: normalizeCoverImageProvider(env.CONTENT_DASHBOARD_COVER_IMAGE_PROVIDER || (env.CONTENT_DASHBOARD_PEXELS_API_KEY || env.PEXELS_API_KEY ? 'pexels' : 'local')),
@@ -137,6 +138,27 @@ function parseList(value = '') {
 
 function parseListPreserveCase(value = '') {
   return value.split(',').map((item) => item.trim()).filter(Boolean);
+}
+
+function buildGithubPublishingMirrors(env = {}) {
+  if (env.CONTENT_DASHBOARD_GITHUB_MIRROR_ENABLED !== 'true') return [];
+  const owner = env.CONTENT_DASHBOARD_GITHUB_MIRROR_OWNER || env.CONTENT_DASHBOARD_GITHUB_OWNER || '';
+  const repo = env.CONTENT_DASHBOARD_GITHUB_MIRROR_REPO || '';
+  if (!owner || !repo) return [];
+  return [{
+    enabled: true,
+    owner,
+    repo,
+    baseBranch: env.CONTENT_DASHBOARD_GITHUB_MIRROR_BASE_BRANCH || env.CONTENT_DASHBOARD_GITHUB_BASE_BRANCH || 'main',
+    publicUrl: normalizeOrigin(env.CONTENT_DASHBOARD_GITHUB_MIRROR_PUBLIC_URL || ''),
+    sourceOrigin: normalizeOrigin(env.CONTENT_DASHBOARD_GITHUB_MIRROR_SOURCE_URL || 'https://certifyd.me'),
+    token: env.CONTENT_DASHBOARD_GITHUB_MIRROR_TOKEN || env.CONTENT_DASHBOARD_GITHUB_TOKEN || env.GITHUB_TOKEN || '',
+    excludePaths: parseListPreserveCase(env.CONTENT_DASHBOARD_GITHUB_MIRROR_EXCLUDE_PATHS || 'index.html'),
+  }];
+}
+
+function normalizeOrigin(value = '') {
+  return String(value || '').trim().replace(/\/+$/, '');
 }
 
 function positiveInt(value, fallback, min = 1) {
