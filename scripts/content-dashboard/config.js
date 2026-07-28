@@ -75,6 +75,7 @@ export function getDashboardConfig(env = process.env) {
   const modelProvider = normalizeProviderName(env.CONTENT_MODEL_PROVIDER || env.CONTENT_DASHBOARD_GENERATION_PROVIDER || 'deterministic');
   const ollama = getDefaultOllamaConfig(env);
   return {
+    env,
     siteRoot,
     enabled: env.CONTENT_DASHBOARD_ENABLED === 'true',
     environmentName: env.CONTENT_DASHBOARD_ENV || env.NODE_ENV || 'local',

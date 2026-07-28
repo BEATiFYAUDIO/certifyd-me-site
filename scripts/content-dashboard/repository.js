@@ -120,6 +120,7 @@ export class ContentRunRepository {
     }
     return {
       plan: await this.readJson(base, 'distribution/distribution-plan.json', {}),
+      destinations: await this.readJson(base, 'distribution/destinations.json', {}),
       assets,
     };
   }

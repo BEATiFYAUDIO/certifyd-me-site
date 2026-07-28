@@ -185,12 +185,19 @@ async function handleAction(req, res, url, ctx) {
   else if (action.endsWith('/publishing/verify-live')) { needs('content.article.publish.prepare'); result = await ctx.actions.verifyLivePublication({ actor: ctx.user, runId: form.get('runId') }); }
   else if (action.endsWith('/publishing/unpublish')) { needs('content.article.publish.prepare'); result = await ctx.actions.unpublishFromCertifyd({ actor: ctx.user, runId: form.get('runId'), confirmUnpublish: form.get('confirmUnpublish') }); }
   else if (action.endsWith('/publishing/verify-unpublished')) { needs('content.article.publish.prepare'); result = await ctx.actions.verifyUnpublishedPublication({ actor: ctx.user, runId: form.get('runId') }); }
+  else if (action.endsWith('/distribution/publish')) { needs('content.distribution.manage'); result = await ctx.actions.distributeArticle({ actor: ctx.user, runId: form.get('runId'), version: form.get('version'), destinations: form.getAll('destinations') }); }
+  else if (action.endsWith('/distribution/retry')) { needs('content.distribution.manage'); result = await ctx.actions.distributeArticle({ actor: ctx.user, runId: form.get('runId'), version: form.get('version'), destinations: form.getAll('destinations'), retryFailed: true }); }
+  else if (action.endsWith('/distribution/defaults')) { needs('content.distribution.manage'); result = await ctx.actions.saveDistributionDefaults({ actor: ctx.user, destinations: form.getAll('destinations') }); }
+  else if (action.endsWith('/distribution/test')) { needs('content.distribution.manage'); result = await ctx.actions.testDistributionConnection({ actor: ctx.user, destinationId: form.get('destinationId') }); }
   else if (action.endsWith('/article/save')) { needs('content.article.edit'); result = await ctx.actions.saveArticleMarkdown({ actor: ctx.user, runId: form.get('runId'), articleMarkdown: form.get('articleMarkdown') }); }
   else if (action.endsWith('/article/archive')) { needs('content.article.archive'); result = await ctx.actions.archiveArticle({ actor: ctx.user, runId: form.get('runId') }); }
   else if (action.endsWith('/article/delete-draft')) { needs('content.article.delete'); result = await ctx.actions.deleteDraft({ actor: ctx.user, runId: form.get('runId'), confirmDelete: form.get('confirmDelete') }); }
   else return sendStatus(res, 404, 'Unknown action');
   if (action.endsWith('/publishing/cover') || action.endsWith('/publishing/cover-upload')) {
     return redirect(res, `/app/content/articles/${validateRunId(String(form.get('runId') || ''))}#cover-image`);
+  }
+  if (action.includes('/distribution/')) {
+    return redirect(res, `/app/content/distribution${form.get('runId') ? `?runId=${encodeURIComponent(validateRunId(String(form.get('runId') || '')))}` : ''}`);
   }
   sendHtml(res, layout({ title: 'Action Result', user: ctx.user, permissions: ctx.permissions, body: `<p class="eyebrow">Action result</p><h1>Completed</h1><pre>${escapeHtml(result.output || JSON.stringify(result, null, 2))}</pre>${actionResultLinks(result)}<p><a class="ghost" href="/app/content">Back to dashboard</a></p>` }));
 }
@@ -211,9 +218,9 @@ async function handlePage(req, res, url, ctx) {
   if (pathName === '/app/content/publishing') { allow('content.publishing.view'); return redirect(res, '/app/content/articles?view=approved'); }
   if (pathName === '/app/content/review') { allow('content.article.review'); return redirect(res, '/app/content/articles?view=review'); }
   if (pathName === '/app/content/knowledge-review') { allow('brain.read'); return redirect(res, '/app/content/brain?view=suggestions'); }
-  if (pathName === '/app/content/distribution') { allow('content.distribution.view'); return sendHtml(res, await renderDistribution(ctx)); }
+  if (pathName === '/app/content/distribution') { allow('content.distribution.view'); return sendHtml(res, await renderDistribution(ctx, url)); }
   if (pathName === '/app/content/analytics') { allow('content.analytics.view'); return redirect(res, '/app/content/settings#advanced-diagnostics'); }
-  if (pathName === '/app/content/settings') { allow('content.settings.manage'); return sendHtml(res, renderSettings(ctx)); }
+  if (pathName === '/app/content/settings') { allow('content.settings.manage'); return sendHtml(res, await renderSettings(ctx)); }
   const previewMatch = pathName.match(/^\/app\/content\/articles\/([^/]+)\/preview$/);
   if (previewMatch) { allow('content.article.view'); return sendHtml(res, await renderPreview(ctx, previewMatch[1])); }
   const articleMatch = pathName.match(/^\/app\/content\/articles\/([^/]+)$/);
@@ -532,16 +539,26 @@ async function renderPublishing(ctx, csrf) {
   return layout({ title: 'Publishing', user: ctx.user, permissions: ctx.permissions, active: 'Blog Engine', body: `<p class="eyebrow">Publishing</p><h1>Blog package preparation</h1><p class="notice">${escapeHtml(notice)}</p>${runs.map((run) => card(run.title, runSummaryHtml(run) + actionButtons(run, csrf, ctx.permissions, ctx.config))).join('')}` });
 }
 
-async function renderDistribution(ctx) {
+async function renderDistribution(ctx, url) {
   const runs = await ctx.runRepo.listRuns();
-  const blocks = [];
-  for (const run of runs) {
-    const detail = await ctx.runRepo.readRun(run.runId).catch(() => null);
-    blocks.push(card(run.title || 'Untitled article', distributionList(detail?.distribution?.assets, detail?.distribution?.plan)));
-  }
-  const primary = card('Certifyd Blog', '<strong>Primary publishing target</strong><p>Approved articles publish to <code>content/blog/[slug].md</code> and become available at <code>https://certifyd.me/blog/[slug]/</code> after the site deploys.</p>');
-  const channels = ['X', 'Medium', 'Substack', 'LinkedIn', 'Newsletter'].map((name) => card(name, '<strong>Disconnected</strong><p>Generate, preview, copy and export are staged. No external account publishes from this dashboard yet.</p>')).join('');
-  return layout({ title: 'Distribution', user: ctx.user, permissions: ctx.permissions, active: 'Distribution', body: `<p class="eyebrow">Distribution</p><h1>Blog and channel versions</h1><p>Certifyd Blog is the canonical publishing path. Social and newsletter channels remain draft-only exports.</p><div class="grid">${primary}${channels}</div>${blocks.join('')}` });
+  const overview = await ctx.actions.distributionOverview();
+  const csrf = createCsrfToken(ctx.config.sessionSecret, ctx.user.sid);
+  const selectedRunId = String(url.searchParams.get('runId') || '');
+  const canManage = ctx.permissions.includes('content.distribution.manage');
+  const details = new Map();
+  for (const run of runs) details.set(run.runId, await ctx.runRepo.readRun(run.runId).catch(() => null));
+  const eligibleRuns = runs.filter((run) => ['FOUNDER_APPROVED', 'READY_TO_PUBLISH', 'PUBLISHING', 'PUBLISHED'].includes(String(run.status || '').toUpperCase()));
+  const destinations = overview.destinations;
+  const destinationRows = destinations.map((destination) => destinationChip(destination, csrf, canManage)).join('');
+  const defaultForm = canManage ? `<form class="panel compact-panel" method="post" action="/app/content/actions/distribution/defaults"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><h2>Default destinations</h2><p class="muted">Defaults are not auto-published until the founder clicks Distribute for an article.</p><div class="destination-choice-grid">${destinations.filter((item) => item.id !== 'certifyd').map((item) => destinationCheckbox(item, overview.defaults?.destinations || [])).join('')}</div><button class="ghost" type="submit">Save default destinations</button></form>` : '';
+  const articleRows = eligibleRuns.map((run) => distributionArticleRow(run, details.get(run.runId), destinations, overview.defaults?.destinations || [], csrf, canManage, selectedRunId === run.runId)).join('');
+  return layout({
+    title: 'Distribute',
+    user: ctx.user,
+    permissions: ctx.permissions,
+    active: 'Distribution',
+    body: `<p class="eyebrow">Distribute</p><h1>Publish once, distribute everywhere.</h1><p class="notice">Certifyd Blog remains canonical. Connected destinations only publish when a founder selects them or saves them as defaults and confirms distribution.</p><section class="panel compact-panel"><div class="section-head"><div><h2>Destinations</h2><p class="muted">Credentials stay server-side. No API keys or tokens are displayed.</p></div></div><div class="destination-chip-grid">${destinationRows}</div></section>${defaultForm}<section class="panel compact-panel"><div class="section-head"><div><h2>Articles</h2><p class="muted">Approved, publishing and published articles can be distributed.</p></div></div><div class="distribution-article-list">${articleRows || '<p class="empty panel">No approved or published articles are ready for distribution.</p>'}</div></section>`,
+  });
 }
 
 function renderAnalytics(ctx) {
@@ -549,10 +566,13 @@ function renderAnalytics(ctx) {
   return layout({ title: 'Analytics', user: ctx.user, permissions: ctx.permissions, active: 'Analytics', body });
 }
 
-function renderSettings(ctx) {
+async function renderSettings(ctx) {
   const trendSources = buildSourceRegistry(ctx.config);
+  const distribution = await ctx.actions.distributionOverview();
+  const csrf = createCsrfToken(ctx.config.sessionSecret, ctx.user.sid);
   const safe = { dashboardEnabled: ctx.config.enabled, authMode: ctx.config.authMode, publicAdminUrl: ctx.config.publicAdminUrl, database: ctx.config.databasePath === ':memory:' ? 'memory' : 'sqlite configured', userCount: ctx.userRepo.listUsers().length, localAi: { enabled: ctx.config.ollama.enabled, model: ctx.config.ollama.model, baseUrl: ctx.config.ollama.baseUrl ? 'configured' : 'not configured' }, trendResearch: ctx.config.trendResearchProvider || ctx.config.trendResearch?.provider || 'manual only', trendSourceCount: trendSources.length, trendSources: trendSources.map((source) => ({ id: source.id, publisher: source.publisher, category: source.category, feedUrl: source.feedUrl })), trendScan: { maxItemsPerSource: ctx.config.trendResearch?.maxItemsPerSource, maxItemAgeDays: ctx.config.trendResearch?.maxItemAgeDays, timeoutMs: ctx.config.trendResearch?.timeoutMs, maxConcurrentFetches: ctx.config.trendResearch?.maxConcurrentFetches, dailyScanEnabled: ctx.config.trendResearch?.dailyScanEnabled, scanHour: ctx.config.trendResearch?.scanHour, manualCommand: 'npm run trends:scan' }, externalResearch: ctx.config.externalResearchProvider || 'not configured', brain: 'content-agent/knowledge', githubPublishing: publishingStatusLabel(ctx.config.githubPublishing), githubRepositoryConfigured: Boolean(ctx.config.githubPublishing.owner && ctx.config.githubPublishing.repo), githubMirrors: Array.isArray(ctx.config.githubPublishing.mirrors) ? ctx.config.githubPublishing.mirrors.map((mirror) => `${mirror.owner}/${mirror.repo}`).join(', ') : '', coverImages: ctx.config.coverImages?.provider === 'pexels' && ctx.config.coverImages?.pexelsApiKey ? 'Pexels configured' : 'local rule-based fallback', distributionAccounts: 'none connected', cloudflareAccessConfigured: Boolean(ctx.config.cloudflareAccess.teamDomain && ctx.config.cloudflareAccess.audience), environment: ctx.config.environmentName };
-  return layout({ title: 'Settings', user: ctx.user, permissions: ctx.permissions, active: 'Settings', body: `<p class="eyebrow">Settings</p><h1>Configuration</h1><p>Secrets, tokens and raw session data are never displayed.</p><div class="grid">${['Local AI','Trend research','External research','Brain','GitHub publishing','Cover images','Distribution accounts','Access','Advanced diagnostics'].map((name) => card(name, `<p>${escapeHtml(settingsSummary(name, safe))}</p>`)).join('')}</div><section class="panel"><h2>Trend sources</h2><p>Trend scanning uses approved RSS/Atom sources. Search and social providers are placeholders until official integrations are configured.</p><div class="review-list">${safe.trendSources.map((source) => `<article class="review-item compact-row"><div><h3>${escapeHtml(source.publisher)}</h3><p>${escapeHtml(source.category)} · ${escapeHtml(source.feedUrl)}</p></div><span class="pill good">Approved</span></article>`).join('') || '<p>No approved trend feeds configured.</p>'}</div></section><section id="advanced-diagnostics" class="panel"><h2>Advanced diagnostics</h2><pre>${escapeHtml(JSON.stringify(safe, null, 2))}</pre></section>` });
+  const distributionAccounts = `<section class="panel"><h2>Distribution Accounts</h2><p>Use environment configuration until OAuth is implemented. Secrets are stored server-side only and never rendered.</p><div class="destination-chip-grid">${distribution.destinations.map((destination) => destinationChip(destination, csrf, true)).join('')}</div></section>`;
+  return layout({ title: 'Settings', user: ctx.user, permissions: ctx.permissions, active: 'Settings', body: `<p class="eyebrow">Settings</p><h1>Configuration</h1><p>Secrets, tokens and raw session data are never displayed.</p><div class="grid">${['Local AI','Trend research','External research','Brain','GitHub publishing','Cover images','Distribution accounts','Access','Advanced diagnostics'].map((name) => card(name, `<p>${escapeHtml(settingsSummary(name, safe))}</p>`)).join('')}</div>${distributionAccounts}<section class="panel"><h2>Trend sources</h2><p>Trend scanning uses approved RSS/Atom sources. Search and social providers are placeholders until official integrations are configured.</p><div class="review-list">${safe.trendSources.map((source) => `<article class="review-item compact-row"><div><h3>${escapeHtml(source.publisher)}</h3><p>${escapeHtml(source.category)} · ${escapeHtml(source.feedUrl)}</p></div><span class="pill good">Approved</span></article>`).join('') || '<p>No approved trend feeds configured.</p>'}</div></section><section id="advanced-diagnostics" class="panel"><h2>Advanced diagnostics</h2><pre>${escapeHtml(JSON.stringify(safe, null, 2))}</pre></section>` });
 }
 
 function articleMatchesView(run, view) {
@@ -593,7 +613,7 @@ function settingsSummary(name, safe) {
     Brain: 'Approved Certifyd knowledge powers grounded drafts.',
     'GitHub publishing': safe.githubPublishing === 'disabled' ? 'Publishing is disabled.' : `${safe.githubPublishing} is configured.${safe.githubMirrors ? ` Mirror: ${safe.githubMirrors}.` : ''}`,
     'Cover images': safe.coverImages,
-    'Distribution accounts': 'No social or newsletter accounts are connected.',
+    'Distribution accounts': 'Connection state is shown below; credentials remain server-side.',
     Access: `${safe.authMode}; Cloudflare Access ${safe.cloudflareAccessConfigured ? 'configured' : 'not configured'}.`,
     'Advanced diagnostics': 'Safe, redacted configuration only.',
   };
@@ -653,6 +673,7 @@ function actionButtons(run, csrf, permissions, config = {}) {
     }
     if (status === 'PUBLISHING') publish.push(form('/app/content/actions/publishing/verify-live', 'Verify Live', { runId, _csrf: csrf }, 'primary'));
     if (status === 'UNPUBLISHING') publish.push(form('/app/content/actions/publishing/verify-unpublished', 'Verify Removed', { runId, _csrf: csrf }, 'primary'));
+    if (['FOUNDER_APPROVED', 'READY_TO_PUBLISH', 'PUBLISHING', 'PUBLISHED'].includes(status)) publish.push(`<a class="ghost" href="/app/content/distribution?runId=${encodeURIComponent(runId)}">Distribute</a>`);
     if (hasCertifydBlogUrl && !['ARCHIVED', 'UNPUBLISHING'].includes(status) && publishability !== 'REMOVED_FROM_LIVE_SITE') {
       live.push(`<a class="primary" href="${escapeHtml(run.canonicalUrl)}">View Live</a>`);
       live.push(`<form class="confirm-action" method="post" action="/app/content/actions/publishing/unpublish"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><label for="confirm-unpublish-${escapeHtml(runId)}">Type unpublish</label><input id="confirm-unpublish-${escapeHtml(runId)}" name="confirmUnpublish" placeholder="unpublish" autocomplete="off"><button class="ghost danger" type="submit">Unpublish</button></form>`);
@@ -716,6 +737,39 @@ function distributionList(assets, plan = {}) {
   return `${primary}${assets.map((asset) => `<details><summary>${escapeHtml(asset.channel)} · ${escapeHtml(asset.status || 'DRAFT')}</summary><pre>${escapeHtml(asset.body)}</pre></details>`).join('')}`;
 }
 
+function destinationChip(destination, csrf, canManage) {
+  const css = destination.status === 'connected' ? 'good' : destination.status === 'manual_export' ? 'warn' : destination.status === 'connection_error' ? 'bad' : '';
+  const controls = canManage
+    ? `<form method="post" action="/app/content/actions/distribution/test"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="destinationId" value="${escapeHtml(destination.id)}"><button class="ghost small-button" type="submit">Test connection</button></form><button class="ghost small-button" type="button" disabled>${destination.status === 'connected' ? 'Disconnect' : 'Connect'}</button>`
+    : '';
+  return `<article class="destination-chip"><div><strong>${escapeHtml(destination.displayName)}</strong><p>${statusPill(destination.label)} <span class="muted">${escapeHtml(destination.message || '')}</span></p></div><div class="mini-actions">${controls}</div></article>`;
+}
+
+function distributionArticleRow(run, detail, destinations, defaults, csrf, canManage, open) {
+  const state = detail?.distribution?.destinations?.destinations || {};
+  const publishedCount = Object.values(state).filter((item) => item?.status === 'published').length;
+  const choices = destinations.map((destination) => destinationCheckbox(destination, destination.id === 'certifyd' ? ['certifyd'] : defaults, state[destination.id])).join('');
+  const statusRows = destinations.map((destination) => destinationStatusRow(destination, state[destination.id])).join('');
+  const disabled = canManage ? '' : 'disabled';
+  const actions = canManage ? `<div class="actions"><button class="primary" type="submit">Publish to selected destinations now</button><button class="ghost" type="submit" formaction="/app/content/actions/distribution/retry">Retry failed destinations</button></div>` : '<p class="notice">This role can view distribution, but cannot publish destinations.</p>';
+  return `<article class="distribution-row"><div><h3>${escapeHtml(run.title || 'Untitled article')}</h3><p>${statusPill(run.status)} <span class="muted">${escapeHtml(String(publishedCount))} destination${publishedCount === 1 ? '' : 's'} published · ${escapeHtml(run.canonicalUrl || 'No canonical URL')}</span></p></div><details ${open ? 'open' : ''}><summary class="primary">Distribute</summary><form method="post" action="/app/content/actions/distribution/publish"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="runId" value="${escapeHtml(run.runId)}"><input type="hidden" name="version" value="${escapeHtml(run.version || 'v1')}"><h4>Distribute article</h4><p class="muted">Certifyd Blog is canonical. Social destinations require founder approval here before posting.</p><div class="destination-choice-grid">${choices}</div>${actions}</form><div class="distribution-status-list">${statusRows}</div></details></article>`;
+}
+
+function destinationCheckbox(destination, selected = [], state = {}) {
+  const checked = selected.includes(destination.id) ? 'checked' : '';
+  const autoDisconnected = destination.automatic && !destination.manual && destination.status !== 'connected';
+  const disabled = destination.id === 'certifyd' ? '' : autoDisconnected ? 'disabled' : '';
+  const hint = state?.lastError ? state.lastError : destination.status === 'not_connected' ? 'Not connected' : destination.status === 'manual_export' ? 'Manual export' : destination.label;
+  return `<label class="destination-choice ${disabled ? 'muted' : ''}"><input type="checkbox" name="destinations" value="${escapeHtml(destination.id)}" ${checked} ${disabled}> <span><strong>${escapeHtml(destination.displayName)}</strong><small>${escapeHtml(hint || '')}</small></span></label>`;
+}
+
+function destinationStatusRow(destination, state = {}) {
+  const status = state?.status || 'not_selected';
+  const url = state?.externalUrl ? ` · <a href="${escapeHtml(state.externalUrl)}" rel="noreferrer" target="_blank">Open</a>` : '';
+  const error = state?.lastError ? ` · ${escapeHtml(state.lastError)}` : '';
+  return `<p class="distribution-status-row"><strong>${escapeHtml(destination.displayName)}</strong>: ${statusPill(status)}${url}${error}</p>`;
+}
+
 function coverImageControls(run, csrf, permissions, config = {}) {
   const canEdit = permissions.includes('content.article.edit');
   const runId = run.summary?.runId || run.runId || '';
@@ -773,6 +827,9 @@ function formAdapter(fields, files) {
   return {
     get(name) {
       return fields.get(name);
+    },
+    getAll(name) {
+      return fields.getAll(name);
     },
     getFile(name) {
       return files.get(name) || null;

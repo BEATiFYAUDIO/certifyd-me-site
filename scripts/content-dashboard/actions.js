@@ -10,6 +10,15 @@ import { cleanArticlePromptText, isSafeImagePath, normalizeArticleTitle, selectA
 import { appendGlobalPexelsHistory, selectAutomatedCoverImage } from './cover-image-provider.js';
 import { isApprovedBrainRecord } from './brain-utils.js';
 import { submitIndexNow } from './indexnow.js';
+import {
+  DESTINATION_STATES,
+  buildDistributionAdapters,
+  publicDestinationStatus,
+  readDistributionDefaults,
+  readDistributionState,
+  writeDistributionDefaults,
+  writeDistributionState,
+} from './distribution-adapters.js';
 
 const execFileAsync = promisify(execFile);
 const RESULT_LIMIT = 12000;
@@ -44,6 +53,7 @@ export class ContentDashboardActions {
     this.runs = new ContentRunRepository(config);
     this.audit = new AuditLogRepository(config);
     this.publisher = createPublisher(config, this.runs);
+    this.distributionAdapters = buildDistributionAdapters(config);
   }
 
   async generateDraft({ actor, form, signal }) {
@@ -435,6 +445,102 @@ export class ContentDashboardActions {
     return this.publishToCertifyd({ actor, runId, version, republish: true });
   }
 
+  async distributionOverview() {
+    return {
+      destinations: this.distributionAdapters.map(publicDestinationStatus),
+      defaults: await readDistributionDefaults(this.config),
+    };
+  }
+
+  async testDistributionConnection({ actor, destinationId }) {
+    const adapter = this.distributionAdapters.find((item) => item.id === cleanString(destinationId, 80));
+    if (!adapter) throw Object.assign(new Error('Unknown distribution destination.'), { statusCode: 404 });
+    const result = await adapter.testConnection();
+    await this.audit.append({ action: 'distribution_connection_test', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, result: result.status === 'connected' || result.status === 'manual_export' ? 'SUCCESS' : 'FAILED', note: `${adapter.id}:${result.status}` });
+    return { ok: result.status === 'connected' || result.status === 'manual_export', output: `${adapter.displayName}: ${result.label}. ${result.message || ''}` };
+  }
+
+  async saveDistributionDefaults({ actor, destinations = [] }) {
+    const selected = this.normalizeDistributionSelections(destinations, { allowCertifyd: true });
+    await writeDistributionDefaults(this.config, { destinations: selected, updatedBy: actor.email, updatedAt: new Date().toISOString() });
+    await this.audit.append({ action: 'distribution_defaults_save', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, result: 'SUCCESS', note: selected.join(',') });
+    return { ok: true, output: `Saved default destinations: ${selected.length ? selected.join(', ') : 'none'}.` };
+  }
+
+  async distributeArticle({ actor, runId, version, destinations = [], retryFailed = false }) {
+    validateRunId(runId);
+    validateVersion(version);
+    if (actor.role !== 'founder') throw Object.assign(new Error('Founder approval is required before distribution.'), { statusCode: 403 });
+    const run = await this.runs.readRun(runId);
+    if (run.summary.version !== version) throw Object.assign(new Error('Distribution requires the exact displayed version.'), { statusCode: 409 });
+    if (!isDistributionEligible(run.summary)) throw Object.assign(new Error('Only approved, ready, publishing or published articles can be distributed.'), { statusCode: 409 });
+
+    let selected = this.normalizeDistributionSelections(destinations, { allowCertifyd: true });
+    if (!selected.length && !retryFailed) {
+      const defaults = await readDistributionDefaults(this.config);
+      selected = this.normalizeDistributionSelections(defaults.destinations || [], { allowCertifyd: true });
+    }
+    if (!selected.length) throw Object.assign(new Error('Select at least one distribution destination.'), { statusCode: 400 });
+
+    const baseState = await readDistributionState(this.runs, runId);
+    const state = { destinations: {}, updatedAt: new Date().toISOString(), updatedBy: actor.email, ...baseState, destinations: { ...(baseState.destinations || {}) } };
+    const article = distributionArticle(run);
+    const results = [];
+
+    if (selected.includes('certifyd') && !isPublishedLike(run.summary)) {
+      try {
+        const result = await this.publishToCertifyd({ actor, runId, version });
+        state.destinations.certifyd = publishedState({ previous: state.destinations.certifyd, externalPostId: 'certifyd-blog', externalUrl: result.canonicalUrl || article.canonicalUrl });
+        article.canonicalUrl = result.canonicalUrl || article.canonicalUrl;
+        results.push({ id: 'certifyd', status: DESTINATION_STATES.PUBLISHED, url: article.canonicalUrl });
+      } catch (error) {
+        state.destinations.certifyd = failedState(state.destinations.certifyd, error);
+        results.push({ id: 'certifyd', status: DESTINATION_STATES.FAILED, error: error.message });
+      }
+    } else if (selected.includes('certifyd')) {
+      state.destinations.certifyd = publishedState({ previous: state.destinations.certifyd, externalPostId: 'certifyd-blog', externalUrl: article.canonicalUrl });
+      results.push({ id: 'certifyd', status: DESTINATION_STATES.PUBLISHED, url: article.canonicalUrl });
+    }
+
+    for (const adapter of this.distributionAdapters.filter((item) => item.id !== 'certifyd' && selected.includes(item.id))) {
+      const previous = state.destinations[adapter.id] || {};
+      try {
+        const connection = adapter.connectionStatus();
+        if (adapter.kind !== 'manual' && connection.status !== 'connected') {
+          throw new Error(`${adapter.displayName} is not connected.`);
+        }
+        if (previous.externalPostId && previous.status === DESTINATION_STATES.PUBLISHED && !retryFailed) {
+          results.push({ id: adapter.id, status: DESTINATION_STATES.PUBLISHED, skipped: true, url: previous.externalUrl || '' });
+          continue;
+        }
+        state.destinations[adapter.id] = { ...previous, status: DESTINATION_STATES.PUBLISHING, retryCount: Number(previous.retryCount || 0) + (retryFailed ? 1 : 0), updatedAt: new Date().toISOString() };
+        let publishResult;
+        if (previous.externalPostId && adapter.supportsUpdate) publishResult = await adapter.updateArticle(article, previous);
+        else publishResult = await adapter.publishArticle(article, previous);
+        if (adapter.kind === 'manual') {
+          state.destinations[adapter.id] = manualReadyState(previous, publishResult);
+          results.push({ id: adapter.id, status: DESTINATION_STATES.MANUAL_READY });
+        } else {
+          state.destinations[adapter.id] = publishedState({ previous, externalPostId: publishResult.externalPostId, externalUrl: publishResult.externalUrl });
+          results.push({ id: adapter.id, status: DESTINATION_STATES.PUBLISHED, url: publishResult.externalUrl || '' });
+        }
+      } catch (error) {
+        state.destinations[adapter.id] = failedState(previous, error);
+        results.push({ id: adapter.id, status: DESTINATION_STATES.FAILED, error: error.message });
+      }
+    }
+
+    await writeDistributionState(this.runs, runId, state);
+    await this.audit.append({ action: 'article_distribution', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, version, result: results.some((item) => item.status === DESTINATION_STATES.PUBLISHED || item.status === DESTINATION_STATES.MANUAL_READY) ? 'SUCCESS' : 'FAILED', note: results.map((item) => `${item.id}:${item.status}`).join(',') });
+    return { ok: true, results, output: distributionResultText(results) };
+  }
+
+  normalizeDistributionSelections(destinations = [], { allowCertifyd = false } = {}) {
+    const values = Array.isArray(destinations) ? destinations : [destinations];
+    const known = new Set(this.distributionAdapters.map((item) => item.id));
+    return [...new Set(values.map((value) => cleanString(value, 80)).filter((value) => known.has(value) && (allowCertifyd || value !== 'certifyd')))];
+  }
+
   async verifyLivePublication({ actor, runId }) {
     validateRunId(runId);
     const run = await this.runs.readRun(runId);
@@ -784,6 +890,70 @@ function blogUrl(slug) {
 
 function stripFrontmatter(markdown) {
   return String(markdown || '').replace(/^\uFEFF?---\s*[\r\n][\s\S]*?[\r\n]---\s*[\r\n]?/, '').trimStart();
+}
+
+function isDistributionEligible(summary = {}) {
+  return ['FOUNDER_APPROVED', 'READY_TO_PUBLISH', 'PUBLISHING', 'PUBLISHED'].includes(String(summary.status || '').toUpperCase());
+}
+
+function isPublishedLike(summary = {}) {
+  const status = String(summary.status || '').toUpperCase();
+  const publishability = String(summary.publishability || '').toUpperCase();
+  return status === 'PUBLISHED' || (status === 'PUBLISHING' && publishability === 'PUBLISHING_DEPLOYMENT');
+}
+
+function distributionArticle(run = {}) {
+  const pkg = run.blogPackage || {};
+  const summary = run.summary || {};
+  return {
+    title: pkg.title || summary.title || 'Untitled article',
+    markdown: stripFrontmatter(run.articleMarkdown || run.draftMarkdown || pkg.body || ''),
+    excerpt: pkg.description || pkg.excerpt || summary.topic || '',
+    tags: Array.isArray(pkg.tags) ? pkg.tags : [],
+    featuredImage: pkg.coverImage || '',
+    date: pkg.date || new Date().toISOString(),
+    canonicalUrl: summary.canonicalUrl || pkg.canonicalUrl || '',
+  };
+}
+
+function publishedState({ previous = {}, externalPostId = '', externalUrl = '' } = {}) {
+  return {
+    ...previous,
+    status: DESTINATION_STATES.PUBLISHED,
+    externalPostId: externalPostId || previous.externalPostId || '',
+    externalUrl: externalUrl || previous.externalUrl || '',
+    publishedAt: previous.publishedAt || new Date().toISOString(),
+    lastError: '',
+    updatedAt: new Date().toISOString(),
+    retryCount: Number(previous.retryCount || 0),
+  };
+}
+
+function failedState(previous = {}, error) {
+  return {
+    ...previous,
+    status: DESTINATION_STATES.FAILED,
+    lastError: safeError(error),
+    retryCount: Number(previous.retryCount || 0) + 1,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function manualReadyState(previous = {}, publishResult = {}) {
+  return {
+    ...previous,
+    status: DESTINATION_STATES.MANUAL_READY,
+    externalPostId: '',
+    externalUrl: '',
+    exportContent: publishResult.exportContent || '',
+    lastError: '',
+    updatedAt: new Date().toISOString(),
+    retryCount: Number(previous.retryCount || 0),
+  };
+}
+
+function distributionResultText(results = []) {
+  return results.map((item) => `${item.id}: ${item.status}${item.url ? ` ${item.url}` : ''}${item.error ? ` (${item.error})` : ''}${item.skipped ? ' (already published)' : ''}`).join('\n');
 }
 
 function appendCoverHistory(history, current, runId) {
