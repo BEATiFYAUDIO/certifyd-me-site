@@ -26,7 +26,7 @@ export function safeReturnPath(value) {
 }
 
 export function validateRunId(value) {
-  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,80}$/.test(String(value || ''))) {
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,160}$/.test(String(value || ''))) {
     throw Object.assign(new Error('Invalid run ID.'), { statusCode: 400 });
   }
   return String(value);

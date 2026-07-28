@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { validateRunId } from './security.js';
+import { normalizeArticleTitle, selectArticleCoverImage } from './article-utils.js';
 
 export class GitHubPullRequestPublisher {
   constructor(config, runs) {
@@ -30,14 +31,38 @@ export class GitHubPullRequestPublisher {
       throw Object.assign(new Error('GitHub publishing is not configured. Provide either GitHub App credentials or CONTENT_DASHBOARD_GITHUB_TOKEN.'), { statusCode: 503 });
     }
     const run = await this.runs.readRun(runId);
-    if (run.summary.publishability !== 'READY_TO_PUBLISH') {
+    const directRepublish = this.config.mode === 'direct' && ['PUBLISHING', 'PUBLISHED'].includes(run.summary.status);
+    if (run.summary.publishability !== 'READY_TO_PUBLISH' && !directRepublish) {
       throw Object.assign(new Error('Run is not ready for publishing.'), { statusCode: 409 });
     }
     const pkg = run.blogPackage || {};
     const slug = safeSlug(pkg.slug || run.summary.slug || runId);
+    const title = normalizeArticleTitle(pkg.title || run.summary.title);
     const markdown = buildBlogMarkdown(pkg, run);
     const generatedFiles = await this.buildGeneratedSiteFiles(slug, markdown);
     const installationToken = await this.createInstallationToken();
+    if (this.config.mode === 'direct') {
+      const commits = [];
+      for (const file of generatedFiles) {
+        commits.push(await putRepositoryFile({
+          config: this.config,
+          token: installationToken,
+          branchName: this.config.baseBranch,
+          filePath: file.path,
+          content: file.content,
+          message: `Publish blog article: ${title}`,
+        }));
+      }
+      return {
+        ok: true,
+        output: `Published directly to ${this.config.baseBranch}: ${pkg.canonicalUrl || run.summary.canonicalUrl || `https://certifyd.me/blog/${slug}/`}`,
+        publishMode: 'direct',
+        commitUrls: commits.map((commit) => commit?.content?.html_url || commit?.commit?.html_url || '').filter(Boolean),
+        branchName: this.config.baseBranch,
+        repositoryPath: `content/blog/${slug}.md`,
+        canonicalUrl: pkg.canonicalUrl || run.summary.canonicalUrl || `https://certifyd.me/blog/${slug}/`,
+      };
+    }
     const branchName = `${this.config.branchPrefix}/${slug}-${Date.now()}`;
     const baseRef = await githubJson(this.config, installationToken, `/repos/${this.config.owner}/${this.config.repo}/git/ref/heads/${this.config.baseBranch}`, {}, 'GitHub base branch lookup failed');
     await githubJson(this.config, installationToken, `/repos/${this.config.owner}/${this.config.repo}/git/refs`, {
@@ -54,13 +79,13 @@ export class GitHubPullRequestPublisher {
         branchName,
         filePath: file.path,
         content: file.content,
-        message: `Publish blog article: ${pkg.title || run.summary.title}`,
+        message: `Publish blog article: ${title}`,
       });
     }
     const pull = await githubJson(this.config, installationToken, `/repos/${this.config.owner}/${this.config.repo}/pulls`, {
       method: 'POST',
       body: {
-        title: `Content review: ${pkg.title || run.summary.title}`,
+        title: `Content review: ${title}`,
         head: branchName,
         base: this.config.baseBranch,
         draft: true,
@@ -89,9 +114,40 @@ export class GitHubPullRequestPublisher {
     const run = await this.runs.readRun(runId);
     const pkg = run.blogPackage || {};
     const slug = safeSlug(pkg.slug || run.summary.slug || runId);
+    const title = normalizeArticleTitle(pkg.title || run.summary.title);
     const markdown = buildBlogMarkdown(pkg, run, { status: 'archived' });
     const generatedFiles = await this.buildGeneratedSiteFiles(slug, markdown, { includeArticlePage: false });
     const installationToken = await this.createInstallationToken();
+    if (this.config.mode === 'direct') {
+      const commits = [];
+      for (const file of generatedFiles) {
+        commits.push(await putRepositoryFile({
+          config: this.config,
+          token: installationToken,
+          branchName: this.config.baseBranch,
+          filePath: file.path,
+          content: file.content,
+          message: `Unpublish blog article: ${title}`,
+        }));
+      }
+      const deleted = await deleteRepositoryFileIfExists({
+        config: this.config,
+        token: installationToken,
+        branchName: this.config.baseBranch,
+        filePath: `blog/${slug}/index.html`,
+        message: `Remove generated blog article page: ${title}`,
+      });
+      return {
+        ok: true,
+        output: `Unpublished directly from ${this.config.baseBranch}: ${pkg.canonicalUrl || run.summary.canonicalUrl || `https://certifyd.me/blog/${slug}/`}`,
+        publishMode: 'direct',
+        commitUrls: [...commits, deleted].map((commit) => commit?.content?.html_url || commit?.commit?.html_url || '').filter(Boolean),
+        branchName: this.config.baseBranch,
+        repositoryPath: `content/blog/${slug}.md`,
+        removedPath: `blog/${slug}/index.html`,
+        canonicalUrl: pkg.canonicalUrl || run.summary.canonicalUrl || `https://certifyd.me/blog/${slug}/`,
+      };
+    }
     const branchName = `${this.config.branchPrefix}/unpublish-${slug}-${Date.now()}`;
     const baseRef = await githubJson(this.config, installationToken, `/repos/${this.config.owner}/${this.config.repo}/git/ref/heads/${this.config.baseBranch}`, {}, 'GitHub base branch lookup failed');
     await githubJson(this.config, installationToken, `/repos/${this.config.owner}/${this.config.repo}/git/refs`, {
@@ -108,7 +164,7 @@ export class GitHubPullRequestPublisher {
         branchName,
         filePath: file.path,
         content: file.content,
-        message: `Unpublish blog article: ${pkg.title || run.summary.title}`,
+        message: `Unpublish blog article: ${title}`,
       });
     }
     await deleteRepositoryFileIfExists({
@@ -116,12 +172,12 @@ export class GitHubPullRequestPublisher {
       token: installationToken,
       branchName,
       filePath: `blog/${slug}/index.html`,
-      message: `Remove generated blog article page: ${pkg.title || run.summary.title}`,
+      message: `Remove generated blog article page: ${title}`,
     });
     const pull = await githubJson(this.config, installationToken, `/repos/${this.config.owner}/${this.config.repo}/pulls`, {
       method: 'POST',
       body: {
-        title: `Unpublish content: ${pkg.title || run.summary.title}`,
+        title: `Unpublish content: ${title}`,
         head: branchName,
         base: this.config.baseBranch,
         draft: true,
@@ -182,6 +238,15 @@ export class GitHubPullRequestPublisher {
           if (error.code !== 'ENOENT') throw error;
         }
       }
+      const coverImagePath = coverImagePathFromMarkdown(markdown);
+      if (coverImagePath) {
+        const imagePath = coverImagePath.replace(/^\//, '');
+        const fullImagePath = path.join(this.siteRoot, imagePath);
+        if (fullImagePath.startsWith(this.siteRoot)) {
+          const stat = await fs.stat(fullImagePath).catch(() => null);
+          if (stat?.isFile()) files.push({ path: imagePath, content: await fs.readFile(fullImagePath) });
+        }
+      }
       return files;
     } finally {
       await fs.rm(tempRoot, { recursive: true, force: true });
@@ -216,16 +281,26 @@ function buildBlogMarkdown(pkg, run, options = {}) {
       ? pkg.keywords
       : [];
   const frontmatter = {
-    title: pkg.title || run.summary.title,
+    title: normalizeArticleTitle(pkg.title || run.summary.title),
     slug: safeSlug(pkg.slug || run.summary.slug || run.summary.runId),
     author: pkg.author || 'Certifyd',
     date: pkg.date || today,
     updated: pkg.updated || today,
     excerpt: pkg.excerpt || pkg.description || run.summary.summary || '',
-    coverImage: pkg.coverImage || pkg.image || '/images/certifyd-main-image-independent-scene-20260613.png',
+    coverImage: selectArticleCoverImage({
+      requestedCoverImage: pkg.coverImage || pkg.image,
+      title: pkg.title || run.summary.title,
+      tags,
+      excerpt: pkg.excerpt || pkg.description || run.summary.summary || '',
+      body: run.articleMarkdown || pkg.body || '',
+    }),
+    coverImageAlt: pkg.coverImageAlt || '',
+    coverImageCredit: pkg.coverImageCredit || '',
+    coverImageCreditUrl: pkg.coverImageCreditUrl || '',
+    coverImageProvider: pkg.coverImageProvider || '',
     tags,
     status: options.status || 'published',
-    seoTitle: pkg.seoTitle || '',
+    seoTitle: normalizeArticleTitle(pkg.seoTitle || '', ''),
     seoDescription: pkg.seoDescription || pkg.description || '',
   };
   const yaml = Object.entries(frontmatter).map(([key, value]) => `${key}: ${yamlValue(value)}`).join('\n');
@@ -275,11 +350,11 @@ async function putRepositoryFile({ config, token, branchName, filePath, content,
     const text = await lookup.text();
     throw Object.assign(new Error(`GitHub file lookup failed for ${filePath}: HTTP ${lookup.status}. ${text.slice(0, 300)}`), { statusCode: lookup.status === 401 || lookup.status === 403 ? 403 : 502 });
   }
-  await githubJson(config, token, `/repos/${config.owner}/${config.repo}/contents/${encodedPath}`, {
+  return githubJson(config, token, `/repos/${config.owner}/${config.repo}/contents/${encodedPath}`, {
     method: 'PUT',
     body: {
       message,
-      content: Buffer.from(content).toString('base64'),
+      content: Buffer.isBuffer(content) ? content.toString('base64') : Buffer.from(content).toString('base64'),
       branch: branchName,
       ...(sha ? { sha } : {}),
       committer: {
@@ -301,7 +376,7 @@ async function deleteRepositoryFileIfExists({ config, token, branchName, filePat
     throw Object.assign(new Error(`GitHub file lookup failed for ${filePath}: HTTP ${lookup.status}. ${text.slice(0, 300)}`), { statusCode: lookup.status === 401 || lookup.status === 403 ? 403 : 502 });
   }
   const existing = await lookup.json();
-  await githubJson(config, token, `/repos/${config.owner}/${config.repo}/contents/${encodedPath}`, {
+  return githubJson(config, token, `/repos/${config.owner}/${config.repo}/contents/${encodedPath}`, {
     method: 'DELETE',
     body: {
       message,
@@ -331,6 +406,13 @@ function runBuildBlog(siteRoot, tempRoot) {
       else reject(Object.assign(new Error(`Blog static generation failed before PR creation: ${output.slice(0, 1000)}`), { statusCode: 502 }));
     });
   });
+}
+
+function coverImagePathFromMarkdown(markdown) {
+  const match = String(markdown || '').match(/^coverImage:\s*["']?(\/images\/[^"'\n]+)["']?\s*$/m);
+  if (!match?.[1]) return '';
+  if (match[1].includes('\\') || match[1].includes('..') || /%2f|%5c/i.test(match[1])) return '';
+  return match[1];
 }
 
 function githubHeaders(token) {

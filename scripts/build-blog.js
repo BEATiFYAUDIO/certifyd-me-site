@@ -77,6 +77,18 @@ function absoluteUrl(value) {
   return `${BASE_URL}${raw.startsWith('/') ? raw : `/${raw}`}`;
 }
 
+function validateOptionalUrl(value, file) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  try {
+    const url = new URL(raw);
+    if (!['https:', 'http:'].includes(url.protocol)) throw new Error('unsupported protocol');
+    return url.toString();
+  } catch {
+    throw new Error(`${file}: coverImageCreditUrl must be an absolute http(s) URL`);
+  }
+}
+
 function renderTemplate(template, replacements) {
   return template.replace(/\{\{([a-zA-Z0-9]+)\}\}/g, (_, key) => replacements[key] ?? '');
 }
@@ -117,6 +129,10 @@ async function readArticles() {
     const excerpt = String(data.excerpt || data.description || '').trim();
     if (!excerpt) throw new Error(`${file}: missing excerpt`);
     const coverImage = validateImagePath(data.coverImage || data.image, file);
+    const coverImageAlt = String(data.coverImageAlt || '').trim();
+    const coverImageCredit = String(data.coverImageCredit || '').trim();
+    const coverImageCreditUrl = validateOptionalUrl(data.coverImageCreditUrl || '', file);
+    const coverImageProvider = String(data.coverImageProvider || '').trim();
     const author = String(data.author || 'Certifyd').trim() || 'Certifyd';
     const tags = asArray(data.tags || data.keywords);
     const body = marked.parse(parsed.content || '');
@@ -130,6 +146,10 @@ async function readArticles() {
       author,
       excerpt,
       coverImage,
+      coverImageAlt,
+      coverImageCredit,
+      coverImageCreditUrl,
+      coverImageProvider,
       tags,
       status,
       seoTitle: String(data.seoTitle || '').trim(),
@@ -165,7 +185,7 @@ function renderArticleCard(article) {
   return `
     <article class="blog-card">
       <a class="blog-card-media" href="${localArticlePath(article)}" aria-label="Read ${escapeHtml(article.title)}">
-        <img src="${escapeHtml(article.coverImage)}" alt="" loading="lazy" decoding="async" onerror="this.src='${DEFAULT_IMAGE}'" />
+        <img src="${escapeHtml(article.coverImage)}" alt="${escapeHtml(article.coverImageAlt)}" loading="lazy" decoding="async" onerror="this.src='${DEFAULT_IMAGE}'" />
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">${escapeHtml(article.author)} · ${escapeHtml(formatDisplayDate(article.date))}</div>
@@ -203,6 +223,17 @@ function jsonLdForArticle(article) {
   }).replace(/</g, '\\u003c');
 }
 
+function imageCreditHtml(article) {
+  if (!article.coverImageCredit) return '';
+  const credit = article.coverImageCreditUrl
+    ? `<a href="${escapeHtml(article.coverImageCreditUrl)}" rel="noopener noreferrer">${escapeHtml(article.coverImageCredit)}</a>`
+    : escapeHtml(article.coverImageCredit);
+  const provider = article.coverImageProvider === 'pexels'
+    ? ' · <a href="https://www.pexels.com" rel="noopener noreferrer">Photos provided by Pexels</a>'
+    : '';
+  return `<p class="article-image-credit">${credit}${provider}</p>`;
+}
+
 async function writeBlogIndex(articles, template) {
   const html = renderTemplate(template, {
     metaTitle: 'Certifyd Blog | Creator-Owned Commerce Infrastructure',
@@ -236,7 +267,7 @@ async function writeArticle(article, template) {
     excerpt: escapeHtml(article.excerpt),
     publishedAt: escapeHtml(formatDisplayDate(article.date)),
     updatedAt: escapeHtml(formatDisplayDate(article.updated)),
-    heroImage: `<div class="article-hero-image"><img src="${escapeHtml(article.coverImage)}" alt="" loading="eager" decoding="async" onerror="this.src='${DEFAULT_IMAGE}'" /></div>`,
+    heroImage: `<div class="article-hero-image"><img src="${escapeHtml(article.coverImage)}" alt="${escapeHtml(article.coverImageAlt)}" loading="eager" decoding="async" onerror="this.src='${DEFAULT_IMAGE}'" />${imageCreditHtml(article)}</div>`,
     tags: tagList(article),
     body: article.body,
   });
@@ -247,7 +278,7 @@ function renderHomepageArticleCard(article) {
   return `
         <article class="home-blog-card">
           <a class="home-blog-media" href="${localArticlePath(article)}" aria-label="Read ${escapeHtml(article.title)}">
-            <img src="${escapeHtml(article.coverImage)}" alt="" loading="lazy" decoding="async" onerror="this.src='${DEFAULT_IMAGE}'" />
+            <img src="${escapeHtml(article.coverImage)}" alt="${escapeHtml(article.coverImageAlt)}" loading="lazy" decoding="async" onerror="this.src='${DEFAULT_IMAGE}'" />
           </a>
           <div class="home-blog-body">
             <p class="home-blog-meta">${escapeHtml(formatDisplayDate(article.date))} · ${escapeHtml(article.author)}</p>

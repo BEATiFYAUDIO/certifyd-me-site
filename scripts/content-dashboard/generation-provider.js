@@ -1,10 +1,10 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { DEFAULT_BLOG_COVER_IMAGE, isSafeImagePath, normalizeArticleTitle, selectArticleCoverImage } from './article-utils.js';
 
 const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
 const DEFAULT_OLLAMA_MODEL = 'qwen2.5:1.5b';
-const DEFAULT_BLOG_COVER_IMAGE = '/images/certifyd-main-image-independent-scene-20260613.png';
 const SAFE_SOURCE_LIMIT = 12;
 const MAX_INTERACTIVE_OUTPUT_TOKENS = 900;
 const SECRET_PATTERN = /(?:api[_-]?key|secret|token|password|private[_-]?key|session|credential|jwt|bearer|cloudflare|github_app_private_key)/i;
@@ -272,7 +272,8 @@ export function validateGeneratedArticle(value, groundedContext) {
     if (!(key in value)) throw new GenerationValidationError(`Generated article missing ${key}.`);
   }
   if (value.author && value.author !== 'Certifyd') throw new GenerationValidationError('Generated article author must be Certifyd.');
-  const slug = slugify(value.suggestedSlug);
+  const title = normalizeArticleTitle(value.title);
+  const slug = slugify(value.suggestedSlug || title);
   if (!slug) throw new GenerationValidationError('Generated slug is invalid.');
   if (value.tags && !Array.isArray(value.tags)) throw new GenerationValidationError('Generated tags are malformed.');
   if (value.claims && !Array.isArray(value.claims)) throw new GenerationValidationError('Generated claims are malformed.');
@@ -306,15 +307,16 @@ export function validateGeneratedArticle(value, groundedContext) {
   if (/\b(live|currently|already)\b/i.test(value.bodyMarkdown) && /\b(planned|roadmap|future|not yet|under development)\b/i.test(JSON.stringify(groundedContext.featureStatus))) {
     warnings.push('Review live/planned feature language before approval.');
   }
+  const tags = (value.tags || ['Certifyd']).map(String).map((tag) => tag.trim()).filter(Boolean).slice(0, 8);
   return {
-    title: clampText(value.title, 160),
+    title: clampText(title, 160),
     slug,
     excerpt: clampText(value.excerpt, 260),
     author: 'Certifyd',
-    tags: (value.tags || ['Certifyd']).map(String).map((tag) => tag.trim()).filter(Boolean).slice(0, 8),
-    seoTitle: clampText(value.seoTitle || `${value.title} | Certifyd`, 70),
+    tags,
+    seoTitle: clampText(value.seoTitle ? normalizeArticleTitle(value.seoTitle) : `${title} | Certifyd`, 70),
     seoDescription: clampText(value.seoDescription || value.excerpt, 165),
-    coverImage: normalizeBlogCoverImage(value.coverImage),
+    coverImage: normalizeBlogCoverImage(value.coverImage, { title, tags, excerpt: value.excerpt, body: value.bodyMarkdown }),
     bodyMarkdown: value.bodyMarkdown.trim(),
     claims: normalizedClaims,
     warnings: [...new Set(warnings)].slice(0, 30),
@@ -324,7 +326,7 @@ export function validateGeneratedArticle(value, groundedContext) {
 
 export async function persistGeneratedArticleRun(config, article, input, groundedContext, provider) {
   const timestamp = new Date().toISOString();
-  const runId = `${article.slug}-${Date.now().toString(36)}`;
+  const runId = createRunId(article.slug);
   const dir = path.join(config.outputDir, runId);
   await fs.mkdir(path.join(dir, 'final'), { recursive: true });
   await fs.mkdir(path.join(dir, 'drafts'), { recursive: true });
@@ -589,7 +591,7 @@ function articleFromQwenDraft(content, input, groundedContext) {
     }
   }
   const clean = cleanMarkdownDraftText(content);
-  const title = titleFromMalformedOutput(clean) || input.workingTitle || input.topic || 'Certifyd Draft';
+  const title = normalizeArticleTitle(titleFromMalformedOutput(clean) || input.workingTitle || input.topic, 'Certifyd Draft');
   const bodyMarkdown = ensureMarkdownTitle(clean || `This draft needs founder review before it can be published.`, title);
   const excerpt = excerptFromBody(bodyMarkdown, title);
   return {
@@ -600,7 +602,7 @@ function articleFromQwenDraft(content, input, groundedContext) {
     tags: tagsFromTopic(`${input.topic || ''} ${title}`),
     seoTitle: `${title} | Certifyd`,
     seoDescription: excerpt,
-    coverImage: DEFAULT_BLOG_COVER_IMAGE,
+    coverImage: selectArticleCoverImage({ title, tags: tagsFromTopic(`${input.topic || ''} ${title}`), excerpt, body: bodyMarkdown }),
     bodyMarkdown,
     claims: [],
     warnings: [],
@@ -616,7 +618,7 @@ function completeGeneratedArticleFields(value, input) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
   const nested = value.article && typeof value.article === 'object' && !Array.isArray(value.article) ? value.article : null;
   const completed = nested ? { ...value, ...nested } : { ...value };
-  if (!completed.title) completed.title = input.workingTitle || input.topic || 'Certifyd Draft';
+  completed.title = normalizeArticleTitle(completed.title || input.workingTitle || input.topic, 'Certifyd Draft');
   if (!completed.bodyMarkdown && typeof completed.article === 'string') completed.bodyMarkdown = completed.article;
   if (!completed.bodyMarkdown && typeof completed.draft === 'string') completed.bodyMarkdown = completed.draft;
   if (!completed.bodyMarkdown && typeof completed.markdown === 'string') completed.bodyMarkdown = completed.markdown;
@@ -639,16 +641,22 @@ function completeGeneratedArticleFields(value, input) {
   if (!completed.excerpt && completed.bodyMarkdown) completed.excerpt = excerptFromBody(completed.bodyMarkdown, completed.title);
   if (!completed.author) completed.author = 'Certifyd';
   if (!Array.isArray(completed.tags)) completed.tags = tagsFromTopic(`${input.topic || ''} ${completed.title || ''}`);
+  if (completed.seoTitle) completed.seoTitle = normalizeArticleTitle(completed.seoTitle);
   if (!completed.seoTitle && completed.title) completed.seoTitle = `${completed.title} | Certifyd`;
   if (!completed.seoDescription && completed.excerpt) completed.seoDescription = completed.excerpt;
-  if (!completed.coverImage) completed.coverImage = DEFAULT_BLOG_COVER_IMAGE;
+  completed.coverImage = normalizeBlogCoverImage(completed.coverImage, {
+    title: completed.title,
+    tags: completed.tags,
+    excerpt: completed.excerpt,
+    body: completed.bodyMarkdown,
+  });
   if (!Array.isArray(completed.claims)) completed.claims = [];
   return completed;
 }
 
 function coerceArticleFromMalformedOutput(content, input, groundedContext, reason) {
   const clean = cleanModelDraftText(content);
-  const title = titleFromMalformedOutput(clean) || input.workingTitle || input.topic || 'Certifyd Draft';
+  const title = normalizeArticleTitle(titleFromMalformedOutput(clean) || input.workingTitle || input.topic, 'Certifyd Draft');
   const bodyMarkdown = bodyFromMalformedOutput(clean, title, input);
   const fallbackSourceIds = groundedContext.sourceRecords.slice(0, 3).map((source) => source.id);
   return {
@@ -659,7 +667,7 @@ function coerceArticleFromMalformedOutput(content, input, groundedContext, reaso
     tags: tagsFromTopic(input.topic || title),
     seoTitle: `${title} | Certifyd`,
     seoDescription: excerptFromBody(bodyMarkdown, title),
-    coverImage: DEFAULT_BLOG_COVER_IMAGE,
+    coverImage: selectArticleCoverImage({ title, tags: tagsFromTopic(input.topic || title), body: bodyMarkdown }),
     bodyMarkdown,
     claims: fallbackSourceIds.length ? [{
       text: `Draft generated from a malformed local AI response for founder review: ${title}`,
@@ -763,11 +771,10 @@ function extractJsonCandidate(content) {
   return clean;
 }
 
-function normalizeBlogCoverImage(value) {
+function normalizeBlogCoverImage(value, context = {}) {
   const raw = String(value || '').trim();
-  if (!raw) return DEFAULT_BLOG_COVER_IMAGE;
-  if (!raw.startsWith('/images/')) return DEFAULT_BLOG_COVER_IMAGE;
-  if (raw.includes('\\') || raw.includes('..') || /%2f|%5c/i.test(raw)) return DEFAULT_BLOG_COVER_IMAGE;
+  if (!raw) return selectArticleCoverImage(context);
+  if (!isSafeImagePath(raw)) return selectArticleCoverImage(context);
   return raw;
 }
 
@@ -857,6 +864,14 @@ function sourceId(relative) {
 
 function slugify(value) {
   return String(value || 'certifyd-draft').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 90) || 'certifyd-draft';
+}
+
+function createRunId(slug) {
+  const suffix = Date.now().toString(36);
+  const maxLength = 81;
+  const maxSlugLength = Math.max(1, maxLength - suffix.length - 1);
+  const base = slugify(slug).slice(0, maxSlugLength).replace(/-+$/g, '') || 'certifyd-draft';
+  return `${base}-${suffix}`;
 }
 
 function clampText(value, max) {

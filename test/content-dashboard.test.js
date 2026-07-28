@@ -324,6 +324,168 @@ test('20a publishing validation fails without approved Brain context', async () 
   );
 });
 
+test('20aa publishing preparation normalizes Markdown heading titles', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-title-normalize-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const runId = 'markdown-title-001';
+  const runDir = path.join(outputDir, runId);
+  await createMinimalRun(runDir, {
+    title: '### Markdown Heading Title',
+    slug: 'markdown-heading-title',
+    status: 'FOUNDER_APPROVED',
+    publishability: 'APPROVED_READY',
+    markdown: '---\ntitle: "### Markdown Heading Title"\n---\n\n# Markdown Heading Title\n\nBody.',
+  });
+
+  const actions = new ContentDashboardActions(getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  }));
+  const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+
+  const summary = await actions.runs.readRunSummary(runId);
+  assert.equal(summary.title, 'Markdown Heading Title');
+
+  await actions.preparePublishing({ actor, runId });
+  const blogPackage = JSON.parse(await fs.readFile(path.join(runDir, 'blog', 'blog-post.json'), 'utf8'));
+  assert.equal(blogPackage.title, 'Markdown Heading Title');
+});
+
+test('20ab article cover can be set manually or automatically', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-cover-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const runId = 'cover-update-001';
+  const runDir = path.join(outputDir, runId);
+  await createMinimalRun(runDir, {
+    title: 'AI Music Streaming Cover Test',
+    slug: 'ai-music-streaming-cover-test',
+    status: 'READY_TO_PUBLISH',
+    publishability: 'READY_TO_PUBLISH',
+    markdown: '# AI Music Streaming Cover Test\n\nArtists and streaming rights.',
+  });
+
+  const actions = new ContentDashboardActions(getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  }));
+  const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+
+  await actions.updateCoverImage({ actor, runId, coverImage: '/images/creator-commerce-raw-20260601-edgefix.jpeg', mode: 'manual' });
+  let blogPackage = JSON.parse(await fs.readFile(path.join(runDir, 'blog', 'blog-post.json'), 'utf8'));
+  assert.equal(blogPackage.coverImage, '/images/creator-commerce-raw-20260601-edgefix.jpeg');
+  assert.equal(blogPackage.coverImageMode, 'manual');
+
+  await actions.updateCoverImage({ actor, runId, mode: 'auto' });
+  blogPackage = JSON.parse(await fs.readFile(path.join(runDir, 'blog', 'blog-post.json'), 'utf8'));
+  assert.equal(blogPackage.coverImage, '/images/ip-publishing-creators-20260605.jpeg');
+  assert.equal(blogPackage.coverImageMode, 'auto');
+
+  await assert.rejects(
+    actions.updateCoverImage({ actor, runId, coverImage: 'https://example.test/image.jpg', mode: 'manual' }),
+    /root-relative \/images\/ path/,
+  );
+});
+
+test('20ac automatic cover can use Pexels and download a local image', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-pexels-cover-'));
+  const siteRoot = path.join(tmpRoot, 'site');
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const runId = 'pexels-cover-001';
+  const runDir = path.join(outputDir, runId);
+  await fs.mkdir(siteRoot, { recursive: true });
+  await createMinimalRun(runDir, {
+    title: 'Creator Commerce Cover Test',
+    slug: 'creator-commerce-cover-test',
+    status: 'READY_TO_PUBLISH',
+    publishability: 'READY_TO_PUBLISH',
+    markdown: '# Creator Commerce Cover Test\n\nCreator revenue and ownership.',
+  });
+
+  const calls = [];
+  const fetchImpl = async (url) => {
+    calls.push(String(url));
+    if (String(url).startsWith('https://api.pexels.com/v1/search')) {
+      return new Response(JSON.stringify({
+        photos: [{
+          id: 12345,
+          width: 1600,
+          height: 900,
+          url: 'https://www.pexels.com/photo/test-photo-12345/',
+          photographer: 'Test Photographer',
+          photographer_url: 'https://www.pexels.com/@test-photographer',
+          src: { large2x: 'https://images.pexels.com/photos/12345/test.jpeg?auto=compress&cs=tinysrgb' },
+          alt: 'A creator business workspace',
+        }],
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }
+    return new Response(Buffer.from([0xff, 0xd8, 0xff, 0xd9]), { status: 200, headers: { 'content-type': 'image/jpeg' } });
+  };
+  const config = getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+    CONTENT_DASHBOARD_COVER_IMAGE_PROVIDER: 'pexels',
+    CONTENT_DASHBOARD_PEXELS_API_KEY: 'test-pexels-key',
+  });
+  config.siteRoot = siteRoot;
+  config.coverImages.fetchImpl = fetchImpl;
+  const actions = new ContentDashboardActions(config);
+  const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+
+  await actions.updateCoverImage({ actor, runId, mode: 'auto' });
+  const blogPackage = JSON.parse(await fs.readFile(path.join(runDir, 'blog', 'blog-post.json'), 'utf8'));
+  assert.equal(blogPackage.coverImage, '/images/blog/creator-commerce-cover-test-pexels-12345.jpg');
+  assert.equal(blogPackage.coverImageProvider, 'pexels');
+  assert.equal(blogPackage.coverImageCredit, 'Photo by Test Photographer on Pexels');
+  assert.equal(blogPackage.coverImageAlt, 'A creator business workspace');
+  assert.equal(calls.length, 2);
+  await fs.stat(path.join(siteRoot, 'images', 'blog', 'creator-commerce-cover-test-pexels-12345.jpg'));
+});
+
+test('20ad cover image can be uploaded from a file picker', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-upload-cover-'));
+  const siteRoot = path.join(tmpRoot, 'site');
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const runId = 'upload-cover-001';
+  const runDir = path.join(outputDir, runId);
+  await fs.mkdir(siteRoot, { recursive: true });
+  await createMinimalRun(runDir, {
+    title: 'Upload Cover Test',
+    slug: 'upload-cover-test',
+    status: 'READY_TO_PUBLISH',
+    publishability: 'READY_TO_PUBLISH',
+  });
+
+  const config = getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  });
+  config.siteRoot = siteRoot;
+  const actions = new ContentDashboardActions(config);
+  const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+
+  await actions.uploadCoverImage({
+    actor,
+    runId,
+    file: {
+      filename: 'cover.png',
+      contentType: 'image/png',
+      buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+    },
+  });
+  const blogPackage = JSON.parse(await fs.readFile(path.join(runDir, 'blog', 'blog-post.json'), 'utf8'));
+  assert.match(blogPackage.coverImage, /^\/images\/blog\/upload-cover-test-\d+\.png$/);
+  assert.equal(blogPackage.coverImageProvider, 'upload');
+  await fs.stat(path.join(siteRoot, blogPackage.coverImage.replace(/^\//, '')));
+});
+
 test('20b READY_TO_PUBLISH articles expose Publish to Certifyd and create a tracked draft PR state', async () => {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-publish-'));
   const outputDir = path.join(tmpRoot, 'engine', 'outputs');
@@ -364,6 +526,91 @@ test('20b READY_TO_PUBLISH articles expose Publish to Certifyd and create a trac
   assert.equal(manifest.publishing.pullRequestUrl, 'https://github.test/certifyd/pull/1');
   const prRecord = JSON.parse(await fs.readFile(path.join(runDir, 'publishing', 'github-pr.json'), 'utf8'));
   assert.equal(prRecord.repositoryPath, 'content/blog/local-publish-test.md');
+});
+
+test('20ba direct publishing tracks base branch deployment without PR state', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-direct-publish-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const runId = 'local-direct-publish-001';
+  const runDir = path.join(outputDir, runId);
+  await createMinimalRun(runDir, {
+    title: 'Local Direct Publish Test',
+    slug: 'local-direct-publish-test',
+    status: 'READY_TO_PUBLISH',
+    publishability: 'READY_TO_PUBLISH',
+    markdown: '# Local Direct Publish Test\n\nBody.',
+  });
+
+  const actions = new ContentDashboardActions(getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  }));
+  actions.publisher = {
+    createPullRequest: async () => ({
+      ok: true,
+      output: 'Published directly to main: https://certifyd.me/blog/local-direct-publish-test/',
+      publishMode: 'direct',
+      commitUrls: ['https://github.test/certifyd/commit/1'],
+      branchName: 'main',
+      repositoryPath: 'content/blog/local-direct-publish-test.md',
+      canonicalUrl: 'https://certifyd.me/blog/local-direct-publish-test/',
+    }),
+  };
+  const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+  await actions.preparePublishing({ actor, runId });
+
+  const result = await actions.publishToCertifyd({ actor, runId, version: 'v1' });
+  assert.match(result.output, /Published directly to main/);
+  const manifest = JSON.parse(await fs.readFile(path.join(runDir, 'publication-manifest.json'), 'utf8'));
+  assert.equal(manifest.currentStatus, 'PUBLISHING');
+  assert.equal(manifest.publishability, 'PUBLISHING_DEPLOYMENT');
+  assert.equal(manifest.publishing.mode, 'direct');
+  assert.equal(manifest.publishing.pullRequestUrl, '');
+  assert.equal(manifest.publishing.branchName, 'main');
+  assert.deepEqual(manifest.publishing.commitUrls, ['https://github.test/certifyd/commit/1']);
+});
+
+test('20bb direct publishing can republish a published article', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-republish-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const runId = 'local-republish-001';
+  const runDir = path.join(outputDir, runId);
+  await createMinimalRun(runDir, {
+    title: 'Local Republish Test',
+    slug: 'local-republish-test',
+    status: 'PUBLISHED',
+    publishability: 'LIVE',
+    markdown: '# Local Republish Test\n\nBody.',
+  });
+
+  const actions = new ContentDashboardActions(getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  }));
+  actions.publisher = {
+    createPullRequest: async () => ({
+      ok: true,
+      output: 'Published directly to main: https://certifyd.me/blog/local-republish-test/',
+      publishMode: 'direct',
+      commitUrls: ['https://github.test/certifyd/commit/2'],
+      branchName: 'main',
+      repositoryPath: 'content/blog/local-republish-test.md',
+      canonicalUrl: 'https://certifyd.me/blog/local-republish-test/',
+    }),
+  };
+  const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+
+  const result = await actions.republishToCertifyd({ actor, runId, version: 'v1' });
+  assert.match(result.output, /Published directly to main/);
+  const manifest = JSON.parse(await fs.readFile(path.join(runDir, 'publication-manifest.json'), 'utf8'));
+  assert.equal(manifest.currentStatus, 'PUBLISHING');
+  assert.equal(manifest.publishability, 'PUBLISHING_DEPLOYMENT');
+  assert.equal(manifest.publishing.mode, 'direct');
+  assert.deepEqual(manifest.publishing.commitUrls, ['https://github.test/certifyd/commit/2']);
 });
 
 test('20c live articles can create a tracked unpublish PR state', async () => {

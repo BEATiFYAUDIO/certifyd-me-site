@@ -178,14 +178,17 @@ async function handleAction(req, res, url, ctx) {
   else if (action.endsWith('/review/reject')) { needs('content.article.review'); result = await ctx.actions.reject({ actor: ctx.user, runId: form.get('runId'), note: form.get('note') }); }
   else if (action.endsWith('/publishing/prepare')) { needs('content.article.publish.prepare'); result = await ctx.actions.preparePublishing({ actor: ctx.user, runId: form.get('runId') }); }
   else if (action.endsWith('/publishing/validate')) { needs('content.article.publish.prepare'); result = await ctx.actions.validatePublishing({ actor: ctx.user, runId: form.get('runId') }); }
+  else if (action.endsWith('/publishing/cover')) { needs('content.article.edit'); result = await ctx.actions.updateCoverImage({ actor: ctx.user, runId: form.get('runId'), coverImage: form.get('coverImage'), mode: form.get('mode') }); }
+  else if (action.endsWith('/publishing/cover-upload')) { needs('content.article.edit'); result = await ctx.actions.uploadCoverImage({ actor: ctx.user, runId: form.get('runId'), file: form.getFile('coverUpload') }); }
   else if (action.endsWith('/publishing/pr')) { needs('content.article.publish.prepare'); result = await ctx.actions.publishToCertifyd({ actor: ctx.user, runId: form.get('runId'), version: form.get('version') }); }
+  else if (action.endsWith('/publishing/republish')) { needs('content.article.publish.prepare'); result = await ctx.actions.republishToCertifyd({ actor: ctx.user, runId: form.get('runId'), version: form.get('version') }); }
   else if (action.endsWith('/publishing/verify-live')) { needs('content.article.publish.prepare'); result = await ctx.actions.verifyLivePublication({ actor: ctx.user, runId: form.get('runId') }); }
   else if (action.endsWith('/publishing/unpublish')) { needs('content.article.publish.prepare'); result = await ctx.actions.unpublishFromCertifyd({ actor: ctx.user, runId: form.get('runId'), confirmUnpublish: form.get('confirmUnpublish') }); }
   else if (action.endsWith('/publishing/verify-unpublished')) { needs('content.article.publish.prepare'); result = await ctx.actions.verifyUnpublishedPublication({ actor: ctx.user, runId: form.get('runId') }); }
   else if (action.endsWith('/article/archive')) { needs('content.article.archive'); result = await ctx.actions.archiveArticle({ actor: ctx.user, runId: form.get('runId') }); }
   else if (action.endsWith('/article/delete-draft')) { needs('content.article.delete'); result = await ctx.actions.deleteDraft({ actor: ctx.user, runId: form.get('runId'), confirmDelete: form.get('confirmDelete') }); }
   else return sendStatus(res, 404, 'Unknown action');
-  sendHtml(res, layout({ title: 'Action Result', user: ctx.user, permissions: ctx.permissions, body: `<p class="eyebrow">Action result</p><h1>Completed</h1><pre>${escapeHtml(result.output || JSON.stringify(result, null, 2))}</pre><p><a class="primary" href="/app/content">Back to dashboard</a></p>` }));
+  sendHtml(res, layout({ title: 'Action Result', user: ctx.user, permissions: ctx.permissions, body: `<p class="eyebrow">Action result</p><h1>Completed</h1><pre>${escapeHtml(result.output || JSON.stringify(result, null, 2))}</pre>${actionResultLinks(result)}<p><a class="ghost" href="/app/content">Back to dashboard</a></p>` }));
 }
 
 async function handlePage(req, res, url, ctx) {
@@ -219,7 +222,7 @@ async function handlePage(req, res, url, ctx) {
 async function renderOverview(ctx, csrf) {
   const runs = await ctx.runRepo.listRuns();
   const trends = await getTrendingOpportunities(ctx.config);
-  const drafts = runs.filter((run) => ['DRAFT', 'GENERATED'].includes(run.status));
+  const drafts = runs.filter((run) => isDraftLikeStatus(run.status) || (!run.status && !run.canonicalUrl));
   const inReview = runs.filter((run) => run.status === 'PENDING_FOUNDER_REVIEW');
   const published = runs.filter((run) => run.status === 'PUBLISHED').slice(0, 4);
   const needsAttention = runs.filter((run) => articleMatchesView(run, 'attention'));
@@ -249,7 +252,7 @@ async function renderOverview(ctx, csrf) {
   <section class="status-strip panel" aria-label="System status">
     <span>${escapeHtml(statusText)}</span>
     <span>Brain: approved knowledge source</span>
-    <span>Publishing: ${escapeHtml(ctx.config.githubPublishing.enabled ? 'draft PRs enabled' : 'disabled')}</span>
+    <span>Publishing: ${escapeHtml(publishingStatusLabel(ctx.config.githubPublishing))}</span>
   </section>`;
   return layout({ title: 'Dashboard', user: ctx.user, permissions: ctx.permissions, active: 'Dashboard', body });
 }
@@ -436,7 +439,7 @@ async function renderArticle(ctx, runId, csrf) {
   const externalCount = Array.isArray(run.externalResearch?.items) ? run.externalResearch.items.length : 0;
   const distributionAssets = Array.isArray(run.distribution?.assets) ? run.distribution.assets : [];
   const versions = Array.isArray(run.versions) ? run.versions : [];
-  const body = `<p class="eyebrow">Article Workspace</p><h1>${escapeHtml(summary.title || 'Untitled article')}</h1>${runSummaryHtml(summary)}${brainContextWarning(brainEvidence)}${actionButtons(summary, csrf, ctx.permissions, ctx.config)}<div class="workspace-tabs"><a href="#write">Write</a><a href="#preview">Preview</a><a href="#sources">Sources</a><a href="#distribution">Distribution</a><a href="#history">History</a></div><section id="write" class="workspace-section">${card('Write', `<p class="muted">Editing persistence is intentionally staged. Review and approval use the exact generated version shown here.</p><textarea rows="16">${escapeHtml(run.articleMarkdown || run.draftMarkdown || '')}</textarea>`)}</section><section id="preview" class="workspace-section">${card('Preview', articlePreviewHtml(run))}</section><section id="sources" class="workspace-section"><div class="grid">${card('Source coverage', `<p>Claims: ${claims.length}</p><p>Unresolved blockers: ${escapeHtml(summary.unresolvedIssueCount ?? 0)}</p><p>Approved Brain records: ${brainEvidence.length}</p><p>External research items: ${externalCount}</p>`)}${card('Approved Brain context', brainContextList(brainEvidence))}${card('Claims', claimTable(claims))}</div></section><section id="distribution" class="workspace-section">${card('Distribution', distributionList(distributionAssets, run.distribution?.plan))}</section><section id="history" class="workspace-section">${card('History', versions.map((item) => `<p>${escapeHtml(item.version)}</p>`).join('') || '<p>No versions found.</p>')}</section>`;
+  const body = `<section class="article-workspace-head"><p class="eyebrow">Article Workspace</p><h1>${escapeHtml(summary.title || 'Untitled article')}</h1>${runSummaryHtml(summary)}</section>${card('Cover Image', coverImageControls(run, csrf, ctx.permissions, ctx.config))}${brainContextWarning(brainEvidence)}${actionButtons(summary, csrf, ctx.permissions, ctx.config)}<div class="workspace-tabs"><a href="#write">Write</a><a href="#preview">Preview</a><a href="#sources">Sources</a><a href="#distribution">Distribution</a><a href="#history">History</a></div><section id="write" class="workspace-section">${card('Write', `<p class="muted">Editing persistence is intentionally staged. Review and approval use the exact generated version shown here.</p><textarea rows="16">${escapeHtml(run.articleMarkdown || run.draftMarkdown || '')}</textarea>`)}</section><section id="preview" class="workspace-section">${card('Preview', articlePreviewHtml(run))}</section><section id="sources" class="workspace-section"><div class="grid">${card('Source coverage', `<p>Claims: ${claims.length}</p><p>Unresolved blockers: ${escapeHtml(summary.unresolvedIssueCount ?? 0)}</p><p>Approved Brain records: ${brainEvidence.length}</p><p>External research items: ${externalCount}</p>`)}${card('Approved Brain context', brainContextList(brainEvidence))}${card('Claims', claimTable(claims))}</div></section><section id="distribution" class="workspace-section">${card('Distribution', distributionList(distributionAssets, run.distribution?.plan))}</section><section id="history" class="workspace-section">${card('History', versions.map((item) => `<p>${escapeHtml(item.version)}</p>`).join('') || '<p>No versions found.</p>')}</section>`;
   return layout({ title: summary.title || 'Article', user: ctx.user, permissions: ctx.permissions, active: 'Blog Engine', body });
 }
 
@@ -491,7 +494,9 @@ async function renderTopics(ctx) {
 async function renderPublishing(ctx, csrf) {
   const runs = await ctx.runRepo.listRuns();
   const notice = ctx.config.githubPublishing.enabled
-    ? 'GitHub App publishing is enabled. Approved packages can create draft pull requests only; merging remains a separate human review step.'
+    ? ctx.config.githubPublishing.mode === 'direct'
+      ? `GitHub publishing writes directly to ${ctx.config.githubPublishing.baseBranch}. Approved packages update the live site source without creating review branches.`
+      : 'GitHub App publishing is enabled. Approved packages can create draft pull requests only; merging remains a separate human review step.'
     : 'GitHub App publishing is disabled. No live site publication occurs. Highest status is READY_TO_PUBLISH.';
   return layout({ title: 'Publishing', user: ctx.user, permissions: ctx.permissions, active: 'Blog Engine', body: `<p class="eyebrow">Publishing</p><h1>Blog package preparation</h1><p class="notice">${escapeHtml(notice)}</p>${runs.map((run) => card(run.title, runSummaryHtml(run) + actionButtons(run, csrf, ctx.permissions, ctx.config))).join('')}` });
 }
@@ -503,7 +508,7 @@ async function renderDistribution(ctx) {
     const detail = await ctx.runRepo.readRun(run.runId).catch(() => null);
     blocks.push(card(run.title || 'Untitled article', distributionList(detail?.distribution?.assets, detail?.distribution?.plan)));
   }
-  const primary = card('Certifyd Blog', '<strong>Primary publishing target</strong><p>Approved articles publish to <code>content/blog/[slug].md</code> and become available at <code>https://certifyd.me/blog/[slug]/</code> after the draft pull request is reviewed and merged.</p>');
+  const primary = card('Certifyd Blog', '<strong>Primary publishing target</strong><p>Approved articles publish to <code>content/blog/[slug].md</code> and become available at <code>https://certifyd.me/blog/[slug]/</code> after the site deploys.</p>');
   const channels = ['X', 'Medium', 'Substack', 'LinkedIn', 'Newsletter'].map((name) => card(name, '<strong>Disconnected</strong><p>Generate, preview, copy and export are staged. No external account publishes from this dashboard yet.</p>')).join('');
   return layout({ title: 'Distribution', user: ctx.user, permissions: ctx.permissions, active: 'Distribution', body: `<p class="eyebrow">Distribution</p><h1>Blog and channel versions</h1><p>Certifyd Blog is the canonical publishing path. Social and newsletter channels remain draft-only exports.</p><div class="grid">${primary}${channels}</div>${blocks.join('')}` });
 }
@@ -515,15 +520,15 @@ function renderAnalytics(ctx) {
 
 function renderSettings(ctx) {
   const trendSources = buildSourceRegistry(ctx.config);
-  const safe = { dashboardEnabled: ctx.config.enabled, authMode: ctx.config.authMode, publicAdminUrl: ctx.config.publicAdminUrl, database: ctx.config.databasePath === ':memory:' ? 'memory' : 'sqlite configured', userCount: ctx.userRepo.listUsers().length, localAi: { enabled: ctx.config.ollama.enabled, model: ctx.config.ollama.model, baseUrl: ctx.config.ollama.baseUrl ? 'configured' : 'not configured' }, trendResearch: ctx.config.trendResearchProvider || ctx.config.trendResearch?.provider || 'manual only', trendSourceCount: trendSources.length, trendSources: trendSources.map((source) => ({ id: source.id, publisher: source.publisher, category: source.category, feedUrl: source.feedUrl })), trendScan: { maxItemsPerSource: ctx.config.trendResearch?.maxItemsPerSource, maxItemAgeDays: ctx.config.trendResearch?.maxItemAgeDays, timeoutMs: ctx.config.trendResearch?.timeoutMs, maxConcurrentFetches: ctx.config.trendResearch?.maxConcurrentFetches, dailyScanEnabled: ctx.config.trendResearch?.dailyScanEnabled, scanHour: ctx.config.trendResearch?.scanHour, manualCommand: 'npm run trends:scan' }, externalResearch: ctx.config.externalResearchProvider || 'not configured', brain: 'content-agent/knowledge', githubPublishing: ctx.config.githubPublishing.enabled ? 'draft pull requests' : 'disabled', githubRepositoryConfigured: Boolean(ctx.config.githubPublishing.owner && ctx.config.githubPublishing.repo), distributionAccounts: 'none connected', cloudflareAccessConfigured: Boolean(ctx.config.cloudflareAccess.teamDomain && ctx.config.cloudflareAccess.audience), environment: ctx.config.environmentName };
-  return layout({ title: 'Settings', user: ctx.user, permissions: ctx.permissions, active: 'Settings', body: `<p class="eyebrow">Settings</p><h1>Configuration</h1><p>Secrets, tokens and raw session data are never displayed.</p><div class="grid">${['Local AI','Trend research','External research','Brain','GitHub publishing','Distribution accounts','Access','Advanced diagnostics'].map((name) => card(name, `<p>${escapeHtml(settingsSummary(name, safe))}</p>`)).join('')}</div><section class="panel"><h2>Trend sources</h2><p>Trend scanning uses approved RSS/Atom sources. Search and social providers are placeholders until official integrations are configured.</p><div class="review-list">${safe.trendSources.map((source) => `<article class="review-item compact-row"><div><h3>${escapeHtml(source.publisher)}</h3><p>${escapeHtml(source.category)} · ${escapeHtml(source.feedUrl)}</p></div><span class="pill good">Approved</span></article>`).join('') || '<p>No approved trend feeds configured.</p>'}</div></section><section id="advanced-diagnostics" class="panel"><h2>Advanced diagnostics</h2><pre>${escapeHtml(JSON.stringify(safe, null, 2))}</pre></section>` });
+  const safe = { dashboardEnabled: ctx.config.enabled, authMode: ctx.config.authMode, publicAdminUrl: ctx.config.publicAdminUrl, database: ctx.config.databasePath === ':memory:' ? 'memory' : 'sqlite configured', userCount: ctx.userRepo.listUsers().length, localAi: { enabled: ctx.config.ollama.enabled, model: ctx.config.ollama.model, baseUrl: ctx.config.ollama.baseUrl ? 'configured' : 'not configured' }, trendResearch: ctx.config.trendResearchProvider || ctx.config.trendResearch?.provider || 'manual only', trendSourceCount: trendSources.length, trendSources: trendSources.map((source) => ({ id: source.id, publisher: source.publisher, category: source.category, feedUrl: source.feedUrl })), trendScan: { maxItemsPerSource: ctx.config.trendResearch?.maxItemsPerSource, maxItemAgeDays: ctx.config.trendResearch?.maxItemAgeDays, timeoutMs: ctx.config.trendResearch?.timeoutMs, maxConcurrentFetches: ctx.config.trendResearch?.maxConcurrentFetches, dailyScanEnabled: ctx.config.trendResearch?.dailyScanEnabled, scanHour: ctx.config.trendResearch?.scanHour, manualCommand: 'npm run trends:scan' }, externalResearch: ctx.config.externalResearchProvider || 'not configured', brain: 'content-agent/knowledge', githubPublishing: publishingStatusLabel(ctx.config.githubPublishing), githubRepositoryConfigured: Boolean(ctx.config.githubPublishing.owner && ctx.config.githubPublishing.repo), coverImages: ctx.config.coverImages?.provider === 'pexels' && ctx.config.coverImages?.pexelsApiKey ? 'Pexels configured' : 'local rule-based fallback', distributionAccounts: 'none connected', cloudflareAccessConfigured: Boolean(ctx.config.cloudflareAccess.teamDomain && ctx.config.cloudflareAccess.audience), environment: ctx.config.environmentName };
+  return layout({ title: 'Settings', user: ctx.user, permissions: ctx.permissions, active: 'Settings', body: `<p class="eyebrow">Settings</p><h1>Configuration</h1><p>Secrets, tokens and raw session data are never displayed.</p><div class="grid">${['Local AI','Trend research','External research','Brain','GitHub publishing','Cover images','Distribution accounts','Access','Advanced diagnostics'].map((name) => card(name, `<p>${escapeHtml(settingsSummary(name, safe))}</p>`)).join('')}</div><section class="panel"><h2>Trend sources</h2><p>Trend scanning uses approved RSS/Atom sources. Search and social providers are placeholders until official integrations are configured.</p><div class="review-list">${safe.trendSources.map((source) => `<article class="review-item compact-row"><div><h3>${escapeHtml(source.publisher)}</h3><p>${escapeHtml(source.category)} · ${escapeHtml(source.feedUrl)}</p></div><span class="pill good">Approved</span></article>`).join('') || '<p>No approved trend feeds configured.</p>'}</div></section><section id="advanced-diagnostics" class="panel"><h2>Advanced diagnostics</h2><pre>${escapeHtml(JSON.stringify(safe, null, 2))}</pre></section>` });
 }
 
 function articleMatchesView(run, view) {
   const status = String(run.status || '');
   const publishability = String(run.publishability || '');
   if (view === 'ideas') return false;
-  if (view === 'drafts') return ['DRAFT', 'GENERATED'].includes(status) || (!status && !run.canonicalUrl);
+  if (view === 'drafts') return isDraftLikeStatus(status) || (!status && !run.canonicalUrl);
   if (view === 'review') return status === 'PENDING_FOUNDER_REVIEW';
   if (view === 'approved') return ['FOUNDER_APPROVED', 'READY_TO_PUBLISH'].includes(status);
   if (view === 'published') return status === 'PUBLISHED';
@@ -532,13 +537,25 @@ function articleMatchesView(run, view) {
   return true;
 }
 
+function isDraftLikeStatus(status) {
+  return ['DRAFT', 'GENERATED', 'PENDING_FOUNDER_REVIEW'].includes(String(status || '').toUpperCase());
+}
+
+function actionResultLinks(result) {
+  const runId = result?.runId ? String(result.runId) : '';
+  if (!runId) return '';
+  const encodedRunId = encodeURIComponent(runId);
+  return `<div class="actions"><a class="primary" href="/app/content/articles/${encodedRunId}">Open generated draft</a><a class="ghost" href="/app/content/articles?view=drafts">View Drafts</a><a class="ghost" href="/app/content/articles?view=review">Review Queue</a></div>`;
+}
+
 function settingsSummary(name, safe) {
   const summaries = {
     'Local AI': safe.localAi.enabled ? `Qwen configured (${safe.localAi.model}).` : 'Qwen is unavailable until Ollama is configured.',
     'Trend research': ['seeded','fixture'].includes(safe.trendResearch) ? 'Seeded examples only. Use RSS or composite for source-backed scans.' : `${safe.trendResearch} configured with ${safe.trendSourceCount} approved source${safe.trendSourceCount === 1 ? '' : 's'}.`,
     'External research': safe.externalResearch === 'fixture' ? 'No live external research provider is connected.' : `${safe.externalResearch} configured.`,
     Brain: 'Approved Certifyd knowledge powers grounded drafts.',
-    'GitHub publishing': safe.githubPublishing === 'draft pull requests' ? 'Draft PR publishing is configured.' : 'Publishing is disabled.',
+    'GitHub publishing': safe.githubPublishing === 'disabled' ? 'Publishing is disabled.' : `${safe.githubPublishing} is configured.`,
+    'Cover images': safe.coverImages,
     'Distribution accounts': 'No social or newsletter accounts are connected.',
     Access: `${safe.authMode}; Cloudflare Access ${safe.cloudflareAccessConfigured ? 'configured' : 'not configured'}.`,
     'Advanced diagnostics': 'Safe, redacted configuration only.',
@@ -546,8 +563,13 @@ function settingsSummary(name, safe) {
   return summaries[name] || 'Not configured.';
 }
 
+function publishingStatusLabel(githubPublishing = {}) {
+  if (!githubPublishing.enabled) return 'disabled';
+  return githubPublishing.mode === 'direct' ? `direct to ${githubPublishing.baseBranch || 'base branch'}` : 'draft PRs enabled';
+}
+
 function runSummaryHtml(run) {
-  return `<div class="grid"><div><h3>${escapeHtml(run.title || 'Untitled article')}</h3><p>${escapeHtml(run.runId)} · ${escapeHtml(run.version)}</p></div><div>${statusPill(run.status)} ${statusPill(run.publishability)}</div><div><strong>${escapeHtml(humanizeLabel(run.modelMode || run.modelProvider || 'Unknown'))}</strong><p>Writing provider</p></div><div><strong>${escapeHtml(run.unresolvedIssueCount ?? 0)}</strong><p>Unresolved issues</p></div></div><p>Canonical: ${escapeHtml(run.canonicalUrl || 'Not set')}</p>`;
+  return `<div class="article-meta-grid"><div><span>Status</span><strong>${statusPill(run.status)} ${statusPill(run.publishability)}</strong></div><div><span>Writing provider</span><strong>${escapeHtml(humanizeLabel(run.modelMode || run.modelProvider || 'Unknown'))}</strong></div><div><span>Issues</span><strong>${escapeHtml(run.unresolvedIssueCount ?? 0)}</strong></div><div><span>Version</span><strong>${escapeHtml(run.version || 'v1')}</strong></div></div><p class="canonical-line">Canonical: ${escapeHtml(run.canonicalUrl || 'Not set')}</p><p class="muted run-id-line">${escapeHtml(run.runId || '')}</p>`;
 }
 
 function articleRowActions(run, csrf, permissions, config = {}) {
@@ -566,26 +588,43 @@ function actionButtons(run, csrf, permissions, config = {}) {
   const status = String(run.status || '');
   const publishability = String(run.publishability || '');
   const hasCertifydBlogUrl = /^https:\/\/certifyd\.me\/blog\/[a-z0-9-]+\/$/.test(String(run.canonicalUrl || ''));
-  const forms = [];
-  if (permissions.includes('content.article.review')) forms.push(form('/app/content/actions/review/start', 'Open Review', { runId, _csrf: csrf }), form('/app/content/actions/review/revise', 'Request Revision', { runId, _csrf: csrf }), form('/app/content/actions/review/reject', 'Reject', { runId, note: 'Rejected from dashboard.', _csrf: csrf }));
-  if (permissions.includes('content.article.approve')) forms.push(form('/app/content/actions/review/approve', 'Approve', { runId, version, confirm: 'true', _csrf: csrf }, 'primary'));
-  if (permissions.includes('content.article.publish.prepare')) {
-    if (status === 'FOUNDER_APPROVED') forms.push(form('/app/content/actions/publishing/prepare', 'Prepare for Certifyd Blog', { runId, _csrf: csrf }));
-    if (publishability === 'READY_TO_PUBLISH') {
-      forms.push(form('/app/content/actions/publishing/validate', 'Validate', { runId, _csrf: csrf }));
-      forms.push(form('/app/content/actions/publishing/pr', 'Publish to Certifyd', { runId, version, _csrf: csrf }, 'primary'));
-      if (!config.githubPublishing?.enabled) forms.push('<span class="muted">GitHub publishing is disabled in Settings.</span>');
-    }
-    if (status === 'PUBLISHING') forms.push(form('/app/content/actions/publishing/verify-live', 'Verify Live', { runId, _csrf: csrf }, 'primary'));
-    if (status === 'UNPUBLISHING') forms.push(form('/app/content/actions/publishing/verify-unpublished', 'Verify Removed', { runId, _csrf: csrf }, 'primary'));
-    if (hasCertifydBlogUrl && !['ARCHIVED', 'UNPUBLISHING'].includes(status) && publishability !== 'REMOVED_FROM_LIVE_SITE') {
-      forms.push(`<a class="primary" href="${escapeHtml(run.canonicalUrl)}">View Live</a>`);
-      forms.push(`<form class="inline-confirm" method="post" action="/app/content/actions/publishing/unpublish"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><label class="sr-only" for="confirm-unpublish-${escapeHtml(runId)}">Type unpublish to confirm live article removal</label><input id="confirm-unpublish-${escapeHtml(runId)}" name="confirmUnpublish" placeholder="type unpublish" autocomplete="off"><button class="ghost danger" type="submit">Unpublish from Certifyd</button></form>`);
+  const review = [];
+  const publish = [];
+  const live = [];
+  const manage = [];
+  if (permissions.includes('content.article.review')) {
+    if (!['PENDING_FOUNDER_REVIEW', 'FOUNDER_APPROVED', 'READY_TO_PUBLISH', 'PUBLISHING', 'PUBLISHED'].includes(status)) review.push(form('/app/content/actions/review/start', 'Open Review', { runId, _csrf: csrf }));
+    if (status === 'PENDING_FOUNDER_REVIEW') {
+      review.push(form('/app/content/actions/review/revise', 'Request Revision', { runId, _csrf: csrf }));
+      review.push(form('/app/content/actions/review/reject', 'Reject', { runId, note: 'Rejected from dashboard.', _csrf: csrf }, 'ghost danger'));
     }
   }
-  forms.push(compactLifecycleForms(run, csrf, permissions, config));
-  forms.push(`<a class="ghost" href="/app/content/articles/${escapeHtml(runId)}/preview">Preview</a>`);
-  return `<div class="actions">${forms.join('')}</div>`;
+  if (permissions.includes('content.article.approve') && status === 'PENDING_FOUNDER_REVIEW') review.push(form('/app/content/actions/review/approve', 'Approve', { runId, version, confirm: 'true', _csrf: csrf }, 'primary'));
+  if (permissions.includes('content.article.publish.prepare')) {
+    if (status === 'FOUNDER_APPROVED') publish.push(form('/app/content/actions/publishing/prepare', 'Prepare Package', { runId, _csrf: csrf }));
+    if (publishability === 'READY_TO_PUBLISH') {
+      publish.push(form('/app/content/actions/publishing/validate', 'Validate', { runId, _csrf: csrf }));
+      publish.push(form('/app/content/actions/publishing/pr', 'Publish to Certifyd', { runId, version, _csrf: csrf }, 'primary'));
+      if (!config.githubPublishing?.enabled) publish.push('<span class="muted">GitHub publishing is disabled in Settings.</span>');
+    }
+    if (config.githubPublishing?.mode === 'direct' && ['PUBLISHING', 'PUBLISHED'].includes(status)) {
+      publish.push(form('/app/content/actions/publishing/republish', 'Republish to Certifyd', { runId, version, _csrf: csrf }, 'primary'));
+    }
+    if (status === 'PUBLISHING') publish.push(form('/app/content/actions/publishing/verify-live', 'Verify Live', { runId, _csrf: csrf }, 'primary'));
+    if (status === 'UNPUBLISHING') publish.push(form('/app/content/actions/publishing/verify-unpublished', 'Verify Removed', { runId, _csrf: csrf }, 'primary'));
+    if (hasCertifydBlogUrl && !['ARCHIVED', 'UNPUBLISHING'].includes(status) && publishability !== 'REMOVED_FROM_LIVE_SITE') {
+      live.push(`<a class="primary" href="${escapeHtml(run.canonicalUrl)}">View Live</a>`);
+      live.push(`<form class="confirm-action" method="post" action="/app/content/actions/publishing/unpublish"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><label for="confirm-unpublish-${escapeHtml(runId)}">Type unpublish</label><input id="confirm-unpublish-${escapeHtml(runId)}" name="confirmUnpublish" placeholder="unpublish" autocomplete="off"><button class="ghost danger" type="submit">Unpublish</button></form>`);
+    }
+  }
+  manage.push(...compactLifecycleForms(run, csrf, permissions, config));
+  const groups = [
+    actionGroup('Review', review),
+    actionGroup('Publish', publish),
+    actionGroup('Live Site', live),
+    actionGroup('Manage', manage),
+  ].filter(Boolean).join('');
+  return groups ? `<section class="action-panel">${groups}</section>` : '';
 }
 
 function compactLifecycleForms(run, csrf, permissions) {
@@ -596,9 +635,15 @@ function compactLifecycleForms(run, csrf, permissions) {
     forms.push(form('/app/content/actions/article/archive', 'Archive', { runId, _csrf: csrf }));
   }
   if (permissions.includes('content.article.delete') && !['PUBLISHED', 'PUBLISHING', 'ARCHIVED'].includes(status)) {
-    forms.push(`<form class="inline-confirm" method="post" action="/app/content/actions/article/delete-draft"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><label class="sr-only" for="confirm-delete-${escapeHtml(runId)}">Type delete to confirm draft deletion</label><input id="confirm-delete-${escapeHtml(runId)}" name="confirmDelete" placeholder="type delete" autocomplete="off"><button class="ghost danger" type="submit">Delete draft</button></form>`);
+    forms.push(`<form class="confirm-action" method="post" action="/app/content/actions/article/delete-draft"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><label for="confirm-delete-${escapeHtml(runId)}">Type delete</label><input id="confirm-delete-${escapeHtml(runId)}" name="confirmDelete" placeholder="delete" autocomplete="off"><button class="ghost danger" type="submit">Delete Draft</button></form>`);
   }
   return forms.join('');
+}
+
+function actionGroup(title, items) {
+  const cleanItems = items.filter(Boolean);
+  if (!cleanItems.length) return '';
+  return `<div class="action-group"><h3>${escapeHtml(title)}</h3><div class="action-row">${cleanItems.join('')}</div></div>`;
 }
 
 function form(action, label, fields, className = 'ghost') {
@@ -630,6 +675,27 @@ function distributionList(assets, plan = {}) {
   return `${primary}${assets.map((asset) => `<details><summary>${escapeHtml(asset.channel)} · ${escapeHtml(asset.status || 'DRAFT')}</summary><pre>${escapeHtml(asset.body)}</pre></details>`).join('')}`;
 }
 
+function coverImageControls(run, csrf, permissions, config = {}) {
+  const canEdit = permissions.includes('content.article.edit');
+  const runId = run.summary?.runId || run.runId || '';
+  const coverImage = run.blogPackage?.coverImage || run.manifest?.coverImage || '';
+  const provider = run.blogPackage?.coverImageProvider || '';
+  const credit = run.blogPackage?.coverImageCredit || '';
+  const creditUrl = run.blogPackage?.coverImageCreditUrl || '';
+  const query = run.blogPackage?.coverImageQuery || '';
+  const autoLabel = config.coverImages?.provider === 'pexels' && config.coverImages?.pexelsApiKey ? 'Use Pexels Auto Cover' : 'Use Auto Cover';
+  const details = [
+    provider ? `Provider: ${escapeHtml(provider)}` : '',
+    query ? `Query: ${escapeHtml(query)}` : '',
+    credit ? `Credit: ${creditUrl ? `<a href="${escapeHtml(creditUrl)}">${escapeHtml(credit)}</a>` : escapeHtml(credit)}` : '',
+  ].filter(Boolean).map((line) => `<p class="muted">${line}</p>`).join('');
+  const preview = coverImage
+    ? `<div class="article-hero-image"><img src="${escapeHtml(coverImage)}" alt="" loading="lazy" decoding="async"></div><p class="muted">${escapeHtml(coverImage)}</p>${details}`
+    : '<p class="muted">No custom cover selected. Publishing will choose one automatically.</p>';
+  if (!canEdit) return preview;
+  return `${preview}<div class="cover-actions"><form class="upload-row" method="post" action="/app/content/actions/publishing/cover-upload" enctype="multipart/form-data"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><label>Upload image<input name="coverUpload" type="file" accept="image/jpeg,image/png,image/webp" required></label><button class="primary" type="submit">Upload Cover</button></form><form method="post" action="/app/content/actions/publishing/cover"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="mode" value="auto"><button class="ghost" type="submit">${escapeHtml(autoLabel)}</button></form><details class="advanced-cover"><summary>Advanced: use existing image path</summary><form class="search-row" method="post" action="/app/content/actions/publishing/cover"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="mode" value="manual"><label>Existing /images path<input name="coverImage" value="${escapeHtml(coverImage)}" placeholder="/images/blog/example.jpg"></label><button class="ghost" type="submit">Set Path</button></form></details></div>`;
+}
+
 function articlePreviewHtml(run) {
   return `<article class="article">${renderMarkdown(articleMarkdownForPreview(run))}</article>`;
 }
@@ -645,8 +711,57 @@ function stripMarkdownFrontmatter(markdown) {
 async function readForm(req) {
   const chunks = [];
   for await (const chunk of req) chunks.push(chunk);
-  const body = Buffer.concat(chunks).toString('utf8');
-  return new URLSearchParams(body);
+  const body = Buffer.concat(chunks);
+  const contentType = String(req.headers['content-type'] || '');
+  if (contentType.toLowerCase().startsWith('multipart/form-data')) return parseMultipartForm(body, contentType);
+  return formAdapter(new URLSearchParams(body.toString('utf8')), new Map());
+}
+
+function formAdapter(fields, files) {
+  return {
+    get(name) {
+      return fields.get(name);
+    },
+    getFile(name) {
+      return files.get(name) || null;
+    },
+  };
+}
+
+function parseMultipartForm(body, contentType) {
+  const boundary = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i)?.[1] || contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i)?.[2] || '';
+  if (!boundary) throw Object.assign(new Error('Invalid multipart form boundary.'), { statusCode: 400 });
+  const fields = new URLSearchParams();
+  const files = new Map();
+  const delimiter = Buffer.from(`--${boundary}`);
+  let position = body.indexOf(delimiter);
+  while (position !== -1) {
+    position += delimiter.length;
+    if (body.slice(position, position + 2).toString() === '--') break;
+    if (body.slice(position, position + 2).toString() === '\r\n') position += 2;
+    const headerEnd = body.indexOf(Buffer.from('\r\n\r\n'), position);
+    if (headerEnd === -1) break;
+    const headerText = body.slice(position, headerEnd).toString('utf8');
+    const next = body.indexOf(delimiter, headerEnd + 4);
+    if (next === -1) break;
+    let partBody = body.slice(headerEnd + 4, next);
+    if (partBody.slice(-2).toString() === '\r\n') partBody = partBody.slice(0, -2);
+    const disposition = headerText.match(/content-disposition:\s*form-data;([^\r\n]+)/i)?.[1] || '';
+    const name = disposition.match(/name="([^"]+)"/i)?.[1] || '';
+    const filename = disposition.match(/filename="([^"]*)"/i)?.[1] || '';
+    const partContentType = headerText.match(/content-type:\s*([^\r\n]+)/i)?.[1]?.trim() || '';
+    if (name && filename) {
+      files.set(name, {
+        filename,
+        contentType: partContentType,
+        buffer: partBody,
+      });
+    } else if (name) {
+      fields.set(name, partBody.toString('utf8'));
+    }
+    position = next;
+  }
+  return formAdapter(fields, files);
 }
 
 function validateIntake(form) {

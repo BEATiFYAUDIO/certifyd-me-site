@@ -220,7 +220,7 @@ test('generated article cover image is persisted when safe', async () => {
   assert.ok(markdown.includes('coverImage: "/images/certifyd-tab-icon.svg"'));
 });
 
-test('unsafe generated cover image falls back to default site image', async () => {
+test('unsafe generated cover image falls back to automatic safe cover', async () => {
   const config = await makeConfig();
   const context = await makeContext(config);
   const sourceId = context.sourceRecords[0].id;
@@ -228,7 +228,23 @@ test('unsafe generated cover image falls back to default site image', async () =
     fetchImpl: makeOllamaFetch(validArticle(sourceId, { coverImage: 'https://evil.example/tracker.png' })),
   });
   const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
-  assert.equal(article.coverImage, '/images/certifyd-main-image-independent-scene-20260613.png');
+  assert.equal(article.coverImage, '/images/creator-commerce-raw-20260601-edgefix.jpeg');
+});
+
+test('missing generated cover image is selected automatically from topic signals', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OllamaQwenGenerationProvider(config, {
+    fetchImpl: makeOllamaFetch(validArticle(sourceId, {
+      title: 'AI Music Streaming and Creator Rights',
+      tags: ['music', 'AI'],
+      coverImage: '',
+      bodyMarkdown: 'AI music streaming raises questions about artists, licensing and royalties.',
+    })),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'AI music streaming', audience: 'Creators', objective: 'Explain the issue.' }, context);
+  assert.equal(article.coverImage, '/images/ip-publishing-creators-20260605.jpeg');
 });
 
 test('invented Brain source IDs are downgraded instead of killing generation', async () => {

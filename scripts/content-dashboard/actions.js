@@ -6,6 +6,8 @@ import { validateRunId, validateVersion } from './security.js';
 import { ContentRunRepository } from './repository.js';
 import { createPublisher } from './publisher.js';
 import { buildGroundedContext, createGenerationProvider, normalizeProviderName, persistGeneratedArticleRun } from './generation-provider.js';
+import { isSafeImagePath, normalizeArticleTitle, selectArticleCoverImage } from './article-utils.js';
+import { selectAutomatedCoverImage } from './cover-image-provider.js';
 
 const execFileAsync = promisify(execFile);
 const RESULT_LIMIT = 12000;
@@ -129,7 +131,7 @@ export class ContentDashboardActions {
     await this.writeRunJson(base, 'reviews/founder-review.json', review);
     await this.writeRunJson(base, 'publication-manifest.json', {
       ...manifest,
-      title: manifest.title || run.summary.title,
+      title: normalizeArticleTitle(manifest.title || run.summary.title),
       slug: manifest.slug || run.summary.slug || safeSlug(run.summary.title || runId),
       currentStatus: 'FOUNDER_APPROVED',
       publishability: 'APPROVED_READY',
@@ -145,7 +147,7 @@ export class ContentDashboardActions {
       at: now,
     });
     await this.audit.append({ action: 'approval', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, version, result: 'SUCCESS' });
-    return { ok: true, output: `Approved ${run.summary.title || runId} for Certifyd Blog preparation.` };
+    return { ok: true, output: `Approved ${normalizeArticleTitle(run.summary.title || runId)} for Certifyd Blog preparation.` };
   }
 
   async reject({ actor, runId, note = '' }) {
@@ -203,7 +205,7 @@ export class ContentDashboardActions {
     assertApprovedBrainContext(run);
     const base = this.runs.runPath(runId);
     const slug = safeSlug(run.blogPackage?.slug || run.summary.slug || run.summary.title || runId);
-    const title = run.blogPackage?.title || run.summary.title || 'Untitled article';
+    const title = normalizeArticleTitle(run.blogPackage?.title || run.summary.title);
     const articleMarkdown = stripFrontmatter(run.articleMarkdown || run.draftMarkdown || '');
     const canonicalUrl = blogUrl(slug);
     const blogPackage = {
@@ -273,7 +275,94 @@ export class ContentDashboardActions {
     return { ok: true, output: `Publishing package is ready for Certifyd Blog: ${blogUrl(slug)}` };
   }
 
-  async publishToCertifyd({ actor, runId, version }) {
+  async validateRepublishing({ actor, runId }) {
+    validateRunId(runId);
+    const run = await this.runs.readRun(runId);
+    const errors = [];
+    const slug = safeSlug(run.blogPackage?.slug || run.summary.slug || run.summary.title || runId);
+    if (!['PUBLISHING', 'PUBLISHED'].includes(run.summary.status)) errors.push('Only published or publishing articles can be republished directly.');
+    if (!run.blogPackage?.repositoryPath && !run.blogPackage?.body && !stripFrontmatter(run.articleMarkdown || run.draftMarkdown || '')) errors.push('Article body is empty.');
+    if (!slug) errors.push('Article slug is missing.');
+    if (!approvedBrainEvidence(run).length) errors.push(REQUIRED_BRAIN_CONTEXT_ERROR);
+    await this.audit.append({ action: 'publishing_republish_validation', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: errors.length ? 'FAILED' : 'SUCCESS', note: errors.join(' ') });
+    if (errors.length) throw Object.assign(new Error(errors.join(' ')), { statusCode: 409 });
+    return { ok: true, output: `Publishing package is ready to republish: ${blogUrl(slug)}` };
+  }
+
+  async updateCoverImage({ actor, runId, coverImage = '', mode = 'manual' }) {
+    validateRunId(runId);
+    const run = await this.runs.readRun(runId);
+    const base = this.runs.runPath(runId);
+    const manualCover = cleanString(coverImage, 240);
+    if (mode !== 'auto' && !isSafeImagePath(manualCover)) {
+      throw Object.assign(new Error('Cover image must be a root-relative /images/ path.'), { statusCode: 400 });
+    }
+    const autoCover = mode === 'auto' ? await selectAutomatedCoverImage(this.config, run) : null;
+    const selectedCover = autoCover?.coverImage || manualCover;
+    const blogPackage = {
+      ...run.blogPackage,
+      title: normalizeArticleTitle(run.blogPackage?.title || run.summary.title),
+      slug: run.blogPackage?.slug || run.summary.slug || safeSlug(run.summary.title || runId),
+      coverImage: selectedCover,
+      coverImageMode: autoCover?.coverImageMode || 'manual',
+      coverImageProvider: autoCover?.coverImageProvider || 'manual',
+      coverImageAlt: autoCover?.coverImageAlt || '',
+      coverImageCredit: autoCover?.coverImageCredit || '',
+      coverImageCreditUrl: autoCover?.coverImageCreditUrl || '',
+      coverImagePhotographer: autoCover?.coverImagePhotographer || '',
+      coverImagePhotographerUrl: autoCover?.coverImagePhotographerUrl || '',
+      coverImagePexelsId: autoCover?.coverImagePexelsId || '',
+      coverImageQuery: autoCover?.coverImageQuery || '',
+      coverImageFetchedAt: autoCover?.coverImageFetchedAt || '',
+      coverImageUpdatedAt: new Date().toISOString(),
+      coverImageUpdatedBy: actor.email,
+    };
+    await this.writeRunJson(base, 'blog/blog-post.json', blogPackage);
+    await this.audit.append({ action: 'cover_image_update', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: 'SUCCESS', note: `${blogPackage.coverImageMode}:${selectedCover}` });
+    return { ok: true, output: `Cover image set to ${selectedCover}.` };
+  }
+
+  async uploadCoverImage({ actor, runId, file }) {
+    validateRunId(runId);
+    if (!file?.buffer?.length) throw Object.assign(new Error('Choose an image file to upload.'), { statusCode: 400 });
+    if (file.buffer.length > 8 * 1024 * 1024) throw Object.assign(new Error('Cover image must be 8MB or smaller.'), { statusCode: 400 });
+    const extension = imageExtension(file.contentType, file.filename);
+    if (!extension) throw Object.assign(new Error('Cover image must be a JPEG, PNG or WebP file.'), { statusCode: 400 });
+    const run = await this.runs.readRun(runId);
+    const base = this.runs.runPath(runId);
+    const slug = safeSlug(run.blogPackage?.slug || run.summary.slug || run.summary.title || runId);
+    const fileName = `${slug}-${Date.now()}${extension}`;
+    const relativePath = path.join('images', 'blog', fileName).replace(/\\/g, '/');
+    const imageRoot = path.join(this.config.siteRoot, 'images', 'blog');
+    const outputPath = path.join(this.config.siteRoot, relativePath);
+    if (!outputPath.startsWith(`${imageRoot}${path.sep}`)) throw Object.assign(new Error('Unsafe image upload path.'), { statusCode: 400 });
+    await fs.mkdir(path.dirname(outputPath), { recursive: true });
+    await fs.writeFile(outputPath, file.buffer);
+    const selectedCover = `/${relativePath}`;
+    const blogPackage = {
+      ...run.blogPackage,
+      title: normalizeArticleTitle(run.blogPackage?.title || run.summary.title),
+      slug,
+      coverImage: selectedCover,
+      coverImageMode: 'upload',
+      coverImageProvider: 'upload',
+      coverImageAlt: '',
+      coverImageCredit: '',
+      coverImageCreditUrl: '',
+      coverImagePhotographer: '',
+      coverImagePhotographerUrl: '',
+      coverImagePexelsId: '',
+      coverImageQuery: '',
+      coverImageFetchedAt: '',
+      coverImageUpdatedAt: new Date().toISOString(),
+      coverImageUpdatedBy: actor.email,
+    };
+    await this.writeRunJson(base, 'blog/blog-post.json', blogPackage);
+    await this.audit.append({ action: 'cover_image_upload', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: 'SUCCESS', note: selectedCover });
+    return { ok: true, output: `Cover image uploaded to ${selectedCover}.` };
+  }
+
+  async publishToCertifyd({ actor, runId, version, republish = false }) {
     validateRunId(runId);
     validateVersion(version);
     try {
@@ -281,17 +370,21 @@ export class ContentDashboardActions {
       if (run.summary.version !== version) {
         throw Object.assign(new Error('Publishing requires the exact displayed version.'), { statusCode: 409 });
       }
-      await this.validatePublishing({ actor, runId });
+      if (republish) await this.validateRepublishing({ actor, runId });
+      else await this.validatePublishing({ actor, runId });
       const result = await this.publisher.createPullRequest({ actor, runId });
       const base = this.runs.runPath(runId);
       const now = new Date().toISOString();
       const manifest = await this.readRunJson(base, 'publication-manifest.json', {});
+      const directPublish = result.publishMode === 'direct';
       const publishing = {
-        status: 'PUBLISHING_REVIEW',
+        status: directPublish ? 'PUBLISHING_DEPLOYMENT' : 'PUBLISHING_REVIEW',
+        mode: result.publishMode || 'draft-pr',
         pullRequestUrl: result.pullRequestUrl || '',
         branchName: result.branchName || '',
         repositoryPath: result.repositoryPath || manifest.repositoryPath || '',
         canonicalUrl: result.canonicalUrl || manifest.canonicalUrl || '',
+        commitUrls: result.commitUrls || [],
         startedBy: actor.email,
         startedAt: now,
       };
@@ -299,7 +392,7 @@ export class ContentDashboardActions {
       await this.writeRunJson(base, 'publication-manifest.json', {
         ...manifest,
         currentStatus: 'PUBLISHING',
-        publishability: 'PUBLISHING_REVIEW',
+        publishability: directPublish ? 'PUBLISHING_DEPLOYMENT' : 'PUBLISHING_REVIEW',
         publishing,
         canonicalUrl: publishing.canonicalUrl || manifest.canonicalUrl || '',
         updatedAt: now,
@@ -308,7 +401,7 @@ export class ContentDashboardActions {
         type: 'PUBLISHING',
         actor: actor.email,
         version,
-        note: result.pullRequestUrl ? `Draft PR created: ${result.pullRequestUrl}` : 'Publishing started.',
+        note: directPublish ? `Published directly to ${publishing.branchName || 'base branch'}.` : result.pullRequestUrl ? `Draft PR created: ${result.pullRequestUrl}` : 'Publishing started.',
         at: now,
       });
       await this.audit.append({ action: 'publishing_pull_request', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, version, result: 'SUCCESS' });
@@ -317,6 +410,10 @@ export class ContentDashboardActions {
       await this.audit.append({ action: 'publishing_pull_request', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, version, result: 'FAILED', note: error.message });
       throw error;
     }
+  }
+
+  async republishToCertifyd({ actor, runId, version }) {
+    return this.publishToCertifyd({ actor, runId, version, republish: true });
   }
 
   async verifyLivePublication({ actor, runId }) {
@@ -375,13 +472,16 @@ export class ContentDashboardActions {
       const base = this.runs.runPath(runId);
       const now = new Date().toISOString();
       const manifest = await this.readRunJson(base, 'publication-manifest.json', {});
+      const directPublish = result.publishMode === 'direct';
       const unpublishing = {
-        status: 'UNPUBLISHING_REVIEW',
+        status: directPublish ? 'UNPUBLISHING_DEPLOYMENT' : 'UNPUBLISHING_REVIEW',
+        mode: result.publishMode || 'draft-pr',
         pullRequestUrl: result.pullRequestUrl || '',
         branchName: result.branchName || '',
         repositoryPath: result.repositoryPath || manifest.repositoryPath || '',
         removedPath: result.removedPath || '',
         canonicalUrl: result.canonicalUrl || manifest.canonicalUrl || '',
+        commitUrls: result.commitUrls || [],
         startedBy: actor.email,
         startedAt: now,
       };
@@ -389,7 +489,7 @@ export class ContentDashboardActions {
       await this.writeRunJson(base, 'publication-manifest.json', {
         ...manifest,
         currentStatus: 'UNPUBLISHING',
-        publishability: 'UNPUBLISHING_REVIEW',
+        publishability: directPublish ? 'UNPUBLISHING_DEPLOYMENT' : 'UNPUBLISHING_REVIEW',
         unpublishing,
         canonicalUrl: unpublishing.canonicalUrl || manifest.canonicalUrl || '',
         updatedAt: now,
@@ -397,7 +497,7 @@ export class ContentDashboardActions {
       await this.touchLifecycle(base, {
         type: 'UNPUBLISHING',
         actor: actor.email,
-        note: result.pullRequestUrl ? `Draft unpublish PR created: ${result.pullRequestUrl}` : 'Unpublishing started.',
+        note: directPublish ? `Unpublished directly from ${unpublishing.branchName || 'base branch'}.` : result.pullRequestUrl ? `Draft unpublish PR created: ${result.pullRequestUrl}` : 'Unpublishing started.',
         at: now,
       });
       await this.audit.append({ action: 'publishing_unpublish_pull_request', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: 'SUCCESS' });
@@ -575,6 +675,18 @@ function safeError(error) {
 
 function safeSlug(value) {
   return String(value || '').toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 90) || 'untitled';
+}
+
+function imageExtension(contentType = '', filename = '') {
+  const type = String(contentType || '').toLowerCase();
+  if (type.includes('image/jpeg')) return '.jpg';
+  if (type.includes('image/png')) return '.png';
+  if (type.includes('image/webp')) return '.webp';
+  const name = String(filename || '').toLowerCase();
+  if (name.endsWith('.jpg') || name.endsWith('.jpeg')) return '.jpg';
+  if (name.endsWith('.png')) return '.png';
+  if (name.endsWith('.webp')) return '.webp';
+  return '';
 }
 
 function blogUrl(slug) {

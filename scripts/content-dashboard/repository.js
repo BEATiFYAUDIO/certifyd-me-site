@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { validateRunId, validateVersion, safeJsonParse } from './security.js';
+import { normalizeArticleTitle } from './article-utils.js';
 
 const READ_LIMIT_BYTES = 1024 * 1024;
 
@@ -39,7 +40,7 @@ export class ContentRunRepository {
     const blockingClaims = claims.filter((claim) => ['BLOCKED', 'PROHIBITED', 'UNRESOLVED'].includes(claim.status));
     return {
       runId,
-      title: article.title || intake.workingTitle || manifest.title || 'Untitled',
+      title: normalizeArticleTitle(article.title || intake.workingTitle || manifest.title, 'Untitled'),
       slug: article.slug || manifest.slug || '',
       version: article.version || review.articleVersion || 'v1',
       status: manifest.currentStatus || review.reviewStatus || 'UNKNOWN',

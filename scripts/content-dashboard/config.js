@@ -95,10 +95,17 @@ export function getDashboardConfig(env = process.env) {
       repo: env.CONTENT_DASHBOARD_GITHUB_REPO || '',
       baseBranch: env.CONTENT_DASHBOARD_GITHUB_BASE_BRANCH || 'main',
       branchPrefix: env.CONTENT_DASHBOARD_GITHUB_BRANCH_PREFIX || 'content-dashboard',
+      mode: env.CONTENT_DASHBOARD_GITHUB_PUBLISH_MODE === 'draft-pr' ? 'draft-pr' : 'direct',
       appId: env.GITHUB_APP_ID || '',
       installationId: env.GITHUB_APP_INSTALLATION_ID || '',
       privateKey: env.GITHUB_APP_PRIVATE_KEY || '',
       token: env.CONTENT_DASHBOARD_GITHUB_TOKEN || env.GITHUB_TOKEN || '',
+    },
+    coverImages: {
+      provider: normalizeCoverImageProvider(env.CONTENT_DASHBOARD_COVER_IMAGE_PROVIDER || (env.CONTENT_DASHBOARD_PEXELS_API_KEY || env.PEXELS_API_KEY ? 'pexels' : 'local')),
+      pexelsApiKey: env.CONTENT_DASHBOARD_PEXELS_API_KEY || env.PEXELS_API_KEY || '',
+      pexelsLocale: env.CONTENT_DASHBOARD_PEXELS_LOCALE || 'en-US',
+      timeoutMs: positiveInt(env.CONTENT_DASHBOARD_COVER_IMAGE_TIMEOUT_MS, 12000, 1000),
     },
     agentRoot: path.resolve(env.CONTENT_AGENT_ROOT || defaultAgentRoot),
     outputDir: path.resolve(env.CONTENT_AGENT_OUTPUT_DIR || path.join(env.CONTENT_AGENT_ROOT || defaultAgentRoot, 'engine/outputs')),
@@ -140,6 +147,10 @@ function positiveInt(value, fallback, min = 1) {
 
 function normalizeAuthMode(value) {
   return ['local', 'cloudflare-access', 'hybrid'].includes(value) ? value : 'local';
+}
+
+function normalizeCoverImageProvider(value) {
+  return ['local', 'pexels'].includes(value) ? value : 'local';
 }
 
 function normalizeTeamDomain(value) {
