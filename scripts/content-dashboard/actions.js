@@ -396,6 +396,7 @@ export class ContentDashboardActions {
         repositoryPath: result.repositoryPath || manifest.repositoryPath || '',
         canonicalUrl: result.canonicalUrl || manifest.canonicalUrl || '',
         commitUrls: result.commitUrls || [],
+        mirrors: result.mirrors || [],
         startedBy: actor.email,
         startedAt: now,
       };

@@ -220,11 +220,12 @@ export class GitHubPullRequestPublisher {
     for (const mirror of mirrors) {
       try {
         const mirrorToken = mirror.token || await this.createInstallationToken();
-        const mirrorFiles = filesForMirror(files, mirror);
+        const mirrorBranch = mirror.baseBranch || this.config.baseBranch;
+        const mirrorFiles = await filesForMirror({ files, mirror, token: mirrorToken, branchName: mirrorBranch });
         const commits = await putGeneratedFiles({
           config: mirror,
           token: mirrorToken,
-          branchName: mirror.baseBranch || this.config.baseBranch,
+          branchName: mirrorBranch,
           files: mirrorFiles,
           message,
         });
@@ -233,7 +234,7 @@ export class GitHubPullRequestPublisher {
           deleted = await deleteRepositoryFileIfExists({
             config: mirror,
             token: mirrorToken,
-            branchName: mirror.baseBranch || this.config.baseBranch,
+            branchName: mirrorBranch,
             filePath: removedPath,
             message: `Remove generated blog article page from mirror`,
           });
@@ -242,7 +243,7 @@ export class GitHubPullRequestPublisher {
           ok: true,
           owner: mirror.owner,
           repo: mirror.repo,
-          branchName: mirror.baseBranch || this.config.baseBranch,
+          branchName: mirrorBranch,
           publicUrl: mirror.publicUrl || '',
           commitUrls: commitUrls([...commits, deleted]),
         });
@@ -429,16 +430,26 @@ async function putGeneratedFiles({ config, token, branchName, files, message }) 
   return commits;
 }
 
-function filesForMirror(files, mirror = {}) {
+async function filesForMirror({ files, mirror = {}, token, branchName }) {
   const sourceOrigin = mirror.sourceOrigin || 'https://certifyd.me';
   const targetOrigin = mirror.publicUrl || '';
   const exclude = new Set(['index.html', ...(mirror.excludePaths || [])]);
-  return files
+  const mirrorFiles = files
     .filter((file) => !exclude.has(file.path))
     .map((file) => ({
       path: file.path,
       content: rewriteMirrorContent(file.content, sourceOrigin, targetOrigin),
     }));
+  if (mirror.preserveIndexBlogSection !== false) {
+    const sourceIndex = files.find((file) => file.path === 'index.html' && !Buffer.isBuffer(file.content));
+    const blogSection = extractBlogRecentSection(sourceIndex?.content || '');
+    if (blogSection) {
+      const currentIndex = await getRepositoryFileContent({ config: mirror, token, branchName, filePath: 'index.html' });
+      const patchedIndex = replaceBlogRecentSection(currentIndex, rewriteMirrorContent(blogSection, sourceOrigin, targetOrigin));
+      if (patchedIndex) mirrorFiles.push({ path: 'index.html', content: patchedIndex });
+    }
+  }
+  return mirrorFiles;
 }
 
 function rewriteMirrorContent(content, sourceOrigin, targetOrigin) {
@@ -454,6 +465,54 @@ function mirrorOutputLines(mirrors, successPrefix, failurePrefix) {
   return mirrors.map((mirror) => mirror.ok
     ? `${successPrefix} ${mirror.owner}/${mirror.repo}@${mirror.branchName}: ${mirror.publicUrl}`
     : `${failurePrefix} for ${mirror.owner}/${mirror.repo}@${mirror.branchName}: ${mirror.error}`);
+}
+
+async function getRepositoryFileContent({ config, token, branchName, filePath }) {
+  const encodedPath = filePath.split('/').map(encodeURIComponent).join('/');
+  const response = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/${encodedPath}?ref=${encodeURIComponent(branchName)}`, {
+    headers: githubHeaders(token),
+  });
+  if (response.status === 404) return '';
+  if (!response.ok) {
+    const text = await response.text();
+    throw Object.assign(new Error(`GitHub mirror file lookup failed for ${filePath}: HTTP ${response.status}. ${text.slice(0, 300)}`), { statusCode: response.status === 401 || response.status === 403 ? 403 : 502 });
+  }
+  const json = await response.json();
+  return Buffer.from(String(json.content || ''), 'base64').toString('utf8');
+}
+
+function extractBlogRecentSection(indexHtml) {
+  const value = String(indexHtml || '');
+  const markerStart = '<!-- BLOG_RECENT_START -->';
+  const markerEnd = '<!-- BLOG_RECENT_END -->';
+  const start = value.indexOf(markerStart);
+  const end = value.indexOf(markerEnd, start);
+  if (start !== -1 && end !== -1) return value.slice(start, end + markerEnd.length);
+  const sectionStart = value.indexOf('<section class="wrap blog-home-section"');
+  if (sectionStart === -1) return '';
+  const sectionEnd = value.indexOf('\n  </main>', sectionStart);
+  if (sectionEnd === -1) return '';
+  return value.slice(sectionStart, sectionEnd).trim();
+}
+
+function replaceBlogRecentSection(indexHtml, blogSection) {
+  const value = String(indexHtml || '');
+  if (!value || !blogSection) return '';
+  const markerStart = '<!-- BLOG_RECENT_START -->';
+  const markerEnd = '<!-- BLOG_RECENT_END -->';
+  const markedStart = value.indexOf(markerStart);
+  const markedEnd = value.indexOf(markerEnd, markedStart);
+  if (markedStart !== -1 && markedEnd !== -1) {
+    return `${value.slice(0, markedStart)}${blogSection}${value.slice(markedEnd + markerEnd.length)}`;
+  }
+  const sectionStart = value.indexOf('<section class="wrap blog-home-section"');
+  const mainEnd = value.indexOf('\n  </main>', sectionStart);
+  if (sectionStart !== -1 && mainEnd !== -1) {
+    return `${value.slice(0, sectionStart)}${blogSection}${value.slice(mainEnd)}`;
+  }
+  const fallbackMainEnd = value.indexOf('\n  </main>');
+  if (fallbackMainEnd !== -1) return `${value.slice(0, fallbackMainEnd)}\n\n${blogSection}${value.slice(fallbackMainEnd)}`;
+  return '';
 }
 
 async function deleteRepositoryFileIfExists({ config, token, branchName, filePath, message }) {
