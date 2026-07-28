@@ -274,9 +274,9 @@ export class GitHubPullRequestPublisher {
         `content/blog/${slug}.md`,
         'blog/index.html',
         'feed.xml',
-        'index.html',
         'robots.txt',
         'sitemap.xml',
+        'index.html',
       ];
       const indexNowFile = indexNowKeyFileName();
       if (indexNowFile) paths.push(indexNowFile);
