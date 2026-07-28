@@ -100,6 +100,28 @@ test('4b article workspace owns full Qwen generation and trending opportunities'
   assert.match(html, /generation-progress/);
 }));
 
+test('4bb article workspace shows direct-published deployment records', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-published-view-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  await createMinimalRun(path.join(outputDir, 'legacy-direct-publish-001'), {
+    title: 'Legacy Direct Publish',
+    slug: 'legacy-direct-publish',
+    status: 'PUBLISHING',
+    publishability: 'PUBLISHING_DEPLOYMENT',
+  });
+  await withServer(async (base) => {
+    const cookie = await login(base, 'founder@example.test');
+    const response = await fetch(`${base}/app/content/articles?view=published`, { headers: { cookie } });
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    assert.match(html, /Legacy Direct Publish/);
+    assert.doesNotMatch(html, /No articles match this view/);
+  }, {
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+  });
+});
+
 test('4c Brain suggestions live in the Brain workspace', async () => withServer(async (base) => {
   const cookie = await login(base, 'founder@example.test');
   const response = await fetch(`${base}/app/content/brain?view=suggestions`, { headers: { cookie } });
@@ -644,8 +666,9 @@ test('20ba direct publishing tracks base branch deployment without PR state', as
   const result = await actions.publishToCertifyd({ actor, runId, version: 'v1' });
   assert.match(result.output, /Published directly to main/);
   const manifest = JSON.parse(await fs.readFile(path.join(runDir, 'publication-manifest.json'), 'utf8'));
-  assert.equal(manifest.currentStatus, 'PUBLISHING');
-  assert.equal(manifest.publishability, 'PUBLISHING_DEPLOYMENT');
+  assert.equal(manifest.currentStatus, 'PUBLISHED');
+  assert.equal(manifest.publishability, 'LIVE');
+  assert.ok(manifest.publishedAt);
   assert.equal(manifest.publishing.mode, 'direct');
   assert.equal(manifest.publishing.pullRequestUrl, '');
   assert.equal(manifest.publishing.branchName, 'main');
@@ -687,8 +710,9 @@ test('20bb direct publishing can republish a published article', async () => {
   const result = await actions.republishToCertifyd({ actor, runId, version: 'v1' });
   assert.match(result.output, /Published directly to main/);
   const manifest = JSON.parse(await fs.readFile(path.join(runDir, 'publication-manifest.json'), 'utf8'));
-  assert.equal(manifest.currentStatus, 'PUBLISHING');
-  assert.equal(manifest.publishability, 'PUBLISHING_DEPLOYMENT');
+  assert.equal(manifest.currentStatus, 'PUBLISHED');
+  assert.equal(manifest.publishability, 'LIVE');
+  assert.ok(manifest.publishedAt);
   assert.equal(manifest.publishing.mode, 'direct');
   assert.deepEqual(manifest.publishing.commitUrls, ['https://github.test/certifyd/commit/2']);
 });

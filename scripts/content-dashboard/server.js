@@ -228,7 +228,7 @@ async function renderOverview(ctx, csrf) {
   const trends = await getTrendingOpportunities(ctx.config);
   const drafts = runs.filter((run) => isDraftLikeStatus(run.status) || (!run.status && !run.canonicalUrl));
   const inReview = runs.filter((run) => run.status === 'PENDING_FOUNDER_REVIEW');
-  const published = runs.filter((run) => run.status === 'PUBLISHED').slice(0, 4);
+  const published = runs.filter(isPublishedStatus).slice(0, 4);
   const needsAttention = runs.filter((run) => articleMatchesView(run, 'attention'));
   const recent = runs
     .slice()
@@ -562,7 +562,7 @@ function articleMatchesView(run, view) {
   if (view === 'drafts') return isDraftLikeStatus(status) || (!status && !run.canonicalUrl);
   if (view === 'review') return status === 'PENDING_FOUNDER_REVIEW';
   if (view === 'approved') return ['FOUNDER_APPROVED', 'READY_TO_PUBLISH'].includes(status);
-  if (view === 'published') return status === 'PUBLISHED';
+  if (view === 'published') return isPublishedStatus(run);
   if (view === 'archived') return status === 'ARCHIVED';
   if (view === 'attention') return publishability.includes('BLOCKED') || Number(run.unresolvedIssueCount || 0) > 0;
   return true;
@@ -570,6 +570,12 @@ function articleMatchesView(run, view) {
 
 function isDraftLikeStatus(status) {
   return ['DRAFT', 'GENERATED', 'PENDING_FOUNDER_REVIEW'].includes(String(status || '').toUpperCase());
+}
+
+function isPublishedStatus(run) {
+  const status = String(run?.status || '').toUpperCase();
+  const publishability = String(run?.publishability || '').toUpperCase();
+  return status === 'PUBLISHED' || (status === 'PUBLISHING' && publishability === 'PUBLISHING_DEPLOYMENT');
 }
 
 function actionResultLinks(result) {

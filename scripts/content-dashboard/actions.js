@@ -394,7 +394,7 @@ export class ContentDashboardActions {
       const manifest = await this.readRunJson(base, 'publication-manifest.json', {});
       const directPublish = result.publishMode === 'direct';
       const publishing = {
-        status: directPublish ? 'PUBLISHING_DEPLOYMENT' : 'PUBLISHING_REVIEW',
+        status: directPublish ? 'LIVE' : 'PUBLISHING_REVIEW',
         mode: result.publishMode || 'draft-pr',
         pullRequestUrl: result.pullRequestUrl || '',
         branchName: result.branchName || '',
@@ -409,14 +409,15 @@ export class ContentDashboardActions {
       await this.writeRunJson(base, 'publishing/github-pr.json', publishing);
       await this.writeRunJson(base, 'publication-manifest.json', {
         ...manifest,
-        currentStatus: 'PUBLISHING',
-        publishability: directPublish ? 'PUBLISHING_DEPLOYMENT' : 'PUBLISHING_REVIEW',
+        currentStatus: directPublish ? 'PUBLISHED' : 'PUBLISHING',
+        publishability: directPublish ? 'LIVE' : 'PUBLISHING_REVIEW',
         publishing,
         canonicalUrl: publishing.canonicalUrl || manifest.canonicalUrl || '',
+        publishedAt: directPublish ? manifest.publishedAt || now : manifest.publishedAt,
         updatedAt: now,
       });
       await this.touchLifecycle(base, {
-        type: 'PUBLISHING',
+        type: directPublish ? 'PUBLISHED' : 'PUBLISHING',
         actor: actor.email,
         version,
         note: directPublish ? `Published directly to ${publishing.branchName || 'base branch'}.` : result.pullRequestUrl ? `Draft PR created: ${result.pullRequestUrl}` : 'Publishing started.',
