@@ -6,7 +6,7 @@ import { validateRunId, validateVersion } from './security.js';
 import { ContentRunRepository } from './repository.js';
 import { createPublisher } from './publisher.js';
 import { buildGroundedContext, createGenerationProvider, normalizeProviderName, persistGeneratedArticleRun } from './generation-provider.js';
-import { isSafeImagePath, normalizeArticleTitle, selectArticleCoverImage } from './article-utils.js';
+import { cleanArticlePromptText, isSafeImagePath, normalizeArticleTitle, selectArticleCoverImage } from './article-utils.js';
 import { selectAutomatedCoverImage } from './cover-image-provider.js';
 import { isApprovedBrainRecord } from './brain-utils.js';
 
@@ -563,6 +563,71 @@ export class ContentDashboardActions {
     return { ok: true, output: `Archived ${run.summary.title || runId}.` };
   }
 
+  async saveArticleMarkdown({ actor, runId, articleMarkdown = '' }) {
+    validateRunId(runId);
+    const markdown = String(articleMarkdown || '').replace(/\r\n/g, '\n').trim();
+    if (!markdown) throw Object.assign(new Error('Article Markdown cannot be empty.'), { statusCode: 400 });
+    if (markdown.length > 120000) throw Object.assign(new Error('Article Markdown is too large.'), { statusCode: 400 });
+    const base = this.runs.runPath(runId);
+    const run = await this.runs.readRun(runId);
+    const now = new Date().toISOString();
+    const body = stripFrontmatter(markdown);
+    const title = cleanArticlePromptText(frontmatterValue(markdown, 'title') || markdown.match(/^#\s+(.+)$/m)?.[1] || run.summary.title || runId, run.summary.title || 'Untitled article');
+    const excerpt = cleanString(frontmatterValue(markdown, 'excerpt') || excerptFromMarkdown(body, title), 260);
+    const slug = safeSlug(frontmatterValue(markdown, 'slug') || run.blogPackage?.slug || run.summary.slug || title);
+    const manifest = await this.readRunJson(base, 'publication-manifest.json', {});
+    const article = await this.readRunJson(base, 'final/article.json', {});
+    const blogPackage = await this.readRunJson(base, 'blog/blog-post.json', {});
+    const version = run.summary.version || article.version || 'v1';
+
+    await this.writeRunText(base, 'draft.md', `${markdown}\n`);
+    await this.writeRunText(base, `drafts/${version}.md`, `${markdown}\n`);
+    await this.writeRunText(base, 'final-article.md', `${markdown}\n`);
+    await this.writeRunText(base, 'final/article.md', `${markdown}\n`);
+    await this.writeRunText(base, 'blog/blog-post.md', `${body}\n`);
+    await this.writeRunJson(base, 'final/article.json', {
+      ...article,
+      title,
+      slug,
+      excerpt,
+      seoTitle: cleanArticlePromptText(article.seoTitle || `${title} | Certifyd`, `${title} | Certifyd`),
+      seoDescription: article.seoDescription || excerpt,
+      bodyMarkdown: body,
+      version,
+      status: article.status || 'draft',
+      canonicalUrl: blogUrl(slug),
+    });
+    await this.writeRunJson(base, 'blog/blog-post.json', {
+      ...blogPackage,
+      title,
+      slug,
+      excerpt,
+      description: blogPackage.description || excerpt,
+      body,
+      canonicalUrl: blogUrl(slug),
+    });
+    await this.writeRunJson(base, 'publication-manifest.json', {
+      ...manifest,
+      title,
+      slug,
+      canonicalUrl: blogUrl(slug),
+      updatedAt: now,
+    });
+    await this.touchLifecycle(base, {
+      type: 'ARTICLE_EDITED',
+      actor: actor.email,
+      version,
+      note: 'Article Markdown saved from dashboard.',
+      at: now,
+    });
+    await this.audit.append({ action: 'article_save', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, version, result: 'SUCCESS' });
+    return {
+      ok: true,
+      runId,
+      output: `Saved article Markdown for ${title}. Preview and republish source updated.`,
+    };
+  }
+
   async deleteDraft({ actor, runId, confirmDelete = '' }) {
     validateRunId(runId);
     if (String(confirmDelete || '').trim().toLowerCase() !== 'delete') {
@@ -696,6 +761,23 @@ function blogUrl(slug) {
 
 function stripFrontmatter(markdown) {
   return String(markdown || '').replace(/^\uFEFF?---\s*[\r\n][\s\S]*?[\r\n]---\s*[\r\n]?/, '').trimStart();
+}
+
+function frontmatterValue(markdown, key) {
+  const match = String(markdown || '').match(/^\uFEFF?---\s*[\r\n]([\s\S]*?)[\r\n]---\s*[\r\n]?/);
+  if (!match) return '';
+  const escaped = String(key).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const line = match[1].match(new RegExp(`^${escaped}:\\s*(.+)$`, 'mi'))?.[1] || '';
+  return String(line).trim().replace(/^["']|["']$/g, '');
+}
+
+function excerptFromMarkdown(markdown, title) {
+  const clean = String(markdown || '')
+    .replace(/^#\s+.+$/gm, ' ')
+    .replace(/[#>*_`[\]()-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return clean || `A Certifyd draft about ${title}.`;
 }
 
 export function approvedBrainEvidence(runOrResearch) {

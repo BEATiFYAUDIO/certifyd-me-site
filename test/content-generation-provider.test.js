@@ -247,19 +247,19 @@ test('missing generated cover image is selected automatically from topic signals
   assert.equal(article.coverImage, '/images/ip-publishing-creators-20260605.jpeg');
 });
 
-test('invented Brain source IDs are downgraded instead of killing generation', async () => {
+test('invented Brain source IDs are rejected', async () => {
   const config = await makeConfig();
   const context = await makeContext(config);
   const provider = new OllamaQwenGenerationProvider(config, {
     fetchImpl: makeOllamaFetch(validArticle('brain:made-up-source')),
   });
-  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
-  assert.equal(article.claims[0].confidence, 'needs-review');
-  assert.deepEqual(article.claims[0].sourceIds, []);
-  assert.match(article.warnings.join('\n'), /unknown Brain source IDs/);
+  await assert.rejects(
+    () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context),
+    /unknown Brain source IDs/,
+  );
 });
 
-test('unsupported claims and risky wording are preserved as warnings', async () => {
+test('unsupported generated claims are rejected', async () => {
   const config = await makeConfig();
   const context = await makeContext(config);
   const provider = new OllamaQwenGenerationProvider(config, {
@@ -268,9 +268,41 @@ test('unsupported claims and risky wording are preserved as warnings', async () 
       claims: [{ text: 'Certifyd has a broad creator business model.', sourceIds: [], confidence: 'needs-review' }],
     })),
   });
+  await assert.rejects(
+    () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context),
+    /no approved Brain evidence/,
+  );
+});
+
+test('risky wording is preserved as warnings when claims have evidence', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OllamaQwenGenerationProvider(config, {
+    fetchImpl: makeOllamaFetch(validArticle(sourceId, {
+      bodyMarkdown: 'Certifyd creates a permanent record for every creator.',
+      claims: [{ text: 'Certifyd has a broad creator business model.', sourceIds: [sourceId], confidence: 'supported' }],
+    })),
+  });
   const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
-  assert.match(article.warnings.join('\n'), /Unsupported claim needs review/);
   assert.match(article.warnings.join('\n'), /permanent record/);
+});
+
+test('external company Certifyd adoption claims are rejected', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OllamaQwenGenerationProvider(config, {
+    fetchImpl: makeOllamaFetch(validArticle(sourceId, {
+      title: 'Universal Music Group Completes Share Buyback',
+      bodyMarkdown: 'By leveraging Certifyd’s platform, Universal Music Group creates a more direct path for creators.',
+      claims: [{ text: 'Certifyd supports creator commerce context.', sourceIds: [sourceId], confidence: 'supported' }],
+    })),
+  });
+  await assert.rejects(
+    () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Universal Music Group share buyback', audience: 'Creators', objective: 'Explain relevance.' }, context),
+    /unsupported external Certifyd adoption claims/i,
+  );
 });
 
 test('local AI generation is disabled unless explicitly enabled', async () => {

@@ -1,6 +1,7 @@
 .DS_Store
 Thumbs.db
 node_modules/
+.tmp/
 .env.blog-engine.local
 deploy/admin/local.env
 content-agent/dashboard/*.sqlite

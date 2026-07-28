@@ -697,6 +697,57 @@ test('20d archive and draft delete actions mutate run storage safely', async () 
   assert.match(trashEntries[0], /^local-delete-001-/);
 });
 
+test('20e article Markdown can be edited and saved manually', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-article-save-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const runId = 'local-save-001';
+  const runDir = path.join(outputDir, runId);
+  await createMinimalRun(runDir, {
+    title: 'Original Title',
+    slug: 'original-title',
+    markdown: [
+      '---',
+      'title: "Original Title"',
+      'slug: "original-title"',
+      'excerpt: "Original excerpt."',
+      '---',
+      '',
+      '# Original Title',
+      '',
+      'Original body.',
+    ].join('\n'),
+  });
+
+  const actions = new ContentDashboardActions(getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  }));
+  const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+  const markdown = [
+    '---',
+    'title: "Updated Manual Title"',
+    'slug: "updated-manual-title"',
+    'excerpt: "Updated manual excerpt."',
+    '---',
+    '',
+    '# Updated Manual Title',
+    '',
+    'Updated manual body for preview and republish.',
+  ].join('\n');
+
+  const result = await actions.saveArticleMarkdown({ actor, runId, articleMarkdown: markdown });
+  assert.match(result.output, /Saved article Markdown/);
+  assert.match(await fs.readFile(path.join(runDir, 'final', 'article.md'), 'utf8'), /Updated manual body/);
+  assert.match(await fs.readFile(path.join(runDir, 'blog', 'blog-post.md'), 'utf8'), /Updated manual body/);
+  const article = JSON.parse(await fs.readFile(path.join(runDir, 'final', 'article.json'), 'utf8'));
+  assert.equal(article.title, 'Updated Manual Title');
+  assert.equal(article.slug, 'updated-manual-title');
+  const lifecycle = JSON.parse(await fs.readFile(path.join(runDir, 'lifecycle.json'), 'utf8'));
+  assert.equal(lifecycle.events.at(-1).type, 'ARTICLE_EDITED');
+});
+
 test('21 no dashboard page offers live PUBLISHED action', async () => withServer(async (base) => {
   const cookie = await login(base, 'founder@example.test');
   const response = await fetch(`${base}/app/content/publishing`, { headers: { cookie } });

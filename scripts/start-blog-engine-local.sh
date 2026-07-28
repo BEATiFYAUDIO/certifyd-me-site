@@ -35,6 +35,29 @@ export OLLAMA_REQUEST_TIMEOUT_MS="${OLLAMA_REQUEST_TIMEOUT_MS:-120000}"
 export OLLAMA_THINK="${OLLAMA_THINK:-false}"
 export OLLAMA_MAX_CONCURRENT_GENERATIONS="${OLLAMA_MAX_CONCURRENT_GENERATIONS:-1}"
 
+if [[ "$CONTENT_MODEL_PROVIDER" == "ollama" && "$OLLAMA_ENABLED" == "true" ]]; then
+  OLLAMA_HEALTH_URL="${OLLAMA_BASE_URL%/}/api/tags"
+  if ! curl -fsS --max-time 2 "$OLLAMA_HEALTH_URL" >/dev/null 2>&1; then
+    OLLAMA_BIN="${OLLAMA_BIN:-}"
+    if [[ -z "$OLLAMA_BIN" && -x /usr/local/bin/ollama ]]; then
+      OLLAMA_BIN=/usr/local/bin/ollama
+    elif [[ -z "$OLLAMA_BIN" ]]; then
+      OLLAMA_BIN="$(command -v ollama || true)"
+    fi
+
+    if [[ -n "$OLLAMA_BIN" && -x "$OLLAMA_BIN" ]]; then
+      mkdir -p "$ROOT_DIR/.tmp"
+      echo "Ollama is not reachable at ${OLLAMA_BASE_URL}; starting ${OLLAMA_BIN}."
+      setsid "$OLLAMA_BIN" serve > "$ROOT_DIR/.tmp/ollama.log" 2>&1 < /dev/null &
+      sleep 2
+    fi
+  fi
+
+  if ! curl -fsS --max-time 5 "$OLLAMA_HEALTH_URL" >/dev/null 2>&1; then
+    echo "WARNING: Ollama is still unavailable at ${OLLAMA_BASE_URL}. Qwen generation will fail until Ollama is running." >&2
+  fi
+fi
+
 if [[ -z "${CONTENT_DASHBOARD_GITHUB_PUBLISHING_ENABLED:-}" ]]; then
   if [[ -n "${GITHUB_APP_ID:-}" || -n "${CONTENT_DASHBOARD_GITHUB_TOKEN:-}" || -n "${GITHUB_TOKEN:-}" ]]; then
     export CONTENT_DASHBOARD_GITHUB_PUBLISHING_ENABLED=true

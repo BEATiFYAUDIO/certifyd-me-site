@@ -10,6 +10,24 @@ export function normalizeArticleTitle(value, fallback = 'Untitled article') {
   return title || fallback;
 }
 
+export function cleanArticlePromptText(value, fallback = '') {
+  let text = normalizeArticleTitle(value, fallback);
+  text = text
+    .replace(/^write\s+(?:a\s+)?certifyd\s+article\s+about:\s*/i, '')
+    .replace(/^write\s+(?:a\s+)?(?:blog|article)\s+(?:about|on|explaining?)?:?\s*/i, '')
+    .replace(/^draft\s+(?:a\s+)?(?:blog|article)\s+(?:about|on)?:?\s*/i, '')
+    .trim();
+  text = text
+    .replace(/\s+(?:use\s+this\s+angle|angle)\s*:\s*[\s\S]*$/i, '')
+    .replace(/\s+this\s+connects\s+to\s+[\s\S]*$/i, '')
+    .trim();
+  return normalizeArticleTitle(text, fallback);
+}
+
+export function titleFromPrompt(value, fallback = 'Untitled article') {
+  return cleanArticlePromptText(value, fallback);
+}
+
 export const DEFAULT_BLOG_COVER_IMAGE = '/images/certifyd-main-image-independent-scene-20260613.png';
 
 const COVER_RULES = [

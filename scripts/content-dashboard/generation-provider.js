@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { DEFAULT_BLOG_COVER_IMAGE, isSafeImagePath, normalizeArticleTitle, selectArticleCoverImage } from './article-utils.js';
+import { DEFAULT_BLOG_COVER_IMAGE, cleanArticlePromptText, isSafeImagePath, normalizeArticleTitle, selectArticleCoverImage, titleFromPrompt } from './article-utils.js';
 import { brainRecordId, brainReviewState } from './brain-utils.js';
 
 const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
@@ -107,7 +107,7 @@ export class DeterministicGenerationProvider {
   async generateArticle(input, groundedContext) {
     assertGroundedContextReady(groundedContext);
     const sourceIds = groundedContext.sourceRecords.slice(0, 4).map((source) => source.id);
-    const title = input.topic || input.workingTitle || 'Certifyd Draft';
+    const title = titleFromPrompt(input.topic || input.workingTitle, 'Certifyd Draft');
     const suggestedSlug = slugify(title);
     const body = [
       `# ${title}`,
@@ -274,7 +274,7 @@ export function validateGeneratedArticle(value, groundedContext) {
     if (!(key in value)) throw new GenerationValidationError(`Generated article missing ${key}.`);
   }
   if (value.author && value.author !== 'Certifyd') throw new GenerationValidationError('Generated article author must be Certifyd.');
-  const title = normalizeArticleTitle(value.title);
+  const title = cleanArticlePromptText(value.title, 'Untitled article');
   const slug = slugify(value.suggestedSlug || title);
   if (!slug) throw new GenerationValidationError('Generated slug is invalid.');
   if (value.tags && !Array.isArray(value.tags)) throw new GenerationValidationError('Generated tags are malformed.');
@@ -297,8 +297,12 @@ export function validateGeneratedArticle(value, groundedContext) {
     const ids = claim.sourceIds.map(String).map((id) => id.trim()).filter(Boolean);
     const missing = ids.filter((id) => !sourceIds.has(id));
     const validIds = ids.filter((id) => sourceIds.has(id));
-    if (missing.length) warnings.push(`Generated claim referenced unknown Brain source IDs and was downgraded for review: ${missing.join(', ')}`);
-    if (!validIds.length) warnings.push(`Unsupported claim needs review: ${claim.text.slice(0, 160)}`);
+    if (missing.length) {
+      throw new GenerationValidationError(`Generated claim referenced unknown Brain source IDs: ${missing.join(', ')}`);
+    }
+    if (!validIds.length) {
+      throw new GenerationValidationError(`Generated claim has no approved Brain evidence: ${claim.text.slice(0, 160)}`);
+    }
     normalizedClaims.push({ text: claim.text.trim(), sourceIds: validIds, confidence: validIds.length && !missing.length ? claim.confidence : 'needs-review' });
   }
   const prohibitedHits = detectProhibitedLanguage(value.bodyMarkdown, groundedContext.prohibitedClaims);
@@ -308,6 +312,10 @@ export function validateGeneratedArticle(value, groundedContext) {
   }
   if (/\b(live|currently|already)\b/i.test(value.bodyMarkdown) && /\b(planned|roadmap|future|not yet|under development)\b/i.test(JSON.stringify(groundedContext.featureStatus))) {
     warnings.push('Review live/planned feature language before approval.');
+  }
+  const externalAdoptionHits = detectUnsupportedExternalAdoptionClaims(value.bodyMarkdown);
+  if (externalAdoptionHits.length) {
+    throw new GenerationValidationError('Generated draft made unsupported external Certifyd adoption claims.', externalAdoptionHits);
   }
   const tags = (value.tags || ['Certifyd']).map(String).map((tag) => tag.trim()).filter(Boolean).slice(0, 8);
   return {
@@ -319,7 +327,7 @@ export function validateGeneratedArticle(value, groundedContext) {
     seoTitle: clampText(value.seoTitle ? normalizeArticleTitle(value.seoTitle) : `${title} | Certifyd`, 70),
     seoDescription: clampText(value.seoDescription || value.excerpt, 165),
     coverImage: normalizeBlogCoverImage(value.coverImage, { title, tags, excerpt: value.excerpt, body: value.bodyMarkdown }),
-    bodyMarkdown: value.bodyMarkdown.trim(),
+    bodyMarkdown: cleanArticleBodyMarkdown(value.bodyMarkdown, title),
     claims: normalizedClaims,
     warnings: [...new Set(warnings)].slice(0, 30),
     status: 'draft',
@@ -377,7 +385,7 @@ export async function persistGeneratedArticleRun(config, article, input, grounde
     publishability: 'BLOCKED_PENDING_APPROVAL',
     canonicalUrl: `https://certifyd.me/blog/${article.slug}/`,
     audience: input.audience || input.targetAudience || '',
-    topic: input.topic || input.workingTitle || '',
+    topic: titleFromPrompt(input.topic || input.workingTitle, ''),
     contentType: input.contentType || 'article',
     modelProvider: provider.providerName,
     modelMode: provider.supportsLiveGeneration ? 'Local AI' : 'Deterministic fallback',
@@ -446,6 +454,8 @@ function buildSystemInstruction() {
     'Write a concise Certifyd blog draft in Markdown only.',
     'Use only the supplied Certifyd context for company facts.',
     'Do not invent customers, partnerships, revenue, adoption, launch dates, technical capabilities or legal claims.',
+    'Never say the external company, article subject, rights holder, investor, label, distributor or platform uses, leverages, integrates with, partners with, is powered by, or benefits from Certifyd unless that exact relationship appears in the supplied context.',
+    'For news about companies outside Certifyd, explain only why the news is relevant to Certifyd readers. Do not turn relevance into a relationship or adoption claim.',
     'If the prompt mentions bots, bot farming, fake engagement, fake streams or fraud, frame Certifyd as an alternative to fake attention metrics and direct the draft toward real customer activity, direct commerce, attribution and review-safe anti-fraud commentary.',
     'Never describe Certifyd as a tool for creating, running, controlling, automating or scaling bots.',
     'Clearly distinguish live, beta and planned features.',
@@ -503,6 +513,9 @@ function buildTopicGuardrails(input) {
   const guardrails = [
     'Make the business relevance clear before implementation details.',
     'Avoid unsupported claims and label uncertain ideas as review notes.',
+    'It is acceptable to describe Certifyd’s general value for attribution, transparent transaction records, creator commerce and anti-fraud when supported by Brain context.',
+    'Do not claim the news subject uses, leverages, partners with, integrates with, is powered by, or receives benefits from Certifyd.',
+    'Use phrasing like “this is relevant to Certifyd because…” instead of implying a business relationship.',
   ];
   if (/\b(bot|bots|bot farming|fake engagement|fake stream|fake streams|fraud|click farm|stream farm|payola)\b/.test(text)) {
     guardrails.push(
@@ -512,6 +525,28 @@ function buildTopicGuardrails(input) {
     );
   }
   return guardrails;
+}
+
+function detectUnsupportedExternalAdoptionClaims(markdown) {
+  const text = String(markdown || '').replace(/\s+/g, ' ');
+  const patterns = [
+    /\bby\s+(?:using|leveraging|adopting)\s+Certifyd(?:’s|'s)?\s+(?:platform|network|ecosystem|capabilities|provenance|attribution)[^.]{0,220}\b(?:Universal Music Group|UMG|Spotify|Deezer|Suno|Providence|Wasserman|THE•TEAM|company|label|platform|distributor)\b/gi,
+    /\b(?:Universal Music Group|UMG|Spotify|Deezer|Suno|Providence|Wasserman|THE•TEAM|company|label|platform|distributor)\b[^.]{0,180}\b(?:uses?|using|leverages?|leveraging|adopts?|adopting|integrates?|integrating|partners?|partnering|powered by|benefits? from)\b[^.]{0,120}\bCertifyd\b/gi,
+  ];
+  const hits = [];
+  for (const pattern of patterns) {
+    for (const match of text.matchAll(pattern)) {
+      hits.push(`Unsupported relationship/adoption claim: ${clampText(sentenceAround(text, match.index || 0), 220)}`);
+    }
+  }
+  return [...new Set(hits)].slice(0, 8);
+}
+
+function sentenceAround(text, index) {
+  const start = Math.max(0, text.lastIndexOf('.', index - 1) + 1);
+  const next = text.indexOf('.', index);
+  const end = next === -1 ? text.length : next + 1;
+  return text.slice(start, end).trim();
 }
 
 function assertGroundedContextReady(groundedContext) {
@@ -593,7 +628,7 @@ function articleFromQwenDraft(content, input, groundedContext) {
     }
   }
   const clean = cleanMarkdownDraftText(content);
-  const title = normalizeArticleTitle(titleFromMalformedOutput(clean) || input.workingTitle || input.topic, 'Certifyd Draft');
+  const title = titleFromPrompt(titleFromMalformedOutput(clean) || input.workingTitle || input.topic, 'Certifyd Draft');
   const bodyMarkdown = ensureMarkdownTitle(clean || `This draft needs founder review before it can be published.`, title);
   const excerpt = excerptFromBody(bodyMarkdown, title);
   return {
@@ -620,7 +655,7 @@ function completeGeneratedArticleFields(value, input) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
   const nested = value.article && typeof value.article === 'object' && !Array.isArray(value.article) ? value.article : null;
   const completed = nested ? { ...value, ...nested } : { ...value };
-  completed.title = normalizeArticleTitle(completed.title || input.workingTitle || input.topic, 'Certifyd Draft');
+  completed.title = titleFromPrompt(completed.title || input.workingTitle || input.topic, 'Certifyd Draft');
   if (!completed.bodyMarkdown && typeof completed.article === 'string') completed.bodyMarkdown = completed.article;
   if (!completed.bodyMarkdown && typeof completed.draft === 'string') completed.bodyMarkdown = completed.draft;
   if (!completed.bodyMarkdown && typeof completed.markdown === 'string') completed.bodyMarkdown = completed.markdown;
@@ -658,7 +693,7 @@ function completeGeneratedArticleFields(value, input) {
 
 function coerceArticleFromMalformedOutput(content, input, groundedContext, reason) {
   const clean = cleanModelDraftText(content);
-  const title = normalizeArticleTitle(titleFromMalformedOutput(clean) || input.workingTitle || input.topic, 'Certifyd Draft');
+  const title = titleFromPrompt(titleFromMalformedOutput(clean) || input.workingTitle || input.topic, 'Certifyd Draft');
   const bodyMarkdown = bodyFromMalformedOutput(clean, title, input);
   const fallbackSourceIds = groundedContext.sourceRecords.slice(0, 3).map((source) => source.id);
   return {
@@ -735,8 +770,25 @@ function bodyFromMalformedOutput(text, title, input) {
 }
 
 function ensureMarkdownTitle(body, title) {
-  const clean = body.trim();
+  const clean = cleanArticleBodyMarkdown(body, title);
   return /^#\s+/m.test(clean) ? clean : `# ${title}\n\n${clean}`;
+}
+
+function cleanArticleBodyMarkdown(body, title) {
+  const fallbackTitle = cleanArticlePromptText(title, 'Certifyd Draft');
+  let markdown = String(body || '')
+    .replace(/^---[\s\S]*?---\s*/m, '')
+    .replace(/\r/g, '')
+    .trim();
+  markdown = markdown.replace(/^#\s+(.+)$/m, (match, heading) => {
+    const cleanHeading = cleanArticlePromptText(heading, '');
+    return cleanHeading ? `# ${cleanHeading}` : match;
+  });
+  const firstHeading = markdown.match(/^#\s+(.+)$/m)?.[1] || '';
+  if (firstHeading && cleanArticlePromptText(firstHeading, '') !== fallbackTitle && /write\s+(?:a\s+)?certifyd\s+article\s+about|use\s+this\s+angle/i.test(firstHeading)) {
+    markdown = markdown.replace(/^#\s+.+\n*/, `# ${fallbackTitle}\n\n`);
+  }
+  return markdown.trim();
 }
 
 function excerptFromBody(bodyMarkdown, title) {
