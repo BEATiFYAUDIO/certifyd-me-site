@@ -490,20 +490,19 @@ section[id]{
     }
     .hero-title{
       position:relative;
-      display:block;
+      display:grid;
+      gap:.02em;
       width:100%;
-      font-size:clamp(2rem, 7.2vw, 6rem);
-      line-height:.95;
-      letter-spacing:-0.055em;
-      text-align:center;
-      white-space:nowrap;
-      text-wrap:nowrap;
+      font-size:clamp(2.7rem, 7.2vw, 6rem);
+      line-height:.9;
+      letter-spacing:-0.065em;
+      text-align:left;
       color:var(--text);
+      text-wrap:balance;
     }
     .hero-title-line{
-      display:inline-block;
+      display:block;
       max-width:100%;
-      white-space:nowrap;
     }
     .hero-title-orange{ color:var(--certifyd-orange); }
     .hero-title-blue{ color:var(--certifyd-sapphire); }
@@ -1962,15 +1961,11 @@ section[id]{
       }
       h1{ font-size:clamp(2.15rem, 10.6vw, 2.85rem); line-height:1.03; }
       .hero-title{
-        display:block;
+        display:grid;
         max-width:100%;
-        white-space:nowrap;
-        text-wrap:nowrap;
-        overflow-wrap:normal;
-        font-size:clamp(1.55rem, 8.8vw, 2.6rem);
-      }
-      .hero-title-line{
-        white-space:nowrap;
+        font-size:clamp(2.45rem, 12.8vw, 4.4rem);
+        line-height:.9;
+        text-align:left;
       }
       h2{ margin-bottom:10px; }
       p{ font-size:1.03rem; line-height:1.62; }
