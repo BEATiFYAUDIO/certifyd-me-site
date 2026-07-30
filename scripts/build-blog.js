@@ -396,6 +396,7 @@ function homepageStyles() {
     .blog-home-head{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-bottom:24px}
     .blog-home-head h2{margin:0;font-size:clamp(34px,5vw,74px);line-height:.9;letter-spacing:-.065em;color:var(--certifyd-text)}
     .blog-home-head p{max-width:620px;margin:12px 0 0;color:var(--text-secondary);font-size:clamp(16px,1.5vw,20px)}
+    .blog-home-head .btn{flex:0 0 auto;white-space:nowrap;min-width:max-content;min-height:52px;padding:12px 20px;border-radius:18px}
     .blog-home-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
     .home-blog-card{overflow:hidden;border:1px solid var(--glass-border);border-radius:24px;background:rgba(2,12,22,.42);min-height:100%;display:flex;flex-direction:column}
     .home-blog-media{display:block;aspect-ratio:16/9;background:#071421;overflow:hidden}
