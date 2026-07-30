@@ -629,6 +629,82 @@ section[id]{
       margin:18px 0 24px;
       max-width:1120px;
     }
+    .hero-carousel{
+      isolation:isolate;
+    }
+    .hero-carousel-track{
+      position:absolute;
+      inset:0;
+    }
+    .hero-carousel-slide{
+      position:absolute;
+      inset:0;
+      opacity:0;
+      transition:opacity 520ms ease;
+    }
+    .hero-carousel-slide.is-active{
+      opacity:1;
+      z-index:1;
+    }
+    .hero-carousel-slide img{
+      width:100%;
+      height:100%;
+      object-fit:var(--media-fit, cover);
+      object-position:var(--media-pos, center center);
+      transform:scale(var(--media-zoom, 1));
+      transform-origin:center center;
+    }
+    .hero-carousel-controls{
+      position:absolute;
+      left:16px;
+      right:16px;
+      bottom:14px;
+      z-index:2;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      pointer-events:none;
+    }
+    .hero-carousel-arrows,
+    .hero-carousel-dots{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      pointer-events:auto;
+    }
+    .hero-carousel-button,
+    .hero-carousel-dot{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border:1px solid rgba(255,255,255,.28);
+      background:rgba(3,14,24,.64);
+      color:#fff;
+      box-shadow:0 10px 26px rgba(0,0,0,.26);
+      backdrop-filter:blur(12px);
+      -webkit-backdrop-filter:blur(12px);
+      cursor:pointer;
+    }
+    .hero-carousel-button{
+      width:42px;
+      height:42px;
+      border-radius:999px;
+      font-size:1.35rem;
+      font-weight:900;
+      line-height:1;
+    }
+    .hero-carousel-dot{
+      width:12px;
+      height:12px;
+      border-radius:999px;
+      padding:0;
+    }
+    .hero-carousel-dot[aria-current="true"]{
+      width:30px;
+      background:var(--certifyd-orange);
+      border-color:transparent;
+    }
     .hero-image-caption{
       margin:-6px 0 24px;
       width:100%;
@@ -1975,6 +2051,15 @@ section[id]{
         aspect-ratio:16 / 9;
         margin:10px 0 14px;
       }
+      .hero-carousel-controls{
+        left:10px;
+        right:10px;
+        bottom:10px;
+      }
+      .hero-carousel-button{
+        width:38px;
+        height:38px;
+      }
       .hero-image-caption{
         margin:-8px 0 18px;
         font-size:0.82rem;
@@ -2688,7 +2773,7 @@ section[id]{
         <nav class="nav-desktop" aria-label="Primary navigation">
           <a href="#live-profile">Profile</a>
           <a href="https://fan.certifyd.me" target="_blank" rel="noreferrer">Discover</a>
-          <a href="/media-promotion">Partners</a>
+          <a href="/retail-partners/">Partners</a>
           <a href="/services">Services</a>
           <a href="https://awards.certifyd.me" target="_blank" rel="noreferrer">Awards</a>
           <a href="/blog/">Blog</a>
@@ -2704,7 +2789,7 @@ section[id]{
           <nav class="nav-drawer" aria-label="Mobile navigation">
             <a href="#live-profile">Profile</a>
             <a href="https://fan.certifyd.me" target="_blank" rel="noreferrer">Discover</a>
-            <a href="/media-promotion">Partners</a>
+            <a href="/retail-partners/">Partners</a>
             <a href="/services">Services</a>
             <a href="https://awards.certifyd.me" target="_blank" rel="noreferrer">Awards</a>
             <a href="/blog/">Blog</a>
@@ -2724,14 +2809,40 @@ section[id]{
           <p class="home-eyebrow">THE CREATOR &amp; PARTNER NETWORK</p>
           <h1 class="hero-title"><span class="hero-title-line"><span class="hero-title-white">Creators and Partners,</span></span><span class="hero-title-line"><span class="hero-title-orange">Connected.</span></span></h1>
 
-          <figure class="hero-main-image card-media" style="--media-zoom:1;" aria-label="Certifyd featured creators">
-            <img src="images/certifyd-hero-toronto-own-yourself-20260730.png" alt="Creator wearing an Own Yourself Certifyd shirt overlooking the Toronto skyline" fetchpriority="high" decoding="async" />
+          <figure class="hero-main-image card-media hero-carousel" data-hero-carousel style="--media-zoom:1;" aria-label="Certifyd featured creators">
+            <div class="hero-carousel-track" aria-live="polite">
+              <div class="hero-carousel-slide is-active">
+                <img src="images/certifyd-hero-toronto-own-yourself-20260730.png" alt="Creator wearing an Own Yourself Certifyd shirt overlooking the Toronto skyline" fetchpriority="high" decoding="async" />
+              </div>
+              <div class="hero-carousel-slide">
+                <img src="images/certifyd-main-image-independent-scene-20260613.png" alt="Independent creators performing for a live audience" loading="lazy" decoding="async" />
+              </div>
+              <div class="hero-carousel-slide">
+                <img src="images/ip-publishing-creators-20260605.jpeg?v=20260605" alt="Creators collaborating in a publishing and strategy room" loading="lazy" decoding="async" />
+              </div>
+              <div class="hero-carousel-slide">
+                <img src="images/creator-commerce-raw-20260601-edgefix.jpeg" alt="Creator commerce infrastructure visual for independent businesses" loading="lazy" decoding="async" />
+              </div>
+            </div>
+            <figcaption class="sr-only">Featured Certifyd creator, publishing, commerce, and live audience visuals.</figcaption>
+            <div class="hero-carousel-controls" aria-label="Hero image carousel controls">
+              <div class="hero-carousel-arrows">
+                <button class="hero-carousel-button" type="button" data-carousel-prev aria-label="Previous hero image">‹</button>
+                <button class="hero-carousel-button" type="button" data-carousel-next aria-label="Next hero image">›</button>
+              </div>
+              <div class="hero-carousel-dots" role="tablist" aria-label="Choose hero image">
+                <button class="hero-carousel-dot" type="button" data-carousel-dot="0" aria-label="Show hero image 1" aria-current="true"></button>
+                <button class="hero-carousel-dot" type="button" data-carousel-dot="1" aria-label="Show hero image 2" aria-current="false"></button>
+                <button class="hero-carousel-dot" type="button" data-carousel-dot="2" aria-label="Show hero image 3" aria-current="false"></button>
+                <button class="hero-carousel-dot" type="button" data-carousel-dot="3" aria-label="Show hero image 4" aria-current="false"></button>
+              </div>
+            </div>
           </figure>
           <p class="hero-copy">Certifyd is the all-in-one discovery platform where Creators build their businesses and connect with the Partners that help them grow.</p>
           <p class="hero-copy">Creators join free. Partners join to reach Creators, build trusted relationships, and grow their businesses.</p>
           <div class="hero-actions hero-cta">
             <a class="btn primary" href="#early-access">Join as a Creator</a>
-            <a class="btn" href="/media-promotion">Become a Partner</a>
+            <a class="btn" href="/retail-partners/">Become a Partner</a>
           </div>
           <p class="hero-support">Discovery, trust, relationships, and commerce infrastructure in one network.</p>
         </div>
@@ -2754,7 +2865,7 @@ section[id]{
         <p class="home-copy">Certifyd connects Creators with the businesses, professionals, and infrastructure they need to build sustainable creator businesses. Certifyd is the network and marketplace infrastructure, not the service provider performing those services.</p>
         <div class="marketplace-grid">
           <article class="pathway-card marketplace-card marketplace-card-primary"><h3>For Creators</h3><p class="outcome">Build your business. Own the relationship.</p><p>Create your official profile, showcase your work, discover trusted Partners, and connect directly with the people and businesses that can help you publish, promote, manufacture, distribute, sell, and grow.</p><p class="pricing-label">Free for Creators</p><a class="btn primary" href="#early-access">Join as a Creator</a></article>
-          <article class="pathway-card marketplace-card marketplace-card-primary"><h3>For Partners</h3><p class="outcome">Connect with Creators who need what you do.</p><p>Build your Partner profile, list your services, establish your reputation, and be discovered by Creators looking for trusted businesses and professionals.</p><p class="pricing-label">Paid Partner membership</p><a class="btn primary" href="/media-promotion">Become a Partner</a></article>
+          <article class="pathway-card marketplace-card marketplace-card-primary"><h3>For Partners</h3><p class="outcome">Connect with Creators who need what you do.</p><p>Build your Partner profile, list your services, establish your reputation, and be discovered by Creators looking for trusted businesses and professionals.</p><p class="pricing-label">Paid Partner membership</p><a class="btn primary" href="/retail-partners/">Become a Partner</a></article>
           <article class="pathway-card marketplace-card marketplace-card-secondary"><h3>Commerce Providers</h3><p class="outcome">Power commerce across the network.</p><p>Provide payment, settlement, treasury, fulfilment, accounting, licensing, or other commerce infrastructure for Creators and Partners. Commerce Providers contribute network or transaction fees as value moves through their systems.</p><a class="btn" href="/services">Explore Commerce Providers</a></article>
         </div>
       </div>
@@ -2792,7 +2903,7 @@ section[id]{
           <article class="role-card"><h3>Technology</h3><p>Connect with developers, platform builders, infrastructure operators, and technical implementation partners.</p></article>
           <article class="role-card"><h3>Commerce Providers</h3><p>Connect with payment, settlement, treasury, accounting, licensing, financing, and fulfilment infrastructure providers.</p></article>
         </div>
-        <div class="home-actions"><a class="btn primary" href="/media-promotion">Explore Partners</a><a class="btn" href="/retail-partners">Retail Partners</a></div>
+        <div class="home-actions"><a class="btn primary" href="/retail-partners/">Explore Partners</a><a class="btn" href="/retail-partners">Retail Partners</a></div>
       </div>
     </section>
 
@@ -2805,7 +2916,7 @@ section[id]{
         <div class="pathway-grid">
           <article class="pathway-card"><h3>Creator Profile</h3><p class="outcome">Own your official creator identity.</p><p>Bring your work, catalog, credits, links, business, and audience together in one official home.</p><a class="btn primary" href="#early-access">Create Your Profile</a></article>
           <article class="pathway-card"><h3>Build Your Business</h3><p class="outcome">Turn your work into a business.</p><p>Publish, sell, manage your catalog, and connect your work to the Partners and commerce infrastructure your business needs.</p><a class="btn primary" href="#build">Explore Build</a></article>
-          <article class="pathway-card"><h3>Find Partners</h3><p class="outcome">Connect with the people who help creator businesses grow.</p><p>Discover trusted promoters, manufacturers, retailers, distributors, professionals, and service businesses across the network.</p><a class="btn primary" href="/media-promotion">Explore Partners</a></article>
+          <article class="pathway-card"><h3>Find Partners</h3><p class="outcome">Connect with the people who help creator businesses grow.</p><p>Discover trusted promoters, manufacturers, retailers, distributors, professionals, and service businesses across the network.</p><a class="btn primary" href="/retail-partners/">Explore Partners</a></article>
           <article class="pathway-card"><h3>Get Discovered</h3><p class="outcome">Help the right people find you.</p><p>Creators and Partners can build visible profiles, establish reputation, and be discovered by the people looking for what they offer.</p><a class="btn primary" href="https://fan.certifyd.me" target="_blank" rel="noreferrer">Explore Discovery</a></article>
           <article class="pathway-card"><h3>Build Your Reputation</h3><p class="outcome">Create trust that compounds.</p><p>Connect verified work, credits, relationships, achievements, and recognition to your lasting identity.</p><a class="btn primary" href="https://awards.certifyd.me" target="_blank" rel="noreferrer">Explore Awards</a></article>
           <article class="pathway-card"><h3>Join the Network</h3><p class="outcome">Help build creator-owned infrastructure.</p><p>Participate in the distributed network supporting identity, discovery, commerce, and reputation.</p><a class="btn primary" href="./network.html">Explore the Network</a></article>
@@ -2832,7 +2943,7 @@ section[id]{
         <p class="home-eyebrow">JOIN CERTIFYD</p>
         <h2 id="final-heading" class="home-section-title">Build the Relationships That Build Your Business.</h2>
         <p class="home-copy">Join Certifyd as a Creator or Partner and become part of a network designed around direct relationships, trusted discovery, and creator ownership.</p>
-        <div class="home-actions"><a class="btn primary" href="#early-access">Join as a Creator</a><a class="btn" href="/media-promotion">Become a Partner</a></div>
+        <div class="home-actions"><a class="btn primary" href="#early-access">Join as a Creator</a><a class="btn" href="/retail-partners/">Become a Partner</a></div>
       </div>
     </section>
 
@@ -2927,7 +3038,7 @@ section[id]{
         <div class="role-grid">
           <article class="role-card"><h3>Creator</h3><a class="btn primary" href="#early-access">Create Your Profile</a></article>
           <article class="role-card"><h3>Label or Community</h3><a class="btn primary" href="/services">Join the Network</a></article>
-          <article class="role-card"><h3>Partner</h3><a class="btn primary" href="/media-promotion">View Partners</a></article>
+          <article class="role-card"><h3>Partner</h3><a class="btn primary" href="/retail-partners/">View Partners</a></article>
           <article class="role-card"><h3>Retail Partner</h3><a class="btn primary" href="/retail-partners">Become a Retail Partner</a></article>
           <article class="role-card"><h3>Node Operator</h3><a class="btn primary" href="./network.html">Register a Node</a></article>
           <article class="role-card"><h3>Investor</h3><a class="btn primary" href="https://investor.certifyd.me/">View the Opportunity</a></article>
@@ -3188,6 +3299,71 @@ section[id]{
           if (submitButton) submitButton.disabled = false;
         }
       });
+    })();
+
+    // Hero image carousel
+    (function () {
+      const carousel = document.querySelector("[data-hero-carousel]");
+      if (!carousel) return;
+
+      const slides = Array.from(carousel.querySelectorAll(".hero-carousel-slide"));
+      const dots = Array.from(carousel.querySelectorAll("[data-carousel-dot]"));
+      const prev = carousel.querySelector("[data-carousel-prev]");
+      const next = carousel.querySelector("[data-carousel-next]");
+      const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      let activeIndex = 0;
+      let timer = null;
+
+      function showSlide(nextIndex) {
+        activeIndex = (nextIndex + slides.length) % slides.length;
+        slides.forEach((slide, index) => {
+          slide.classList.toggle("is-active", index === activeIndex);
+        });
+        dots.forEach((dot, index) => {
+          dot.setAttribute("aria-current", index === activeIndex ? "true" : "false");
+        });
+      }
+
+      function stop() {
+        if (timer) window.clearInterval(timer);
+        timer = null;
+      }
+
+      function start() {
+        if (prefersReducedMotion || timer || slides.length < 2) return;
+        timer = window.setInterval(() => showSlide(activeIndex + 1), 5200);
+      }
+
+      if (prev) {
+        prev.addEventListener("click", () => {
+          stop();
+          showSlide(activeIndex - 1);
+          start();
+        });
+      }
+
+      if (next) {
+        next.addEventListener("click", () => {
+          stop();
+          showSlide(activeIndex + 1);
+          start();
+        });
+      }
+
+      dots.forEach((dot) => {
+        dot.addEventListener("click", () => {
+          stop();
+          showSlide(Number(dot.dataset.carouselDot || 0));
+          start();
+        });
+      });
+
+      carousel.addEventListener("mouseenter", stop);
+      carousel.addEventListener("mouseleave", start);
+      carousel.addEventListener("focusin", stop);
+      carousel.addEventListener("focusout", start);
+      showSlide(0);
+      start();
     })();
 
     // Chatbot: endpoint-backed when configured, FAQ fallback otherwise.
