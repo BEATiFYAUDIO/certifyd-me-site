@@ -2,8 +2,8 @@
 title: "The Future of Music Chart Eligibility: Majors, Believe, BMG, Concord, HYBE Propose New Rules for AI Generated Songs"
 slug: "the-future-of-music-chart-eligibility-majors-believe-bmg-concord-hybe-propose-new-rules-fo"
 author: "Certifyd"
-date: "2026-07-29"
-updated: "2026-07-29"
+date: "2026-07-30"
+updated: "2026-07-30"
 excerpt: "The Future of Music Chart Eligibility: Majors, Believe, BMG, Concord, HYBE Propose New Rules for AI Generated Songs As artificial intelligence continues to evolve, so too does the landscape of music chart eligibility. Ma"
 coverImage: "/images/blog/the-future-of-music-chart-eligibility-majors-believe-bmg-concord-hybe-propose-new-rules-fo-1785358598886.jpg"
 coverImageAlt: ""
@@ -34,19 +34,15 @@ To address these issues, several major music labels have proposed new eligibilit
 
 The first step in creating a fairer system is ensuring transparency about the creation process of AI-generated songs. This means clearly documenting every stage of the songwriting, production, and mastering processes to provide a clear record of who contributed what.
 
-- brain:capabilities/provenance: # Provenance
 
 #### 2. **Machine Learning Algorithms**
 
 Implementing machine learning algorithms that can independently evaluate the quality of an AI-generated song based on specific criteria such as melody, rhythm, harmony, lyrics, and overall composition. These algorithms should be trained to recognize patterns and features that are indicative of human creativity.
 
-- brain:capabilities/identity: # Identity
-
 #### 3. **Human Oversight**
 
 While machine learning is designed to minimize bias, it cannot replace the role of humans entirely. Therefore, a system that incorporates human oversight can help ensure that AI-generated songs meet certain standards without being overly influenced by biases or subjective judgments.
-
-- brain:capabilities/profiles: # Profiles
+rofiles
 
 ### The Impact on Creators and Investors
 
