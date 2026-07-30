@@ -58,7 +58,3 @@ This initiative is relevant to Certifyd because it highlights how technology can
 
 The future of chart eligibility for AI-generated songs is likely to involve more transparency and objective evaluation methods. As major labels propose new rules based on machine learning algorithms and human oversight, Certifyd’s role as a platform for creator publishing will become even more important in ensuring that the music industry remains fair and transparent.
 
-This initiative is relevant to Certifyd because it highlights how technology can be used not just to
-
-> Draft generated for founder review. Not approved for publishing.
-
