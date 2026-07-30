@@ -2836,8 +2836,73 @@ section[id]{
       <div class="home-section-panel">
         <p class="home-eyebrow">JOIN NETWORK</p>
         <h2 id="join-heading" class="home-section-title">Start with Your Official Creator Profile.</h2>
-        <p class="home-copy">Creators, labels, communities and builders can join Certifyd through the services and onboarding path. Start with a profile, then add discovery, commerce, promotion or infrastructure support as needed.</p>
-        <div class="home-actions"><a class="btn primary" href="/services">Create Your Profile</a><a class="btn" href="#participate">See Other Ways to Join</a></div>
+        <p class="home-copy">Creators, labels, communities and builders can join Certifyd through the intake path. Start with a profile, then add discovery, commerce, promotion or infrastructure support as needed.</p>
+
+        <div class="card" style="margin-top:20px;">
+          <form class="ea-form" id="early-access-form" action="#" method="post" data-endpoint="https://script.google.com/macros/s/AKfycbxO8lMdZTsPWvtEuTInZ1jRtuW854X_hde4gBSYXa1PktcT9bAuAhFR3Bwl_9lVqWENpw/exec">
+            <div class="ea-grid">
+              <label class="ea-field">
+                <span class="ea-label">Name</span>
+                <input class="ea-input" type="text" name="name" autocomplete="name" />
+              </label>
+              <label class="ea-field">
+                <span class="ea-label">Email</span>
+                <input class="ea-input" type="email" name="email" autocomplete="email" />
+              </label>
+            </div>
+
+            <label class="ea-field">
+              <span class="ea-label">Website / Domain</span>
+              <input class="ea-input" type="url" name="website" placeholder="https://yourdomain.com" />
+            </label>
+
+            <div class="ea-grid">
+              <label class="ea-field">
+                <span class="ea-label">Role</span>
+                <select class="ea-select" name="role">
+                  <option>Musician</option>
+                  <option>Artist</option>
+                  <option>Producer</option>
+                  <option>Publisher</option>
+                  <option>Label</option>
+                  <option>Video creator</option>
+                  <option>Developer</option>
+                  <option>Creative team</option>
+                </select>
+              </label>
+              <label class="ea-field">
+                <span class="ea-label">Do you run a Bitcoin / Lightning node?</span>
+                <select class="ea-select" name="node_status">
+                  <option>Yes — Bitcoin Core + LND</option>
+                  <option>Yes — another Lightning implementation</option>
+                  <option>No but interested</option>
+                  <option>No</option>
+                </select>
+              </label>
+            </div>
+
+            <label class="ea-field">
+              <span class="ea-label">Are you comfortable testing early software?</span>
+              <select class="ea-select" name="testing_comfort">
+                <option>Yes</option>
+                <option>Somewhat</option>
+                <option>No</option>
+              </select>
+            </label>
+
+            <label class="ea-field">
+              <span class="ea-label">What do you want to publish with Certifyd?</span>
+              <textarea class="ea-textarea" name="publish_goals"></textarea>
+            </label>
+
+            <div class="form-cta">
+              <button class="btn primary" type="submit">Join Network</button>
+            </div>
+            <div id="early-access-status" class="ea-status" role="status" aria-live="polite"></div>
+          </form>
+        </div>
+
+        <div class="home-actions"><a class="btn" href="#participate">See Other Ways to Join</a></div>
       </div>
     </section>
 
@@ -3287,7 +3352,7 @@ section[id]{
         if (q.includes("early access") || q.includes("apply") || q.includes("waitlist")) {
           return {
             matched: true,
-            text: "Use the “Join Network” section on this page to start with a creator profile, or open Services for the current onboarding path."
+            text: "Use the “Join Network” form on this page. It submits directly to the Certifyd intake sheet."
           };
         }
 
