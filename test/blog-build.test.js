@@ -65,7 +65,7 @@ test('build renders blog index, article pages, homepage section and metadata', a
   assert.equal(jsonLd.find((item) => item['@type'] === 'BreadcrumbList').itemListElement[1].item, 'https://certifyd.me/blog/');
 
   const home = await fs.readFile(path.join(root, 'index.html'), 'utf8');
-  assert.match(home, /Latest articles/);
+  assert.match(home, /Ideas for the Creator-Owned Economy/);
   assert.match(home, /View all articles/);
   assert.doesNotMatch(home, /Draft Article/);
 

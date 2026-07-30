@@ -416,9 +416,9 @@ function homepageSection(articles) {
       <div class="blog-home-panel">
         <div class="blog-home-head">
           <div>
-            <p class="live-profile-eyebrow">Certifyd Blog</p>
-            <h2 id="blog-home-heading">Latest articles.</h2>
-            <p>Notes on creator-owned publishing, direct commerce and the Certifyd Network.</p>
+            <p class="live-profile-eyebrow">CERTIFYD INTELLIGENCE</p>
+            <h2 id="blog-home-heading">Ideas for the Creator-Owned Economy.</h2>
+            <p>News, research, strategy, and perspective for creators building identity, ownership, commerce, and lasting value around their work.</p>
           </div>
           <a class="btn primary" href="/blog/">View all articles</a>
         </div>
