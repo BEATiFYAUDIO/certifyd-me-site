@@ -62,9 +62,12 @@
       backdrop-filter:blur(16px);
       box-shadow:0 18px 70px rgba(0,0,0,0.18);
     }
-    .row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
     .brand{display:flex;align-items:center;font-weight:700}
     .brand img{height:64px;width:auto;display:block;filter:drop-shadow(0 16px 34px rgba(0,0,0,.28))}
+    .nav-links{display:flex;align-items:center;justify-content:flex-end;gap:14px;flex-wrap:wrap;color:#d8ecf8;font-size:.9rem}
+    .nav-links a{min-height:40px;display:inline-flex;align-items:center;padding:8px 10px;border-radius:10px;border:1px solid transparent;opacity:.9}
+    .nav-links a:hover,.nav-links a[aria-current="page"]{opacity:1;background:rgba(255,255,255,0.07);border-color:var(--border)}
     .btn{
       display:inline-flex;
       align-items:center;
@@ -100,6 +103,8 @@
     @media (max-width:640px){
       :root{--pad:16px}
       .brand img{height:54px}
+      .row{align-items:flex-start}
+      .nav-links{justify-content:flex-start;gap:8px 10px;font-size:.84rem}
       main{padding:34px 0 42px}
       .btn{width:100%}
       .actions{flex-direction:column;align-items:stretch}
@@ -112,9 +117,17 @@
       <a class="brand" href="./index.html">
         <img src="images/certifyd_logo_transparent.svg" alt="Certifyd Creator logo" />
       </a>
-      <a class="btn" href="/services">Services</a>
-      <a class="btn" href="./index.html#early-access">Join Network</a>
-      <a class="btn" href="/retail-partners">Retail Partners</a>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="./index.html#live-profile">Profile</a>
+        <a href="https://fan.certifyd.me" target="_blank" rel="noreferrer">Discover</a>
+        <a href="/retail-partners/">Partners</a>
+        <a href="/services">Services</a>
+        <a href="https://awards.certifyd.me" target="_blank" rel="noreferrer">Awards</a>
+        <a href="/blog/">Blog</a>
+        <a href="./index.html#early-access">Join Network</a>
+        <a href="./network.html" aria-current="page">Register Node</a>
+        <a href="https://investor.certifyd.me/">Investment</a>
+      </nav>
     </div>
   </header>
 
