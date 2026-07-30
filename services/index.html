@@ -6,17 +6,17 @@
   <link rel="icon" type="image/svg+xml" href="/images/certifyd-tab-icon.svg?v=20260601a" />
   <link rel="shortcut icon" type="image/svg+xml" href="/images/certifyd-tab-icon.svg?v=20260601a" />
   <link rel="apple-touch-icon" href="/images/certifyd-tab-icon.svg?v=20260601a" />
-  <title>Services | Certifyd</title>
+  <title>Checkout | Certifyd</title>
   <meta name="description" content="Start with Certifyd Core for free and add creator marketing, fan discovery planning, awards registration, infrastructure support, and developer services." />
   <link rel="canonical" href="https://certifyd.me/services" />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Services | Certifyd" />
+  <meta property="og:title" content="Checkout | Certifyd" />
   <meta property="og:description" content="Start with Certifyd Core for free and add creator marketing, fan discovery planning, awards registration, infrastructure support, and developer services." />
   <meta property="og:url" content="https://certifyd.me/services" />
   <meta property="og:site_name" content="Certifyd" />
   <meta property="og:image" content="https://certifyd.me/images/certifyd-main-image-independent-scene-20260613.png" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Services | Certifyd" />
+  <meta name="twitter:title" content="Checkout | Certifyd" />
   <meta name="twitter:description" content="Start with Certifyd Core for free and add creator marketing, fan discovery planning, awards registration, infrastructure support, and developer services." />
   <meta name="twitter:image" content="https://certifyd.me/images/certifyd-main-image-independent-scene-20260613.png" />
   <style>
@@ -36,7 +36,7 @@
           <a href="/profile/">Profile</a>
           <a href="https://fan.certifyd.me" target="_blank" rel="noreferrer">Discover</a>
           <a href="/retail-partners/">Partners</a>
-          <a href="/services" aria-current="page">Services</a>
+          <a href="/services" aria-current="page">Checkout</a>
           <a href="https://awards.certifyd.me" target="_blank" rel="noreferrer">Awards</a>
           <a href="/blog/">Blog</a>
           <a href="/join/">Join Network</a>
@@ -48,7 +48,7 @@
             <a href="/profile/">Profile</a>
             <a href="https://fan.certifyd.me" target="_blank" rel="noreferrer">Discover</a>
             <a href="/retail-partners/">Partners</a>
-            <a href="/services" aria-current="page">Services</a>
+            <a href="/services" aria-current="page">Checkout</a>
             <a href="https://awards.certifyd.me" target="_blank" rel="noreferrer">Awards</a>
             <a href="/blog/">Blog</a>
             <a href="/join/">Join Network</a>
@@ -61,8 +61,8 @@
 
   <main id="main">
     <section class="wrap hero" aria-labelledby="services-title">
-      <p class="eyebrow">Certifyd Services</p>
-      <h1 id="services-title">Services</h1>
+      <p class="eyebrow">Certifyd Checkout</p>
+      <h1 id="services-title">Checkout</h1>
       <h2>Start with Certifyd Core. Add only what you need.</h2>
       <p class="lede">Start with your Certifyd identity and publishing context for free. Add professional services, fan discovery planning, awards registration, infrastructure support, or developer capabilities when you need them.</p>
       <p class="trust-line">Own your identity. Own your audience. Own your commerce.</p>
@@ -90,7 +90,7 @@
         </section>
 
         <section class="panel" aria-labelledby="premium-heading">
-          <div class="section-head"><div><p class="eyebrow">Optional Add-ons</p><h2 id="premium-heading">Premium Services</h2><p>Add professional capabilities to your Certifyd account. You will only be charged for the services you select.</p></div></div>
+          <div class="section-head"><div><p class="eyebrow">Optional Add-ons</p><h2 id="premium-heading">Checkout Add-ons</h2><p>Add paid capabilities to your Certifyd account. You will only be charged for the checkout items you select.</p></div></div>
           <div class="service-grid" id="service-grid"></div>
         </section>
       </div>
@@ -124,7 +124,7 @@
           </div>
         </fieldset>
 
-        <p class="notice" id="checkout-note">Certifyd Core is free. You are only charged for the paid services you select.</p>
+        <p class="notice" id="checkout-note">Certifyd Core is included. Checkout includes a one-time $250 CAD registration fee plus any paid add-ons you select.</p>
         <p class="error" id="form-error" role="alert"></p>
         <div class="bitcoin-payment-qr" id="bitcoin-payment-qr" hidden>
           <strong>Scan to pay with Bitcoin</strong>
@@ -145,6 +145,7 @@
     (function(){
       const TREASURY_BTC_ADDRESS = 'bc1p68xwj7kts5g43chdfpafmvcvhqsx3k6ynm0k2m4hsf4sp6ac4mpqnnqp8k';
       const TREASURY_BTC_QR = '/images/payments/fan-discovery-bitcoin-treasury.svg';
+      const REGISTRATION_FEE_CAD = 250;
       const SERVICES_REGISTRATION_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxO8lMdZTsPWvtEuTInZ1jRtuW854X_hde4gBSYXa1PktcT9bAuAhFR3Bwl_9lVqWENpw/exec';
       const services = [
         {id:'marketing',name:'Media, Marketing & Promotion',description:'Promote your work, expand your reach, and build campaigns around your creator-owned catalog.',includes:['Promotional campaigns','Media and release support','Featured opportunities','Discovery campaigns','Audience growth strategy','Creator marketing support'],price:'Custom quote',type:'Quote-based',button:'Add to order',detailHref:'/media-promotion',detailLabel:'Learn about the Growth Network'},
@@ -180,8 +181,12 @@
         services.forEach(service => grid.appendChild(serviceCard(service)));
       }
 
+      function formatCad(amount) {
+        return '$' + amount.toFixed(2) + ' CAD';
+      }
+
       function formatMonthlyCad(amount) {
-        return '$' + amount.toFixed(2) + ' CAD / month';
+        return formatCad(amount) + ' / month';
       }
 
       function selectedPaymentMethod() {
@@ -200,19 +205,21 @@
           ? selectedServices.reduce((sum, service) => sum + ((service.monthlyCad || 0) * (service.bitcoinDiscount || 0)), 0)
           : 0;
         const monthlyTotal = Math.max(0, monthlySubtotal - bitcoinDiscount);
-        const hasPricedService = monthlySubtotal > 0;
+        const todayTotal = REGISTRATION_FEE_CAD + monthlyTotal;
+        const hasPricedService = true;
         const hasQuoteService = selectedServices.some(quoteBased);
         const summaryItems = selectedServices.map(service => {
           const discount = service.bitcoinDiscount ? '<span>Bitcoin discount available: '+Math.round(service.bitcoinDiscount * 100)+'%</span>' : '';
           return '<div class="summary-item"><div><strong>'+service.name+'</strong><span>'+service.type+'</span><span>'+service.price+'</span>'+discount+'</div><button class="remove-button" type="button" data-remove="'+service.id+'">Remove</button></div>';
         }).join('');
+        const registrationRow = '<div class="summary-item"><div><strong>Registration fee</strong><span>One-time Certifyd checkout registration</span></div><strong>'+formatCad(REGISTRATION_FEE_CAD)+'</strong></div>';
         const discountRow = bitcoinDiscount > 0 ? '<div class="summary-item"><div><strong>Bitcoin discount</strong><span>10% discount on Fan Discovery</span></div><strong>-'+formatMonthlyCad(bitcoinDiscount)+'</strong></div>' : '';
         const bitcoinAddressRow = paymentMethod === 'bitcoin' && hasPricedService ? '<div class="summary-item"><div><strong>Bitcoin treasury address</strong><span>'+TREASURY_BTC_ADDRESS+'</span><img class="bitcoin-qr" src="'+TREASURY_BTC_QR+'" alt="QR code for Certifyd Bitcoin treasury address" loading="lazy" decoding="async" /><span>Bitcoin checkout is available through this on-chain treasury address from the local LND wallet.</span></div></div>' : '';
-        summary.innerHTML = '<div class="summary-item"><div><strong>Certifyd Core</strong><span>Included</span></div><strong>$0 CAD</strong></div>' + summaryItems + discountRow + bitcoinAddressRow;
-        subtotal.textContent = hasPricedService ? formatMonthlyCad(monthlySubtotal) : (hasQuoteService ? 'Pricing confirmed before payment' : '$0.00 CAD');
-        total.textContent = hasPricedService ? formatMonthlyCad(monthlyTotal) : (hasQuoteService ? 'Quote required' : '$0.00 CAD');
+        summary.innerHTML = '<div class="summary-item"><div><strong>Certifyd Core</strong><span>Included</span></div><strong>$0 CAD</strong></div>' + registrationRow + summaryItems + discountRow + bitcoinAddressRow;
+        subtotal.textContent = formatCad(REGISTRATION_FEE_CAD + monthlySubtotal) + (monthlySubtotal ? ' today' : '');
+        total.textContent = formatCad(todayTotal) + (monthlyTotal ? ' today' : '');
         mobileTotal.textContent = total.textContent;
-        action.textContent = !selectedServices.length ? 'Create My Certifyd ID' : hasPricedService ? 'Complete Registration and Pay' : 'Create Account and Request Quote';
+        action.textContent = 'Complete Registration and Pay';
         paymentFieldset.disabled = !hasPricedService;
         paymentFieldset.style.opacity = hasPricedService ? '1' : '.58';
         if (bitcoinPaymentQr) bitcoinPaymentQr.hidden = !(paymentMethod === 'bitcoin' && hasPricedService);
@@ -223,7 +230,7 @@
           button.setAttribute('aria-pressed', String(isSelected));
           button.textContent = isSelected ? 'Added ✓' : services.find(service => service.id === card.dataset.product).button;
         });
-        announcer.textContent = selectedServices.length ? selectedServices.length + ' premium service selected.' : 'Only Certifyd Core selected.';
+        announcer.textContent = selectedServices.length ? selectedServices.length + ' checkout add-on selected.' : 'Registration fee and Certifyd Core selected.';
       }
 
       function applyInitialQuery(){
@@ -272,14 +279,14 @@
         const name = document.getElementById('account-name').value.trim();
         const email = document.getElementById('account-email').value.trim();
         const selectedServices = services.filter(service => selected.has(service.id));
-        const needsPayment = selectedServices.some(service => service.monthlyCad);
+        const needsPayment = true;
         const payment = paymentInputs.some(input => input.checked);
         if (!name || !email) {
           showMessage('error', 'Please enter your name and email before continuing.');
           return;
         }
         if (needsPayment && !payment) {
-          showMessage('error', 'Choose a payment method for paid services before checkout.');
+          showMessage('error', 'Choose a payment method before checkout.');
           return;
         }
         const paymentMethod = selectedPaymentMethod();
@@ -288,6 +295,7 @@
           ? selectedServices.reduce((sum, service) => sum + ((service.monthlyCad || 0) * (service.bitcoinDiscount || 0)), 0)
           : 0;
         const monthlyTotal = Math.max(0, monthlySubtotal - bitcoinDiscount);
+        const todayTotal = REGISTRATION_FEE_CAD + monthlyTotal;
         const payload = {
           source: 'services_page',
           registrationType: 'services_registration',
@@ -300,9 +308,11 @@
           selectedProductIds: selectedServices.map(service => service.id).join(','),
           selectedProducts: selectedServices.map(service => service.name).join(' | ') || 'Certifyd Core',
           paymentMethod: paymentMethod || 'none',
+          registrationFeeCad: REGISTRATION_FEE_CAD.toFixed(2),
           subtotalCadMonthly: monthlySubtotal ? monthlySubtotal.toFixed(2) : '0.00',
           bitcoinDiscountCadMonthly: bitcoinDiscount ? bitcoinDiscount.toFixed(2) : '0.00',
           totalCadMonthly: monthlyTotal ? monthlyTotal.toFixed(2) : '0.00',
+          totalDueTodayCad: todayTotal.toFixed(2),
           bitcoinTreasuryAddress: paymentMethod === 'bitcoin' ? TREASURY_BTC_ADDRESS : '',
           checkoutStatus: paymentMethod === 'bitcoin' ? 'bitcoin_checkout_available' : (needsPayment ? 'payment_method_selected' : 'free_core_registration'),
         };
