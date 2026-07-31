@@ -39,8 +39,12 @@ export class GitHubPullRequestPublisher {
     const slug = safeSlug(pkg.slug || run.summary.slug || runId);
     const title = normalizeArticleTitle(pkg.title || run.summary.title);
     const markdown = buildBlogMarkdown(pkg, run);
-    const generatedFiles = await this.buildGeneratedSiteFiles(slug, markdown);
     const installationToken = await this.createInstallationToken();
+    const generatedFiles = await this.buildGeneratedSiteFiles(slug, markdown, {
+      repositoryConfig: this.config,
+      token: installationToken,
+      branchName: this.config.baseBranch,
+    });
     if (this.config.mode === 'direct') {
       const commits = await putGeneratedFiles({
         config: this.config,
@@ -117,8 +121,13 @@ export class GitHubPullRequestPublisher {
     const slug = safeSlug(pkg.slug || run.summary.slug || runId);
     const title = normalizeArticleTitle(pkg.title || run.summary.title);
     const markdown = buildBlogMarkdown(pkg, run, { status: 'archived' });
-    const generatedFiles = await this.buildGeneratedSiteFiles(slug, markdown, { includeArticlePage: false });
     const installationToken = await this.createInstallationToken();
+    const generatedFiles = await this.buildGeneratedSiteFiles(slug, markdown, {
+      includeArticlePage: false,
+      repositoryConfig: this.config,
+      token: installationToken,
+      branchName: this.config.baseBranch,
+    });
     if (this.config.mode === 'direct') {
       const commits = await putGeneratedFiles({
         config: this.config,
@@ -266,6 +275,14 @@ export class GitHubPullRequestPublisher {
     try {
       await fs.mkdir(path.join(tempRoot, 'content'), { recursive: true });
       await fs.cp(path.join(this.siteRoot, 'content', 'blog'), path.join(tempRoot, 'content', 'blog'), { recursive: true });
+      if (options.repositoryConfig && options.token && options.branchName) {
+        await hydrateBlogSourcesFromRepository({
+          config: options.repositoryConfig,
+          token: options.token,
+          branchName: options.branchName,
+          targetDir: path.join(tempRoot, 'content', 'blog'),
+        });
+      }
       await fs.cp(path.join(this.siteRoot, 'templates'), path.join(tempRoot, 'templates'), { recursive: true });
       await fs.copyFile(path.join(this.siteRoot, 'index.html'), path.join(tempRoot, 'index.html'));
       await fs.writeFile(path.join(tempRoot, 'content', 'blog', `${slug}.md`), markdown);
@@ -430,6 +447,39 @@ async function putGeneratedFiles({ config, token, branchName, files, message }) 
     }));
   }
   return commits;
+}
+
+async function hydrateBlogSourcesFromRepository({ config, token, branchName, targetDir }) {
+  const entries = await getRepositoryDirectoryEntries({
+    config,
+    token,
+    branchName,
+    dirPath: 'content/blog',
+  });
+  if (!entries.length) return;
+  await fs.mkdir(targetDir, { recursive: true });
+  for (const entry of entries) {
+    if (entry.type !== 'file') continue;
+    const name = String(entry.name || '').trim();
+    if (!/^[a-z0-9][a-z0-9-]*\.md$/i.test(name)) continue;
+    const filePath = `content/blog/${name}`;
+    const content = await getRepositoryFileContent({ config, token, branchName, filePath });
+    await fs.writeFile(path.join(targetDir, name), content, 'utf8');
+  }
+}
+
+async function getRepositoryDirectoryEntries({ config, token, branchName, dirPath }) {
+  const encodedPath = dirPath.split('/').map(encodeURIComponent).join('/');
+  const response = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/${encodedPath}?ref=${encodeURIComponent(branchName)}`, {
+    headers: githubHeaders(token),
+  });
+  if (response.status === 404) return [];
+  if (!response.ok) {
+    const text = await response.text();
+    throw Object.assign(new Error(`GitHub directory lookup failed for ${dirPath}: HTTP ${response.status}. ${text.slice(0, 300)}`), { statusCode: response.status === 401 || response.status === 403 ? 403 : 502 });
+  }
+  const json = await response.json();
+  return Array.isArray(json) ? json : [];
 }
 
 async function filesForMirror({ files, mirror = {}, token, branchName }) {

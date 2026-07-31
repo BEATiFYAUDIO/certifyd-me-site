@@ -10,6 +10,7 @@ import { getDashboardConfig } from '../scripts/content-dashboard/config.js';
 import { validateRunId, safeReturnPath } from '../scripts/content-dashboard/security.js';
 import { AuditLogRepository, ContentDashboardActions } from '../scripts/content-dashboard/actions.js';
 import { ContentBrainRepository } from '../scripts/content-dashboard/repository.js';
+import { GitHubPullRequestPublisher } from '../scripts/content-dashboard/publisher.js';
 
 const env = {
   ...process.env,
@@ -715,6 +716,106 @@ test('20bb direct publishing can republish a published article', async () => {
   assert.ok(manifest.publishedAt);
   assert.equal(manifest.publishing.mode, 'direct');
   assert.deepEqual(manifest.publishing.commitUrls, ['https://github.test/certifyd/commit/2']);
+});
+
+test('20bba direct publish generation preserves existing GitHub branch articles when local checkout is stale', async () => {
+  const tmpSiteRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-publisher-hydrate-'));
+  await fs.mkdir(path.join(tmpSiteRoot, 'content', 'blog'), { recursive: true });
+  await fs.mkdir(path.join(tmpSiteRoot, 'scripts'), { recursive: true });
+  await fs.symlink(path.join(process.cwd(), 'node_modules'), path.join(tmpSiteRoot, 'node_modules'), 'dir');
+  await fs.cp(path.join(process.cwd(), 'templates'), path.join(tmpSiteRoot, 'templates'), { recursive: true });
+  await fs.copyFile(path.join(process.cwd(), 'scripts', 'build-blog.js'), path.join(tmpSiteRoot, 'scripts', 'build-blog.js'));
+  await fs.writeFile(path.join(tmpSiteRoot, 'index.html'), [
+    '<main>',
+    '<!-- BLOG_RECENT_START -->',
+    '<!-- BLOG_RECENT_END -->',
+    '</main>',
+  ].join('\n'));
+  await fs.writeFile(path.join(tmpSiteRoot, 'content', 'blog', 'local-stale.md'), [
+    '---',
+    'title: "Local Stale Article"',
+    'slug: "local-stale"',
+    'date: "2026-07-01"',
+    'updated: "2026-07-01"',
+    'author: "Certifyd"',
+    'excerpt: "Only in the stale local checkout."',
+    'status: "published"',
+    '---',
+    '',
+    '# Local Stale Article',
+    '',
+    'Local body.',
+  ].join('\n'));
+
+  const remotePriorMarkdown = [
+    '---',
+    'title: "Remote Prior Article"',
+    'slug: "remote-prior"',
+    'date: "2026-07-30"',
+    'updated: "2026-07-30"',
+    'author: "Certifyd"',
+    'excerpt: "Already published on GitHub."',
+    'status: "published"',
+    '---',
+    '',
+    '# Remote Prior Article',
+    '',
+    'Remote body.',
+  ].join('\n');
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const raw = String(url);
+    if (raw.includes('/contents/content/blog?')) {
+      return new Response(JSON.stringify([
+        { type: 'file', name: 'remote-prior.md', path: 'content/blog/remote-prior.md' },
+      ]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (raw.includes('/contents/content/blog/remote-prior.md?')) {
+      return new Response(JSON.stringify({
+        content: Buffer.from(remotePriorMarkdown).toString('base64'),
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    return new Response('{}', { status: 404, headers: { 'Content-Type': 'application/json' } });
+  };
+  try {
+    const publisher = new GitHubPullRequestPublisher({
+      siteRoot: tmpSiteRoot,
+      githubPublishing: {
+        enabled: true,
+        owner: 'BEATiFYAUDIO',
+        repo: 'certifyd-me-site',
+        token: 'test-token',
+        baseBranch: 'main',
+      },
+    }, {});
+    const files = await publisher.buildGeneratedSiteFiles('new-article', [
+      '---',
+      'title: "New Article"',
+      'slug: "new-article"',
+      'date: "2026-07-31"',
+      'updated: "2026-07-31"',
+      'author: "Certifyd"',
+      'excerpt: "Second article published today."',
+      'status: "published"',
+      '---',
+      '',
+      '# New Article',
+      '',
+      'New body.',
+    ].join('\n'), {
+      repositoryConfig: {
+        owner: 'BEATiFYAUDIO',
+        repo: 'certifyd-me-site',
+      },
+      token: 'test-token',
+      branchName: 'main',
+    });
+    const index = files.find((file) => file.path === 'blog/index.html')?.content || '';
+    assert.match(index, /Remote Prior Article/);
+    assert.match(index, /New Article/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test('20bc IndexNow submits only after publish, update and removal', async () => {
