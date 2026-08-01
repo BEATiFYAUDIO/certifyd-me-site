@@ -196,6 +196,47 @@ test('Qwen trend ranking falls back when local model returns malformed analysis'
   assert.match(scan.items[0].generatedBy, /deterministic|source-cluster/);
 });
 
+test('trend scans skip source items without a Certifyd-relevant creator angle', async () => {
+  const agentRoot = await tempAgentRoot();
+  const feed = rssFeed([
+    {
+      title: 'Ten advances in mathematics and theoretical computer science',
+      description: 'Researchers share new results on geometry, cryptography and complexity theory.',
+      link: 'https://example.test/math-advances',
+    },
+  ]);
+  const scan = await scanTrendOpportunities(config(agentRoot), {
+    fetchImpl: async (url) => response(String(url).includes('example.test') ? feed : rssFeed([])),
+  });
+
+  assert.equal(scan.summary.storiesRetained, 1);
+  assert.equal(scan.items.length, 0);
+});
+
+test('unfaithful Qwen trend analysis is discarded in favour of deterministic source-backed copy', async () => {
+  const agentRoot = await tempAgentRoot();
+  const feed = rssFeed([
+    {
+      title: 'Music artists test direct fan memberships',
+      description: 'Independent artists are building audience relationships with direct-to-fan subscriptions and commerce.',
+      link: 'https://example.test/music-memberships',
+    },
+  ]);
+  const cfg = config(agentRoot, { ollama: { enabled: true } });
+  const scan = await scanTrendOpportunities(cfg, {
+    fetchImpl: async (url) => {
+      if (String(url).includes('/api/chat')) {
+        return response(JSON.stringify({ message: { content: JSON.stringify({ recommended: true, suggestedTitle: 'Not applicable', whyItMatters: 'This is unrelated to the category.', certifydAngle: 'Not applicable as it pertains to a different topic.', riskFlags: [] }) } }), { contentType: 'application/json' });
+      }
+      return response(feed);
+    },
+  });
+
+  assert.equal(scan.items.length, 1);
+  assert.doesNotMatch(scan.items[0].suggestedAngle, /not applicable|unrelated|different topic/i);
+  assert.match(scan.items[0].generatedBy, /deterministic|source-cluster/);
+});
+
 test('dismissing an opportunity removes it from active saved trend results', async () => {
   const agentRoot = await tempAgentRoot();
   const feed = rssFeed([

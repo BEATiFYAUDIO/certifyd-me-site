@@ -234,7 +234,7 @@ export function buildSourceRegistry(config = {}) {
     id: `env-${hashText(feedUrl).slice(0, 10)}`,
     publisher: labelFromUrl(feedUrl),
     feedUrl,
-    categories: ['Technology', 'Creator Economy'],
+    categories: [],
     enabled: true,
     priority: 50 - index,
     reliability: 'Environment-configured feed',
@@ -323,9 +323,11 @@ class RssTrendProvider {
     const clusters = clusterSourceItems(deduped);
     const brainRecords = await loadApprovedBrainRecords(this.config);
     const evaluated = [];
-    for (const cluster of clusters.slice(0, 18)) {
+    for (const cluster of clusters.slice(0, 30)) {
+      if (!isCertifydRelevantCluster(cluster)) continue;
       const coverage = computeBrainCoverage(cluster, brainRecords);
       const qwen = await evaluateClusterWithQwen(this.config, cluster, coverage, this.options).catch((error) => ({ recommended: true, riskFlags: [`Qwen unavailable: ${safeError(error)}`] }));
+      if (qwen.recommended === false) continue;
       evaluated.push(opportunityFromCluster(cluster, coverage, qwen));
     }
     const items = evaluated.sort((a, b) => scoreOpportunity(b) - scoreOpportunity(a)).slice(0, 18);
@@ -659,12 +661,18 @@ function parseQwenOpportunity(content) {
   const json = extractJson(content);
   if (!json) return null;
   const parsed = JSON.parse(json);
+  const suggestedTitle = trim(parsed.suggestedTitle, 120);
+  const whyItMatters = trim(parsed.whyItMatters, 240);
+  const certifydAngle = trim(parsed.certifydAngle, 240);
+  const riskFlags = Array.isArray(parsed.riskFlags) ? parsed.riskFlags.map((item) => trim(item, 80)).filter(Boolean).slice(0, 5) : [];
+  if (parsed.recommended === false) return { recommended: false, suggestedTitle, whyItMatters, certifydAngle, riskFlags };
+  if (isUnfaithfulQwenEvaluation(`${suggestedTitle} ${whyItMatters} ${certifydAngle}`)) return null;
   return {
-    recommended: parsed.recommended !== false,
-    suggestedTitle: trim(parsed.suggestedTitle, 120),
-    whyItMatters: trim(parsed.whyItMatters, 240),
-    certifydAngle: trim(parsed.certifydAngle, 240),
-    riskFlags: Array.isArray(parsed.riskFlags) ? parsed.riskFlags.map((item) => trim(item, 80)).filter(Boolean).slice(0, 5) : [],
+    recommended: true,
+    suggestedTitle,
+    whyItMatters,
+    certifydAngle,
+    riskFlags,
   };
 }
 
@@ -731,6 +739,67 @@ function whyTrending(cluster) {
   const item = cluster.items[0];
   return `Recent source from ${item?.publisher || 'an approved feed'}${item?.publishedAt ? ` on ${dateOnly(item.publishedAt)}` : ''}.`;
 }
+
+function isCertifydRelevantCluster(cluster) {
+  const lead = cluster.items?.[0];
+  const leadText = `${lead?.title || cluster.title || ''} ${lead?.summary || ''} ${(lead?.keywords || []).join(' ')}`.toLowerCase();
+  const sourceText = `${cluster.title || ''} ${cluster.summary || ''} ${(cluster.keywords || []).join(' ')}`.toLowerCase();
+  if (!leadText.trim() || !sourceText.trim()) return false;
+  return matchesCertifydRelevance(leadText) && matchesCertifydRelevance(sourceText);
+}
+
+function matchesCertifydRelevance(text) {
+  return CERTIFYD_RELEVANCE_TERMS.some((pattern) => pattern.test(text));
+}
+
+function isUnfaithfulQwenEvaluation(value) {
+  const text = String(value || '').toLowerCase();
+  return /\bnot applicable\b|\bunrelated\b|\bdifferent topic\b|\bnot about\b|\bnot focused on\b|\bunrelated to\b|\bevaluating feed items\b/.test(text);
+}
+
+const CERTIFYD_RELEVANCE_TERMS = [
+  /\bcreator(s)?\b/,
+  /\bartist(s)?\b/,
+  /\bmusic\b/,
+  /\brelease(s)?\b/,
+  /\broyalt(y|ies)\b/,
+  /\bright(s)?\b/,
+  /\battribution\b/,
+  /\bauthorship\b/,
+  /\bprovenance\b/,
+  /\bauthenticity\b/,
+  /\bcopyright\b/,
+  /\bpublishing\b/,
+  /\bcontent authenticity\b/,
+  /\bcreator content\b/,
+  /\bdigital content\b/,
+  /\bmedia ownership\b/,
+  /\bpublic media\b/,
+  /\bjournalis(m|t|ts)\b/,
+  /\bnewsletter(s)?\b/,
+  /\bplatform distribution\b/,
+  /\bplatform dependency\b/,
+  /\bcreator discovery\b/,
+  /\bfan discovery\b/,
+  /\bcommerce\b/,
+  /\bpayment(s)?\b/,
+  /\bsubscription(s)?\b/,
+  /\bmembership(s)?\b/,
+  /\bdirect-to-fan\b/,
+  /\bfan attendance\b/,
+  /\bfan relationship(s)?\b/,
+  /\bfan support\b/,
+  /\baudience relationship(s)?\b/,
+  /\baudience ownership\b/,
+  /\bcustomer relationship(s)?\b/,
+  /\bidentity\b/,
+  /\bprofile(s)?\b/,
+  /\bownership\b/,
+  /\bfraud\b/,
+  /\bbot(s)?\b/,
+  /\bstreaming\b/,
+  /\blicens(e|ing)\b/,
+];
 
 function certifydRelevance(category, text) {
   const haystack = String(text || '').toLowerCase();
