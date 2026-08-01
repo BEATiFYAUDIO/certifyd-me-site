@@ -187,13 +187,14 @@ test('Qwen trend ranking falls back when local model returns malformed analysis'
   const cfg = config(agentRoot, { ollama: { enabled: true } });
   const scan = await scanTrendOpportunities(cfg, {
     fetchImpl: async (url) => {
-      if (String(url).includes('/api/chat')) return response(JSON.stringify({ message: { content: 'not json' } }), { contentType: 'application/json' });
+      if (String(url).includes('/api/chat')) return response(JSON.stringify({ message: { content: '{"recommended":true,"suggestedTitle":"Creator commerce" "whyItMatters":"bad json"}' } }), { contentType: 'application/json' });
       return response(feed);
     },
   });
 
   assert.equal(scan.items.length, 1);
   assert.match(scan.items[0].generatedBy, /deterministic|source-cluster/);
+  assert.equal(scan.items[0].riskFlags.some((flag) => /Qwen unavailable|Expected ','|position 406/i.test(flag)), false);
 });
 
 test('trend scans skip source items without a Certifyd-relevant creator angle', async () => {

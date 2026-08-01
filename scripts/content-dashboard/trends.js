@@ -326,7 +326,7 @@ class RssTrendProvider {
     for (const cluster of clusters.slice(0, 30)) {
       if (!isCertifydRelevantCluster(cluster)) continue;
       const coverage = computeBrainCoverage(cluster, brainRecords);
-      const qwen = await evaluateClusterWithQwen(this.config, cluster, coverage, this.options).catch((error) => ({ recommended: true, riskFlags: [`Qwen unavailable: ${safeError(error)}`] }));
+      const qwen = await evaluateClusterWithQwen(this.config, cluster, coverage, this.options).catch(() => fallbackEvaluation(cluster, coverage));
       if (qwen.recommended === false) continue;
       evaluated.push(opportunityFromCluster(cluster, coverage, qwen));
     }
@@ -660,7 +660,12 @@ function buildOpportunityPrompt(cluster, coverage) {
 function parseQwenOpportunity(content) {
   const json = extractJson(content);
   if (!json) return null;
-  const parsed = JSON.parse(json);
+  let parsed;
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    return null;
+  }
   const suggestedTitle = trim(parsed.suggestedTitle, 120);
   const whyItMatters = trim(parsed.whyItMatters, 240);
   const certifydAngle = trim(parsed.certifydAngle, 240);
