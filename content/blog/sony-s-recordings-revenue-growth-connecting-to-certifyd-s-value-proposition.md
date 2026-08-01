@@ -48,5 +48,3 @@ Sony's record-breaking Q2 2026 revenue growth is a testament to Certifyd’s cap
 
 This article underscores why Certifyd's features are relevant to both creators and investors alike, highlighting the importance of transparency, security, and trust in driving business growth. Certifyd’s capabilities are designed to help creators thrive while ensuring financial integrity and market credibility for companies like Sony.
 
-> Draft generated for founder review. Not approved for publishing.
-
