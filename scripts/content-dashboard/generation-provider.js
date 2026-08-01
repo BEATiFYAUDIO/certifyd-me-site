@@ -3,6 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { DEFAULT_BLOG_COVER_IMAGE, cleanArticlePromptText, isSafeImagePath, normalizeArticleTitle, selectArticleCoverImage, titleFromPrompt } from './article-utils.js';
 import { brainRecordId, brainReviewState } from './brain-utils.js';
+import { readTrendState } from './trends.js';
 
 const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
 const DEFAULT_OLLAMA_MODEL = 'qwen2.5:1.5b';
@@ -246,6 +247,7 @@ export async function buildGroundedContext(config, input) {
     });
   });
   const selected = selectRelevantSources(sourceRecords, input).slice(0, SAFE_SOURCE_LIMIT);
+  const externalSourceFacts = await loadAttachedExternalSourceSummaries(config, input);
   const context = {
     audience: input.audience || input.targetAudience || '',
     contentObjective: input.objective || input.businessObjective || '',
@@ -258,6 +260,7 @@ export async function buildGroundedContext(config, input) {
     featureStatus: selected.filter((source) => /capabilities|approved-public-claims|technical-verification|facts/i.test(source.path)).map((source) => `${source.id}: ${source.excerpt.slice(0, 320)}`),
     prohibitedClaims: selected.filter((source) => /approved-public-claims|consistency-review|founder-decisions/i.test(source.path)).map((source) => `${source.id}: ${source.excerpt.slice(0, 420)}`),
     deprecatedTerminology: selected.filter((source) => /deprecated|consistency-review|approved-public-claims/i.test(source.path)).map((source) => `${source.id}: ${source.excerpt.slice(0, 260)}`),
+    externalSourceFacts,
     relatedArticles: await readRelatedArticles(config.siteRoot),
     sourceRecords: selected,
   };
@@ -453,6 +456,8 @@ function buildSystemInstruction() {
   return [
     'Write a concise Certifyd blog draft in Markdown only.',
     'Use only the supplied Certifyd context for company facts.',
+    'When external source summaries are supplied, make about half of the draft about the external business/news facts and about half about the Certifyd relevance.',
+    'Use external source summaries only for facts about the news subject; do not invent facts beyond those summaries.',
     'Do not invent customers, partnerships, revenue, adoption, launch dates, technical capabilities or legal claims.',
     'Never say the external company, article subject, rights holder, investor, label, distributor or platform uses, leverages, integrates with, partners with, is powered by, or benefits from Certifyd unless that exact relationship appears in the supplied context.',
     'For news about companies outside Certifyd, explain only why the news is relevant to Certifyd readers. Do not turn relevance into a relationship or adoption claim.',
@@ -470,6 +475,7 @@ function buildUserPrompt(input, groundedContext) {
   const guardrails = buildTopicGuardrails(input).map((item) => `- ${item}`).join('\n');
   const claims = context.approvedClaims.map((item) => `- ${item}`).join('\n') || '- No approved claims selected.';
   const productFacts = context.productFacts.map((item) => `- ${item}`).join('\n') || '- No product facts selected.';
+  const externalSources = context.externalSourceFacts.map((item) => `- ${item.publisher}${item.publishedAt ? ` (${item.publishedAt})` : ''}: ${item.title}. ${item.summary}${item.articleUrl ? ` Source: ${item.articleUrl}` : ''}`).join('\n') || '- No external source summaries attached.';
   const prohibited = context.prohibitedClaims.map((item) => `- ${item}`).join('\n') || '- Avoid unsupported claims.';
   return [
     `Topic: ${input.topic || input.workingTitle || 'Certifyd article'}`,
@@ -483,13 +489,16 @@ function buildUserPrompt(input, groundedContext) {
     'Approved Certifyd claims:',
     claims,
     '',
+    'External source facts for the business/news side of the article:',
+    externalSources,
+    '',
     'Product facts:',
     productFacts,
     '',
     'Do not claim:',
     prohibited,
     '',
-    'Write the draft now in Markdown only. Keep it concise and useful.',
+    'Write the draft now in Markdown only. Keep it concise and useful. Start with the external business/news facts, then connect them to Certifyd using only approved Certifyd context.',
   ].join('\n');
 }
 
@@ -500,6 +509,13 @@ function compactGroundedContextForModel(groundedContext) {
     productFacts: compactList(groundedContext.productFacts, 3, 240),
     terminology: compactList(groundedContext.terminology, 2, 180),
     prohibitedClaims: compactList(groundedContext.prohibitedClaims, 4, 260),
+    externalSourceFacts: (groundedContext.externalSourceFacts || []).slice(0, 4).map((source) => ({
+      publisher: clampText(source.publisher, 80),
+      publishedAt: clampText(source.publishedAt, 16),
+      title: clampText(source.title, 140),
+      summary: clampText(source.summary, 360),
+      articleUrl: clampText(source.articleUrl, 220),
+    })),
     sources: (groundedContext.sourceRecords || []).slice(0, 6).map((source) => ({
       id: source.id,
       title: source.title,
@@ -525,6 +541,31 @@ function buildTopicGuardrails(input) {
     );
   }
   return guardrails;
+}
+
+async function loadAttachedExternalSourceSummaries(config, input) {
+  const requestedIds = new Set(parseIdList(input.trendSourceItemIds, 40));
+  const requestedOpportunityId = cleanId(input.trendOpportunityId);
+  if (!requestedIds.size && !requestedOpportunityId) return [];
+  const state = await readTrendState(config).catch(() => null);
+  if (!state) return [];
+  if (!requestedIds.size && requestedOpportunityId) {
+    const opportunity = [...(state.opportunities || []), ...(state.savedIdeas || [])].find((item) => item.id === requestedOpportunityId);
+    for (const id of opportunity?.sourceItemIds || []) requestedIds.add(cleanId(id));
+  }
+  if (!requestedIds.size) return [];
+  return (state.sourceItems || [])
+    .filter((item) => requestedIds.has(cleanId(item.id)))
+    .slice(0, 6)
+    .map((item) => ({
+      id: cleanId(item.id),
+      publisher: clampText(cleanText(item.publisher || item.sourceName || 'Source').replace(/\n+/g, ' '), 80),
+      publishedAt: clampText(String(item.publishedAt || '').slice(0, 10), 16),
+      title: clampText(cleanText(item.title || '').replace(/\n+/g, ' '), 160),
+      summary: clampText(cleanText(item.summary || '').replace(/\n+/g, ' '), 520),
+      articleUrl: safePublicUrl(item.articleUrl),
+    }))
+    .filter((item) => item.title && item.summary);
 }
 
 function detectUnsupportedExternalAdoptionClaims(markdown) {
@@ -864,7 +905,7 @@ function trimGroundedContext(context, maxChars) {
   let serialized = JSON.stringify(context);
   while (serialized.length > maxChars && context.sourceRecords.length > 8) {
     context.sourceRecords.pop();
-    for (const key of ['approvedClaims', 'productFacts', 'terminology', 'featureStatus', 'prohibitedClaims', 'deprecatedTerminology']) {
+    for (const key of ['approvedClaims', 'productFacts', 'terminology', 'featureStatus', 'prohibitedClaims', 'deprecatedTerminology', 'externalSourceFacts']) {
       if (context[key]?.length) context[key].pop();
     }
     serialized = JSON.stringify(context);
@@ -910,6 +951,16 @@ function titleFromMarkdown(relative, text) {
 
 function cleanText(text) {
   return String(text || '').replace(/\r/g, '').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function safePublicUrl(value) {
+  try {
+    const url = new URL(String(value || '').trim());
+    if (!['http:', 'https:'].includes(url.protocol)) return '';
+    return url.toString();
+  } catch {
+    return '';
+  }
 }
 
 function sourceId(relative) {

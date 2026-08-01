@@ -16,6 +16,7 @@ import {
 
 async function makeConfig(overrides = {}) {
   const siteRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-provider-'));
+  const agentRoot = path.join(siteRoot, 'content-agent');
   await fs.mkdir(path.join(siteRoot, 'content-agent/knowledge/facts'), { recursive: true });
   await fs.mkdir(path.join(siteRoot, 'content-agent/knowledge/products'), { recursive: true });
   await fs.mkdir(path.join(siteRoot, 'content/blog'), { recursive: true });
@@ -35,6 +36,7 @@ async function makeConfig(overrides = {}) {
   ].join('\n'));
   return {
     siteRoot,
+    agentRoot,
     outputDir: path.join(siteRoot, 'content-agent/engine/outputs'),
     ollama: {
       enabled: true,
@@ -349,6 +351,49 @@ test('bot farming prompts are sent to Qwen with explicit anti-fraud guardrails',
   assert.match(outboundPrompt, /not enabling automation/i);
   assert.match(outboundPrompt, /Do not say Certifyd creates, manages, controls, monitors or secures bot farms/i);
   assert.match(outboundPrompt, /real customer activity/i);
+});
+
+test('trend source summaries are included separately from Certifyd Brain context', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'source-article-1',
+      publisher: 'Music Business Worldwide',
+      publishedAt: '2026-08-01T10:00:00.000Z',
+      title: 'Label revenue rises as direct fan activity grows',
+      summary: 'A music business article reports higher recorded music revenue and discusses direct fan relationships.',
+      articleUrl: 'https://example.test/music-business-story',
+    }],
+    opportunities: [{
+      id: 'opp-music-1',
+      sourceItemIds: ['source-article-1'],
+    }],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Label revenue and creator commerce',
+    trendOpportunityId: 'opp-music-1',
+    trendSourceItemIds: 'source-article-1',
+  });
+  assert.equal(context.externalSourceFacts.length, 1);
+  const provider = new OllamaQwenGenerationProvider(config, { fetchImpl: makeOllamaFetch(validArticle(context.sourceRecords[0].id), calls) });
+  await provider.generateArticle({
+    actorEmail: 'writer@example.test',
+    topic: 'Label revenue and creator commerce',
+    audience: 'Creators',
+    objective: 'Explain the external business news and Certifyd relevance.',
+    trendOpportunityId: 'opp-music-1',
+    trendSourceItemIds: 'source-article-1',
+  }, context);
+
+  const chatCall = calls.find((call) => call.url.endsWith('/api/chat'));
+  const payload = JSON.parse(chatCall.options.body);
+  const outboundPrompt = JSON.stringify(payload.messages);
+  assert.match(outboundPrompt, /about half of the draft about the external business\/news facts/i);
+  assert.match(outboundPrompt, /External source facts for the business\/news side/i);
+  assert.match(outboundPrompt, /Music Business Worldwide/i);
+  assert.match(outboundPrompt, /Label revenue rises as direct fan activity grows/i);
 });
 
 test('one active local generation per user is enforced', async () => {
