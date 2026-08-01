@@ -161,6 +161,7 @@ CONTENT_TREND_MAX_CONCURRENT_FETCHES=3
 CONTENT_TREND_DEFAULT_LOCALE=en-CA
 CONTENT_TREND_DAILY_SCAN_ENABLED=false
 CONTENT_TREND_SCAN_HOUR=7
+CONTENT_TREND_QWEN_EVALUATION_ENABLED=false
 ```
 
 Manual scan:
@@ -175,7 +176,7 @@ Operational rules:
 - Fetching uses timeouts, redirect limits, response-size limits and feed parsing for RSS 2.0 and Atom.
 - The dashboard stores feed titles, summaries, links and source attribution only; it does not copy full article bodies.
 - One unavailable source does not fail the entire scan.
-- Source-backed opportunities show source counts, publishers, freshness, risk flags and Brain coverage.
+- Source-backed opportunities show source counts, publishers, freshness, risk flags and Brain coverage. Trend scans use deterministic source-backed ranking by default; set `CONTENT_TREND_QWEN_EVALUATION_ENABLED=true` only if slower local-model ranking is acceptable.
 - Generating from a trend passes opportunity ID, source item IDs and Brain record IDs into the article run for provenance.
 - Saving a trend idea persists it in `content-agent/dashboard/trends/trend-state.json`; saved ideas are deduplicated by opportunity ID and survive later scans.
 - Trend scanning defaults to `composite`, which uses approved RSS/news sources first. Use `CONTENT_TREND_PROVIDER=seeded` only for local fixture demos; seeded scans are prevented from overwriting existing source-backed scan results.

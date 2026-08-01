@@ -108,7 +108,7 @@ async function runTrendScan(config, options) {
         'Removing duplicates',
         'Grouping related topics',
         'Checking Certifyd Brain coverage',
-        'Asking Qwen for article opportunities',
+        'Ranking source-backed opportunities',
         'Saving suggestions',
       ],
     },
@@ -323,10 +323,13 @@ class RssTrendProvider {
     const clusters = clusterSourceItems(deduped);
     const brainRecords = await loadApprovedBrainRecords(this.config);
     const evaluated = [];
+    const evaluateWithQwen = this.options.evaluateWithQwen === true || this.config.trendResearch?.qwenEvaluationEnabled === true;
     for (const cluster of clusters.slice(0, 30)) {
       if (!isCertifydRelevantCluster(cluster)) continue;
       const coverage = computeBrainCoverage(cluster, brainRecords);
-      const qwen = await evaluateClusterWithQwen(this.config, cluster, coverage, this.options).catch(() => fallbackEvaluation(cluster, coverage));
+      const qwen = evaluateWithQwen
+        ? await evaluateClusterWithQwen(this.config, cluster, coverage, this.options).catch(() => fallbackEvaluation(cluster, coverage))
+        : fallbackEvaluation(cluster, coverage);
       if (qwen.recommended === false) continue;
       evaluated.push(opportunityFromCluster(cluster, coverage, qwen));
     }

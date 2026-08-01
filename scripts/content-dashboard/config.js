@@ -126,6 +126,7 @@ export function getDashboardConfig(env = process.env) {
       defaultLocale: env.CONTENT_TREND_DEFAULT_LOCALE || 'en-CA',
       dailyScanEnabled: env.CONTENT_TREND_DAILY_SCAN_ENABLED === 'true',
       scanHour: positiveInt(env.CONTENT_TREND_SCAN_HOUR, 7, 0),
+      qwenEvaluationEnabled: env.CONTENT_TREND_QWEN_EVALUATION_ENABLED === 'true',
     },
     trendResearchProvider: env.CONTENT_TREND_PROVIDER || env.CONTENT_TREND_RESEARCH_PROVIDER || 'composite',
     founderEmails: parseList(env.CONTENT_DASHBOARD_FOUNDER_EMAILS),

@@ -184,7 +184,7 @@ test('Qwen trend ranking falls back when local model returns malformed analysis'
       link: 'https://example.test/direct-commerce',
     },
   ]);
-  const cfg = config(agentRoot, { ollama: { enabled: true } });
+  const cfg = config(agentRoot, { ollama: { enabled: true }, trendResearch: { qwenEvaluationEnabled: true } });
   const scan = await scanTrendOpportunities(cfg, {
     fetchImpl: async (url) => {
       if (String(url).includes('/api/chat')) return response(JSON.stringify({ message: { content: '{"recommended":true,"suggestedTitle":"Creator commerce" "whyItMatters":"bad json"}' } }), { contentType: 'application/json' });
@@ -223,7 +223,7 @@ test('unfaithful Qwen trend analysis is discarded in favour of deterministic sou
       link: 'https://example.test/music-memberships',
     },
   ]);
-  const cfg = config(agentRoot, { ollama: { enabled: true } });
+  const cfg = config(agentRoot, { ollama: { enabled: true }, trendResearch: { qwenEvaluationEnabled: true } });
   const scan = await scanTrendOpportunities(cfg, {
     fetchImpl: async (url) => {
       if (String(url).includes('/api/chat')) {
