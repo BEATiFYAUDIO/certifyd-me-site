@@ -106,6 +106,11 @@ test('RSS scans approved sources, categorizes opportunities, persists state and 
 
   const persisted = await getTrendingOpportunities(config(agentRoot));
   assert.equal(persisted.items.length, scan.items.length);
+  assert.equal(persisted.sourceStories.length, scan.summary.storiesRetained);
+  assert.equal(persisted.sourceStories[0].sourceUrl, 'https://example.test/music-bot-farms');
+  assert.deepEqual(persisted.sourceStories[0].opportunityIds, [scan.items[0].id]);
+  assert.ok(persisted.sourceStories[0].publishedAt);
+  assert.ok(persisted.sourceStories[0].fetchedAt);
   const detail = await readTrendSourceDetail(config(agentRoot), scan.items[0].id);
   assert.equal(detail.sources.length, scan.items[0].sourceItemIds.length);
   assert.match(detail.sources[0].title, /bot farms/i);

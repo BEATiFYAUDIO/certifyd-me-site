@@ -92,7 +92,8 @@ test('4b article workspace owns full Qwen generation and trending opportunities'
   assert.match(html, /Article workspace/);
   assert.match(html, /What should Certifyd write about\?/);
   assert.match(html, /Ask Qwen/);
-  assert.match(html, /Trending Opportunities/);
+  assert.match(html, /Recommended Opportunities/);
+  assert.match(html, /Recent Source Stories/);
   assert.match(html, /Compare Certifyd to Spotify/);
   assert.match(html, /Music/);
   assert.match(html, /Creator Economy/);
@@ -100,6 +101,66 @@ test('4b article workspace owns full Qwen generation and trending opportunities'
   assert.equal((html.match(/data-primary-generation-form/g) || []).length, 1);
   assert.match(html, /generation-progress/);
 }));
+
+
+test('4ba article ideas separate recommended opportunities from retained source stories', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-trends-view-'));
+  const trendDir = path.join(tmpRoot, 'dashboard', 'trends');
+  await fs.mkdir(trendDir, { recursive: true });
+  const sourceItems = Array.from({ length: 15 }, (_, index) => ({
+    id: `source-${index + 1}`,
+    title: `Retained Source Story ${index + 1}`,
+    publisher: index % 2 ? 'TechCrunch' : 'Music Business Worldwide',
+    articleUrl: `https://example.test/story-${index + 1}`,
+    sourceUrl: 'https://example.test/feed.xml',
+    publishedAt: index === 0 ? '2026-08-01T16:00:00.000Z' : `2026-07-${String(31 - (index % 3)).padStart(2, '0')}T12:00:00.000Z`,
+    retrievedAt: '2026-08-02T15:24:00.000Z',
+    categories: index % 2 ? ['Technology'] : ['Music'],
+    summary: `Summary for retained source story ${index + 1}`,
+    sourceType: 'rss',
+  }));
+  const opportunities = Array.from({ length: 13 }, (_, index) => ({
+    id: `opp-${index + 1}`,
+    title: `Recommended Opportunity ${index + 1}`,
+    category: index % 2 ? 'Technology' : 'Music',
+    categories: index % 2 ? ['Technology'] : ['Music'],
+    summary: `Opportunity summary ${index + 1}`,
+    whyTrending: 'Source activity detected.',
+    whyItMattersToCertifyd: 'This connects to Certifyd creator infrastructure.',
+    sourceItemIds: [`source-${index + 1}`],
+    sourceCount: 1,
+    sourcePublishers: [index % 2 ? 'TechCrunch' : 'Music Business Worldwide'],
+    newestSourceDate: sourceItems[index].publishedAt,
+    brainCoverage: 'Strong',
+    riskFlags: [],
+    evidenceLabel: 'Recent source',
+  }));
+  await fs.writeFile(path.join(trendDir, 'trend-state.json'), JSON.stringify({
+    provider: 'rss',
+    lastScannedAt: '2026-08-02T15:24:00.000Z',
+    summary: { provider: 'rss', sourcesChecked: 4, sourceFailures: 0, storiesCollected: 90, storiesRetained: 15, opportunitiesCreated: 13 },
+    sourceItems,
+    opportunities,
+    providerStatus: [{ id: 'techcrunch', publisher: 'TechCrunch', status: 'available', itemCount: 30, latestPublishedAt: '2026-08-01T16:00:00.000Z', latestFetchAt: '2026-08-02T15:24:00.000Z' }],
+    errors: [],
+    dismissed: [],
+    savedIdeas: [],
+  }, null, 2));
+  await withServer(async (base) => {
+    const cookie = await login(base, 'founder@example.test');
+    const response = await fetch(`${base}/app/content/articles?view=ideas`, { headers: { cookie } });
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    assert.match(html, /90 collected · 15 retained · 13 recommended · 4 sources checked/);
+    assert.match(html, /Recommended Opportunities/);
+    assert.match(html, /12 recommended/);
+    assert.match(html, /Recent Source Stories/);
+    assert.match(html, /Retained Source Story 15/);
+    assert.match(html, /In recommended opportunity/);
+    assert.match(html, /Source publication time is separate from fetched time/);
+    assert.doesNotMatch(html, /Recommended Opportunity 13[\s\S]*Generate Article/);
+  }, { CONTENT_AGENT_ROOT: tmpRoot });
+});
 
 test('4bb article workspace shows direct-published deployment records', async () => {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-published-view-'));

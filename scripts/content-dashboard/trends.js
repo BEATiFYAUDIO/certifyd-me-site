@@ -309,7 +309,7 @@ class RssTrendProvider {
       try {
         const feed = await fetchFeed(source, { fetchImpl: this.fetchImpl, timeoutMs, allowPrivate: Boolean(options.allowPrivateSources) });
         const parsed = parseFeedItems(feed.body, source, feed.finalUrl).slice(0, maxPerSource);
-        sourceStatus.push({ ...sourceStatusBase(source), status: 'available', latestFetchAt: new Date().toISOString(), itemCount: parsed.length });
+        sourceStatus.push({ ...sourceStatusBase(source), status: 'available', latestFetchAt: new Date().toISOString(), itemCount: parsed.length, latestPublishedAt: newestDate(parsed) || null });
         allItems.push(...parsed);
       } catch (error) {
         const message = safeError(error);
@@ -824,6 +824,8 @@ function certifydRelevance(category, text) {
 function trendStateResult(state) {
   const savedIdeas = state.savedIdeas || [];
   const savedIds = new Set(savedIdeas.map((item) => item.id));
+  const opportunities = (state.opportunities || []).map((item) => savedIds.has(item.id) ? { ...item, saved: true } : item);
+  const sourceStories = normalizeSourceStories(state.sourceItems || [], opportunities);
   return {
     provider: state.provider || 'rss',
     sourceLabels: [...new Set((state.sourceItems || []).map((item) => item.publisher))],
@@ -833,8 +835,39 @@ function trendStateResult(state) {
     errors: state.errors || [],
     providerStatus: state.providerStatus || state.sourceStatus || [],
     savedIdeas,
-    items: (state.opportunities || []).map((item) => savedIds.has(item.id) ? { ...item, saved: true } : item),
+    sourceStories,
+    sourceItems: sourceStories,
+    items: opportunities,
   };
+}
+
+function normalizeSourceStories(sourceItems, opportunities = []) {
+  const opportunityIndex = new Map();
+  for (const opportunity of opportunities) {
+    for (const sourceId of opportunity.sourceItemIds || []) {
+      const existing = opportunityIndex.get(sourceId) || [];
+      existing.push({ id: opportunity.id, title: opportunity.title });
+      opportunityIndex.set(sourceId, existing);
+    }
+  }
+  return [...sourceItems].map((item) => {
+    const linked = opportunityIndex.get(item.id) || [];
+    return {
+      id: item.id,
+      title: item.title || 'Untitled source story',
+      publisher: item.publisher || item.sourceName || 'Unknown publisher',
+      sourceUrl: item.articleUrl || item.link || item.sourceUrl || '',
+      feedUrl: item.sourceUrl || item.feedUrl || '',
+      publishedAt: item.publishedAt || null,
+      fetchedAt: item.retrievedAt || item.fetchedAt || item.firstDetectedAt || null,
+      firstDetectedAt: item.firstDetectedAt || item.retrievedAt || null,
+      categories: Array.isArray(item.categories) ? item.categories : [],
+      summary: item.summary || item.description || '',
+      opportunityIds: linked.map((opportunity) => opportunity.id).filter(Boolean),
+      opportunityTitles: linked.map((opportunity) => opportunity.title).filter(Boolean),
+      sourceType: item.sourceType || item.provider || 'rss',
+    };
+  }).sort((a, b) => Date.parse(b.publishedAt || b.fetchedAt || 0) - Date.parse(a.publishedAt || a.fetchedAt || 0));
 }
 
 function emptySummary(provider, opportunitiesCreated = 0) {

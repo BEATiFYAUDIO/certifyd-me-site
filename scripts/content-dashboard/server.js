@@ -382,6 +382,103 @@ function formatDashboardDate(value) {
   return date.toISOString().slice(0, 10);
 }
 
+
+function formatDashboardDateTime(value) {
+  if (!value) return 'No date';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Toronto', timeZoneName: 'short' }).format(date);
+}
+
+function trendSummaryPanel(trends) {
+  const summary = trends.summary || {};
+  const stories = Array.isArray(trends.sourceStories || trends.sourceItems) ? (trends.sourceStories || trends.sourceItems) : [];
+  const sourceStatus = Array.isArray(trends.providerStatus) ? trends.providerStatus : [];
+  const newest = newestSourceStory(stories);
+  const freshness = newest
+    ? `Newest source story: ${formatDashboardDate(newest.publishedAt)}${hasStoryPublishedToday(stories) ? '' : '. No retained stories published today.'}`
+    : 'Newest source story: none retained.';
+  const scanLine = `${Number(summary.storiesCollected || 0)} collected · ${Number(summary.storiesRetained || stories.length || 0)} retained · ${Number(summary.opportunitiesCreated || trends.items?.length || 0)} recommended · ${Number(summary.sourcesChecked || sourceStatus.length || 0)} sources checked`;
+  const sourceHealth = sourceStatus.length ? `<div class="review-list source-health-list">${sourceStatus.map((source) => sourceHealthRow(source, stories)).join('')}</div>` : '';
+  return `<div class="panel compact-panel trend-summary"><div class="meta-row"><span class="pill warn">${escapeHtml(scanLine)}</span>${summary.sourceFailures === 0 ? '<span class="pill good">0 source failures</span>' : `<span class="pill bad">${escapeHtml(String(summary.sourceFailures || 0))} source failures</span>`}</div><p class="muted">Last scanned: ${escapeHtml(trends.lastScannedAt ? formatDashboardDateTime(trends.lastScannedAt) : 'Not scanned yet')} · Saved ideas: ${escapeHtml(String(trends.savedIdeas?.length || 0))}</p><p class="notice">${escapeHtml(freshness)}</p>${sourceHealth}${trends.note ? `<p class="muted">${escapeHtml(trends.note)}</p>` : ''}</div>`;
+}
+
+function sourceHealthRow(source, stories = []) {
+  const tone = source.status === 'available' || source.status === 'ok' ? 'good' : source.status === 'unavailable' ? 'bad' : 'warn';
+  const latestPublishedAt = source.latestPublishedAt || newestSourceStory(stories.filter((story) => story.publisher === source.publisher))?.publishedAt || null;
+  const details = [
+    `${Number(source.itemCount || 0)} feed items`,
+    latestPublishedAt ? `latest source publication ${formatDashboardDateTime(latestPublishedAt)}` : 'latest source publication unknown',
+    source.latestFetchAt ? `fetched ${formatDashboardDateTime(source.latestFetchAt)}` : '',
+  ].filter(Boolean).join(' · ');
+  return `<article class="review-item compact-row"><div><h3>${escapeHtml(source.publisher || source.id || 'Source')}</h3><p class="muted">${escapeHtml(details)}</p>${source.latestError ? `<p class="error">${escapeHtml(source.latestError)}</p>` : ''}</div><span class="pill ${tone}">${escapeHtml(source.status || 'unknown')}</span></article>`;
+}
+
+function trendStoryFilters(stories, params) {
+  const selectedRange = String(params.get('storyRange') || 'all');
+  const selectedPublisher = String(params.get('storyPublisher') || 'All');
+  const selectedCategory = String(params.get('storyCategory') || 'All');
+  const publishers = uniqueSorted(stories.map((story) => story.publisher).filter(Boolean));
+  const categories = uniqueSorted(stories.flatMap((story) => story.categories || []).filter(Boolean));
+  const rangeTabs = [
+    ['all', 'All'],
+    ['today', 'Today'],
+    ['yesterday', 'Yesterday'],
+    ['7d', 'Last 7 days'],
+  ];
+  return `<form class="panel compact-panel source-story-filters" method="get" action="/app/content/articles"><input type="hidden" name="view" value="ideas"><div class="tabs compact">${rangeTabs.map(([key, label]) => `<button class="tab ${selectedRange === key ? 'active' : ''}" type="submit" name="storyRange" value="${escapeHtml(key)}">${escapeHtml(label)}</button>`).join('')}</div><div class="search-row"><label>Publisher<select name="storyPublisher"><option>All</option>${publishers.map((publisher) => `<option ${publisher === selectedPublisher ? 'selected' : ''}>${escapeHtml(publisher)}</option>`).join('')}</select></label><label>Category<select name="storyCategory"><option>All</option>${categories.map((category) => `<option ${category === selectedCategory ? 'selected' : ''}>${escapeHtml(category)}</option>`).join('')}</select></label><input type="hidden" name="storyRange" value="${escapeHtml(selectedRange)}"><button class="ghost" type="submit">Filter stories</button></div></form>`;
+}
+
+function filterTrendSourceStories(stories, params) {
+  const range = String(params.get('storyRange') || 'all');
+  const publisher = String(params.get('storyPublisher') || 'All');
+  const category = String(params.get('storyCategory') || 'All');
+  return [...stories].filter((story) => {
+    const published = story.publishedAt ? new Date(story.publishedAt) : null;
+    if (publisher !== 'All' && story.publisher !== publisher) return false;
+    if (category !== 'All' && !(story.categories || []).includes(category)) return false;
+    if (range !== 'all' && !published) return false;
+    if (range === 'today' && relativeDayLabel(published) !== 'Today') return false;
+    if (range === 'yesterday' && relativeDayLabel(published) !== 'Yesterday') return false;
+    if (range === '7d' && Date.now() - published.getTime() > 7 * 24 * 60 * 60 * 1000) return false;
+    return true;
+  }).sort((a, b) => Date.parse(b.publishedAt || b.fetchedAt || 0) - Date.parse(a.publishedAt || a.fetchedAt || 0));
+}
+
+function sourceStoryCard(story) {
+  const opportunity = story.opportunityIds?.length
+    ? `<span class="pill good">In recommended opportunity</span><span class="pill">${escapeHtml((story.opportunityTitles || story.opportunityIds).join(', '))}</span>`
+    : '<span class="pill">Not grouped into recommendation</span>';
+  return `<article class="review-item source-story-card"><div><div class="meta-row"><span class="pill warn">${escapeHtml(story.publisher || 'Source')}</span>${story.publishedAt ? `<span class="pill">${escapeHtml(formatDashboardDateTime(story.publishedAt))}</span><span class="pill">${escapeHtml(relativeDayLabel(new Date(story.publishedAt)))}</span>` : '<span class="pill">No source publication date</span>'}${(story.categories || []).map((category) => `<span class="pill">${escapeHtml(category)}</span>`).join('')}</div><h3>${escapeHtml(story.title || 'Untitled source story')}</h3><p>${escapeHtml(story.summary || '')}</p><div class="meta-row">${opportunity}</div><p class="muted">Source publication time is separate from fetched time${story.fetchedAt ? ` · fetched ${escapeHtml(formatDashboardDateTime(story.fetchedAt))}` : ''}${story.firstDetectedAt ? ` · first detected ${escapeHtml(formatDashboardDateTime(story.firstDetectedAt))}` : ''}</p></div><a class="ghost" href="${escapeHtml(story.sourceUrl || '#')}" rel="noreferrer" target="_blank">Open source</a></article>`;
+}
+
+function newestSourceStory(stories) {
+  return stories.filter((story) => story.publishedAt && !Number.isNaN(Date.parse(story.publishedAt))).sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt))[0] || null;
+}
+
+function hasStoryPublishedToday(stories) {
+  return stories.some((story) => story.publishedAt && relativeDayLabel(new Date(story.publishedAt)) === 'Today');
+}
+
+function relativeDayLabel(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return 'Unknown date';
+  const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto', year: 'numeric', month: '2-digit', day: '2-digit' });
+  const parts = (value) => formatter.formatToParts(value).reduce((acc, part) => ({ ...acc, [part.type]: part.value }), {});
+  const todayParts = parts(new Date());
+  const dateParts = parts(date);
+  const today = Date.UTC(Number(todayParts.year), Number(todayParts.month) - 1, Number(todayParts.day));
+  const target = Date.UTC(Number(dateParts.year), Number(dateParts.month) - 1, Number(dateParts.day));
+  const days = Math.round((today - target) / (24 * 60 * 60 * 1000));
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days > 1) return `${days} days ago`;
+  return 'Future dated';
+}
+
+function uniqueSorted(values) {
+  return [...new Set(values.map((value) => String(value || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
 async function renderArticles(ctx, url) {
   const runs = await ctx.runRepo.listRuns();
   const view = String(url.searchParams.get('view') || 'drafts');
@@ -404,14 +501,16 @@ async function renderArticles(ctx, url) {
   });
   const articleCards = filteredRuns.map((run) => articleListCard(run, csrf, ctx.permissions, ctx.config)).join('');
   const opportunities = filterTrendingOpportunities(trends, selectedCategory);
+  const recommended = opportunities.slice(0, 12);
+  const sourceStories = filterTrendSourceStories(trends.sourceStories || trends.sourceItems || [], url.searchParams);
   const canCreate = ctx.permissions.includes('content.article.create');
   const categoryTabs = `<div class="tabs compact"><a class="tab ${selectedCategory === 'All' ? 'active' : ''}" href="/app/content/articles?view=ideas">All</a>${TRENDING_CATEGORIES.map((category) => `<a class="tab ${category === selectedCategory ? 'active' : ''}" href="/app/content/articles?view=ideas&category=${encodeURIComponent(category)}">${escapeHtml(category)}</a>`).join('')}</div>`;
-  const sourceStatus = Array.isArray(trends.providerStatus) ? trends.providerStatus : [];
-  const sourceHealth = sourceStatus.length ? `<div class="meta-row">${sourceStatus.slice(0, 6).map((source) => `<span class="pill ${source.status === 'ok' ? 'good' : source.status === 'unavailable' ? 'bad' : 'warn'}">${escapeHtml(source.publisher || source.id)}: ${escapeHtml(source.status || 'unknown')}</span>`).join('')}</div>` : '';
-  const trendMeta = `<p class="muted">Provider: ${escapeHtml(trends.provider)}${trends.lastScannedAt ? ` · Last scanned: ${escapeHtml(formatDashboardDate(trends.lastScannedAt))}` : ' · Not scanned yet'}${trends.sourceLabels?.length ? ` · Sources: ${escapeHtml(trends.sourceLabels.join(', '))}` : ''} · Saved ideas: ${escapeHtml(String(trends.savedIdeas?.length || 0))}</p>${sourceHealth}${trends.note ? `<p class="notice">${escapeHtml(trends.note)}</p>` : ''}`;
+  const storyControls = trendStoryFilters(trends.sourceStories || trends.sourceItems || [], url.searchParams);
+  const trendMeta = trendSummaryPanel(trends);
   const scanControls = `<form method="post" action="/app/content/actions/trends/scan" data-generating-form><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><button class="primary" type="submit">Find trends now</button><div class="generation-progress" role="status" aria-live="polite" hidden><span>Scanning approved sources and ranking opportunities.</span><i></i></div></form><button class="ghost" type="button" disabled>Add idea manually</button>`;
   const emptyIdeas = `<p class="empty panel">No source-backed opportunities match this view. Run Find trends now, change category, or add an idea manually later.</p>`;
-  const ideas = view === 'ideas' ? `<section class="workspace-section" aria-labelledby="ideas-title"><div class="section-head"><div><p class="eyebrow">Trending Opportunities</p><h2 id="ideas-title">Source-backed article opportunities.</h2>${trendMeta}</div><div class="mini-actions">${scanControls}</div></div>${categoryTabs}<div class="opportunity-grid">${opportunities.length ? opportunities.map((item) => opportunityCard(item, csrf, canCreate)).join('') : emptyIdeas}</div></section>` : '';
+  const emptyStories = `<p class="empty panel">No retained source stories match this filter. This is normal when no approved source published in the selected window.</p>`;
+  const ideas = view === 'ideas' ? `<section class="workspace-section" aria-labelledby="ideas-title"><div class="section-head"><div><p class="eyebrow">Recommended Opportunities</p><h2 id="ideas-title">Recommended Opportunities</h2><p class="muted">The highest-ranked story opportunities from the latest scan.</p><div class="meta-row"><span class="pill warn">${escapeHtml(String(recommended.length))} recommended</span></div>${trendMeta}</div><div class="mini-actions">${scanControls}</div></div>${categoryTabs}<div class="opportunity-grid">${recommended.length ? recommended.map((item) => opportunityCard(item, csrf, canCreate)).join('') : emptyIdeas}</div><section class="workspace-section" aria-labelledby="recent-source-stories-title"><div class="section-head"><div><p class="eyebrow">Recent Source Stories</p><h2 id="recent-source-stories-title">Recent Source Stories</h2><p class="muted">Full retained source-story feed from the latest scan, sorted by source publication time.</p></div></div>${storyControls}<div class="review-list source-story-list">${sourceStories.length ? sourceStories.map(sourceStoryCard).join('') : emptyStories}</div></section></section>` : '';
   const create = `<section class="editorial-prompt panel compact-prompt">
     <div>
       <p class="eyebrow">Ask Qwen</p>
