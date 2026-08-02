@@ -852,6 +852,10 @@ function normalizeSourceStories(sourceItems, opportunities = []) {
   }
   return [...sourceItems].map((item) => {
     const linked = opportunityIndex.get(item.id) || [];
+    const status = linked.length ? 'Recommended' : 'Retained';
+    const retentionReason = linked.length
+      ? `Grouped into recommended opportunit${linked.length === 1 ? 'y' : 'ies'}: ${linked.map((opportunity) => opportunity.title || opportunity.id).filter(Boolean).join(', ')}`
+      : 'Retained after age, duplicate and source relevance filtering; not ranked into the top recommendations.';
     return {
       id: item.id,
       title: item.title || 'Untitled source story',
@@ -863,6 +867,9 @@ function normalizeSourceStories(sourceItems, opportunities = []) {
       firstDetectedAt: item.firstDetectedAt || item.retrievedAt || null,
       categories: Array.isArray(item.categories) ? item.categories : [],
       summary: item.summary || item.description || '',
+      status,
+      retentionStatus: status,
+      retentionReason,
       opportunityIds: linked.map((opportunity) => opportunity.id).filter(Boolean),
       opportunityTitles: linked.map((opportunity) => opportunity.title).filter(Boolean),
       sourceType: item.sourceType || item.provider || 'rss',

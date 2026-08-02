@@ -158,7 +158,16 @@ test('4ba article ideas separate recommended opportunities from retained source 
     assert.match(html, /Retained Source Story 15/);
     assert.match(html, /In recommended opportunity/);
     assert.match(html, /Source publication time is separate from fetched time/);
+    assert.match(html, /Retention:/);
+    assert.match(html, /Grouped into recommended opportunity/);
     assert.doesNotMatch(html, /Recommended Opportunity 13[\s\S]*Generate Article/);
+    const jsonResponse = await fetch(`${base}/app/content/trends.json`, { headers: { cookie } });
+    assert.equal(jsonResponse.status, 200);
+    const trends = await jsonResponse.json();
+    assert.equal(trends.items.length, 13);
+    assert.equal(trends.sourceStories.length, 15);
+    assert.equal(trends.summary.storiesCollected, 90);
+    assert.equal(trends.sourceStories[0].retentionStatus, 'Recommended');
   }, { CONTENT_AGENT_ROOT: tmpRoot });
 });
 

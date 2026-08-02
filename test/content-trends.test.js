@@ -109,6 +109,8 @@ test('RSS scans approved sources, categorizes opportunities, persists state and 
   assert.equal(persisted.sourceStories.length, scan.summary.storiesRetained);
   assert.equal(persisted.sourceStories[0].sourceUrl, 'https://example.test/music-bot-farms');
   assert.deepEqual(persisted.sourceStories[0].opportunityIds, [scan.items[0].id]);
+  assert.equal(persisted.sourceStories[0].retentionStatus, 'Recommended');
+  assert.match(persisted.sourceStories[0].retentionReason, /Grouped into recommended opportunity/);
   assert.ok(persisted.sourceStories[0].publishedAt);
   assert.ok(persisted.sourceStories[0].fetchedAt);
   const detail = await readTrendSourceDetail(config(agentRoot), scan.items[0].id);
