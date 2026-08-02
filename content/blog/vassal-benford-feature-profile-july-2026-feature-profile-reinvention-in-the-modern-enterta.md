@@ -40,12 +40,32 @@ without sounding like a guest from another time. The through-line is musical jud
 refrain, protecting its emotional clarity and translating it for a new audience. 
 
 ## Benford’s advantage is not that he escaped the 1990s. 
+
 It is that he learned how to translate what the decade taught him
 Entertainment careers rarely survive on talent alone. They survive through relationships, reinvention and
 ownership of a point of view. Benford’s modern relevance sits at the intersection of all three. He remains
 a studio creative, but he also operates as an executive, film producer and cultural steward—a
 combination that makes comparisons to Quincy Jones and Clive Davis understandable, even if Benford’s
 route is distinctly his own.
+
+## THE REINVENTION FORMULA
+
+The cleanest explanation of Benford’s staying power begins with Jade’s “Don’t Walk Away.” Written and
+produced by Benford and Ronald Spearman, the record became a defining crossover hit, reaching No. 4
+on the Billboard Hot 100 and No. 2 on the R&B chart. More important than the statistics was the song’s
+architecture: a direct lyric, an unmistakable vocal phrase and a groove strong enough to outlive its
+original production context.[1]
+In 2015, Diplo and Sleepy Tom built “Be Right There” around an interpolation of that Jade refrain. Official
+track credits list Benford among the songwriters, alongside Spearman, Diplo and Sleepy Tom.[2] The new
+recording did not erase the source; it revealed how contemporary the source had always been. A hook
+born in early-’90s R&B found a second life inside festival-scale electronic music.
+David Guetta and Steve Aoki. 
+
+That pattern continued with 2025’s “My Life,” the Steve Aoki and David Guetta collaboration featuring
+Swae Lee and the late PnB Rock. Benford is credited as a composer and songwriter on the release.[3] His
+role is telling: the veteran R&B architect is not standing outside modern EDM admiring it—his name is
+inside the composition. This is the difference between nostalgia and currency. One celebrates what
+happened; the other continues to generate value now. 
 
 Stay tuned for more on Certifyd founder Vassal in the coming weeks!
 
