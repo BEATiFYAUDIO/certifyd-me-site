@@ -435,18 +435,104 @@ async function putRepositoryFile({ config, token, branchName, filePath, content,
 }
 
 async function putGeneratedFiles({ config, token, branchName, files, message }) {
-  const commits = [];
-  for (const file of files) {
-    commits.push(await putRepositoryFile({
+  const normalizedFiles = (Array.isArray(files) ? files : []).filter((file) => file?.path);
+  if (!normalizedFiles.length) return [];
+
+  const ref = await githubJson(
+    config,
+    token,
+    `/repos/${config.owner}/${config.repo}/git/ref/heads/${encodeURIComponent(branchName)}`,
+    {},
+    `GitHub branch lookup failed for ${branchName}`,
+  );
+  const baseCommitSha = ref?.object?.sha;
+  if (!baseCommitSha) {
+    throw Object.assign(new Error(`GitHub branch lookup failed for ${branchName}: missing commit SHA.`), { statusCode: 502 });
+  }
+
+  const baseCommit = await githubJson(
+    config,
+    token,
+    `/repos/${config.owner}/${config.repo}/git/commits/${encodeURIComponent(baseCommitSha)}`,
+    {},
+    `GitHub base commit lookup failed for ${baseCommitSha}`,
+  );
+  const baseTreeSha = baseCommit?.tree?.sha;
+  if (!baseTreeSha) {
+    throw Object.assign(new Error(`GitHub base commit lookup failed for ${baseCommitSha}: missing tree SHA.`), { statusCode: 502 });
+  }
+
+  const tree = [];
+  for (const file of normalizedFiles) {
+    const blob = await githubJson(
       config,
       token,
-      branchName,
-      filePath: file.path,
-      content: file.content,
-      message,
-    }));
+      `/repos/${config.owner}/${config.repo}/git/blobs`,
+      {
+        method: 'POST',
+        body: {
+          content: Buffer.isBuffer(file.content) ? file.content.toString('base64') : Buffer.from(String(file.content)).toString('base64'),
+          encoding: 'base64',
+        },
+      },
+      `GitHub blob creation failed for ${file.path}`,
+    );
+    tree.push({
+      path: file.path,
+      mode: '100644',
+      type: 'blob',
+      sha: blob.sha,
+    });
   }
-  return commits;
+  const nextTree = await githubJson(
+    config,
+    token,
+    `/repos/${config.owner}/${config.repo}/git/trees`,
+    {
+      method: 'POST',
+      body: {
+        base_tree: baseTreeSha,
+        tree,
+      },
+    },
+    'GitHub tree creation failed',
+  );
+  const nextCommit = await githubJson(
+    config,
+    token,
+    `/repos/${config.owner}/${config.repo}/git/commits`,
+    {
+      method: 'POST',
+      body: {
+        message,
+        tree: nextTree.sha,
+        parents: [baseCommitSha],
+        author: {
+          name: 'Certifyd Content Dashboard',
+          email: 'content-dashboard@certifyd.me',
+        },
+        committer: {
+          name: 'Certifyd Content Dashboard',
+          email: 'content-dashboard@certifyd.me',
+        },
+      },
+    },
+    'GitHub commit creation failed',
+  );
+  const updatedRef = await githubJson(
+    config,
+    token,
+    `/repos/${config.owner}/${config.repo}/git/refs/heads/${encodeURIComponent(branchName)}`,
+    {
+      method: 'PATCH',
+      body: {
+        sha: nextCommit.sha,
+        force: false,
+      },
+    },
+    `GitHub branch update failed for ${branchName}`,
+  );
+  return [{ commit: nextCommit, content: { html_url: nextCommit.html_url || updatedRef?.object?.url || '' } }];
 }
 
 async function hydrateBlogSourcesFromRepository({ config, token, branchName, targetDir }) {

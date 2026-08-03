@@ -888,6 +888,94 @@ test('20bba direct publish generation preserves existing GitHub branch articles 
   }
 });
 
+test('20bbb direct publishing writes generated files as one atomic GitHub commit', async () => {
+  const tmpSiteRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-publisher-atomic-'));
+  await fs.mkdir(path.join(tmpSiteRoot, 'content', 'blog'), { recursive: true });
+  await fs.mkdir(path.join(tmpSiteRoot, 'scripts'), { recursive: true });
+  await fs.symlink(path.join(process.cwd(), 'node_modules'), path.join(tmpSiteRoot, 'node_modules'), 'dir');
+  await fs.cp(path.join(process.cwd(), 'templates'), path.join(tmpSiteRoot, 'templates'), { recursive: true });
+  await fs.copyFile(path.join(process.cwd(), 'scripts', 'build-blog.js'), path.join(tmpSiteRoot, 'scripts', 'build-blog.js'));
+  await fs.writeFile(path.join(tmpSiteRoot, 'index.html'), [
+    '<main>',
+    '<!-- BLOG_RECENT_START -->',
+    '<!-- BLOG_RECENT_END -->',
+    '</main>',
+  ].join('\n'));
+
+  const outputDir = path.join(tmpSiteRoot, 'engine', 'outputs');
+  const runId = 'atomic-publish-001';
+  const runDir = path.join(outputDir, runId);
+  await createMinimalRun(runDir, {
+    title: 'Atomic Publish Test',
+    slug: 'atomic-publish-test',
+    status: 'READY_TO_PUBLISH',
+    publishability: 'READY_TO_PUBLISH',
+    markdown: '# Atomic Publish Test\n\nBody.',
+    summary: 'Atomic publish test excerpt for generated blog output.',
+  });
+
+  const calls = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options = {}) => {
+    const raw = String(url);
+    const method = String(options?.method || 'GET').toUpperCase();
+    calls.push({ method, url: raw, body: options?.body ? JSON.parse(String(options.body)) : null });
+    if (raw.includes('/contents/content/blog?')) return new Response(JSON.stringify([]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    if (raw.includes('/git/ref/heads/main') && method === 'GET') {
+      return new Response(JSON.stringify({ object: { sha: 'base-commit-sha' } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (raw.includes('/git/commits/base-commit-sha') && method === 'GET') {
+      return new Response(JSON.stringify({ tree: { sha: 'base-tree-sha' } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (raw.endsWith('/git/blobs') && method === 'POST') {
+      return new Response(JSON.stringify({ sha: `blob-${calls.filter((call) => call.method === 'POST' && call.url.endsWith('/git/blobs')).length}` }), { status: 201, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (raw.endsWith('/git/trees') && method === 'POST') {
+      return new Response(JSON.stringify({ sha: 'next-tree-sha' }), { status: 201, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (raw.endsWith('/git/commits') && method === 'POST') {
+      return new Response(JSON.stringify({ sha: 'next-commit-sha', html_url: 'https://github.test/commit/next' }), { status: 201, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (raw.includes('/git/refs/heads/main') && method === 'PATCH') {
+      return new Response(JSON.stringify({ object: { sha: 'next-commit-sha' } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    return new Response('{}', { status: 404, headers: { 'Content-Type': 'application/json' } });
+  };
+  try {
+    const actions = new ContentDashboardActions(getDashboardConfig({
+      ...env,
+      CONTENT_AGENT_ROOT: tmpSiteRoot,
+      CONTENT_AGENT_OUTPUT_DIR: outputDir,
+      CONTENT_DASHBOARD_DB_PATH: ':memory:',
+      CONTENT_DASHBOARD_GITHUB_PUBLISHING_ENABLED: 'true',
+      CONTENT_DASHBOARD_GITHUB_OWNER: 'BEATiFYAUDIO',
+      CONTENT_DASHBOARD_GITHUB_REPO: 'certifyd-me-site',
+      CONTENT_DASHBOARD_GITHUB_TOKEN: 'test-token',
+    }));
+    const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+    await actions.preparePublishing({ actor, runId });
+    const result = await actions.publishToCertifyd({ actor, runId, version: 'v1' });
+    assert.match(result.output, /Published directly to main/);
+
+    const contentPuts = calls.filter((call) => call.method === 'PUT' && call.url.includes('/contents/'));
+    assert.equal(contentPuts.length, 0);
+    const treePosts = calls.filter((call) => call.method === 'POST' && call.url.endsWith('/git/trees'));
+    const commitPosts = calls.filter((call) => call.method === 'POST' && call.url.endsWith('/git/commits'));
+    const refPatches = calls.filter((call) => call.method === 'PATCH' && call.url.includes('/git/refs/heads/main'));
+    const blobPosts = calls.filter((call) => call.method === 'POST' && call.url.endsWith('/git/blobs'));
+    assert.ok(blobPosts.length >= 3);
+    assert.equal(treePosts.length, 1);
+    assert.equal(commitPosts.length, 1);
+    assert.equal(refPatches.length, 1);
+    assert.ok(treePosts[0].body.tree.some((entry) => entry.path === 'index.html'));
+    assert.ok(treePosts[0].body.tree.some((entry) => entry.path === 'blog/index.html'));
+    assert.ok(treePosts[0].body.tree.some((entry) => entry.path === 'content/blog/atomic-publish-test.md'));
+    assert.ok(treePosts[0].body.tree.every((entry) => entry.sha));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('20bc IndexNow submits only after publish, update and removal', async () => {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-indexnow-'));
   const outputDir = path.join(tmpRoot, 'engine', 'outputs');
@@ -1436,8 +1524,10 @@ function signTestAccessJwt(privateKey, claims) {
 
 async function createMinimalRun(runDir, options = {}) {
   await fs.mkdir(path.join(runDir, 'final'), { recursive: true });
+  await fs.mkdir(path.join(runDir, 'blog'), { recursive: true });
   const title = options.title || 'Minimal Run';
   const slug = options.slug || 'minimal-run';
+  const excerpt = options.excerpt || options.summary || 'Minimal run excerpt for generated blog output.';
   const selectedEvidence = options.selectedEvidence === undefined ? [approvedBrainRecord()] : options.selectedEvidence;
   await fs.writeFile(path.join(runDir, 'intake.json'), JSON.stringify({ workingTitle: title, targetAudience: 'Investors', primaryTopic: 'Certifyd Blog' }));
   await fs.writeFile(path.join(runDir, 'publication-manifest.json'), JSON.stringify({
@@ -1447,7 +1537,20 @@ async function createMinimalRun(runDir, options = {}) {
     publishability: options.publishability || 'NEEDS_FOUNDER_REVIEW',
     canonicalUrl: `https://certifyd.me/blog/${slug}/`,
   }));
-  await fs.writeFile(path.join(runDir, 'final', 'article.json'), JSON.stringify({ title, slug, version: 'v1' }));
+  await fs.writeFile(path.join(runDir, 'final', 'article.json'), JSON.stringify({
+    title,
+    slug,
+    version: 'v1',
+    excerpt,
+    seoDescription: options.seoDescription || excerpt,
+  }));
+  await fs.writeFile(path.join(runDir, 'blog', 'blog-post.json'), JSON.stringify({
+    title,
+    slug,
+    excerpt,
+    description: excerpt,
+    seoDescription: options.seoDescription || excerpt,
+  }));
   await fs.writeFile(path.join(runDir, 'final', 'article.md'), options.markdown || `# ${title}\n\nBody.`);
   await fs.writeFile(path.join(runDir, 'claim-ledger.json'), JSON.stringify({ claims: [{ text: 'Safe claim', status: 'APPROVED' }] }));
   await fs.writeFile(path.join(runDir, 'research-record.json'), JSON.stringify({ selectedEvidence, claimsThatMustNotBeMade: [] }));
