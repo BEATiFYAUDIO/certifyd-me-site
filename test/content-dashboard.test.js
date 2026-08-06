@@ -976,6 +976,83 @@ test('20bbb direct publishing writes generated files as one atomic GitHub commit
   }
 });
 
+test('20bbd direct publishing skips GitHub commits when generated output is unchanged', async () => {
+  const tmpSiteRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-publisher-noop-'));
+  await fs.mkdir(path.join(tmpSiteRoot, 'content', 'blog'), { recursive: true });
+  await fs.mkdir(path.join(tmpSiteRoot, 'scripts'), { recursive: true });
+  await fs.symlink(path.join(process.cwd(), 'node_modules'), path.join(tmpSiteRoot, 'node_modules'), 'dir');
+  await fs.cp(path.join(process.cwd(), 'templates'), path.join(tmpSiteRoot, 'templates'), { recursive: true });
+  await fs.copyFile(path.join(process.cwd(), 'scripts', 'build-blog.js'), path.join(tmpSiteRoot, 'scripts', 'build-blog.js'));
+  await fs.writeFile(path.join(tmpSiteRoot, 'index.html'), [
+    '<main>',
+    '<!-- BLOG_RECENT_START -->',
+    '<!-- BLOG_RECENT_END -->',
+    '</main>',
+  ].join('\n'));
+
+  const outputDir = path.join(tmpSiteRoot, 'engine', 'outputs');
+  const runId = 'noop-publish-001';
+  const runDir = path.join(outputDir, runId);
+  await createMinimalRun(runDir, {
+    title: 'Noop Publish Test',
+    slug: 'noop-publish-test',
+    status: 'READY_TO_PUBLISH',
+    publishability: 'READY_TO_PUBLISH',
+    markdown: '# Noop Publish Test\n\nBody.',
+    summary: 'No-op publish test excerpt for generated blog output.',
+  });
+
+  const calls = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options = {}) => {
+    const raw = String(url);
+    const method = String(options?.method || 'GET').toUpperCase();
+    calls.push({ method, url: raw, body: options?.body ? JSON.parse(String(options.body)) : null });
+    if (raw.includes('/contents/content/blog?')) return new Response(JSON.stringify([]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    if (raw.includes('/git/ref/heads/main') && method === 'GET') {
+      return new Response(JSON.stringify({ object: { sha: 'base-commit-sha' } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (raw.includes('/git/commits/base-commit-sha') && method === 'GET') {
+      return new Response(JSON.stringify({ tree: { sha: 'base-tree-sha' } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (raw.endsWith('/git/blobs') && method === 'POST') {
+      return new Response(JSON.stringify({ sha: `blob-${calls.filter((call) => call.method === 'POST' && call.url.endsWith('/git/blobs')).length}` }), { status: 201, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (raw.endsWith('/git/trees') && method === 'POST') {
+      return new Response(JSON.stringify({ sha: 'base-tree-sha' }), { status: 201, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (raw.endsWith('/git/commits') && method === 'POST') {
+      return new Response(JSON.stringify({ sha: 'unexpected-commit-sha', html_url: 'https://github.test/commit/unexpected' }), { status: 201, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (raw.includes('/git/refs/heads/main') && method === 'PATCH') {
+      return new Response(JSON.stringify({ object: { sha: 'unexpected-commit-sha' } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    return new Response('{}', { status: 404, headers: { 'Content-Type': 'application/json' } });
+  };
+  try {
+    const actions = new ContentDashboardActions(getDashboardConfig({
+      ...env,
+      CONTENT_AGENT_ROOT: tmpSiteRoot,
+      CONTENT_AGENT_OUTPUT_DIR: outputDir,
+      CONTENT_DASHBOARD_DB_PATH: ':memory:',
+      CONTENT_DASHBOARD_GITHUB_PUBLISHING_ENABLED: 'true',
+      CONTENT_DASHBOARD_GITHUB_OWNER: 'BEATiFYAUDIO',
+      CONTENT_DASHBOARD_GITHUB_REPO: 'certifyd-me-site',
+      CONTENT_DASHBOARD_GITHUB_TOKEN: 'test-token',
+    }));
+    const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+    await actions.preparePublishing({ actor, runId });
+    const result = await actions.publishToCertifyd({ actor, runId, version: 'v1' });
+    assert.match(result.output, /Published directly to main/);
+    assert.deepEqual(result.commitUrls, []);
+    assert.equal(calls.filter((call) => call.method === 'POST' && call.url.endsWith('/git/trees')).length, 1);
+    assert.equal(calls.filter((call) => call.method === 'POST' && call.url.endsWith('/git/commits')).length, 0);
+    assert.equal(calls.filter((call) => call.method === 'PATCH' && call.url.includes('/git/refs/heads/main')).length, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('20bc IndexNow submits only after publish, update and removal', async () => {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-indexnow-'));
   const outputDir = path.join(tmpRoot, 'engine', 'outputs');

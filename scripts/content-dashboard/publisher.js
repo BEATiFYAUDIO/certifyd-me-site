@@ -497,6 +497,9 @@ async function putGeneratedFiles({ config, token, branchName, files, message }) 
     },
     'GitHub tree creation failed',
   );
+  if (nextTree?.sha && nextTree.sha === baseTreeSha) {
+    return [];
+  }
   const nextCommit = await githubJson(
     config,
     token,
