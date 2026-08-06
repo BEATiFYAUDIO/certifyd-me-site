@@ -403,8 +403,9 @@ export class ContentDashboardActions {
       const now = new Date().toISOString();
       const manifest = await this.readRunJson(base, 'publication-manifest.json', {});
       const directPublish = result.publishMode === 'direct';
+      const status = directPublish ? 'PUBLISHING_DEPLOYMENT' : 'PUBLISHING_REVIEW';
       const publishing = {
-        status: directPublish ? 'LIVE' : 'PUBLISHING_REVIEW',
+        status,
         mode: result.publishMode || 'draft-pr',
         pullRequestUrl: result.pullRequestUrl || '',
         branchName: result.branchName || '',
@@ -419,18 +420,17 @@ export class ContentDashboardActions {
       await this.writeRunJson(base, 'publishing/github-pr.json', publishing);
       await this.writeRunJson(base, 'publication-manifest.json', {
         ...manifest,
-        currentStatus: directPublish ? 'PUBLISHED' : 'PUBLISHING',
-        publishability: directPublish ? 'LIVE' : 'PUBLISHING_REVIEW',
+        currentStatus: 'PUBLISHING',
+        publishability: status,
         publishing,
         canonicalUrl: publishing.canonicalUrl || manifest.canonicalUrl || '',
-        publishedAt: directPublish ? manifest.publishedAt || now : manifest.publishedAt,
         updatedAt: now,
       });
       await this.touchLifecycle(base, {
-        type: directPublish ? 'PUBLISHED' : 'PUBLISHING',
+        type: 'PUBLISHING',
         actor: actor.email,
         version,
-        note: directPublish ? `Published directly to ${publishing.branchName || 'base branch'}.` : result.pullRequestUrl ? `Draft PR created: ${result.pullRequestUrl}` : 'Publishing started.',
+        note: directPublish ? `Published source to ${publishing.branchName || 'base branch'}; waiting for Pages deployment.` : result.pullRequestUrl ? `Draft PR created: ${result.pullRequestUrl}` : 'Publishing started.',
         at: now,
       });
       await this.audit.append({ action: 'publishing_pull_request', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, version, result: 'SUCCESS', note: indexNow.submitted ? `IndexNow ${indexNow.ok ? 'ok' : 'failed'}` : '' });

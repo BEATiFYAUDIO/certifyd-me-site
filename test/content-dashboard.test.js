@@ -737,9 +737,10 @@ test('20ba direct publishing tracks base branch deployment without PR state', as
   const result = await actions.publishToCertifyd({ actor, runId, version: 'v1' });
   assert.match(result.output, /Published directly to main/);
   const manifest = JSON.parse(await fs.readFile(path.join(runDir, 'publication-manifest.json'), 'utf8'));
-  assert.equal(manifest.currentStatus, 'PUBLISHED');
-  assert.equal(manifest.publishability, 'LIVE');
-  assert.ok(manifest.publishedAt);
+  assert.equal(manifest.currentStatus, 'PUBLISHING');
+  assert.equal(manifest.publishability, 'PUBLISHING_DEPLOYMENT');
+  assert.equal(manifest.publishing.status, 'PUBLISHING_DEPLOYMENT');
+  assert.equal(manifest.publishedAt, undefined);
   assert.equal(manifest.publishing.mode, 'direct');
   assert.equal(manifest.publishing.pullRequestUrl, '');
   assert.equal(manifest.publishing.branchName, 'main');
@@ -781,9 +782,10 @@ test('20bb direct publishing can republish a published article', async () => {
   const result = await actions.republishToCertifyd({ actor, runId, version: 'v1' });
   assert.match(result.output, /Published directly to main/);
   const manifest = JSON.parse(await fs.readFile(path.join(runDir, 'publication-manifest.json'), 'utf8'));
-  assert.equal(manifest.currentStatus, 'PUBLISHED');
-  assert.equal(manifest.publishability, 'LIVE');
-  assert.ok(manifest.publishedAt);
+  assert.equal(manifest.currentStatus, 'PUBLISHING');
+  assert.equal(manifest.publishability, 'PUBLISHING_DEPLOYMENT');
+  assert.equal(manifest.publishing.status, 'PUBLISHING_DEPLOYMENT');
+  assert.equal(manifest.publishedAt, undefined);
   assert.equal(manifest.publishing.mode, 'direct');
   assert.deepEqual(manifest.publishing.commitUrls, ['https://github.test/certifyd/commit/2']);
 });
