@@ -4,7 +4,7 @@ slug: "the-music-industry-is-trying-to-guess-the-ai-recipe-after-dinner-was-serv
 author: "Certifyd"
 date: "2026-08-07"
 updated: "2026-08-07"
-excerpt: "Andreea Gleeson's latest op-ed argues the music industry is reacting to AI after the technology has already reshaped creator behavior. The real challenge isn't AI itself—it's building publishing infrastructure that can manage provenance, permissions, derivativ"
+excerpt: "Andreea Gleeson's latest op-ed argues that AI's biggest challenge isn't the technology itself—it's building interoperable commercial infrastructure that properly credits, compensates and protects creators. Here's why that matters."
 coverImage: "/images/blog/the-music-industry-is-trying-to-guess-the-ai-recipe-after-dinner-was-served-1786110514382.png"
 coverImageAlt: ""
 coverImageCredit: ""
@@ -18,88 +18,104 @@ seoDescription: "The Music Industry Is Trying to Guess the AI Recipe After Dinne
 
 # The Music Industry Is Trying to Guess the AI Recipe After Dinner Was Served
 
-Artificial intelligence has quickly become one of the biggest topics in the music industry. From AI-assisted songwriting and voice models to fan-created remixes and automated production tools, creators are experimenting with new technologies faster than the industry can adapt.
+Artificial intelligence has dominated music industry headlines for the past several years, but according to Andreea Gleeson's recent Music Business Worldwide op-ed, the conversation is beginning to shift. The debate is no longer simply about whether AI belongs in music—it's about the commercial infrastructure that will determine how creators are credited, compensated and protected as AI becomes part of everyday creative workflows. :contentReference[oaicite:0]{index=0}
 
-That is the central theme of Andreea Gleeson's recent op-ed, **"The Music Industry Is Trying to Guess the AI Recipe After Dinner Was Served."** Her argument isn't simply that AI is changing music—it's that much of the industry is reacting after the technology has already reshaped how creators work.
+Gleeson argues that the industry has quietly entered the commercialization phase of AI. Streaming platforms are introducing AI labels, distributors are developing new policies, licensing agreements are emerging, and lawmakers are working on new protections. These developments aren't isolated announcements—they're signs that the commercial rules for AI-generated and AI-assisted music are already taking shape. :contentReference[oaicite:1]{index=1}
 
-## AI Didn't Create the Problem
+## History Suggests the Market Moves First
 
-The discussion around AI often focuses on whether artificial intelligence should be allowed to create music.
+One of the most compelling observations in the article is that commercial infrastructure often develops long before legislation.
 
-A more important question is whether today's publishing infrastructure was ever designed to manage the type of collaboration AI makes possible.
+Streaming transformed music years before the Music Modernization Act. YouTube's Content ID became one of the industry's most important attribution and monetization systems long before policymakers fully understood user-generated content.
 
-The music industry has always dealt with questions of ownership, attribution, licensing and royalty distribution. AI hasn't created those challenges—it has accelerated them.
+Gleeson suggests AI is following a similar path. The market is beginning to establish commercial standards today, while regulation continues to evolve. :contentReference[oaicite:2]{index=2}
 
-One original recording can now inspire countless remixes, alternate versions, AI-assisted productions, fan edits and derivative works. Every one of those creations introduces new questions:
+## AI Is Becoming an Infrastructure Challenge
 
-- Who created the original work?
-- Who contributed to the new version?
-- Was permission granted?
-- Is it an original work or a derivative?
-- Who owns the rights?
-- How should royalties be shared?
+Much of today's discussion still revolves around AI detection.
 
-Those questions require more than policy. They require infrastructure.
+Can platforms identify AI-generated music?
 
-## Why This Matters
+Can they label it accurately?
 
-The future of music isn't simply about generating more content.
+Can they prevent abuse?
 
-It's about managing increasingly complex creative relationships.
+Those are important questions, but Gleeson argues the larger challenge is interoperability—how information captured during creation flows through distribution, attribution and ultimately monetization. :contentReference[oaicite:3]{index=3} :contentReference[oaicite:4]{index=4}
 
-Traditional publishing systems were built around finished songs with relatively straightforward ownership structures. Modern creation is collaborative, iterative and increasingly machine-assisted.
+She describes four interconnected layers that will increasingly define the AI music economy:
 
-As AI becomes another tool in the creative process, publishers and platforms need better ways to establish provenance, verify contributors, manage permissions and maintain trust between creators.
+- Creation
+- Distribution
+- Attribution
+- Consumption
 
-## Where Certifyd Fits
+Each layer depends on information captured before it. If attribution is incomplete at the point of creation, every downstream system becomes less reliable—from licensing and royalties to chart eligibility and consumer trust. :contentReference[oaicite:5]{index=5}
 
-Certifyd was designed around the idea that creative works are connected, not isolated.
+## Detection vs. Provenance
 
-Every published work can become the foundation for future derivative works while maintaining a verifiable relationship back to the original. Rather than losing attribution as projects evolve, provenance remains part of the publishing process.
+Perhaps the strongest analogy in the article compares AI detection with provenance.
 
-When a creator wants to build on an existing work—whether it's a remix, adaptation, collaborative edit or AI-assisted production—Certifyd can preserve those relationships throughout the work's lifecycle.
+Detection is like asking a chef to taste a finished meal and identify every ingredient that went into it.
 
-## Built for Derivative Publishing
+Provenance is documenting every ingredient, measurement and substitution while the meal is being prepared. :contentReference[oaicite:6]{index=6}
 
-Derivative creativity isn't going away.
+As AI becomes embedded directly into digital audio workstations and creative tools, Gleeson argues that provenance should be captured throughout the creative process rather than reconstructed after the fact. Trusted creation metadata ultimately produces stronger attribution, licensing, monetization and transparency downstream. :contentReference[oaicite:7]{index=7}
 
-Fans remix songs.
+## Why This Matters for Certifyd
 
-Artists collaborate across genres.
+This is where the conversation aligns closely with Certifyd's vision.
 
-Producers build new works from existing material.
+Certifyd was built around the idea that creative works shouldn't exist as isolated files. They should exist as connected relationships.
 
-AI introduces yet another layer of creative participation.
+Every original work can become the foundation for future collaborations, remixes, adaptations and derivative works while maintaining a verifiable chain of provenance back to the original creator.
 
-Instead of treating each new work as completely separate, Certifyd maintains a chain of provenance between original works and approved derivatives. This creates a transparent publishing history that benefits creators, collaborators and rights holders alike.
+Rather than relying solely on downstream detection, Certifyd focuses on preserving information throughout the publishing lifecycle—who created a work, who contributed, what permissions were granted, and how the work evolved over time.
 
-## Transparent Clearance and Governance
+## Beyond Provenance
 
-Publishing derivative works often requires approval from multiple stakeholders.
+As AI-assisted creativity becomes more common, provenance alone won't be enough.
 
-Certifyd introduces structured clearance workflows that allow creators to submit derivative works for review before publication.
+Publishing systems will also need to manage:
 
-Rights holders can approve, reject or request changes, while configurable voting and governance models allow collaborators, publishers or communities to participate in the decision-making process when appropriate.
+- Creator identity
+- Attribution
+- Derivative relationships
+- Clearance workflows
+- Rights-holder approvals
+- Collaborative governance
+- Transparent royalty participation
 
-Every approval becomes part of the permanent publishing record, creating greater transparency and reducing the administrative complexity of managing creative rights.
+Certifyd extends beyond provenance by enabling creators to publish derivative works through structured clearance workflows. Rights holders can review requests, approve or reject proposed uses, and configurable voting models allow collaborators or publishers to participate in governance when appropriate.
 
-## Preparing for the Next Generation of Publishing
+Every approval, rejection and publishing decision becomes part of a permanent, transparent history attached to the work itself.
 
-The conversation around AI shouldn't end with content detection or licensing agreements.
+## Metadata Is Becoming Commercial Infrastructure
 
-The industry also needs infrastructure capable of managing provenance, permissions, derivative relationships and evolving ownership structures.
+One of the article's most important observations is that metadata is no longer simply administrative.
 
-As creative collaboration becomes more dynamic, publishing systems must evolve beyond static databases and manual workflows.
+As AI labels begin influencing royalties, chart eligibility, licensing decisions and recommendation systems, the quality and trustworthiness of that metadata becomes increasingly valuable. :contentReference[oaicite:8]{index=8}
+
+For creators, that means information captured during creation can directly influence future opportunities.
+
+For the industry, it means metadata is becoming commercial infrastructure.
 
 ## Looking Ahead
 
-Andreea Gleeson's op-ed highlights an important reality: the music industry is adapting to AI after the technology has already begun transforming how creators work.
+Gleeson's conclusion is optimistic.
 
-The next generation of music platforms won't succeed simply because they use artificial intelligence.
+The music industry doesn't need to start from scratch. Many of the building blocks already exist. The next challenge is coordinating them into interoperable systems that allow trusted information to move seamlessly from creation through distribution, attribution and monetization. :contentReference[oaicite:9]{index=9}
 
-They'll succeed because they make creative relationships transparent.
+We believe that's exactly where the next generation of creator infrastructure is headed.
 
-Identity, provenance, derivative publishing, clearance workflows and fair participation aren't just AI challenges—they're the foundation of the future creator economy.
+AI isn't replacing creators.
 
-At Certifyd, that's the infrastructure we're building.
+It's increasing the number of creative relationships that need to be managed.
+
+Identity, provenance, derivative publishing, permissions, governance and transparent royalty participation are becoming part of the same connected ecosystem.
+
+The companies that create lasting value won't simply build better AI tools.
+
+They'll build the trusted infrastructure that allows creators, collaborators, distributors and platforms to work together with confidence.
+
+That's the future Certifyd is building.
 
