@@ -222,7 +222,9 @@ export async function readTrendSourceDetail(config, opportunityId) {
   const opportunity = (state.opportunities || []).find((item) => item.id === opportunityId);
   if (!opportunity) throw Object.assign(new Error('Trend opportunity not found.'), { statusCode: 404 });
   const sourceIds = new Set(opportunity.sourceItemIds || []);
-  const sources = (state.sourceItems || []).filter((item) => sourceIds.has(item.id));
+  const sources = (state.sourceItems || [])
+    .filter((item) => sourceIds.has(item.id))
+    .map(normalizeOriginalSourceRecord);
   return { opportunity, sources };
 }
 
@@ -568,8 +570,10 @@ export function parseFeedItems(text, source = {}, finalUrl = '') {
       provider: 'rss',
       publisher: source.publisher || labelFromUrl(source.feedUrl),
       sourceName: source.publisher || labelFromUrl(source.feedUrl),
-      sourceUrl: source.feedUrl || '',
       articleUrl,
+      sourceUrl: articleUrl,
+      sourceTitle: title,
+      feedUrl: source.feedUrl || '',
       title,
       summary: trim(summary, 500),
       publishedAt,
@@ -815,6 +819,7 @@ function opportunityFromCluster(cluster, coverage, qwen) {
   const sourceCount = cluster.items.length;
   const evidenceLabel = sourceCount > 2 ? 'Repeated coverage' : sourceCount > 1 ? `Appearing across ${sourceCount} sources` : 'Recent source';
   const title = qwen.suggestedTitle || cluster.title;
+  const originalSources = cluster.items.map(normalizeOriginalSourceRecord).filter((source) => source.sourceUrl);
   return {
     id: `opp-${hashText(cluster.items.map((item) => item.id).join('|')).slice(0, 14)}`,
     title: trim(title, 120),
@@ -826,6 +831,8 @@ function opportunityFromCluster(cluster, coverage, qwen) {
     whyCertifyd: qwen.whyItMatters || certifydRelevance(cluster.category, `${cluster.title} ${cluster.summary}`),
     suggestedAngle: qwen.certifydAngle || certifydRelevance(cluster.category, `${cluster.title} ${cluster.summary}`),
     sourceItemIds: cluster.items.map((item) => item.id),
+    sourceUrls: originalSources.map((source) => source.sourceUrl),
+    originalSources,
     sourceCount,
     sourcePublishers: publishers,
     newestSourceDate: newest,
@@ -957,6 +964,7 @@ function normalizeSourceStories(sourceItems, opportunities = []) {
     }
   }
   return [...sourceItems].map((item) => {
+    const sourceUrl = originalArticleUrl(item);
     const linked = opportunityIndex.get(item.id) || [];
     const status = linked.length ? 'Recommended' : 'Retained';
     const retentionReason = linked.length
@@ -966,8 +974,10 @@ function normalizeSourceStories(sourceItems, opportunities = []) {
       id: item.id,
       title: item.title || 'Untitled source story',
       publisher: item.publisher || item.sourceName || 'Unknown publisher',
-      sourceUrl: item.articleUrl || item.link || item.sourceUrl || '',
-      feedUrl: item.sourceUrl || item.feedUrl || '',
+      sourceUrl,
+      articleUrl: sourceUrl,
+      sourceTitle: item.sourceTitle || item.title || 'Untitled source story',
+      feedUrl: item.feedUrl || item.sourceFeedUrl || '',
       publishedAt: item.publishedAt || null,
       fetchedAt: item.retrievedAt || item.fetchedAt || item.firstDetectedAt || null,
       firstDetectedAt: item.firstDetectedAt || item.retrievedAt || null,
@@ -981,6 +991,43 @@ function normalizeSourceStories(sourceItems, opportunities = []) {
       sourceType: item.sourceType || item.provider || 'rss',
     };
   }).sort((a, b) => Date.parse(b.publishedAt || b.fetchedAt || 0) - Date.parse(a.publishedAt || a.fetchedAt || 0));
+}
+
+function normalizeOriginalSourceRecord(item = {}) {
+  const sourceUrl = originalArticleUrl(item);
+  return {
+    id: item.id || '',
+    sourceTitle: item.sourceTitle || item.title || 'Untitled source story',
+    title: item.title || item.sourceTitle || 'Untitled source story',
+    publisher: item.publisher || item.sourceName || 'Unknown publisher',
+    publishedAt: item.publishedAt || null,
+    sourceUrl,
+    articleUrl: sourceUrl,
+    feedUrl: item.feedUrl || item.sourceFeedUrl || '',
+    summary: item.summary || item.description || '',
+  };
+}
+
+function originalArticleUrl(item = {}) {
+  const feedUrl = normalizeUrl(item.feedUrl || item.sourceFeedUrl || '');
+  for (const candidate of [item.articleUrl, item.link, item.sourceUrl]) {
+    const normalized = normalizeUrl(candidate);
+    if (!normalized || !/^https?:\/\//i.test(normalized)) continue;
+    if (feedUrl && normalized === feedUrl) continue;
+    if (looksLikeFeedUrl(normalized)) continue;
+    return normalized;
+  }
+  return '';
+}
+
+function looksLikeFeedUrl(value) {
+  try {
+    const url = new URL(value);
+    const pathName = url.pathname.toLowerCase();
+    return /(^|\/)(feed|rss|atom)(\/|$)/.test(pathName) || /\.(rss|atom|xml)$/i.test(pathName);
+  } catch {
+    return false;
+  }
 }
 
 function emptySummary(provider, opportunitiesCreated = 0) {

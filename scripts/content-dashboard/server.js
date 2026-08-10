@@ -277,6 +277,7 @@ function opportunityCard(item, csrf, canCreate) {
   const riskFlags = Array.isArray(item.riskFlags) ? item.riskFlags : [];
   const sourceIds = Array.isArray(item.sourceItemIds) ? item.sourceItemIds.join(',') : '';
   const brainIds = Array.isArray(item.brainRecordIds) ? item.brainRecordIds.join(',') : '';
+  const originalLinks = originalSourceLinks(item);
   const restrictions = [
     `Trend opportunity: ${item.id || item.title}.`,
     sourceIds ? `Use only these approved source summaries: ${sourceIds}.` : 'Use approved Brain context only; no live source summaries are attached.',
@@ -291,6 +292,7 @@ function opportunityCard(item, csrf, canCreate) {
       <dt>Why it is trending</dt><dd>${escapeHtml(item.whyTrending || 'Source activity detected.')}</dd>
       <dt>Why it matters to Certifyd</dt><dd>${escapeHtml(item.whyItMattersToCertifyd || item.whyCertifyd || '')}</dd>
       <dt>Evidence</dt><dd>${escapeHtml(sourceCount ? `${sourceCount} source item${sourceCount === 1 ? '' : 's'} · ${publishers}` : publishers)}${item.newestSourceDate ? ` · ${escapeHtml(formatDashboardDate(item.newestSourceDate))}` : ''}</dd>
+      <dt>Original source${originalLinks.length === 1 ? '' : 's'}</dt><dd>${originalLinks.length ? originalLinks.map((source) => `<a href="${escapeHtml(source.url)}" rel="noreferrer" target="_blank">Read original ↗</a>`).join(' · ') : '<span class="muted">No original source URL supplied.</span>'}</dd>
       <dt>Risk</dt><dd>${riskFlags.length ? riskFlags.map((flag) => `<span class="pill bad">${escapeHtml(flag)}</span>`).join(' ') : '<span class="pill good">No source risk flagged</span>'}</dd>
     </dl>
     <div class="mini-actions">
@@ -300,6 +302,23 @@ function opportunityCard(item, csrf, canCreate) {
       <form method="post" action="/app/content/actions/trends/dismiss"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="opportunityId" value="${escapeHtml(item.id || '')}"><button class="ghost" type="submit">Dismiss</button></form>
     </div>
   </article>`;
+}
+
+function originalSourceLinks(item = {}) {
+  const fromRecords = Array.isArray(item.originalSources)
+    ? item.originalSources.map((source) => ({ url: source.sourceUrl || source.articleUrl || '', title: source.sourceTitle || source.title || source.publisher || 'Original source' }))
+    : [];
+  const fromUrls = Array.isArray(item.sourceUrls)
+    ? item.sourceUrls.map((url) => ({ url, title: 'Original source' }))
+    : [];
+  const links = [...fromRecords, ...fromUrls].filter((source) => /^https?:\/\//i.test(String(source.url || '')));
+  const seen = new Set();
+  return links.filter((source) => {
+    const key = String(source.url);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 8);
 }
 
 function brainCoveragePill(value) {
@@ -451,7 +470,7 @@ function sourceStoryCard(story) {
   const opportunity = story.opportunityIds?.length
     ? `<span class="pill good">In recommended opportunity</span><span class="pill">${escapeHtml((story.opportunityTitles || story.opportunityIds).join(', '))}</span>`
     : '<span class="pill">Not grouped into recommendation</span>';
-  return `<article class="review-item source-story-card"><div><div class="meta-row"><span class="pill warn">${escapeHtml(story.publisher || 'Source')}</span><span class="pill ${story.retentionStatus === 'Recommended' ? 'good' : ''}">${escapeHtml(story.retentionStatus || story.status || 'Retained')}</span>${story.publishedAt ? `<span class="pill">${escapeHtml(formatDashboardDateTime(story.publishedAt))}</span><span class="pill">${escapeHtml(relativeDayLabel(new Date(story.publishedAt)))}</span>` : '<span class="pill">No source publication date</span>'}${(story.categories || []).map((category) => `<span class="pill">${escapeHtml(category)}</span>`).join('')}</div><h3>${escapeHtml(story.title || 'Untitled source story')}</h3><p>${escapeHtml(story.summary || '')}</p><div class="meta-row">${opportunity}</div><p class="muted"><strong>Retention:</strong> ${escapeHtml(story.retentionReason || 'Retained source story.')}</p><p class="muted">Source publication time is separate from fetched time${story.fetchedAt ? ` · fetched ${escapeHtml(formatDashboardDateTime(story.fetchedAt))}` : ''}${story.firstDetectedAt ? ` · first detected ${escapeHtml(formatDashboardDateTime(story.firstDetectedAt))}` : ''}</p></div><a class="ghost" href="${escapeHtml(story.sourceUrl || '#')}" rel="noreferrer" target="_blank">Open source</a></article>`;
+  return `<article class="review-item source-story-card"><div><div class="meta-row"><span class="pill warn">${escapeHtml(story.publisher || 'Source')}</span><span class="pill ${story.retentionStatus === 'Recommended' ? 'good' : ''}">${escapeHtml(story.retentionStatus || story.status || 'Retained')}</span>${story.publishedAt ? `<span class="pill">${escapeHtml(formatDashboardDateTime(story.publishedAt))}</span><span class="pill">${escapeHtml(relativeDayLabel(new Date(story.publishedAt)))}</span>` : '<span class="pill">No source publication date</span>'}${(story.categories || []).map((category) => `<span class="pill">${escapeHtml(category)}</span>`).join('')}</div><h3>${escapeHtml(story.sourceTitle || story.title || 'Untitled source story')}</h3><p>${escapeHtml(story.summary || '')}</p><div class="meta-row">${opportunity}</div><p class="muted"><strong>Original URL:</strong> ${story.sourceUrl ? `<a href="${escapeHtml(story.sourceUrl)}" rel="noreferrer" target="_blank">${escapeHtml(story.sourceUrl)}</a>` : 'No original source URL supplied.'}</p><p class="muted"><strong>Retention:</strong> ${escapeHtml(story.retentionReason || 'Retained source story.')}</p><p class="muted">Source publication time is separate from fetched time${story.fetchedAt ? ` · fetched ${escapeHtml(formatDashboardDateTime(story.fetchedAt))}` : ''}${story.firstDetectedAt ? ` · first detected ${escapeHtml(formatDashboardDateTime(story.firstDetectedAt))}` : ''}</p></div>${story.sourceUrl ? `<a class="ghost" href="${escapeHtml(story.sourceUrl)}" rel="noreferrer" target="_blank">Read original ↗</a>` : '<span class="muted">No original source</span>'}</article>`;
 }
 
 function newestSourceStory(stories) {
@@ -539,7 +558,7 @@ async function renderTrendSources(ctx, opportunityId) {
   const detail = await readTrendSourceDetail(ctx.config, opportunityId);
   const opportunity = detail.opportunity || {};
   const sources = Array.isArray(detail.sources) ? detail.sources : [];
-  const sourceRows = sources.map((source) => `<article class="review-item"><div><div class="meta-row"><span class="pill warn">${escapeHtml(source.publisher || source.sourceId || 'Source')}</span>${source.publishedAt ? `<span class="pill">${escapeHtml(formatDashboardDate(source.publishedAt))}</span>` : ''}</div><h3>${escapeHtml(source.title || 'Untitled source item')}</h3><p>${escapeHtml(source.summary || source.description || '')}</p><p class="muted">Feed: ${escapeHtml(source.feedUrl || source.sourceFeedUrl || '')}</p></div><a class="ghost" href="${escapeHtml(source.link || '#')}" rel="noreferrer" target="_blank">Open source</a></article>`).join('');
+  const sourceRows = sources.map((source) => `<article class="review-item"><div><div class="meta-row"><span class="pill warn">${escapeHtml(source.publisher || source.sourceId || 'Source')}</span>${source.publishedAt ? `<span class="pill">${escapeHtml(formatDashboardDate(source.publishedAt))}</span>` : ''}</div><h3>${escapeHtml(source.sourceTitle || source.title || 'Untitled source item')}</h3><p>${escapeHtml(source.summary || source.description || '')}</p><p class="muted"><strong>Original URL:</strong> ${source.sourceUrl ? `<a href="${escapeHtml(source.sourceUrl)}" rel="noreferrer" target="_blank">${escapeHtml(source.sourceUrl)}</a>` : 'No original source URL supplied.'}</p><p class="muted">Feed: ${escapeHtml(source.feedUrl || source.sourceFeedUrl || '')}</p></div>${source.sourceUrl ? `<a class="ghost" href="${escapeHtml(source.sourceUrl)}" rel="noreferrer" target="_blank">Read original ↗</a>` : '<span class="muted">No original source</span>'}</article>`).join('');
   const body = `<p class="eyebrow">Trend sources</p><h1>${escapeHtml(opportunity.title || 'Opportunity')}</h1><p>${escapeHtml(opportunity.summary || opportunity.whyTrending || '')}</p><div class="grid">${card('Opportunity', `<p><strong>Category:</strong> ${escapeHtml(opportunity.category || 'Unknown')}</p><p><strong>Brain coverage:</strong> ${escapeHtml(opportunity.brainCoverage || 'Unknown')}</p><p><strong>Source items:</strong> ${sources.length}</p>`)}${card('Relevant Brain records', Array.isArray(opportunity.brainRecords) && opportunity.brainRecords.length ? `<ul class="source-list">${opportunity.brainRecords.map((record) => `<li><strong>${escapeHtml(record.title || record.id)}</strong><br><code>${escapeHtml(record.path || record.id)}</code></li>`).join('')}</ul>` : '<p>No approved Brain records were matched. Generation should qualify claims or require review.</p>')}</div><section class="panel"><h2>Source evidence</h2>${sourceRows || '<p>No source records found for this opportunity.</p>'}</section>`;
   return layout({ title: 'Trend sources', user: ctx.user, permissions: ctx.permissions, active: 'Blog Engine', body });
 }
@@ -550,11 +569,35 @@ async function renderArticle(ctx, runId, csrf) {
   const summary = run.summary || {};
   const claims = Array.isArray(run.claimLedger?.claims) ? run.claimLedger.claims : [];
   const brainEvidence = approvedBrainEvidence(run);
-  const externalCount = Array.isArray(run.externalResearch?.items) ? run.externalResearch.items.length : 0;
+  const externalSources = articleExternalSources(run);
+  const externalCount = externalSources.length;
   const distributionAssets = Array.isArray(run.distribution?.assets) ? run.distribution.assets : [];
   const versions = Array.isArray(run.versions) ? run.versions : [];
-  const body = `<section class="article-workspace-head"><p class="eyebrow">Article Workspace</p><h1>${escapeHtml(summary.title || 'Untitled article')}</h1>${runSummaryHtml(summary)}</section><section id="cover-image" class="workspace-section">${card('Cover Image', coverImageControls(run, csrf, ctx.permissions, ctx.config))}</section>${brainContextWarning(brainEvidence)}${actionButtons(summary, csrf, ctx.permissions, ctx.config)}<div class="workspace-tabs"><a href="#write">Write</a><a href="#preview">Preview</a><a href="#sources">Sources</a><a href="#distribution">Distribution</a><a href="#history">History</a></div><section id="write" class="workspace-section">${card('Write', articleEditor(run, csrf, ctx.permissions))}</section><section id="preview" class="workspace-section">${card('Preview', articlePreviewHtml(run))}</section><section id="sources" class="workspace-section"><div class="grid">${card('Source coverage', `<p>Claims: ${claims.length}</p><p>Unresolved blockers: ${escapeHtml(summary.unresolvedIssueCount ?? 0)}</p><p>Approved Brain records: ${brainEvidence.length}</p><p>External research items: ${externalCount}</p>`)}${card('Approved Brain context', brainContextList(brainEvidence))}${card('Claims', claimTable(claims))}</div></section><section id="distribution" class="workspace-section">${card('Distribution', distributionList(distributionAssets, run.distribution?.plan))}</section><section id="history" class="workspace-section">${card('History', versions.map((item) => `<p>${escapeHtml(item.version)}</p>`).join('') || '<p>No versions found.</p>')}</section>`;
+  const body = `<section class="article-workspace-head"><p class="eyebrow">Article Workspace</p><h1>${escapeHtml(summary.title || 'Untitled article')}</h1>${runSummaryHtml(summary)}</section><section id="cover-image" class="workspace-section">${card('Cover Image', coverImageControls(run, csrf, ctx.permissions, ctx.config))}</section>${brainContextWarning(brainEvidence)}${actionButtons(summary, csrf, ctx.permissions, ctx.config)}<div class="workspace-tabs"><a href="#write">Write</a><a href="#preview">Preview</a><a href="#sources">Sources</a><a href="#distribution">Distribution</a><a href="#history">History</a></div><section id="write" class="workspace-section">${card('Write', articleEditor(run, csrf, ctx.permissions))}</section><section id="preview" class="workspace-section">${card('Preview', articlePreviewHtml(run))}</section><section id="sources" class="workspace-section"><div class="grid">${card('Source coverage', `<p>Claims: ${claims.length}</p><p>Unresolved blockers: ${escapeHtml(summary.unresolvedIssueCount ?? 0)}</p><p>Approved Brain records: ${brainEvidence.length}</p><p>External original articles: ${externalCount}</p>`)}${card('Original articles used', externalSourceList(externalSources))}${card('Approved Brain context', brainContextList(brainEvidence))}${card('Claims', claimTable(claims))}</div></section><section id="distribution" class="workspace-section">${card('Distribution', distributionList(distributionAssets, run.distribution?.plan))}</section><section id="history" class="workspace-section">${card('History', versions.map((item) => `<p>${escapeHtml(item.version)}</p>`).join('') || '<p>No versions found.</p>')}</section>`;
   return layout({ title: summary.title || 'Article', user: ctx.user, permissions: ctx.permissions, active: 'Blog Engine', body });
+}
+
+function articleExternalSources(run = {}) {
+  const provenanceSources = Array.isArray(run.research?.trendProvenance?.sourceUrls) ? run.research.trendProvenance.sourceUrls : [];
+  const evidenceSources = Array.isArray(run.research?.selectedEvidence)
+    ? run.research.selectedEvidence.filter((source) => source.articleUrl || source.sourceUrl)
+    : [];
+  const seen = new Set();
+  return [...provenanceSources, ...evidenceSources].map((source) => ({
+    title: source.sourceTitle || source.title || 'Original source',
+    publisher: source.publisher || 'Source',
+    publishedAt: source.publishedAt || '',
+    url: source.sourceUrl || source.articleUrl || '',
+  })).filter((source) => {
+    if (!/^https?:\/\//i.test(source.url) || seen.has(source.url)) return false;
+    seen.add(source.url);
+    return true;
+  });
+}
+
+function externalSourceList(sources = []) {
+  if (!sources.length) return '<p>No original article URLs were attached.</p>';
+  return `<ul class="source-list">${sources.map((source) => `<li><strong>${escapeHtml(source.publisher)}</strong>${source.publishedAt ? ` · ${escapeHtml(String(source.publishedAt).slice(0, 10))}` : ''}<br><a href="${escapeHtml(source.url)}" rel="noreferrer" target="_blank">${escapeHtml(source.title)} ↗</a><br><code>${escapeHtml(source.url)}</code></li>`).join('')}</ul>`;
 }
 
 async function renderFounderReview(ctx, runId, csrf) {

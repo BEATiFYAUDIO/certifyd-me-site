@@ -129,6 +129,8 @@ test('4ba article ideas separate recommended opportunities from retained source 
     whyTrending: 'Source activity detected.',
     whyItMattersToCertifyd: 'This connects to Certifyd creator infrastructure.',
     sourceItemIds: [`source-${index + 1}`],
+    sourceUrls: [`https://example.test/story-${index + 1}`],
+    originalSources: [{ sourceTitle: `Retained Source Story ${index + 1}`, publisher: index % 2 ? 'TechCrunch' : 'Music Business Worldwide', publishedAt: sourceItems[index].publishedAt, sourceUrl: `https://example.test/story-${index + 1}` }],
     sourceCount: 1,
     sourcePublishers: [index % 2 ? 'TechCrunch' : 'Music Business Worldwide'],
     newestSourceDate: sourceItems[index].publishedAt,
@@ -167,6 +169,8 @@ test('4ba article ideas separate recommended opportunities from retained source 
     assert.match(html, /Retention:/);
     assert.match(html, /Grouped into recommended opportunity/);
     assert.match(html, /Recommended Opportunity 13[\s\S]*Generate Article/);
+    assert.match(html, /Read original ↗/);
+    assert.match(html, /https:\/\/example\.test\/story-1/);
     assert.match(html, /<summary class="ghost">View sources<\/summary>/);
     assert.ok(html.indexOf('Recommended Opportunity 13') < html.indexOf('View sources'));
     assert.ok(html.indexOf('View sources') < html.indexOf('Recent Source Stories'));

@@ -170,13 +170,18 @@ test('RSS scans approved sources, categorizes opportunities, persists state and 
   assert.equal(persisted.items.length, scan.items.length);
   assert.equal(persisted.sourceStories.length, scan.summary.storiesRetained);
   assert.equal(persisted.sourceStories[0].sourceUrl, 'https://example.test/music-bot-farms');
+  assert.equal(persisted.sourceStories[0].sourceTitle, 'Music streaming bot farms are distorting creator payouts');
   assert.deepEqual(persisted.sourceStories[0].opportunityIds, [scan.items[0].id]);
   assert.equal(persisted.sourceStories[0].retentionStatus, 'Recommended');
   assert.match(persisted.sourceStories[0].retentionReason, /Grouped into recommended opportunity/);
   assert.ok(persisted.sourceStories[0].publishedAt);
   assert.ok(persisted.sourceStories[0].fetchedAt);
   const detail = await readTrendSourceDetail(config(agentRoot), scan.items[0].id);
+  assert.ok(scan.items[0].sourceUrls.includes('https://example.test/music-bot-farms'));
+  assert.equal(scan.items[0].originalSources[0].sourceUrl, 'https://example.test/music-bot-farms');
   assert.equal(detail.sources.length, scan.items[0].sourceItemIds.length);
+  assert.equal(detail.sources[0].sourceUrl, 'https://example.test/music-bot-farms');
+  assert.equal(detail.sources[0].sourceTitle, 'Music streaming bot farms are distorting creator payouts');
   assert.match(detail.sources[0].title, /bot farms/i);
 });
 

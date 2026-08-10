@@ -378,7 +378,7 @@ export async function persistGeneratedArticleRun(config, article, input, grounde
     warnings: article.warnings,
   };
   const unresolvedIssueCount = claimLedger.claims.filter((claim) => claim.status !== 'APPROVED_WITH_SOURCE').length + article.warnings.length;
-  const trendProvenance = buildTrendProvenance(input, timestamp, provider);
+  const trendProvenance = buildTrendProvenance(input, timestamp, provider, groundedContext);
   const summary = {
     runId,
     title: article.title,
@@ -1002,10 +1002,18 @@ function redactInput(input) {
   return Object.fromEntries(Object.entries(input).filter(([key]) => !SECRET_PATTERN.test(key)));
 }
 
-function buildTrendProvenance(input, timestamp, provider) {
+function buildTrendProvenance(input, timestamp, provider, groundedContext = {}) {
+  const sourceRecords = Array.isArray(groundedContext.externalSourceFacts) ? groundedContext.externalSourceFacts : [];
   return {
     opportunityId: cleanId(input.trendOpportunityId),
     sourceItemIds: parseIdList(input.trendSourceItemIds, 40),
+    sourceUrls: sourceRecords.map((source) => ({
+      id: cleanId(source.id),
+      sourceTitle: clampText(source.title, 180),
+      publisher: clampText(source.publisher, 100),
+      publishedAt: clampText(source.publishedAt, 32),
+      sourceUrl: safePublicUrl(source.articleUrl),
+    })).filter((source) => source.sourceUrl),
     brainRecordIds: parseIdList(input.trendBrainRecordIds, 40),
     generatedAt: timestamp,
     modelProvider: provider.providerName,

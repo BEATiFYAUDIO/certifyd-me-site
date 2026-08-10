@@ -378,7 +378,7 @@ test('trend source summaries are included separately from Certifyd Brain context
   });
   assert.equal(context.externalSourceFacts.length, 1);
   const provider = new OllamaQwenGenerationProvider(config, { fetchImpl: makeOllamaFetch(validArticle(context.sourceRecords[0].id), calls) });
-  await provider.generateArticle({
+  const generatedArticle = await provider.generateArticle({
     actorEmail: 'writer@example.test',
     topic: 'Label revenue and creator commerce',
     audience: 'Creators',
@@ -387,6 +387,15 @@ test('trend source summaries are included separately from Certifyd Brain context
     trendSourceItemIds: 'source-article-1',
   }, context);
 
+  const generationResult = await persistGeneratedArticleRun(config, generatedArticle, {
+    actorEmail: 'writer@example.test',
+    topic: 'Label revenue and creator commerce',
+    audience: 'Creators',
+    objective: 'Explain the external business news and Certifyd relevance.',
+    trendOpportunityId: 'opp-music-1',
+    trendSourceItemIds: 'source-article-1',
+  }, context, provider);
+
   const chatCall = calls.find((call) => call.url.endsWith('/api/chat'));
   const payload = JSON.parse(chatCall.options.body);
   const outboundPrompt = JSON.stringify(payload.messages);
@@ -394,6 +403,14 @@ test('trend source summaries are included separately from Certifyd Brain context
   assert.match(outboundPrompt, /External source facts for the business\/news side/i);
   assert.match(outboundPrompt, /Music Business Worldwide/i);
   assert.match(outboundPrompt, /Label revenue rises as direct fan activity grows/i);
+  const researchRecord = JSON.parse(await fs.readFile(path.join(config.outputDir, generationResult.runId, 'research-record.json'), 'utf8'));
+  assert.deepEqual(researchRecord.trendProvenance.sourceUrls, [{
+    id: 'source-article-1',
+    sourceTitle: 'Label revenue rises as direct fan activity grows',
+    publisher: 'Music Business Worldwide',
+    publishedAt: '2026-08-01',
+    sourceUrl: 'https://example.test/music-business-story',
+  }]);
 });
 
 test('one active local generation per user is enforced', async () => {
