@@ -152,7 +152,12 @@ test('4ba article ideas separate recommended opportunities from retained source 
     const response = await fetch(`${base}/app/content/articles?view=ideas`, { headers: { cookie } });
     assert.equal(response.status, 200);
     const html = await response.text();
-    assert.match(html, /90 collected · 15 retained · 13 recommended · 4 sources checked/);
+    assert.match(html, /4 sources checked/);
+    assert.match(html, /90 collected/);
+    assert.match(html, /15 retained/);
+    assert.match(html, /13 recommended/);
+    assert.match(html, /0 failures/);
+    assert.match(html, /Last scan:/);
     assert.match(html, /Trending Opportunities/);
     assert.match(html, /13 recommended/);
     assert.match(html, /Recent Source Stories/);
@@ -162,6 +167,9 @@ test('4ba article ideas separate recommended opportunities from retained source 
     assert.match(html, /Retention:/);
     assert.match(html, /Grouped into recommended opportunity/);
     assert.match(html, /Recommended Opportunity 13[\s\S]*Generate Article/);
+    assert.match(html, /<summary class="ghost">View sources<\/summary>/);
+    assert.ok(html.indexOf('Recommended Opportunity 13') < html.indexOf('View sources'));
+    assert.ok(html.indexOf('View sources') < html.indexOf('Recent Source Stories'));
     const jsonResponse = await fetch(`${base}/app/content/trends.json`, { headers: { cookie } });
     assert.equal(jsonResponse.status, 200);
     const trends = await jsonResponse.json();

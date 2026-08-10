@@ -376,13 +376,33 @@ function trendSummaryPanel(trends) {
   const summary = trends.summary || {};
   const stories = Array.isArray(trends.sourceStories || trends.sourceItems) ? (trends.sourceStories || trends.sourceItems) : [];
   const sourceStatus = Array.isArray(trends.providerStatus) ? trends.providerStatus : [];
+  const metrics = [
+    ['Sources checked', Number(summary.sourcesChecked || sourceStatus.length || 0)],
+    ['Collected', Number(summary.storiesCollected || 0)],
+    ['Retained', Number(summary.storiesRetained || stories.length || 0)],
+    ['Recommended', Number(summary.opportunitiesCreated || trends.items?.length || 0)],
+    ['Failures', Number(summary.sourceFailures || 0)],
+  ];
+  const lastScan = trends.lastScannedAt ? formatCompactDateTime(trends.lastScannedAt) : 'Not scanned yet';
+  return `<div class="panel compact-panel trend-summary"><div class="meta-row trend-summary-metrics">${metrics.map(([label, value]) => `<span class="pill ${label === 'Failures' && value > 0 ? 'bad' : label === 'Failures' ? 'good' : 'warn'}">${escapeHtml(String(value))} ${escapeHtml(label.toLowerCase())}</span>`).join('')}</div><p class="muted">Last scan: ${escapeHtml(lastScan)} · Saved ideas: ${escapeHtml(String(trends.savedIdeas?.length || 0))}</p>${trends.note ? `<p class="muted">${escapeHtml(trends.note)}</p>` : ''}</div>`;
+}
+
+function trendSourceDetailsPanel(trends) {
+  const stories = Array.isArray(trends.sourceStories || trends.sourceItems) ? (trends.sourceStories || trends.sourceItems) : [];
+  const sourceStatus = Array.isArray(trends.providerStatus) ? trends.providerStatus : [];
+  if (!sourceStatus.length) return '';
   const newest = newestSourceStory(stories);
   const freshness = newest
     ? `Newest source story: ${formatDashboardDate(newest.publishedAt)}${hasStoryPublishedToday(stories) ? '' : '. No retained stories published today.'}`
     : 'Newest source story: none retained.';
-  const scanLine = `${Number(summary.storiesCollected || 0)} collected · ${Number(summary.storiesRetained || stories.length || 0)} retained · ${Number(summary.opportunitiesCreated || trends.items?.length || 0)} recommended · ${Number(summary.sourcesChecked || sourceStatus.length || 0)} sources checked`;
-  const sourceHealth = sourceStatus.length ? `<div class="review-list source-health-list">${sourceStatus.map((source) => sourceHealthRow(source, stories)).join('')}</div>` : '';
-  return `<div class="panel compact-panel trend-summary"><div class="meta-row"><span class="pill warn">${escapeHtml(scanLine)}</span>${summary.sourceFailures === 0 ? '<span class="pill good">0 source failures</span>' : `<span class="pill bad">${escapeHtml(String(summary.sourceFailures || 0))} source failures</span>`}</div><p class="muted">Last scanned: ${escapeHtml(trends.lastScannedAt ? formatDashboardDateTime(trends.lastScannedAt) : 'Not scanned yet')} · Saved ideas: ${escapeHtml(String(trends.savedIdeas?.length || 0))}</p><p class="notice">${escapeHtml(freshness)}</p>${sourceHealth}${trends.note ? `<p class="muted">${escapeHtml(trends.note)}</p>` : ''}</div>`;
+  return `<details class="panel compact-panel trend-source-details"><summary class="ghost">View sources</summary><p class="notice">${escapeHtml(freshness)}</p><div class="review-list source-health-list">${sourceStatus.map((source) => sourceHealthRow(source, stories)).join('')}</div></details>`;
+}
+
+function formatCompactDateTime(value) {
+  if (!value) return 'Not scanned yet';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Toronto' }).format(date);
 }
 
 function sourceHealthRow(source, stories = []) {
@@ -495,11 +515,12 @@ async function renderArticles(ctx, url) {
   const categoryTabs = `<div class="tabs compact"><a class="tab ${selectedCategory === 'All' ? 'active' : ''}" href="/app/content/articles?view=ideas">All</a>${TRENDING_CATEGORIES.map((category) => `<a class="tab ${category === selectedCategory ? 'active' : ''}" href="/app/content/articles?view=ideas&category=${encodeURIComponent(category)}">${escapeHtml(category)}</a>`).join('')}</div>`;
   const storyControls = trendStoryFilters(trends.sourceStories || trends.sourceItems || [], url.searchParams);
   const trendMeta = trendSummaryPanel(trends);
+  const trendSourceDetails = trendSourceDetailsPanel(trends);
   const scanControls = `<form method="post" action="/app/content/actions/trends/scan" data-generating-form><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><button class="primary" type="submit">Find trends now</button><div class="generation-progress" role="status" aria-live="polite" hidden><span>Scanning approved sources and ranking opportunities.</span><i></i></div></form><button class="ghost" type="button" disabled>Add idea manually</button>`;
   const emptyIdeas = `<p class="empty panel">No source-backed opportunities match this view. Run Find trends now, change category, or add an idea manually later.</p>`;
   const emptyStories = `<p class="empty panel">No retained source stories match this filter. This is normal when no approved source published in the selected window.</p>`;
   const trendsPanel = view === 'ideas'
-    ? `<section class="workspace-section" aria-labelledby="ideas-title"><div class="section-head"><div><p class="eyebrow">B. Trending Opportunities</p><h2 id="ideas-title">Trending Opportunities</h2><p class="muted">The highest-ranked story opportunities from the latest scan.</p><div class="meta-row"><span class="pill warn">${escapeHtml(String(recommended.length))} recommended</span></div>${trendMeta}</div><div class="mini-actions">${scanControls}</div></div>${categoryTabs}<div class="opportunity-grid">${recommended.length ? recommended.map((item) => opportunityCard(item, csrf, canCreate)).join('') : emptyIdeas}</div><section class="workspace-section" aria-labelledby="recent-source-stories-title"><div class="section-head"><div><p class="eyebrow">Recent Source Stories</p><h2 id="recent-source-stories-title">Recent Source Stories</h2><p class="muted">Full retained source-story feed from the latest scan, sorted by source publication time.</p></div></div>${storyControls}<div class="review-list source-story-list">${sourceStories.length ? sourceStories.map(sourceStoryCard).join('') : emptyStories}</div></section></section>`
+    ? `<section class="workspace-section" aria-labelledby="ideas-title"><div class="section-head"><div><p class="eyebrow">B. Trending Opportunities</p><h2 id="ideas-title">Trending Opportunities</h2><p class="muted">The highest-ranked story opportunities from the latest scan.</p><div class="meta-row"><span class="pill warn">${escapeHtml(String(recommended.length))} recommended</span></div></div><div class="mini-actions">${scanControls}</div></div>${trendMeta}${categoryTabs}<div class="opportunity-grid">${recommended.length ? recommended.map((item) => opportunityCard(item, csrf, canCreate)).join('') : emptyIdeas}</div>${trendSourceDetails}<section class="workspace-section" aria-labelledby="recent-source-stories-title"><div class="section-head"><div><p class="eyebrow">Recent Source Stories</p><h2 id="recent-source-stories-title">Recent Source Stories</h2><p class="muted">Full retained source-story feed from the latest scan, sorted by source publication time.</p></div></div>${storyControls}<div class="review-list source-story-list">${sourceStories.length ? sourceStories.map(sourceStoryCard).join('') : emptyStories}</div></section></section>`
     : `<section class="workspace-section panel compact-panel" aria-labelledby="ideas-title"><div class="section-head"><div><p class="eyebrow">B. Trending Opportunities</p><h2 id="ideas-title">Trending Opportunities</h2><p class="muted">Scan approved RSS/Atom feeds and turn retained source stories into grounded article ideas.</p></div><div class="mini-actions"><a class="primary" href="/app/content/articles?view=ideas">Open Trends</a>${scanControls}</div></div></section>`;
   const create = `<section class="editorial-prompt panel compact-prompt">
     <div>
