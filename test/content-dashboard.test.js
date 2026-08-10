@@ -206,6 +206,71 @@ test('4bb article workspace shows direct-published deployment records', async ()
   });
 });
 
+test('4bc article workspace shows generation Brain diagnostics', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-generation-diagnostics-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  await createMinimalRun(path.join(outputDir, 'diagnostics-run-001'), {
+    title: 'Musi Legal Action',
+    slug: 'musi-legal-action',
+    research: {
+      selectedEvidence: [approvedBrainRecord({ id: 'brain:capabilities/commerce', title: 'Commerce', path: 'content-agent/knowledge/capabilities/commerce.md' })],
+      claimsThatMustNotBeMade: [],
+      generationDiagnostics: {
+        brainSourcesScanned: 18,
+        brainRecordsSelected: [{
+          id: 'brain:capabilities/commerce',
+          title: 'Commerce',
+          path: 'content-agent/knowledge/capabilities/commerce.md',
+          selectionReason: 'matches Commerce and payments; score 12',
+        }],
+        brainRecordsSentToModel: [{
+          id: 'brain:capabilities/commerce',
+          title: 'Commerce',
+          path: 'content-agent/knowledge/capabilities/commerce.md',
+        }],
+        relevantApprovedClaims: [{
+          id: 'brain:capabilities/commerce',
+          title: 'Commerce',
+          excerpt: 'Certifyd supports direct creator commerce context.',
+        }],
+        externalArticleSourcesUsed: [{
+          title: 'Musi legal action story',
+          publisher: 'Music Business Worldwide',
+          publishedAt: '2026-08-10',
+          articleUrl: 'https://example.test/musi-story',
+        }],
+        exactBrainContextSentToModel: {
+          approvedKnowledge: [{
+            id: 'brain:capabilities/commerce',
+            theme: 'Commerce and payments',
+            excerpt: 'Certifyd supports direct creator commerce context.',
+          }],
+        },
+        contextSize: {
+          totalPromptChars: 4200,
+          finalContextChars: 3900,
+          truncated: false,
+        },
+      },
+    },
+  });
+  await withServer(async (base) => {
+    const cookie = await login(base, 'founder@example.test');
+    const response = await fetch(`${base}/app/content/articles/diagnostics-run-001`, { headers: { cookie } });
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    assert.match(html, /Generation diagnostics/);
+    assert.match(html, /Brain records selected/);
+    assert.match(html, /Brain records actually sent/);
+    assert.match(html, /Exact Brain context sent to Qwen/);
+    assert.match(html, /Music Business Worldwide/);
+    assert.match(html, /https:\/\/example\.test\/musi-story/);
+  }, {
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+  });
+});
+
 test('4c Brain suggestions live in the Brain workspace', async () => withServer(async (base) => {
   const cookie = await login(base, 'founder@example.test');
   const response = await fetch(`${base}/app/content/brain?view=suggestions`, { headers: { cookie } });
@@ -1754,7 +1819,7 @@ async function createMinimalRun(runDir, options = {}) {
   }));
   await fs.writeFile(path.join(runDir, 'final', 'article.md'), options.markdown || `# ${title}\n\nBody.`);
   await fs.writeFile(path.join(runDir, 'claim-ledger.json'), JSON.stringify({ claims: [{ text: 'Safe claim', status: 'APPROVED' }] }));
-  await fs.writeFile(path.join(runDir, 'research-record.json'), JSON.stringify({ selectedEvidence, claimsThatMustNotBeMade: [] }));
+  await fs.writeFile(path.join(runDir, 'research-record.json'), JSON.stringify(options.research || { selectedEvidence, claimsThatMustNotBeMade: [] }));
 }
 
 function approvedBrainRecord(overrides = {}) {

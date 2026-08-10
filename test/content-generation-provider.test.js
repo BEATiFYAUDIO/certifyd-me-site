@@ -411,6 +411,43 @@ test('trend source summaries are included separately from Certifyd Brain context
     publishedAt: '2026-08-01',
     sourceUrl: 'https://example.test/music-business-story',
   }]);
+  assert.ok(researchRecord.generationDiagnostics.brainSourcesScanned >= 2);
+  assert.ok(researchRecord.generationDiagnostics.brainRecordsSelected.length >= 2);
+  assert.ok(researchRecord.generationDiagnostics.brainRecordsSentToModel.length >= 2);
+  assert.match(outboundPrompt, /Approved Certifyd knowledge by theme/i);
+  assert.match(outboundPrompt, /FACTS FROM SOURCE ARTICLE/i);
+  assert.match(outboundPrompt, /APPROVED CERTIFYD KNOWLEDGE/i);
+});
+
+test('Brain retrieval covers positioning, rights, commerce and network dependency for music-rights stories', async () => {
+  const config = await makeConfig();
+  const records = [
+    ['content-agent/knowledge/capabilities/access.md', '# Access\n\nAPPROVED\n\nCertifyd access records help describe permissions and creator-controlled access decisions.'],
+    ['content-agent/knowledge/capabilities/commerce.md', '# Commerce\n\nAPPROVED\n\nCertifyd supports direct creator commerce context and owned customer relationships.'],
+    ['content-agent/knowledge/capabilities/payments.md', '# Payments\n\nAPPROVED\n\nCertifyd payment records can support transaction context where payment workflows are configured.'],
+    ['content-agent/knowledge/capabilities/network-distribution.md', '# Network Distribution\n\nAPPROVED\n\nCertifyd Network reduces dependency on single-platform distribution by routing identity, discovery and commerce through creator-controlled records.'],
+    ['content-agent/knowledge/ecosystem.md', '# Certifyd Ecosystem\n\nAPPROVED\n\nCertifyd connects creators, fans, partners and commerce infrastructure around creator-owned relationships.'],
+  ];
+  for (const [relative, text] of records) {
+    const file = path.join(config.siteRoot, relative);
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(file, text);
+  }
+  const context = await makeContext(config, {
+    topic: 'IFPI, Sony and UMG take legal action against parasitic streaming app Musi',
+    objective: 'Connect music rights, permissions, creator commerce, payments and platform dependency without inventing capabilities.',
+    sourceRestrictions: 'Relevant approved Brain records: brain:founder-decisions,brain:capabilities/commerce,brain:capabilities/payments,brain:capabilities/access,brain:capabilities/network-distribution.',
+    trendBrainRecordIds: 'brain:founder-decisions,brain:capabilities/commerce,brain:capabilities/payments,brain:capabilities/access,brain:capabilities/network-distribution',
+  });
+  const selectedIds = context.sourceRecords.map((source) => source.id);
+  assert.ok(selectedIds.includes('brain:capabilities/commerce'));
+  assert.ok(selectedIds.includes('brain:capabilities/payments'));
+  assert.ok(selectedIds.includes('brain:capabilities/access'));
+  assert.ok(selectedIds.includes('brain:capabilities/network-distribution'));
+  assert.ok(context.approvedKnowledge.some((record) => /Commerce and payments/.test(record.theme)));
+  assert.ok(context.approvedKnowledge.some((record) => /Permissions and rights/.test(record.theme)));
+  assert.ok(context.approvedKnowledge.some((record) => /Network and platform dependency/.test(record.theme)));
+  assert.ok(context.generationDiagnostics.brainRecordsSelected.every((record) => record.selectionReason));
 });
 
 test('one active local generation per user is enforced', async () => {
