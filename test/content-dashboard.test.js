@@ -154,14 +154,14 @@ test('4ba article ideas separate recommended opportunities from retained source 
     const html = await response.text();
     assert.match(html, /90 collected · 15 retained · 13 recommended · 4 sources checked/);
     assert.match(html, /Trending Opportunities/);
-    assert.match(html, /12 recommended/);
+    assert.match(html, /13 recommended/);
     assert.match(html, /Recent Source Stories/);
     assert.match(html, /Retained Source Story 15/);
     assert.match(html, /In recommended opportunity/);
     assert.match(html, /Source publication time is separate from fetched time/);
     assert.match(html, /Retention:/);
     assert.match(html, /Grouped into recommended opportunity/);
-    assert.doesNotMatch(html, /Recommended Opportunity 13[\s\S]*Generate Article/);
+    assert.match(html, /Recommended Opportunity 13[\s\S]*Generate Article/);
     const jsonResponse = await fetch(`${base}/app/content/trends.json`, { headers: { cookie } });
     assert.equal(jsonResponse.status, 200);
     const trends = await jsonResponse.json();

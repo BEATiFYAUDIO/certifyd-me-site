@@ -14,6 +14,8 @@ import {
   buildSourceRegistry,
   dismissTrendOpportunity,
   filterTrendingOpportunities,
+  recommendationCategoryLimit,
+  recommendationTotalLimit,
   getTrendingOpportunities,
   readTrendSourceDetail,
   scanTrendOpportunities,
@@ -486,7 +488,8 @@ async function renderArticles(ctx, url) {
     .map((run) => draftRow(run, ctx.permissions))
     .join('');
   const opportunities = filterTrendingOpportunities(trends, selectedCategory);
-  const recommended = opportunities.slice(0, 12);
+  const displayLimit = selectedCategory === 'All' ? recommendationTotalLimit(ctx.config) : recommendationCategoryLimit(ctx.config);
+  const recommended = opportunities.slice(0, displayLimit);
   const sourceStories = filterTrendSourceStories(trends.sourceStories || trends.sourceItems || [], url.searchParams);
   const canCreate = ctx.permissions.includes('content.article.create');
   const categoryTabs = `<div class="tabs compact"><a class="tab ${selectedCategory === 'All' ? 'active' : ''}" href="/app/content/articles?view=ideas">All</a>${TRENDING_CATEGORIES.map((category) => `<a class="tab ${category === selectedCategory ? 'active' : ''}" href="/app/content/articles?view=ideas&category=${encodeURIComponent(category)}">${escapeHtml(category)}</a>`).join('')}</div>`;

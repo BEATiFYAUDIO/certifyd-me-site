@@ -16,6 +16,7 @@ import {
   readTrendSourceDetail,
   saveTrendOpportunity,
   scanTrendOpportunities,
+  selectRecommendedOpportunities,
   SEEDED_OPPORTUNITIES,
   startTrendDailyScheduler,
 } from '../scripts/content-dashboard/trends.js';
@@ -107,6 +108,44 @@ test('dashboard trend configuration defaults to source-backed composite scanning
   const dashboardConfig = getDashboardConfig({});
   assert.equal(dashboardConfig.trendResearch.provider, 'composite');
   assert.equal(dashboardConfig.trendResearchProvider, 'composite');
+});
+
+test('recommendation selection allows up to twenty total while capping each category at five', () => {
+  const categories = ['Music', 'Technology', 'AI', 'Creator Economy', 'Media'];
+  const opportunities = [];
+  for (const category of categories) {
+    for (let index = 0; index < 8; index += 1) {
+      opportunities.push({
+        id: category + '-' + index,
+        title: category + ' opportunity ' + index,
+        category,
+        sourceCount: 8 - index,
+        brainCoverage: index < 3 ? 'Strong' : 'Partial',
+        newestSourceDate: new Date(Date.now() - index * 1000).toISOString(),
+      });
+    }
+  }
+  const selected = selectRecommendedOpportunities(opportunities, { trendResearch: { recommendationTotalLimit: 20, recommendationCategoryLimit: 5 } });
+  assert.equal(selected.length, 20);
+  for (const category of categories) {
+    const count = selected.filter((item) => item.category === category).length;
+    assert.ok(count <= 5, category + ' is capped at five');
+  }
+  assert.ok(new Set(selected.map((item) => item.category)).size > 1);
+});
+
+test('recommendation selection returns fewer than twenty when credible candidates are scarce', () => {
+  const opportunities = Array.from({ length: 6 }, (_, index) => ({
+    id: 'music-' + index,
+    title: 'Music opportunity ' + index,
+    category: 'Music',
+    sourceCount: 1,
+    brainCoverage: 'Strong',
+    newestSourceDate: new Date(Date.now() - index * 1000).toISOString(),
+  }));
+  const selected = selectRecommendedOpportunities(opportunities, { trendResearch: { recommendationTotalLimit: 20, recommendationCategoryLimit: 5 } });
+  assert.equal(selected.length, 5);
+  assert.ok(selected.every((item) => item.category === 'Music'));
 });
 
 test('RSS scans approved sources, categorizes opportunities, persists state and exposes source details', async () => {

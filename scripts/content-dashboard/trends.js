@@ -16,6 +16,9 @@ export const TRENDING_CATEGORIES = [
 ];
 
 export const TREND_PROVIDER_IDS = ['seeded', 'rss', 'manual', 'search', 'social', 'composite'];
+export const DEFAULT_RECOMMENDATION_TOTAL_LIMIT = 20;
+export const DEFAULT_RECOMMENDATION_CATEGORY_LIMIT = 5;
+export const DEFAULT_RECOMMENDATION_CANDIDATE_LIMIT = 80;
 
 export const CATEGORY_DEFINITIONS = {
   Music: ['music industry', 'artist revenue', 'streaming', 'royalties', 'labels', 'independent artists', 'music rights', 'music distribution', 'fan membership', 'ticketing', 'creator ownership'],
@@ -381,7 +384,8 @@ class RssTrendProvider {
     const brainRecords = await loadApprovedBrainRecords(this.config);
     const evaluated = [];
     const evaluateWithQwen = this.options.evaluateWithQwen === true || this.config.trendResearch?.qwenEvaluationEnabled === true;
-    for (const cluster of clusters.slice(0, 30)) {
+    const candidateLimit = recommendationCandidateLimit(this.config);
+    for (const cluster of clusters.slice(0, candidateLimit)) {
       if (!isCertifydRelevantCluster(cluster)) continue;
       const coverage = computeBrainCoverage(cluster, brainRecords);
       const qwen = evaluateWithQwen
@@ -390,7 +394,7 @@ class RssTrendProvider {
       if (qwen.recommended === false) continue;
       evaluated.push(opportunityFromCluster(cluster, coverage, qwen));
     }
-    const items = evaluated.sort((a, b) => scoreOpportunity(b) - scoreOpportunity(a)).slice(0, 18);
+    const items = selectRecommendedOpportunities(evaluated, this.config);
     return {
       provider: 'rss',
       sourceLabels: [...new Set(deduped.map((item) => item.publisher))],
@@ -412,6 +416,51 @@ class RssTrendProvider {
       },
     };
   }
+}
+
+
+export function recommendationTotalLimit(config = {}) {
+  return positiveNumber(config.trendResearch?.recommendationTotalLimit, DEFAULT_RECOMMENDATION_TOTAL_LIMIT);
+}
+
+export function recommendationCategoryLimit(config = {}) {
+  return positiveNumber(config.trendResearch?.recommendationCategoryLimit, DEFAULT_RECOMMENDATION_CATEGORY_LIMIT);
+}
+
+export function recommendationCandidateLimit(config = {}) {
+  return positiveNumber(config.trendResearch?.recommendationCandidateLimit, DEFAULT_RECOMMENDATION_CANDIDATE_LIMIT);
+}
+
+export function selectRecommendedOpportunities(opportunities = [], config = {}) {
+  const totalLimit = recommendationTotalLimit(config);
+  const categoryLimit = recommendationCategoryLimit(config);
+  const sorted = [...opportunities].sort((a, b) => scoreOpportunity(b) - scoreOpportunity(a));
+  const grouped = new Map();
+  for (const opportunity of sorted) {
+    const category = opportunity.category || 'Uncategorized';
+    const group = grouped.get(category) || [];
+    if (group.length < categoryLimit) group.push(opportunity);
+    grouped.set(category, group);
+  }
+  const categories = [...grouped.keys()].sort((a, b) => scoreOpportunity(grouped.get(b)?.[0]) - scoreOpportunity(grouped.get(a)?.[0]));
+  const selected = [];
+  let madeProgress = true;
+  while (selected.length < totalLimit && madeProgress) {
+    madeProgress = false;
+    for (const category of categories) {
+      if (selected.length >= totalLimit) break;
+      const next = grouped.get(category)?.shift();
+      if (!next) continue;
+      selected.push(next);
+      madeProgress = true;
+    }
+  }
+  return selected;
+}
+
+function positiveNumber(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
 }
 
 function seededResult(note) {
