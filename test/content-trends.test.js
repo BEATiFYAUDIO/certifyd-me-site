@@ -7,6 +7,7 @@ import {
   buildSourceRegistry,
   clusterSourceItems,
   computeNextScanDelayMs,
+  DEFAULT_SOURCE_REGISTRY,
   dedupeSourceItems,
   dismissTrendOpportunity,
   filterTrendingOpportunities,
@@ -15,6 +16,7 @@ import {
   readTrendSourceDetail,
   saveTrendOpportunity,
   scanTrendOpportunities,
+  SEEDED_OPPORTUNITIES,
   startTrendDailyScheduler,
 } from '../scripts/content-dashboard/trends.js';
 import { getDashboardConfig } from '../scripts/content-dashboard/config.js';
@@ -78,6 +80,27 @@ test('trend opportunities default to clearly labeled seeded examples only when s
   assert.ok(trends.items.length > 0);
   assert.match(trends.note, /editorial examples/i);
   assert.equal(trends.items[0].sourceType, 'seeded');
+});
+
+test('seeded mode has at least five useful editorial ideas per core category', async () => {
+  const required = ['Music', 'Technology', 'AI', 'Creator Economy', 'Media', 'Sports', 'Digital Identity', 'Creator Commerce'];
+  for (const category of required) {
+    const count = SEEDED_OPPORTUNITIES.filter((item) => item.category === category).length;
+    assert.ok(count >= 5, `${category} has ${count} seeded ideas`);
+  }
+  const trends = await getTrendingOpportunities({ trendResearch: { provider: 'seeded', sourceUrls: [] } });
+  assert.ok(trends.items.every((item) => item.sourceType === 'seeded' && item.evidenceLabel === 'Seeded example'));
+});
+
+test('expanded source registry uses real RSS-backed sources and disables failed candidates', () => {
+  const enabled = DEFAULT_SOURCE_REGISTRY.filter((source) => source.enabled !== false);
+  const disabled = DEFAULT_SOURCE_REGISTRY.filter((source) => source.enabled === false);
+  for (const category of ['Music', 'Technology', 'AI', 'Creator Economy', 'Media', 'Sports', 'Digital Identity', 'Creator Commerce']) {
+    assert.ok(enabled.some((source) => source.categories.includes(category)), `${category} has enabled source`);
+  }
+  assert.ok(enabled.every((source) => /^https:\/\//.test(source.feedUrl)));
+  assert.ok(disabled.length >= 1);
+  assert.ok(disabled.every((source) => /disabled|404|returned html/i.test(source.reliability)));
 });
 
 test('dashboard trend configuration defaults to source-backed composite scanning', () => {

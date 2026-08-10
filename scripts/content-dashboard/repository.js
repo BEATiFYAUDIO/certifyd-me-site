@@ -143,6 +143,44 @@ export class ContentBrainRepository {
     this.outputDir = config.outputDir;
   }
 
+  recordPath(relative) {
+    const normalized = String(relative || '').replace(/\\/g, '/').replace(/^\/+/, '');
+    if (!normalized || normalized.includes('..') || !normalized.endsWith('.md')) throw new Error('Unsafe Brain record path.');
+    const file = path.resolve(this.root, normalized);
+    if (!file.startsWith(`${this.root}${path.sep}`)) throw new Error('Unsafe Brain record path.');
+    return file;
+  }
+
+  async fileRecord(relative) {
+    const file = this.recordPath(relative);
+    const stat = await fs.stat(file);
+    const name = path.relative(this.root, file).replace(/\\/g, '/');
+    const text = await fs.readFile(file, 'utf8').catch(() => '');
+    return {
+      id: brainRecordId(name),
+      name,
+      classification: classifyKnowledgePath(name),
+      lastUpdated: stat.mtime.toISOString(),
+      staleStatus: brainReviewState(name, text),
+    };
+  }
+
+  async readRecord(relative) {
+    return fs.readFile(this.recordPath(relative), 'utf8');
+  }
+
+  async writeRecord(relative, text) {
+    const file = this.recordPath(relative);
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(file, String(text || ''), 'utf8');
+  }
+
+  async appendRecord(relative, text) {
+    const current = await this.readRecord(relative).catch(() => '');
+    const separator = current.endsWith('\n') || !current ? '' : '\n';
+    await this.writeRecord(relative, `${current}${separator}${String(text || '')}`);
+  }
+
   async listFiles() {
     const files = [];
     const usage = await this.readUsageIndex();

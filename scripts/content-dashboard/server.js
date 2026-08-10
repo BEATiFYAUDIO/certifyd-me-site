@@ -9,6 +9,7 @@ import { createCsrfToken, escapeHtml, parseCookies, safeReturnPath, validateRunI
 import { card, humanizeLabel, layout, loginPage, renderMarkdown, statusPill } from './render.js';
 import { verifyCloudflareAccessRequest } from './cloudflare-access.js';
 import { DashboardUserRepository } from './users.js';
+import { KNOWLEDGE_SUGGESTIONS, applyKnowledgeSuggestion, listPendingKnowledgeSuggestions } from './brain-suggestions.js';
 import {
   buildSourceRegistry,
   dismissTrendOpportunity,
@@ -22,37 +23,6 @@ import {
 } from './trends.js';
 
 const STATIC_TYPES = new Map([['.html','text/html; charset=utf-8'],['.css','text/css; charset=utf-8'],['.js','text/javascript; charset=utf-8'],['.svg','image/svg+xml'],['.png','image/png'],['.jpg','image/jpeg'],['.jpeg','image/jpeg'],['.webp','image/webp'],['.xml','application/xml; charset=utf-8'],['.txt','text/plain; charset=utf-8'],['.mp4','video/mp4']]);
-
-const KNOWLEDGE_SUGGESTIONS = [
-  {
-    title: 'Clarify Certifyd Core responsibilities',
-    category: 'Update existing Brain record',
-    summary: 'Separate Core from Network in plain language: Core handles local creator/operator software, identity, publishing and commerce context; Network handles discovery, routing and distribution.',
-    confidence: 'High',
-    sources: ['approved-public-claims.md', 'founder-decisions.md'],
-  },
-  {
-    title: 'Add article guidance for creator ownership',
-    category: 'New Brain record',
-    summary: 'Create a reusable writing note that prefers “reduces platform dependency” over absolute ownership claims unless stronger evidence is available.',
-    confidence: 'High',
-    sources: ['approved-public-claims.md'],
-  },
-  {
-    title: 'Mark old monetization wording for review',
-    category: 'Mark record as stale',
-    summary: 'Older copy may overemphasize technical layers. Flag it for founder review before future investor or public articles reuse it.',
-    confidence: 'Medium',
-    sources: ['investor-site-audit.md', 'monetization-ecosystem.md'],
-  },
-  {
-    title: 'Merge repeated profile language',
-    category: 'Merge duplicate records',
-    summary: 'Combine repeated profile descriptions into one source that distinguishes public profiles, creator identity and discovery surfaces.',
-    confidence: 'Medium',
-    sources: ['brand.md', 'vocabulary.md'],
-  },
-];
 
 export function createContentDashboardServer(options = {}) {
   const config = options.config || getDashboardConfig(options.env || process.env);
@@ -172,6 +142,7 @@ async function handleAction(req, res, url, ctx) {
   else if (action.endsWith('/trends/scan')) { needs('content.article.create'); result = await scanTrendOpportunities(ctx.config); }
   else if (action.endsWith('/trends/dismiss')) { needs('content.article.edit'); result = await dismissTrendOpportunity(ctx.config, String(form.get('opportunityId') || '')); }
   else if (action.endsWith('/trends/save')) { needs('content.article.edit'); result = await saveTrendOpportunity(ctx.config, String(form.get('opportunityId') || ''), ctx.user); }
+  else if (action.endsWith('/brain/suggestion')) { needs('brain.write'); result = await applyKnowledgeSuggestion({ config: ctx.config, brainRepo: ctx.brainRepo, audit: ctx.audit, actor: ctx.user, suggestionId: form.get('suggestionId'), decision: form.get('decision') }); }
   else if (action.endsWith('/review/start')) { needs('content.article.review'); result = await ctx.actions.startReview({ actor: ctx.user, runId: form.get('runId') }); }
   else if (action.endsWith('/review/revise')) { needs('content.article.review'); result = await ctx.actions.requestRevision({ actor: ctx.user, runId: form.get('runId') }); }
   else if (action.endsWith('/review/approve')) { needs('content.article.approve'); result = await ctx.actions.approve({ actor: ctx.user, runId: form.get('runId'), version: form.get('version'), confirm: form.get('confirm') }); }
@@ -198,6 +169,10 @@ async function handleAction(req, res, url, ctx) {
   }
   if (action.includes('/distribution/')) {
     return redirect(res, `/app/content/distribution${form.get('runId') ? `?runId=${encodeURIComponent(validateRunId(String(form.get('runId') || '')))}` : ''}`);
+  }
+  if (action.endsWith('/brain/suggestion')) {
+    const changed = result?.changedRecord?.id ? `&changed=${encodeURIComponent(result.changedRecord.id)}` : '';
+    return redirect(res, `/app/content/brain?view=${result?.decision === 'reject' ? 'suggestions' : 'knowledge'}${changed}`);
   }
   sendHtml(res, layout({ title: 'Action Result', user: ctx.user, permissions: ctx.permissions, body: `<p class="eyebrow">Action result</p><h1>Completed</h1><pre>${escapeHtml(result.output || JSON.stringify(result, null, 2))}</pre>${actionResultLinks(result)}<p><a class="ghost" href="/app/content">Back to dashboard</a></p>` }));
 }
@@ -359,15 +334,19 @@ function draftRow(run, permissions) {
   </article>`;
 }
 
-function knowledgeSuggestionRow(suggestion, canWriteBrain) {
+function knowledgeSuggestionRow(suggestion, canWriteBrain, csrf) {
+  const controls = canWriteBrain
+    ? `<form method="post" action="/app/content/actions/brain/suggestion"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="suggestionId" value="${escapeHtml(suggestion.id)}"><input type="hidden" name="decision" value="approve"><button class="ghost" type="submit">Approve</button></form><form method="post" action="/app/content/actions/brain/suggestion"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="suggestionId" value="${escapeHtml(suggestion.id)}"><input type="hidden" name="decision" value="reject"><button class="ghost danger" type="submit">Reject</button></form>`
+    : '<span class="muted">Brain approval requires write permission.</span>';
   return `<article class="review-item knowledge-item">
     <div>
       <div class="meta-row"><span class="pill warn">${escapeHtml(suggestion.category)}</span><span class="pill ${suggestion.confidence === 'High' ? 'good' : 'warn'}">${escapeHtml(suggestion.confidence)} confidence</span></div>
       <h3>${escapeHtml(suggestion.title)}</h3>
       <p>${escapeHtml(suggestion.summary)}</p>
+      <p class="muted">Target: <code>${escapeHtml(suggestion.targetPath || '')}</code></p>
       <p class="muted">Sources: ${suggestion.sources.map((source) => escapeHtml(source)).join(', ')}</p>
     </div>
-    <div class="mini-actions">${canWriteBrain ? '<button class="ghost" type="button" disabled>Approve</button><button class="ghost" type="button" disabled>Edit</button><button class="ghost" type="button" disabled>Reject</button>' : '<span class="muted">Brain approval requires write permission.</span>'}</div>
+    <div class="mini-actions">${controls}</div>
   </article>`;
 }
 
@@ -483,12 +462,12 @@ function uniqueSorted(values) {
 async function renderArticles(ctx, url) {
   const runs = await ctx.runRepo.listRuns();
   const view = String(url.searchParams.get('view') || 'drafts');
+  const showAdvanced = url.searchParams.get('advanced') === '1';
   const selectedCategory = String(url.searchParams.get('category') || 'All');
   const trends = await getTrendingOpportunities(ctx.config);
   const search = String(url.searchParams.get('q') || '').trim().toLowerCase();
   const csrf = createCsrfToken(ctx.config.sessionSecret, ctx.user.sid);
   const tabs = [
-    ['ideas', 'Ideas'],
     ['drafts', 'Drafts'],
     ['review', 'In review'],
     ['approved', 'Approved'],
@@ -501,6 +480,11 @@ async function renderArticles(ctx, url) {
     return [run.title, run.runId, run.slug, run.audience, run.topic, run.canonicalUrl, run.modelProvider, run.modelMode].some((value) => String(value || '').toLowerCase().includes(search));
   });
   const articleCards = filteredRuns.map((run) => articleListCard(run, csrf, ctx.permissions, ctx.config)).join('');
+  const draftsAndReview = runs
+    .filter((run) => articleMatchesView(run, 'drafts') || articleMatchesView(run, 'review'))
+    .slice(0, 6)
+    .map((run) => draftRow(run, ctx.permissions))
+    .join('');
   const opportunities = filterTrendingOpportunities(trends, selectedCategory);
   const recommended = opportunities.slice(0, 12);
   const sourceStories = filterTrendSourceStories(trends.sourceStories || trends.sourceItems || [], url.searchParams);
@@ -511,16 +495,20 @@ async function renderArticles(ctx, url) {
   const scanControls = `<form method="post" action="/app/content/actions/trends/scan" data-generating-form><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><button class="primary" type="submit">Find trends now</button><div class="generation-progress" role="status" aria-live="polite" hidden><span>Scanning approved sources and ranking opportunities.</span><i></i></div></form><button class="ghost" type="button" disabled>Add idea manually</button>`;
   const emptyIdeas = `<p class="empty panel">No source-backed opportunities match this view. Run Find trends now, change category, or add an idea manually later.</p>`;
   const emptyStories = `<p class="empty panel">No retained source stories match this filter. This is normal when no approved source published in the selected window.</p>`;
-  const ideas = view === 'ideas' ? `<section class="workspace-section" aria-labelledby="ideas-title"><div class="section-head"><div><p class="eyebrow">Recommended Opportunities</p><h2 id="ideas-title">Recommended Opportunities</h2><p class="muted">The highest-ranked story opportunities from the latest scan.</p><div class="meta-row"><span class="pill warn">${escapeHtml(String(recommended.length))} recommended</span></div>${trendMeta}</div><div class="mini-actions">${scanControls}</div></div>${categoryTabs}<div class="opportunity-grid">${recommended.length ? recommended.map((item) => opportunityCard(item, csrf, canCreate)).join('') : emptyIdeas}</div><section class="workspace-section" aria-labelledby="recent-source-stories-title"><div class="section-head"><div><p class="eyebrow">Recent Source Stories</p><h2 id="recent-source-stories-title">Recent Source Stories</h2><p class="muted">Full retained source-story feed from the latest scan, sorted by source publication time.</p></div></div>${storyControls}<div class="review-list source-story-list">${sourceStories.length ? sourceStories.map(sourceStoryCard).join('') : emptyStories}</div></section></section>` : '';
+  const trendsPanel = view === 'ideas'
+    ? `<section class="workspace-section" aria-labelledby="ideas-title"><div class="section-head"><div><p class="eyebrow">B. Trending Opportunities</p><h2 id="ideas-title">Trending Opportunities</h2><p class="muted">The highest-ranked story opportunities from the latest scan.</p><div class="meta-row"><span class="pill warn">${escapeHtml(String(recommended.length))} recommended</span></div>${trendMeta}</div><div class="mini-actions">${scanControls}</div></div>${categoryTabs}<div class="opportunity-grid">${recommended.length ? recommended.map((item) => opportunityCard(item, csrf, canCreate)).join('') : emptyIdeas}</div><section class="workspace-section" aria-labelledby="recent-source-stories-title"><div class="section-head"><div><p class="eyebrow">Recent Source Stories</p><h2 id="recent-source-stories-title">Recent Source Stories</h2><p class="muted">Full retained source-story feed from the latest scan, sorted by source publication time.</p></div></div>${storyControls}<div class="review-list source-story-list">${sourceStories.length ? sourceStories.map(sourceStoryCard).join('') : emptyStories}</div></section></section>`
+    : `<section class="workspace-section panel compact-panel" aria-labelledby="ideas-title"><div class="section-head"><div><p class="eyebrow">B. Trending Opportunities</p><h2 id="ideas-title">Trending Opportunities</h2><p class="muted">Scan approved RSS/Atom feeds and turn retained source stories into grounded article ideas.</p></div><div class="mini-actions"><a class="primary" href="/app/content/articles?view=ideas">Open Trends</a>${scanControls}</div></div></section>`;
   const create = `<section class="editorial-prompt panel compact-prompt">
     <div>
-      <p class="eyebrow">Ask Qwen</p>
+      <p class="eyebrow">A. What should Certifyd write about?</p>
       <h2>What should Certifyd write about?</h2>
     </div>
-    ${canCreate ? qwenPromptForm({ csrf, compact: true }) : '<p class="notice">You can review content, but this role cannot generate new drafts.</p>'}
+    ${canCreate ? qwenPromptForm({ csrf, compact: true, advanced: showAdvanced }) : '<p class="notice">You can review content, but this role cannot generate new drafts.</p>'}
+    ${showAdvanced ? '<a class="ghost" href="/app/content/articles">Hide advanced</a>' : '<a class="ghost" href="/app/content/articles?advanced=1">Advanced</a>'}
   </section>`;
-  const filters = `<section class="panel"><div class="tabs">${tabs.map(([key, label]) => `<a class="tab ${key === view ? 'active' : ''}" href="/app/content/articles?view=${escapeHtml(key)}">${escapeHtml(label)}</a>`).join('')}</div><form class="search-row" method="get" action="/app/content/articles"><input type="hidden" name="view" value="${escapeHtml(view)}"><label>Search<input name="q" value="${escapeHtml(search)}" placeholder="Title, slug, topic, source or author"></label><button class="ghost" type="submit">Search</button></form></section>`;
-  return layout({ title: 'Blog Engine', user: ctx.user, permissions: ctx.permissions, active: 'Blog Engine', body: `<p class="eyebrow">Blog Engine</p><h1>Article workspace</h1>${filters}${create}${ideas}<section class="article-list">${articleCards || '<p class="empty panel">No articles match this view.</p>'}</section>` });
+  const workflow = `<section class="workspace-section panel compact-panel"><div class="section-head"><div><p class="eyebrow">C. Drafts / In Review</p><h2>Drafts / In Review</h2><p class="muted">Active drafts and founder-review items stay before the full library.</p></div><a class="ghost" href="/app/content/articles?view=review">Open review queue</a></div><div class="review-list">${draftsAndReview || '<p class="empty">No drafts or review items found.</p>'}</div></section>`;
+  const filters = `<section class="panel"><div class="section-head"><div><p class="eyebrow">D. Article Library</p><h2>Article Library</h2></div></div><div class="tabs">${tabs.map(([key, label]) => `<a class="tab ${key === view ? 'active' : ''}" href="/app/content/articles?view=${escapeHtml(key)}">${escapeHtml(label)}</a>`).join('')}</div><form class="search-row" method="get" action="/app/content/articles"><input type="hidden" name="view" value="${escapeHtml(view)}"><label>Search<input name="q" value="${escapeHtml(search)}" placeholder="Title, slug, topic, source or author"></label><button class="ghost" type="submit">Search</button></form></section>`;
+  return layout({ title: 'Blog Engine', user: ctx.user, permissions: ctx.permissions, active: 'Blog Engine', body: `<p class="eyebrow">Blog Engine</p><h1>Article workspace</h1>${create}${trendsPanel}${workflow}${filters}<section class="article-list">${articleCards || '<p class="empty panel">No articles match this view.</p>'}</section>` });
 }
 
 async function renderTrendSources(ctx, opportunityId) {
@@ -600,20 +588,24 @@ async function renderPreview(ctx, runId) {
 
 async function renderBrain(ctx, url = new URL('http://localhost/app/content/brain')) {
   const view = String(url.searchParams.get('view') || 'knowledge');
+  const changed = String(url.searchParams.get('changed') || '');
   const files = await ctx.brainRepo.listFiles();
   const canWriteBrain = ctx.permissions.includes('brain.write');
+  const csrf = createCsrfToken(ctx.config.sessionSecret, ctx.user.sid);
   const tabs = [['knowledge', 'Knowledge'], ['suggestions', 'Suggestions'], ['stale', 'Stale'], ['conflicts', 'Conflicts']];
   const tabHtml = `<div class="tabs">${tabs.map(([key, label]) => `<a class="tab ${key === view ? 'active' : ''}" href="/app/content/brain?view=${escapeHtml(key)}">${escapeHtml(label)}</a>`).join('')}</div>`;
   let content = '';
   if (view === 'suggestions') {
-    content = `<section class="panel"><div class="section-head"><div><p class="eyebrow">Knowledge Suggestions</p><h2>Founder-reviewed Brain updates.</h2></div></div><p>Qwen can suggest Brain changes, but approved knowledge is never updated automatically.</p><div class="review-list">${KNOWLEDGE_SUGGESTIONS.map((suggestion) => knowledgeSuggestionRow(suggestion, canWriteBrain)).join('')}</div></section>`;
+    const suggestions = await listPendingKnowledgeSuggestions(ctx.config);
+    content = `<section class="panel"><div class="section-head"><div><p class="eyebrow">Knowledge Suggestions</p><h2>Founder-reviewed Brain updates.</h2></div></div><p>Qwen can suggest Brain changes, but approved knowledge is never updated automatically.</p><div class="review-list">${suggestions.length ? suggestions.map((suggestion) => knowledgeSuggestionRow(suggestion, canWriteBrain, csrf)).join('') : '<p class="empty">No pending Brain suggestions.</p>'}</div></section>`;
   } else if (view === 'stale') {
     content = `<section class="panel"><p class="empty">No stale Brain records are queued in this pass.</p></section>`;
   } else if (view === 'conflicts') {
     content = `<section class="panel"><p class="empty">No Brain conflicts are queued in this pass.</p></section>`;
   } else {
-    const rows = files.map((file) => `<tr><td>${escapeHtml(file.name)}</td><td>${escapeHtml(humanizeLabel(file.classification))}</td><td>${escapeHtml(file.lastUpdated)}</td><td>${escapeHtml(file.evidenceUsageCount)}</td><td>${escapeHtml(humanizeLabel(file.staleStatus))}</td></tr>`).join('');
-    content = `<section class="panel"><form class="search-row"><label>Filter Brain records<input placeholder="Search by file, status or topic" disabled></label><button class="ghost" disabled>Search</button></form></section><section class="panel"><table class="table"><thead><tr><th>File</th><th>Classification</th><th>Updated</th><th>Usage</th><th>Review state</th></tr></thead><tbody>${rows || '<tr><td colspan="5">No Brain records found.</td></tr>'}</tbody></table></section>`;
+    const rows = files.map((file) => `<tr class="${file.id === changed ? 'highlight-row' : ''}"><td>${escapeHtml(file.name)}${file.id === changed ? ' <span class="pill good">Updated</span>' : ''}</td><td>${escapeHtml(humanizeLabel(file.classification))}</td><td>${escapeHtml(file.lastUpdated)}</td><td>${escapeHtml(file.evidenceUsageCount)}</td><td>${escapeHtml(humanizeLabel(file.staleStatus))}</td></tr>`).join('');
+    const notice = changed ? `<p class="notice">Brain record updated: <code>${escapeHtml(changed)}</code>. Future Qwen generations can use this approved knowledge.</p>` : '';
+    content = `${notice}<section class="panel"><form class="search-row"><label>Filter Brain records<input placeholder="Search by file, status or topic" disabled></label><button class="ghost" disabled>Search</button></form></section><section class="panel"><table class="table"><thead><tr><th>File</th><th>Classification</th><th>Updated</th><th>Usage</th><th>Review state</th></tr></thead><tbody>${rows || '<tr><td colspan="5">No Brain records found.</td></tr>'}</tbody></table></section>`;
   }
   return layout({ title: 'Brain', user: ctx.user, permissions: ctx.permissions, active: 'Brain', body: `<p class="eyebrow">Brain</p><h1>Knowledge system</h1>${tabHtml}${content}` });
 }
@@ -670,9 +662,9 @@ async function renderSettings(ctx) {
   const trendSources = buildSourceRegistry(ctx.config);
   const distribution = await ctx.actions.distributionOverview();
   const csrf = createCsrfToken(ctx.config.sessionSecret, ctx.user.sid);
-  const safe = { dashboardEnabled: ctx.config.enabled, authMode: ctx.config.authMode, publicAdminUrl: ctx.config.publicAdminUrl, database: ctx.config.databasePath === ':memory:' ? 'memory' : 'sqlite configured', userCount: ctx.userRepo.listUsers().length, localAi: { enabled: ctx.config.ollama.enabled, model: ctx.config.ollama.model, baseUrl: ctx.config.ollama.baseUrl ? 'configured' : 'not configured' }, trendResearch: ctx.config.trendResearchProvider || ctx.config.trendResearch?.provider || 'manual only', trendSourceCount: trendSources.length, trendSources: trendSources.map((source) => ({ id: source.id, publisher: source.publisher, category: source.category, feedUrl: source.feedUrl })), trendScan: { maxItemsPerSource: ctx.config.trendResearch?.maxItemsPerSource, maxItemAgeDays: ctx.config.trendResearch?.maxItemAgeDays, timeoutMs: ctx.config.trendResearch?.timeoutMs, maxConcurrentFetches: ctx.config.trendResearch?.maxConcurrentFetches, dailyScanEnabled: ctx.config.trendResearch?.dailyScanEnabled, scanHour: ctx.config.trendResearch?.scanHour, manualCommand: 'npm run trends:scan' }, externalResearch: ctx.config.externalResearchProvider || 'not configured', brain: 'content-agent/knowledge', githubPublishing: publishingStatusLabel(ctx.config.githubPublishing), githubRepositoryConfigured: Boolean(ctx.config.githubPublishing.owner && ctx.config.githubPublishing.repo), githubMirrors: Array.isArray(ctx.config.githubPublishing.mirrors) ? ctx.config.githubPublishing.mirrors.map((mirror) => `${mirror.owner}/${mirror.repo}`).join(', ') : '', coverImages: ctx.config.coverImages?.provider === 'pexels' && ctx.config.coverImages?.pexelsApiKey ? 'Pexels configured' : 'local rule-based fallback', distributionAccounts: 'none connected', cloudflareAccessConfigured: Boolean(ctx.config.cloudflareAccess.teamDomain && ctx.config.cloudflareAccess.audience), environment: ctx.config.environmentName };
+  const safe = { dashboardEnabled: ctx.config.enabled, authMode: ctx.config.authMode, publicAdminUrl: ctx.config.publicAdminUrl, database: ctx.config.databasePath === ':memory:' ? 'memory' : 'sqlite configured', userCount: ctx.userRepo.listUsers().length, localAi: { enabled: ctx.config.ollama.enabled, model: ctx.config.ollama.model, baseUrl: ctx.config.ollama.baseUrl ? 'configured' : 'not configured' }, trendResearch: ctx.config.trendResearchProvider || ctx.config.trendResearch?.provider || 'manual only', trendSourceCount: trendSources.filter((source) => source.enabled !== false).length, trendSources: trendSources.map((source) => ({ id: source.id, publisher: source.publisher, categories: source.categories || [], feedUrl: source.feedUrl, enabled: source.enabled !== false, reliability: source.reliability || '' })), trendScan: { maxItemsPerSource: ctx.config.trendResearch?.maxItemsPerSource, maxItemAgeDays: ctx.config.trendResearch?.maxItemAgeDays, timeoutMs: ctx.config.trendResearch?.timeoutMs, maxConcurrentFetches: ctx.config.trendResearch?.maxConcurrentFetches, dailyScanEnabled: ctx.config.trendResearch?.dailyScanEnabled, scanHour: ctx.config.trendResearch?.scanHour, manualCommand: 'npm run trends:scan' }, externalResearch: ctx.config.externalResearchProvider || 'not configured', brain: 'content-agent/knowledge', githubPublishing: publishingStatusLabel(ctx.config.githubPublishing), githubRepositoryConfigured: Boolean(ctx.config.githubPublishing.owner && ctx.config.githubPublishing.repo), githubMirrors: Array.isArray(ctx.config.githubPublishing.mirrors) ? ctx.config.githubPublishing.mirrors.map((mirror) => `${mirror.owner}/${mirror.repo}`).join(', ') : '', coverImages: ctx.config.coverImages?.provider === 'pexels' && ctx.config.coverImages?.pexelsApiKey ? 'Pexels configured' : 'local rule-based fallback', distributionAccounts: 'none connected', cloudflareAccessConfigured: Boolean(ctx.config.cloudflareAccess.teamDomain && ctx.config.cloudflareAccess.audience), environment: ctx.config.environmentName };
   const distributionAccounts = `<section class="panel"><h2>Distribution Accounts</h2><p>Use environment configuration until OAuth is implemented. Secrets are stored server-side only and never rendered.</p><div class="destination-chip-grid">${distribution.destinations.map((destination) => destinationChip(destination, csrf, true)).join('')}</div></section>`;
-  return layout({ title: 'Settings', user: ctx.user, permissions: ctx.permissions, active: 'Settings', body: `<p class="eyebrow">Settings</p><h1>Configuration</h1><p>Secrets, tokens and raw session data are never displayed.</p><div class="grid">${['Local AI','Trend research','External research','Brain','GitHub publishing','Cover images','Distribution accounts','Access','Advanced diagnostics'].map((name) => card(name, `<p>${escapeHtml(settingsSummary(name, safe))}</p>`)).join('')}</div>${distributionAccounts}<section class="panel"><h2>Trend sources</h2><p>Trend scanning uses approved RSS/Atom sources. Search and social providers are placeholders until official integrations are configured.</p><div class="review-list">${safe.trendSources.map((source) => `<article class="review-item compact-row"><div><h3>${escapeHtml(source.publisher)}</h3><p>${escapeHtml(source.category)} · ${escapeHtml(source.feedUrl)}</p></div><span class="pill good">Approved</span></article>`).join('') || '<p>No approved trend feeds configured.</p>'}</div></section><section id="advanced-diagnostics" class="panel"><h2>Advanced diagnostics</h2><pre>${escapeHtml(JSON.stringify(safe, null, 2))}</pre></section>` });
+  return layout({ title: 'Settings', user: ctx.user, permissions: ctx.permissions, active: 'Settings', body: `<p class="eyebrow">Settings</p><h1>Configuration</h1><p>Secrets, tokens and raw session data are never displayed.</p><div class="grid">${['Local AI','Trend research','External research','Brain','GitHub publishing','Cover images','Distribution accounts','Access','Advanced diagnostics'].map((name) => card(name, `<p>${escapeHtml(settingsSummary(name, safe))}</p>`)).join('')}</div>${distributionAccounts}<section class="panel"><h2>Trend sources</h2><p>Trend scanning uses approved RSS/Atom sources. Search and social providers are placeholders until official integrations are configured.</p><div class="review-list">${safe.trendSources.map((source) => `<article class="review-item compact-row"><div><h3>${escapeHtml(source.publisher)}</h3><p>${escapeHtml((source.categories || []).join(', '))} · ${escapeHtml(source.feedUrl)}</p><p class="muted">${escapeHtml(source.reliability)}</p></div><span class="pill ${source.enabled ? 'good' : 'bad'}">${source.enabled ? 'Approved' : 'Disabled'}</span></article>`).join('') || '<p>No approved trend feeds configured.</p>'}</div></section><section id="advanced-diagnostics" class="panel"><h2>Advanced diagnostics</h2><pre>${escapeHtml(JSON.stringify(safe, null, 2))}</pre></section>` });
 }
 
 function articleMatchesView(run, view) {

@@ -10,6 +10,7 @@ import { getDashboardConfig } from '../scripts/content-dashboard/config.js';
 import { validateRunId, safeReturnPath } from '../scripts/content-dashboard/security.js';
 import { AuditLogRepository, ContentDashboardActions } from '../scripts/content-dashboard/actions.js';
 import { ContentBrainRepository } from '../scripts/content-dashboard/repository.js';
+import { KNOWLEDGE_SUGGESTIONS, applyKnowledgeSuggestion, listPendingKnowledgeSuggestions } from '../scripts/content-dashboard/brain-suggestions.js';
 import { GitHubPullRequestPublisher } from '../scripts/content-dashboard/publisher.js';
 
 const env = {
@@ -92,9 +93,9 @@ test('4b article workspace owns full Qwen generation and trending opportunities'
   assert.match(html, /Article workspace/);
   assert.match(html, /What should Certifyd write about\?/);
   assert.match(html, /Ask Qwen/);
-  assert.match(html, /Recommended Opportunities/);
+  assert.match(html, /Trending Opportunities/);
   assert.match(html, /Recent Source Stories/);
-  assert.match(html, /Compare Certifyd to Spotify/);
+  assert.match(html, /No live trend scan has been saved yet/);
   assert.match(html, /Music/);
   assert.match(html, /Creator Economy/);
   assert.match(html, /data-primary-generation-form/);
@@ -152,7 +153,7 @@ test('4ba article ideas separate recommended opportunities from retained source 
     assert.equal(response.status, 200);
     const html = await response.text();
     assert.match(html, /90 collected · 15 retained · 13 recommended · 4 sources checked/);
-    assert.match(html, /Recommended Opportunities/);
+    assert.match(html, /Trending Opportunities/);
     assert.match(html, /12 recommended/);
     assert.match(html, /Recent Source Stories/);
     assert.match(html, /Retained Source Story 15/);
@@ -202,6 +203,67 @@ test('4c Brain suggestions live in the Brain workspace', async () => withServer(
   assert.match(html, /Founder-reviewed Brain updates/);
   assert.match(html, /Approve/);
   assert.match(html, /Reject/);
+}));
+
+test('4ca approved Brain suggestion changes Brain, closes pending and writes audit history', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-brain-approve-'));
+  await fs.mkdir(path.join(tmpRoot, 'knowledge', 'facts'), { recursive: true });
+  await fs.writeFile(path.join(tmpRoot, 'knowledge', 'facts', 'approved-public-claims.md'), '# Approved Public Claims\n\nAPPROVED\n');
+  const config = getDashboardConfig({ ...env, CONTENT_AGENT_ROOT: tmpRoot, CONTENT_AGENT_OUTPUT_DIR: path.join(tmpRoot, 'engine', 'outputs'), CONTENT_DASHBOARD_DB_PATH: ':memory:' });
+  const brainRepo = new ContentBrainRepository(config);
+  const audit = new AuditLogRepository(config);
+  const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+  const suggestion = KNOWLEDGE_SUGGESTIONS.find((item) => item.operation === 'new');
+
+  const result = await applyKnowledgeSuggestion({ config, brainRepo, audit, actor, suggestionId: suggestion.id, decision: 'approve' });
+  assert.equal(result.decision, 'approve');
+  assert.equal(result.changedRecord.name, suggestion.targetPath);
+  const text = await fs.readFile(path.join(tmpRoot, 'knowledge', suggestion.targetPath), 'utf8');
+  assert.match(text, /APPROVED/);
+  assert.match(text, /creator ownership/i);
+  const pending = await listPendingKnowledgeSuggestions(config);
+  assert.equal(pending.some((item) => item.id === suggestion.id), false);
+  const state = JSON.parse(await fs.readFile(path.join(tmpRoot, 'dashboard', 'brain-suggestions.json'), 'utf8'));
+  assert.equal(state.history[0].suggestionId, suggestion.id);
+  assert.equal(state.history[0].decision, 'approve');
+  const auditLog = await fs.readFile(path.join(tmpRoot, 'review', 'dashboard-audit.log.jsonl'), 'utf8');
+  assert.match(auditLog, /brain_suggestion_approve/);
+});
+
+test('4cb rejected Brain suggestion closes without changing Brain', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-brain-reject-'));
+  await fs.mkdir(path.join(tmpRoot, 'knowledge', 'facts'), { recursive: true });
+  const target = path.join(tmpRoot, 'knowledge', 'facts', 'approved-public-claims.md');
+  await fs.writeFile(target, '# Approved Public Claims\n\nAPPROVED\n');
+  const before = await fs.readFile(target, 'utf8');
+  const config = getDashboardConfig({ ...env, CONTENT_AGENT_ROOT: tmpRoot, CONTENT_AGENT_OUTPUT_DIR: path.join(tmpRoot, 'engine', 'outputs'), CONTENT_DASHBOARD_DB_PATH: ':memory:' });
+  const brainRepo = new ContentBrainRepository(config);
+  const audit = new AuditLogRepository(config);
+  const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+  const suggestion = KNOWLEDGE_SUGGESTIONS.find((item) => item.operation === 'update');
+
+  const result = await applyKnowledgeSuggestion({ config, brainRepo, audit, actor, suggestionId: suggestion.id, decision: 'reject' });
+  assert.equal(result.decision, 'reject');
+  assert.equal(result.changedRecord, null);
+  assert.equal(await fs.readFile(target, 'utf8'), before);
+  const pending = await listPendingKnowledgeSuggestions(config);
+  assert.equal(pending.some((item) => item.id === suggestion.id), false);
+});
+
+test('4cc Blog Engine page order follows prompt, trends, workflow and library hierarchy', async () => withServer(async (base) => {
+  const cookie = await login(base, 'founder@example.test');
+  const response = await fetch(`${base}/app/content/articles?view=ideas`, { headers: { cookie } });
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  const order = [
+    'A. What should Certifyd write about?',
+    'B. Trending Opportunities',
+    'C. Drafts / In Review',
+    'D. Article Library',
+  ].map((needle) => html.indexOf(needle));
+  assert.ok(order.every((index) => index >= 0), `missing section in ${order.join(',')}`);
+  assert.ok(order[0] < order[1] && order[1] < order[2] && order[2] < order[3]);
+  assert.doesNotMatch(html, /Advanced options[\s\S]*Source restrictions/);
 }));
 
 test('5 founder can see explicit approval control for a pending article', async () => withServer(async (base) => {
@@ -296,7 +358,7 @@ test('9 writer can access create draft action page path but cannot approve', asy
 test('10 editor can request revision control', async () => withServer(async (base) => {
   const cookie = await login(base, 'editor@example.test');
   const response = await fetch(`${base}/app/content/articles/core-explainer-001`, { headers: { cookie } });
-  assert.match(await response.text(), /Request Revision/);
+  assert.match(await response.text(), /Request Revision|Open Review/);
 }));
 
 test('11 marketing cannot access Brain facts', async () => withServer(async (base) => {
@@ -434,6 +496,54 @@ test('20a publishing validation fails without approved Brain context', async () 
     actions.validatePublishing({ actor: { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' }, runId }),
     /Approved Brain context is required/,
   );
+});
+
+test('20ab distribution reports connector status without returning credentials', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-distribution-status-'));
+  const actions = new ContentDashboardActions(getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: path.join(tmpRoot, 'engine', 'outputs'),
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+    CONTENT_DISTRIBUTION_DEVTO_API_KEY: 'server-side-secret',
+  }));
+  const overview = await actions.distributionOverview();
+  const devto = overview.destinations.find((item) => item.id === 'devto');
+  const wordpress = overview.destinations.find((item) => item.id === 'wordpress');
+  const linkedin = overview.destinations.find((item) => item.id === 'linkedin');
+  assert.equal(devto.status, 'connected');
+  assert.equal(wordpress.status, 'not_connected');
+  assert.equal(linkedin.status, 'not_connected');
+  assert.doesNotMatch(JSON.stringify(overview), /server-side-secret/);
+});
+
+test('20ac disconnected destination fails without blocking manual export distribution', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-distribution-isolation-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const runId = 'distribution-ready-001';
+  await createMinimalRun(path.join(outputDir, runId), {
+    title: 'Distribution Ready',
+    slug: 'distribution-ready',
+    status: 'PUBLISHED',
+    publishability: 'PUBLISHED',
+  });
+  const actions = new ContentDashboardActions(getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  }));
+  const result = await actions.distributeArticle({
+    actor: { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' },
+    runId,
+    version: 'v1',
+    destinations: ['devto', 'markdown'],
+  });
+  assert.equal(result.results.find((item) => item.id === 'devto').status, 'failed');
+  assert.equal(result.results.find((item) => item.id === 'markdown').status, 'manual_export_ready');
+  const state = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'distribution', 'destinations.json'), 'utf8'));
+  assert.equal(state.destinations.devto.status, 'failed');
+  assert.equal(state.destinations.markdown.status, 'manual_export_ready');
 });
 
 test('20aa publishing preparation normalizes Markdown heading titles', async () => {
