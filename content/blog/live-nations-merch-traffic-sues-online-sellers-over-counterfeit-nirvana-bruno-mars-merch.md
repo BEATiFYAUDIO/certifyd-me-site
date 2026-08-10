@@ -4,7 +4,7 @@ slug: "live-nations-merch-traffic-sues-online-sellers-over-counterfeit-nirvana-b
 author: "Certifyd"
 date: "2026-08-10"
 updated: "2026-08-10"
-excerpt: "Live Nation subsidiary Merch Traffic is suing online sellers accused of selling counterfeit merchandise tied to Nirvana, Bruno Mars and other major artists. The case highlights a growing challenge in creator commerce: proving who is actually authorized to manu"
+excerpt: "Live Nation subsidiary Merch Traffic is suing online sellers accused of selling counterfeit merchandise tied to Nirvana, Bruno Mars and other major artists. The case highlights a growing challenge: proving who is authorized to manufacture and sell an artist's "
 coverImage: "/images/blog/live-nations-merch-traffic-sues-online-sellers-over-counterfeit-nirvana-bruno-mars-merch-1786382801332.png"
 coverImageAlt: ""
 coverImageCredit: ""
