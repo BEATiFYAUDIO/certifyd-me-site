@@ -18,6 +18,14 @@ seoDescription: "Introduction Vassal Benford, a renowned hip hop artist and entr
 
 # Vassal Benford: A Career Built for More Than One Generation
 
+Vassal Benford’s career spans generations of music, film and entertainment. From cross-genre production and the B.B. King Estate to Certifyd and collaborations with Mally Mall, Benford is connecting creative legacy with a new model for creator ownership.
+
+**By Certifyd · Published August 11, 2026 · Updated August 11, 2026**
+
+**Certifyd · creator ownership**
+
+## A Career Built for More Than One Generation
+
 The modern music economy rewards speed, collaboration and cultural range. For producer and executive **Vassal Benford**, those demands are an extension of a career built across songs, film, business and multiple generations of artists.
 
 Benford came of age when producers were expected to understand songs from the inside out. Harmony, arrangement, live musicianship and vocal identity were not optional details. They were the product.
@@ -29,6 +37,12 @@ That range helps explain why Benford can move between artists and projects that 
 A Jennifer Lopez project can sit beside an electronic anthem. A Jason Derulo album can connect Michael Bublé with YoungBoy Never Broke Again. A Chris Brown writing credit can coexist with film development, technology and legacy management.
 
 Benford doesn't treat those moves as departures from one another. They are extensions of the same creative identity.
+
+*Jason Derulo’s Nu King brought multiple generations and genres into one pop project. Supplied image.*
+
+Benford’s background gives him a particular advantage: he came of age when producers were expected to understand songs from the inside out. Harmony, arrangement, live musicianship and vocal identity were not optional details. They were the product. His current work carries that discipline into a market driven by playlists, short-form video, global features and genre-fluid audiences.
+
+That is why he can function across artists who would once have occupied different corners of the business. A Jennifer Lopez project can sit beside an electronic anthem; a Jason Derulo album can connect Michael Bublé to YoungBoy Never Broke Again; a Chris Brown writing credit can coexist with film development and legacy management. Benford does not present these moves as departures. He treats them as extensions of one creative identity.
 
 ## From Contemporary Music to the B.B. King Legacy
 
@@ -42,7 +56,9 @@ For Benford, that creates an unusual bridge between two worlds: preserving the v
 
 And increasingly, that second part involves technology.
 
-# Ownership, Technology and the Hip-Hop Now
+His position with the B.B. King Estate makes the strategy even clearer. Billboard and Variety have identified Benford as a leading executive behind projects designed to keep King’s work active across music, film and brand culture.[10] In October 2025, the Tennessee Department of Transportation listed Benford among the principals at the official Kings’ Crossing naming event. The nearly $1 billion I-55 bridge project honors B.B. King, Dr. Martin Luther King Jr. and Elvis Presley—placing blues, civil rights and rock history into the permanent infrastructure of Memphis.[11]
+
+## Ownership, Technology and the Hip-Hop Now
 
 Benford's modern relevance extends beyond records and film.
 
@@ -56,6 +72,12 @@ The technology brings together provenance, rights management, analytics and Bitc
 
 > **Certifyd turns Benford's philosophy into infrastructure: protect authorship and keep creators closer to the value they create.**
 
+*Producer Mally Mall (left) with Vassal Benford for Certifyd Music & Content Distribution. Supplied graphic.*
+
+Benford’s modern relevance extends beyond records and film. Certifyd, the creator-focused platform he leads, addresses a problem he has watched for decades: artists create the value while identity, attribution, audience and revenue scatter across systems they do not control. Certifyd says its tools support publishing, direct sales, royalty management, analytics and Bitcoin Lightning payments while creators retain their rights; its technical beta launched in 2026.[12]
+
+> **“Certifyd turns Benford’s philosophy into infrastructure: protect authorship and keep creators closer to the value they create.”**
+
 ## Vassal Benford and Mally Mall
 
 Benford's continuing alliance with producer **Mally Mall** provides another example of how that strategy intersects with contemporary hip-hop.
@@ -65,6 +87,10 @@ Both producers appear in the credits surrounding YoungBoy Never Broke Again's 20
 That matters because Benford isn't observing contemporary hip-hop from a legacy position. He remains connected to its active creative network.
 
 The relationship between Benford, Mally Mall and Certifyd therefore represents two sides of the same strategy: remain embedded in the collaborations shaping music now while building infrastructure intended to give the people creating that music greater control over what they produce.
+
+Benford’s continuing alliance with Mally Mall provides a second proof point. Apple Music lists both men in the credits for YoungBoy Never Broke Again’s 2025 track “By The Gate,” from DESHAWN.[12] The placement connects Benford directly to the production ecosystem around Kentrell DeSean Gaulden—one of his generation’s defining rap artists. Benford is not observing contemporary hip-hop from a legacy seat; he is working inside its creative network.
+
+Together, Certifyd and Mally Mall show two sides of the same strategy: build creator infrastructure and remain embedded in the collaborations shaping the moment. The result is unusually complete—songmaker, executive, platform builder and cross-generational creative partner.
 
 ## Building Infrastructure Around the Creator
 
