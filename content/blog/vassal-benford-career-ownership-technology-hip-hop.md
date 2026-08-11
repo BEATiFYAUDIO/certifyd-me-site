@@ -20,10 +20,6 @@ seoDescription: "Introduction Vassal Benford, a renowned hip hop artist and entr
 
 Vassal Benford’s career spans generations of music, film and entertainment. From cross-genre production and the B.B. King Estate to Certifyd and collaborations with Mally Mall, Benford is connecting creative legacy with a new model for creator ownership.
 
-**By Certifyd · Published August 11, 2026 · Updated August 11, 2026**
-
-**Certifyd · creator ownership**
-
 ## A Career Built for More Than One Generation
 
 The modern music economy rewards speed, collaboration and cultural range. For producer and executive **Vassal Benford**, those demands are an extension of a career built across songs, film, business and multiple generations of artists.
