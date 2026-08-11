@@ -72,8 +72,6 @@ The technology brings together provenance, rights management, analytics and Bitc
 
 Benford’s modern relevance extends beyond records and film. Certifyd, the creator-focused platform he leads, addresses a problem he has watched for decades: artists create the value while identity, attribution, audience and revenue scatter across systems they do not control. Certifyd says its tools support publishing, direct sales, royalty management, analytics and Bitcoin Lightning payments while creators retain their rights; its technical beta launched in 2026.[12]
 
-> **“Certifyd turns Benford’s philosophy into infrastructure: protect authorship and keep creators closer to the value they create.”**
-
 ## Vassal Benford and Mally Mall
 
 Benford's continuing alliance with producer **Mally Mall** provides another example of how that strategy intersects with contemporary hip-hop.
