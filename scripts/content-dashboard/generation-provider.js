@@ -9,6 +9,7 @@ const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
 const DEFAULT_OLLAMA_MODEL = 'qwen2.5:1.5b';
 const SAFE_SOURCE_LIMIT = 16;
 const MAX_INTERACTIVE_OUTPUT_TOKENS = 900;
+const MAX_ARTICLE_GENERATION_TOKENS = 520;
 const SECRET_PATTERN = /(?:api[_-]?key|secret|token|password|private[_-]?key|session|credential|jwt|bearer|cloudflare|github_app_private_key)/i;
 const activeUsers = new Set();
 let activeGlobalGenerations = 0;
@@ -214,7 +215,7 @@ export class OllamaQwenGenerationProvider {
           ],
           options: {
             temperature: this.config.ollama.temperature,
-            num_predict: this.config.ollama.maxOutputTokens,
+            num_predict: Math.min(this.config.ollama.maxOutputTokens, MAX_ARTICLE_GENERATION_TOKENS),
             num_ctx: this.config.ollama.maxContextChars,
           },
         }),
@@ -565,23 +566,23 @@ function buildUserPrompt(input, groundedContext) {
 function compactGroundedContextForModel(groundedContext) {
   const compactList = (values, limit, chars) => (values || []).slice(0, limit).map((value) => clampText(value, chars));
   return {
-    approvedClaims: compactList(groundedContext.approvedClaims, 6, 280),
-    productFacts: compactList(groundedContext.productFacts, 5, 260),
-    approvedKnowledge: (groundedContext.approvedKnowledge || []).slice(0, 10).map((source) => ({
+    approvedClaims: compactList(groundedContext.approvedClaims, 2, 120),
+    productFacts: compactList(groundedContext.productFacts, 2, 120),
+    approvedKnowledge: (groundedContext.approvedKnowledge || []).slice(0, 5).map((source) => ({
       id: source.id,
       theme: source.theme,
-      excerpt: clampText(source.excerpt, 320),
+      excerpt: clampText(source.excerpt, 100),
     })),
-    terminology: compactList(groundedContext.terminology, 3, 180),
-    prohibitedClaims: compactList(groundedContext.prohibitedClaims, 6, 280),
-    externalSourceFacts: (groundedContext.externalSourceFacts || []).slice(0, 4).map((source) => ({
+    terminology: compactList(groundedContext.terminology, 1, 120),
+    prohibitedClaims: compactList(groundedContext.prohibitedClaims, 2, 120),
+    externalSourceFacts: (groundedContext.externalSourceFacts || []).slice(0, 2).map((source) => ({
       publisher: clampText(source.publisher, 80),
       publishedAt: clampText(source.publishedAt, 16),
-      title: clampText(source.title, 140),
-      summary: clampText(source.summary, 360),
-      articleUrl: clampText(source.articleUrl, 220),
+      title: clampText(source.title, 100),
+      summary: clampText(source.summary, 160),
+      articleUrl: clampText(source.articleUrl, 160),
     })),
-    sources: (groundedContext.sourceRecords || []).slice(0, 6).map((source) => ({
+    sources: (groundedContext.sourceRecords || []).slice(0, 5).map((source) => ({
       id: source.id,
       title: source.title,
       path: source.path,
@@ -1112,8 +1113,32 @@ function trimGroundedContext(context, maxChars) {
     context.contextSizing.truncated = true;
     serialized = JSON.stringify(context);
   }
+  if (serialized.length > maxChars) {
+    compactOversizedContext(context);
+    context.contextSizing.truncated = true;
+    serialized = JSON.stringify(context);
+  }
   context.contextSizing.finalContextChars = serialized.length;
   return context;
+}
+
+function compactOversizedContext(context) {
+  const compactSource = (source) => ({
+    ...source,
+    excerpt: clampText(source.excerpt, 520),
+  });
+  context.sourceRecords = (context.sourceRecords || []).map(compactSource);
+  context.approvedKnowledge = (context.approvedKnowledge || []).map((source) => ({
+    ...source,
+    excerpt: clampText(source.excerpt, 520),
+  }));
+  for (const key of ['approvedClaims', 'productFacts', 'terminology', 'featureStatus', 'prohibitedClaims', 'deprecatedTerminology']) {
+    context[key] = (context[key] || []).slice(0, 6).map((item) => clampText(item, 260));
+  }
+  context.externalSourceFacts = (context.externalSourceFacts || []).slice(0, 4).map((source) => ({
+    ...source,
+    summary: clampText(source.summary, 320),
+  }));
 }
 
 async function readRelatedArticles(siteRoot) {

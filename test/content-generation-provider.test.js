@@ -417,6 +417,8 @@ test('trend source summaries are included separately from Certifyd Brain context
   assert.match(outboundPrompt, /Approved Certifyd knowledge by theme/i);
   assert.match(outboundPrompt, /FACTS FROM SOURCE ARTICLE/i);
   assert.match(outboundPrompt, /APPROVED CERTIFYD KNOWLEDGE/i);
+  const userPrompt = payload.messages.find((message) => message.role === 'user')?.content || '';
+  assert.ok(userPrompt.length < 4500, `Qwen prompt should stay compact, got ${userPrompt.length} chars`);
 });
 
 test('Brain retrieval covers positioning, rights, commerce and network dependency for music-rights stories', async () => {
