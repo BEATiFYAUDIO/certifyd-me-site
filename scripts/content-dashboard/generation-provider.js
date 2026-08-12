@@ -260,6 +260,10 @@ export async function buildGroundedContext(config, input) {
   });
   const selected = selectRelevantSources(sourceRecords, input).slice(0, SAFE_SOURCE_LIMIT);
   const externalSourceFacts = await loadAttachedExternalSourceSummaries(config, input);
+  const requestedSourceIds = parseIdList(input.trendSourceItemIds, 40);
+  if (requestedSourceIds.length && !externalSourceFacts.length) {
+    throw new GenerationConfigurationError(`Requested source story was not found in the latest trend state: ${requestedSourceIds.join(', ')}`);
+  }
   const context = {
     audience: input.audience || input.targetAudience || '',
     contentObjective: input.objective || input.businessObjective || '',
@@ -313,6 +317,7 @@ export async function buildGroundedContext(config, input) {
         publishedAt: source.publishedAt,
         articleUrl: source.articleUrl,
       })),
+      requestedSourceItemIds: requestedSourceIds,
       requestedBrainRecordIds: parseBrainIdList(input.trendBrainRecordIds, 40),
     },
   };
@@ -770,11 +775,17 @@ function parseGeneratedArticleContent(content, input, groundedContext) {
     return completeGeneratedArticleFields(parseJsonContent(content), input);
   } catch (error) {
     if (!(error instanceof GenerationValidationError)) throw error;
+    if (detectInternalContextLeak(content).length) {
+      throw new GenerationValidationError('Generation failed validation — internal context leaked into article.');
+    }
     return coerceArticleFromMalformedOutput(content, input, groundedContext, error.message);
   }
 }
 
 function articleFromQwenDraft(content, input, groundedContext) {
+  if (detectInternalContextLeak(content).length) {
+    throw new GenerationValidationError('Generation failed validation — internal context leaked into article.');
+  }
   if (looksLikeStructuredJson(content)) {
     try {
       return parseGeneratedArticleContent(content, input, groundedContext);

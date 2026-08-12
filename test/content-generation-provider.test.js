@@ -625,6 +625,48 @@ test('generation validation rejects leaked internal context headings', async () 
   );
 });
 
+test('raw leaked Qwen text is rejected before fallback coercion', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const leaked = [
+    'Source Scope',
+    'This file applies the founder-approved architectural definition of Certifyd Core.',
+    '',
+    'Definition',
+    'Certifyd Core is a platform designed for creators.',
+    '',
+    'Approved Certifyd Knowledge',
+    'This file uses only the approved Brain context above.',
+  ].join('\n');
+  const provider = new OllamaQwenGenerationProvider(config, {
+    fetchImpl: async (url) => {
+      if (String(url).endsWith('/api/tags')) return mockResponse({ models: [{ name: 'qwen3:8b' }] });
+      if (String(url).endsWith('/api/chat')) return mockResponse({ message: { content: leaked } });
+      throw new Error(`Unexpected URL: ${url}`);
+    },
+  });
+  await assert.rejects(
+    () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context),
+    /Generation failed validation — internal context leaked into article/,
+  );
+});
+
+test('source story generation fails before Qwen when requested source is not attached', async () => {
+  const config = await makeConfig();
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [],
+    opportunities: [],
+  }, null, 2));
+  await assert.rejects(
+    () => makeContext(config, {
+      topic: 'BMG and Suno Reach Licensing Deal for AI Music Model',
+      trendSourceItemIds: 'billboard-bmg-suno',
+    }),
+    /Requested source story was not found in the latest trend state: billboard-bmg-suno/,
+  );
+});
+
 test('one active local generation per user is enforced', async () => {
   resetGenerationState();
   const config = await makeConfig();
