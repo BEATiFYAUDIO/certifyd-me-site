@@ -391,6 +391,7 @@ export function validateGeneratedArticle(value, groundedContext) {
 
 export async function persistGeneratedArticleRun(config, article, input, groundedContext, provider) {
   const timestamp = new Date().toISOString();
+  const warnings = [...new Set([...(article.warnings || []), ...lowRelevanceSourceWarnings(groundedContext)])].slice(0, 30);
   const runId = createRunId(article.slug);
   const dir = path.join(config.outputDir, runId);
   await fs.mkdir(path.join(dir, 'final'), { recursive: true });
@@ -427,9 +428,9 @@ export async function persistGeneratedArticleRun(config, article, input, grounde
       status: claim.sourceIds.length && claim.confidence === 'supported' ? 'APPROVED_WITH_SOURCE' : 'NEEDS_REVIEW',
       reviewerNote: 'Generated draft claim. Founder review required before publishing.',
     })),
-    warnings: article.warnings,
+    warnings,
   };
-  const unresolvedIssueCount = claimLedger.claims.filter((claim) => claim.status !== 'APPROVED_WITH_SOURCE').length + article.warnings.length;
+  const unresolvedIssueCount = claimLedger.claims.filter((claim) => claim.status !== 'APPROVED_WITH_SOURCE').length + warnings.length;
   const trendProvenance = buildTrendProvenance(input, timestamp, provider, groundedContext);
   const summary = {
     runId,
@@ -453,7 +454,7 @@ export async function persistGeneratedArticleRun(config, article, input, grounde
   await fs.writeFile(path.join(dir, 'drafts', 'v1.md'), articleMarkdown);
   await fs.writeFile(path.join(dir, 'final-article.md'), articleMarkdown);
   await fs.writeFile(path.join(dir, 'final', 'article.md'), articleMarkdown);
-  await fs.writeFile(path.join(dir, 'final', 'article.json'), JSON.stringify({ ...article, version: 'v1', status: 'draft', canonicalUrl: summary.canonicalUrl, trendProvenance }, null, 2));
+  await fs.writeFile(path.join(dir, 'final', 'article.json'), JSON.stringify({ ...article, warnings, version: 'v1', status: 'draft', canonicalUrl: summary.canonicalUrl, trendProvenance }, null, 2));
   await fs.writeFile(path.join(dir, 'claim-ledger.json'), JSON.stringify(claimLedger, null, 2));
   await fs.writeFile(path.join(dir, 'claim-ledgers', 'v1.json'), JSON.stringify(claimLedger, null, 2));
   await fs.writeFile(path.join(dir, 'research-record.json'), JSON.stringify({ selectedEvidence: groundedContext.sourceRecords, claimsThatMustNotBeMade: groundedContext.prohibitedClaims, externalSourceFacts: groundedContext.externalSourceFacts, generationDiagnostics: groundedContext.generationDiagnostics || {}, trendProvenance }, null, 2));
@@ -463,7 +464,7 @@ export async function persistGeneratedArticleRun(config, article, input, grounde
   await fs.writeFile(path.join(dir, 'lifecycle.json'), JSON.stringify({ createdAt: timestamp, updatedAt: timestamp, status: 'PENDING_FOUNDER_REVIEW' }, null, 2));
   await fs.writeFile(path.join(dir, 'reviews', 'founder-review.json'), JSON.stringify({ reviewStatus: 'PENDING_FOUNDER_REVIEW', articleVersion: 'v1', timestamp }, null, 2));
   await fs.writeFile(path.join(dir, 'blog', 'blog-post.md'), articleMarkdown);
-  await fs.writeFile(path.join(dir, 'blog', 'blog-post.json'), JSON.stringify({ ...article, status: 'draft' }, null, 2));
+  await fs.writeFile(path.join(dir, 'blog', 'blog-post.json'), JSON.stringify({ ...article, warnings, status: 'draft' }, null, 2));
   await fs.writeFile(path.join(dir, 'model-requests', 'article-generation.json'), JSON.stringify({
     provider: provider.providerName,
     model: provider.modelName,
@@ -670,6 +671,8 @@ async function loadAttachedExternalSourceSummaries(config, input) {
       title: clampText(cleanText(item.title || '').replace(/\n+/g, ' '), 160),
       summary: clampText(cleanText(item.summary || '').replace(/\n+/g, ' '), 520),
       articleUrl: safePublicUrl(item.articleUrl),
+      certifydRelevanceScore: Number(item.certifydRelevanceScore || 0),
+      categories: Array.isArray(item.categories) ? item.categories.slice(0, 5) : [],
     }))
     .filter((item) => item.title && item.summary);
 }
@@ -1247,6 +1250,14 @@ function buildTrendProvenance(input, timestamp, provider, groundedContext = {}) 
     modelProvider: provider.providerName,
     model: provider.modelName,
   };
+}
+
+function lowRelevanceSourceWarnings(groundedContext = {}) {
+  const sources = Array.isArray(groundedContext.externalSourceFacts) ? groundedContext.externalSourceFacts : [];
+  return sources
+    .filter((source) => Number(source.certifydRelevanceScore || 0) > 0 && Number(source.certifydRelevanceScore || 0) < 8)
+    .map((source) => `Low Certifyd relevance source: ${source.title || source.id}. Founder review should verify the editorial angle.`)
+    .slice(0, 4);
 }
 
 function parseIdList(value, limit) {

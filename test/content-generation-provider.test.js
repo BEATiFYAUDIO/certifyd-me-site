@@ -421,6 +421,57 @@ test('trend source summaries are included separately from Certifyd Brain context
   assert.ok(userPrompt.length < 4500, `Qwen prompt should stay compact, got ${userPrompt.length} chars`);
 });
 
+test('retained source story generation creates a normal review draft with source provenance', async () => {
+  const config = await makeConfig();
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'source-retained-1',
+      publisher: 'Music Business Worldwide',
+      publishedAt: '2026-08-03T10:00:00.000Z',
+      title: 'Creators test direct fan commerce after platform policy shifts',
+      summary: 'A source story reports on creator commerce, direct fan relationships and platform dependency.',
+      articleUrl: 'https://example.test/retained-source-story',
+      categories: ['Music', 'Creator Commerce'],
+      certifydRelevanceScore: 6,
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Creators test direct fan commerce after platform policy shifts',
+    trendSourceItemIds: 'source-retained-1',
+  });
+  const provider = createGenerationProvider(config, { provider: 'deterministic' });
+  const article = await provider.generateArticle({
+    actorEmail: 'writer@example.test',
+    topic: 'Creators test direct fan commerce after platform policy shifts',
+    audience: 'Creators',
+    objective: 'Explain the external business news and Certifyd relevance.',
+    trendSourceItemIds: 'source-retained-1',
+  }, context);
+  const result = await persistGeneratedArticleRun(config, article, {
+    actorEmail: 'writer@example.test',
+    topic: 'Creators test direct fan commerce after platform policy shifts',
+    audience: 'Creators',
+    objective: 'Explain the external business news and Certifyd relevance.',
+    trendSourceItemIds: 'source-retained-1',
+  }, context, provider);
+  const researchRecord = JSON.parse(await fs.readFile(path.join(config.outputDir, result.runId, 'research-record.json'), 'utf8'));
+  const manifest = JSON.parse(await fs.readFile(path.join(config.outputDir, result.runId, 'publication-manifest.json'), 'utf8'));
+  const claimLedger = JSON.parse(await fs.readFile(path.join(config.outputDir, result.runId, 'claim-ledger.json'), 'utf8'));
+
+  assert.deepEqual(researchRecord.trendProvenance.sourceUrls, [{
+    id: 'source-retained-1',
+    sourceTitle: 'Creators test direct fan commerce after platform policy shifts',
+    publisher: 'Music Business Worldwide',
+    publishedAt: '2026-08-03',
+    sourceUrl: 'https://example.test/retained-source-story',
+  }]);
+  assert.equal(manifest.currentStatus, 'PENDING_FOUNDER_REVIEW');
+  assert.equal(manifest.publishability, 'BLOCKED_PENDING_APPROVAL');
+  assert.match(claimLedger.warnings.join('\n'), /Low Certifyd relevance source/i);
+});
+
 test('Brain retrieval covers positioning, rights, commerce and network dependency for music-rights stories', async () => {
   const config = await makeConfig();
   const records = [

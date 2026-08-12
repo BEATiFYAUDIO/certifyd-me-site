@@ -466,11 +466,37 @@ function filterTrendSourceStories(stories, params) {
   }).sort((a, b) => Date.parse(b.publishedAt || b.fetchedAt || 0) - Date.parse(a.publishedAt || a.fetchedAt || 0));
 }
 
-function sourceStoryCard(story) {
+async function buildSourceDraftIndex(runRepo) {
+  const index = new Map();
+  const runs = await runRepo.listRuns();
+  await Promise.all(runs.map(async (run) => {
+    const full = await runRepo.readRun(run.runId).catch(() => null);
+    const ids = full?.research?.trendProvenance?.sourceItemIds || full?.manifest?.trendProvenance?.sourceItemIds || [];
+    for (const id of ids) {
+      if (id && !index.has(id)) index.set(id, { runId: run.runId, title: run.title, status: run.status });
+    }
+  }));
+  return index;
+}
+
+function sourceStoryCard(story, csrf = '', canCreate = false, sourceDraftIndex = new Map()) {
   const opportunity = story.opportunityIds?.length
     ? `<span class="pill good">In recommended opportunity</span><span class="pill">${escapeHtml((story.opportunityTitles || story.opportunityIds).join(', '))}</span>`
     : '<span class="pill">Not grouped into recommendation</span>';
-  return `<article class="review-item source-story-card"><div><div class="meta-row"><span class="pill warn">${escapeHtml(story.publisher || 'Source')}</span><span class="pill ${story.retentionStatus === 'Recommended' ? 'good' : ''}">${escapeHtml(story.retentionStatus || story.status || 'Retained')}</span>${story.publishedAt ? `<span class="pill">${escapeHtml(formatDashboardDateTime(story.publishedAt))}</span><span class="pill">${escapeHtml(relativeDayLabel(new Date(story.publishedAt)))}</span>` : '<span class="pill">No source publication date</span>'}${(story.categories || []).map((category) => `<span class="pill">${escapeHtml(category)}</span>`).join('')}</div><h3>${escapeHtml(story.sourceTitle || story.title || 'Untitled source story')}</h3><p>${escapeHtml(story.summary || '')}</p><div class="meta-row">${opportunity}</div><p class="muted"><strong>Original URL:</strong> ${story.sourceUrl ? `<a href="${escapeHtml(story.sourceUrl)}" rel="noreferrer" target="_blank">${escapeHtml(story.sourceUrl)}</a>` : 'No original source URL supplied.'}</p><p class="muted"><strong>Retention:</strong> ${escapeHtml(story.retentionReason || 'Retained source story.')}</p><p class="muted">Source publication time is separate from fetched time${story.fetchedAt ? ` · fetched ${escapeHtml(formatDashboardDateTime(story.fetchedAt))}` : ''}${story.firstDetectedAt ? ` · first detected ${escapeHtml(formatDashboardDateTime(story.firstDetectedAt))}` : ''}</p></div>${story.sourceUrl ? `<a class="ghost" href="${escapeHtml(story.sourceUrl)}" rel="noreferrer" target="_blank">Read original ↗</a>` : '<span class="muted">No original source</span>'}</article>`;
+  const existing = sourceDraftIndex.get(story.id);
+  const warning = Number(story.certifydRelevanceScore || 0) > 0 && Number(story.certifydRelevanceScore || 0) < 8
+    ? '<p class="notice"><strong>Low Certifyd relevance.</strong> You can still generate a draft, but founder review should verify the angle.</p>'
+    : '';
+  const sourceRestrictions = [
+    `Source story: ${story.id || story.sourceTitle || story.title}.`,
+    'Use this exact retained source story as the external source.',
+    story.sourceUrl ? `Original article URL: ${story.sourceUrl}.` : 'No original article URL was supplied.',
+    'Retrieve relevant approved Brain context and keep source facts separate from Certifyd editorial inference.',
+  ].join(' ');
+  const actions = existing
+    ? `<div class="mini-actions"><span class="pill good">Draft exists</span><a class="ghost" href="/app/content/articles/${encodeURIComponent(existing.runId)}">Open draft</a>${story.sourceUrl ? `<a class="ghost" href="${escapeHtml(story.sourceUrl)}" rel="noreferrer" target="_blank">Read original ↗</a>` : ''}</div>`
+    : `<div class="mini-actions">${canCreate ? quickGenerateForm({ csrf, label: 'Generate Article', topic: `Write a Certifyd article about: ${story.sourceTitle || story.title}`, className: 'primary', extraFields: { trendSourceItemIds: story.id || '', sourceRestrictions, contentType: 'article' } }) : '<p class="muted">Generation unavailable for this role.</p>'}${story.sourceUrl ? `<a class="ghost" href="${escapeHtml(story.sourceUrl)}" rel="noreferrer" target="_blank">Read original ↗</a>` : '<span class="muted">No original source</span>'}</div>`;
+  return `<article class="review-item source-story-card"><div><div class="meta-row"><span class="pill warn">${escapeHtml(story.publisher || 'Source')}</span><span class="pill ${story.retentionStatus === 'Recommended' ? 'good' : ''}">${escapeHtml(story.retentionStatus || story.status || 'Retained')}</span>${story.publishedAt ? `<span class="pill">${escapeHtml(formatDashboardDateTime(story.publishedAt))}</span><span class="pill">${escapeHtml(relativeDayLabel(new Date(story.publishedAt)))}</span>` : '<span class="pill">No source publication date</span>'}${(story.categories || []).map((category) => `<span class="pill">${escapeHtml(category)}</span>`).join('')}</div><h3>${escapeHtml(story.sourceTitle || story.title || 'Untitled source story')}</h3><p>${escapeHtml(story.summary || '')}</p><div class="meta-row">${opportunity}</div>${warning}<p class="muted"><strong>Original URL:</strong> ${story.sourceUrl ? `<a href="${escapeHtml(story.sourceUrl)}" rel="noreferrer" target="_blank">${escapeHtml(story.sourceUrl)}</a>` : 'No original source URL supplied.'}</p><p class="muted"><strong>Retention:</strong> ${escapeHtml(story.retentionReason || 'Retained source story.')}</p><p class="muted">Source publication time is separate from fetched time${story.fetchedAt ? ` · fetched ${escapeHtml(formatDashboardDateTime(story.fetchedAt))}` : ''}${story.firstDetectedAt ? ` · first detected ${escapeHtml(formatDashboardDateTime(story.firstDetectedAt))}` : ''}</p></div>${actions}</article>`;
 }
 
 function newestSourceStory(stories) {
@@ -531,6 +557,7 @@ async function renderArticles(ctx, url) {
   const recommended = opportunities.slice(0, displayLimit);
   const sourceStories = filterTrendSourceStories(trends.sourceStories || trends.sourceItems || [], url.searchParams);
   const canCreate = ctx.permissions.includes('content.article.create');
+  const sourceDraftIndex = await buildSourceDraftIndex(ctx.runRepo);
   const categoryTabs = `<div class="tabs compact"><a class="tab ${selectedCategory === 'All' ? 'active' : ''}" href="/app/content/articles?view=ideas">All</a>${TRENDING_CATEGORIES.map((category) => `<a class="tab ${category === selectedCategory ? 'active' : ''}" href="/app/content/articles?view=ideas&category=${encodeURIComponent(category)}">${escapeHtml(category)}</a>`).join('')}</div>`;
   const storyControls = trendStoryFilters(trends.sourceStories || trends.sourceItems || [], url.searchParams);
   const trendMeta = trendSummaryPanel(trends);
@@ -539,7 +566,7 @@ async function renderArticles(ctx, url) {
   const emptyIdeas = `<p class="empty panel">No source-backed opportunities match this view. Run Find trends now, change category, or add an idea manually later.</p>`;
   const emptyStories = `<p class="empty panel">No retained source stories match this filter. This is normal when no approved source published in the selected window.</p>`;
   const trendsPanel = view === 'ideas'
-    ? `<section class="workspace-section" aria-labelledby="ideas-title"><div class="section-head"><div><p class="eyebrow">B. Trending Opportunities</p><h2 id="ideas-title">Trending Opportunities</h2><p class="muted">The highest-ranked story opportunities from the latest scan.</p><div class="meta-row"><span class="pill warn">${escapeHtml(String(recommended.length))} recommended</span></div></div><div class="mini-actions">${scanControls}</div></div>${trendMeta}${categoryTabs}<div class="opportunity-grid">${recommended.length ? recommended.map((item) => opportunityCard(item, csrf, canCreate)).join('') : emptyIdeas}</div>${trendSourceDetails}<section class="workspace-section" aria-labelledby="recent-source-stories-title"><div class="section-head"><div><p class="eyebrow">Recent Source Stories</p><h2 id="recent-source-stories-title">Recent Source Stories</h2><p class="muted">Full retained source-story feed from the latest scan, sorted by source publication time.</p></div></div>${storyControls}<div class="review-list source-story-list">${sourceStories.length ? sourceStories.map(sourceStoryCard).join('') : emptyStories}</div></section></section>`
+    ? `<section class="workspace-section" aria-labelledby="ideas-title"><div class="section-head"><div><p class="eyebrow">B. Trending Opportunities</p><h2 id="ideas-title">Trending Opportunities</h2><p class="muted">The curated top ${escapeHtml(String(displayLimit))} story opportunities from the latest scan.</p><div class="meta-row"><span class="pill warn">${escapeHtml(String(recommended.length))} recommended</span></div></div><div class="mini-actions">${scanControls}</div></div>${trendMeta}${categoryTabs}<div class="opportunity-grid">${recommended.length ? recommended.map((item) => opportunityCard(item, csrf, canCreate)).join('') : emptyIdeas}</div>${trendSourceDetails}<section class="workspace-section" aria-labelledby="recent-source-stories-title"><div class="section-head"><div><p class="eyebrow">Recent Source Stories</p><h2 id="recent-source-stories-title">Recent Source Stories</h2><p class="muted">Full retained source-story feed from the latest scan, sorted by source publication time.</p></div></div>${storyControls}<div class="review-list source-story-list">${sourceStories.length ? sourceStories.map((story) => sourceStoryCard(story, csrf, canCreate, sourceDraftIndex)).join('') : emptyStories}</div></section></section>`
     : `<section class="workspace-section panel compact-panel" aria-labelledby="ideas-title"><div class="section-head"><div><p class="eyebrow">B. Trending Opportunities</p><h2 id="ideas-title">Trending Opportunities</h2><p class="muted">Scan approved RSS/Atom feeds and turn retained source stories into grounded article ideas.</p></div><div class="mini-actions"><a class="primary" href="/app/content/articles?view=ideas">Open Trends</a>${scanControls}</div></div></section>`;
   const create = `<section class="editorial-prompt panel compact-prompt">
     <div>

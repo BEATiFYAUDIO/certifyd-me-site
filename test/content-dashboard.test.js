@@ -164,6 +164,7 @@ test('4ba article ideas separate recommended opportunities from retained source 
     assert.match(html, /13 recommended/);
     assert.match(html, /Recent Source Stories/);
     assert.match(html, /Retained Source Story 15/);
+    assert.match(html, /Retained Source Story 15[\s\S]*Generate Article/);
     assert.match(html, /In recommended opportunity/);
     assert.match(html, /Source publication time is separate from fetched time/);
     assert.match(html, /Retention:/);
@@ -181,6 +182,42 @@ test('4ba article ideas separate recommended opportunities from retained source 
     assert.equal(trends.sourceStories.length, 15);
     assert.equal(trends.summary.storiesCollected, 90);
     assert.equal(trends.sourceStories[0].retentionStatus, 'Recommended');
+  }, { CONTENT_AGENT_ROOT: tmpRoot });
+});
+
+test('4bab retained source stories show existing draft instead of duplicate generation', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-source-drafts-'));
+  const trendDir = path.join(tmpRoot, 'dashboard', 'trends');
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  await fs.mkdir(trendDir, { recursive: true });
+  await fs.writeFile(path.join(trendDir, 'trend-state.json'), JSON.stringify({
+    provider: 'rss',
+    lastScannedAt: '2026-08-02T15:24:00.000Z',
+    summary: { provider: 'rss', sourcesChecked: 1, sourceFailures: 0, storiesCollected: 2, storiesRetained: 2, opportunitiesCreated: 0 },
+    sourceItems: [
+      { id: 'source-existing', title: 'Existing source draft story', publisher: 'TechCrunch', articleUrl: 'https://example.test/existing', publishedAt: '2026-08-01T12:00:00.000Z', categories: ['Technology'], summary: 'Existing story summary.', certifydRelevanceScore: 10 },
+      { id: 'source-new', title: 'New retained source story', publisher: 'Music Business Worldwide', articleUrl: 'https://example.test/new', publishedAt: '2026-08-01T13:00:00.000Z', categories: ['Music'], summary: 'New story summary.', certifydRelevanceScore: 4 },
+    ],
+    opportunities: [],
+    providerStatus: [],
+    errors: [],
+    dismissed: [],
+    savedIdeas: [],
+  }, null, 2));
+  await createMinimalRun(path.join(outputDir, 'existing-source-run'), {
+    title: 'Existing source draft story',
+    status: 'PENDING_FOUNDER_REVIEW',
+    research: { trendProvenance: { sourceItemIds: ['source-existing'] } },
+  });
+
+  await withServer(async (base) => {
+    const cookie = await login(base, 'founder@example.test');
+    const response = await fetch(`${base}/app/content/articles?view=ideas`, { headers: { cookie } });
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    assert.match(html, /Existing source draft story[\s\S]*Draft exists[\s\S]*Open draft/);
+    assert.doesNotMatch(html, /Existing source draft story[\s\S]*Generate Article[\s\S]*New retained source story/);
+    assert.match(html, /New retained source story[\s\S]*Low Certifyd relevance[\s\S]*Generate Article/);
   }, { CONTENT_AGENT_ROOT: tmpRoot });
 });
 

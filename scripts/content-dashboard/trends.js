@@ -122,7 +122,7 @@ export function getTrendProvider(config, options = {}) {
 export async function getTrendingOpportunities(config, options = {}) {
   const persisted = await readTrendState(config).catch(() => null);
   const provider = getTrendProvider(config, options);
-  if (persisted?.opportunities?.length) {
+  if (persisted?.opportunities?.length || persisted?.sourceItems?.length) {
     return trendStateResult({ ...persisted, provider: provider.id, providerStatus: await provider.getSourceStatus().catch(() => []) });
   }
   if (provider.id === 'rss' || provider.id === 'composite') {
