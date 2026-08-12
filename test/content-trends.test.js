@@ -185,6 +185,39 @@ test('RSS scans approved sources, categorizes opportunities, persists state and 
   assert.match(detail.sources[0].title, /bot farms/i);
 });
 
+test('source stories are classified, scored and promoted into opportunities without losing original URLs', async () => {
+  const agentRoot = await tempAgentRoot();
+  const feed = rssFeed([
+    {
+      title: 'Merlin and Spotify expand licensed fan remix permissions',
+      description: 'Music creators, fan-made works, royalties, attribution and licensing workflows are becoming core infrastructure for creator commerce.',
+      link: 'https://example.test/merlin-spotify-remix-rights',
+    },
+    {
+      title: 'Routine quarterly office lease renewals continue downtown',
+      description: 'A real estate update covers leases, office vacancy rates and construction timelines for downtown landlords.',
+      link: 'https://example.test/office-leases',
+    },
+  ]);
+
+  const scan = await scanTrendOpportunities(config(agentRoot), { fetchImpl: async () => response(feed) });
+  const promoted = scan.items.find((item) => item.sourceUrls.includes('https://example.test/merlin-spotify-remix-rights'));
+  const retainedOnly = scan.sourceStories.find((item) => item.sourceUrl === 'https://example.test/office-leases');
+
+  assert.ok(promoted);
+  assert.ok(promoted.categories.includes('Music'));
+  assert.ok(promoted.categories.includes('Creator Commerce') || promoted.categories.includes('Creator Economy'));
+  assert.ok(promoted.certifydRelevanceScore >= 8);
+  assert.match(promoted.whyItMattersToCertifyd, /creator|commerce|rights|attribution|fan|identity/i);
+  assert.equal(promoted.originalSources[0].sourceUrl, 'https://example.test/merlin-spotify-remix-rights');
+  assert.equal(promoted.originalSources[0].sourceTitle, 'Merlin and Spotify expand licensed fan remix permissions');
+
+  assert.ok(retainedOnly);
+  assert.equal(retainedOnly.retentionStatus, 'Retained');
+  assert.deepEqual(retainedOnly.opportunityIds, []);
+  assert.ok(Number.isFinite(retainedOnly.certifydRelevanceScore));
+});
+
 test('seeded scans do not overwrite existing source-backed trend results', async () => {
   const agentRoot = await tempAgentRoot();
   const trendStateDir = path.join(agentRoot, 'dashboard', 'trends');

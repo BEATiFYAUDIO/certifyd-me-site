@@ -19,6 +19,7 @@ export const TREND_PROVIDER_IDS = ['seeded', 'rss', 'manual', 'search', 'social'
 export const DEFAULT_RECOMMENDATION_TOTAL_LIMIT = 20;
 export const DEFAULT_RECOMMENDATION_CATEGORY_LIMIT = 5;
 export const DEFAULT_RECOMMENDATION_CANDIDATE_LIMIT = 80;
+export const DEFAULT_PROMOTION_RELEVANCE_THRESHOLD = 8;
 
 export const CATEGORY_DEFINITIONS = {
   Music: ['music industry', 'artist revenue', 'streaming', 'royalties', 'labels', 'independent artists', 'music rights', 'music distribution', 'fan membership', 'ticketing', 'creator ownership'],
@@ -381,14 +382,14 @@ class RssTrendProvider {
     });
     void settled;
     const recentItems = filterRecentItems(allItems, maxAgeDays);
-    const deduped = dedupeSourceItems(recentItems);
+    const deduped = dedupeSourceItems(recentItems).map(enrichSourceStoryForPromotion);
     const clusters = clusterSourceItems(deduped);
     const brainRecords = await loadApprovedBrainRecords(this.config);
     const evaluated = [];
     const evaluateWithQwen = this.options.evaluateWithQwen === true || this.config.trendResearch?.qwenEvaluationEnabled === true;
     const candidateLimit = recommendationCandidateLimit(this.config);
     for (const cluster of clusters.slice(0, candidateLimit)) {
-      if (!isCertifydRelevantCluster(cluster)) continue;
+      if (!isPromotableCluster(cluster, this.config)) continue;
       const coverage = computeBrainCoverage(cluster, brainRecords);
       const qwen = evaluateWithQwen
         ? await evaluateClusterWithQwen(this.config, cluster, coverage, this.options).catch(() => fallbackEvaluation(cluster, coverage))
@@ -580,6 +581,7 @@ export function parseFeedItems(text, source = {}, finalUrl = '') {
       retrievedAt: new Date().toISOString(),
       categories,
       keywords: extractKeywords(`${title} ${summary}`, categories),
+      sourcePriority: Number(source.priority || 0),
       author: sanitizeText(decodeXml(readTag(block, 'author') || readTag(block, 'dc:creator'))),
       language: 'en',
       sourceType: 'rss',
@@ -641,11 +643,30 @@ export function clusterSourceItems(items) {
       match.items.push(item);
       match.keywords = [...new Set([...match.keywords, ...item.keywords])];
       match.categories = [...new Set([...match.categories, ...item.categories])];
+      match.certifydRelevanceScore = Math.max(Number(match.certifydRelevanceScore || 0), Number(item.certifydRelevanceScore || 0));
+      match.certifydRelevanceReasons = [...new Set([...(match.certifydRelevanceReasons || []), ...(item.certifydRelevanceReasons || [])])];
     } else {
-      clusters.push({ id: `cluster-${hashText(item.title).slice(0, 12)}`, items: [item], keywords: item.keywords || [], categories: item.categories || [] });
+      clusters.push({
+        id: `cluster-${hashText(item.title).slice(0, 12)}`,
+        items: [item],
+        keywords: item.keywords || [],
+        categories: item.categories || [],
+        certifydRelevanceScore: Number(item.certifydRelevanceScore || 0),
+        certifydRelevanceReasons: item.certifydRelevanceReasons || [],
+      });
     }
   }
-  return clusters.map((cluster) => ({ ...cluster, category: primaryCategory(cluster), title: clusterTitle(cluster), summary: clusterSummary(cluster) }));
+  return clusters.map((cluster) => {
+    const score = scoreCertifydRelevanceCluster(cluster);
+    return {
+      ...cluster,
+      category: primaryCategory(cluster),
+      title: clusterTitle(cluster),
+      summary: clusterSummary(cluster),
+      certifydRelevanceScore: score,
+      certifydRelevanceReasons: [...new Set(cluster.certifydRelevanceReasons || [])].slice(0, 5),
+    };
+  });
 }
 
 function shouldCluster(cluster, item) {
@@ -678,6 +699,44 @@ function classifyCategories(text, sourceCategories = []) {
   }
   const sorted = [...scores.entries()].sort((a, b) => b[1] - a[1]).map(([category]) => category);
   return sorted.length ? sorted.slice(0, 3) : ['Technology'];
+}
+
+function enrichSourceStoryForPromotion(item) {
+  const categories = classifyCategories(`${item.title || item.sourceTitle || ''} ${item.summary || ''} ${(item.keywords || []).join(' ')}`, item.categories || []);
+  const relevance = scoreCertifydRelevanceStory({ ...item, categories });
+  return {
+    ...item,
+    categories,
+    certifydRelevanceScore: relevance.score,
+    certifydRelevanceReasons: relevance.reasons,
+    certifydRelevanceMatched: relevance.matched,
+  };
+}
+
+function scoreCertifydRelevanceStory(item = {}) {
+  const text = `${item.title || item.sourceTitle || ''} ${item.summary || ''} ${(item.keywords || []).join(' ')}`.toLowerCase();
+  const reasons = [];
+  let score = 0;
+  for (const category of item.categories || []) {
+    if (TRENDING_CATEGORIES.includes(category) && category !== 'Certifyd News') score += 1;
+  }
+  const ageDays = item.publishedAt ? (Date.now() - Date.parse(item.publishedAt)) / (24 * 60 * 60 * 1000) : 3;
+  if (Number.isFinite(ageDays) && ageDays <= 2) score += 2;
+  else if (Number.isFinite(ageDays) && ageDays <= 7) score += 1;
+  score += Math.min(3, Math.floor(Number(item.sourcePriority || 0) / 30));
+  for (const rule of CERTIFYD_RELEVANCE_RULES) {
+    if (!rule.pattern.test(text)) continue;
+    score += rule.weight;
+    reasons.push(rule.reason);
+  }
+  return { score, reasons: [...new Set(reasons)].slice(0, 5), matched: reasons.length > 0 };
+}
+
+function scoreCertifydRelevanceCluster(cluster = {}) {
+  const itemScores = (cluster.items || []).map((item) => Number(item.certifydRelevanceScore || 0));
+  const sourceBonus = Math.min(3, Math.max(0, (cluster.items?.length || 1) - 1));
+  const categoryBonus = Math.min(2, Math.max(0, (cluster.categories?.length || 1) - 1));
+  return Math.max(0, ...itemScores) + sourceBonus + categoryBonus;
 }
 
 function extractKeywords(text, categories) {
@@ -829,6 +888,8 @@ function opportunityFromCluster(cluster, coverage, qwen) {
     whyTrending: whyTrending(cluster),
     whyItMattersToCertifyd: qwen.whyItMatters || certifydRelevance(cluster.category, `${cluster.title} ${cluster.summary}`),
     whyCertifyd: qwen.whyItMatters || certifydRelevance(cluster.category, `${cluster.title} ${cluster.summary}`),
+    certifydRelevanceScore: cluster.certifydRelevanceScore,
+    certifydRelevanceReasons: cluster.certifydRelevanceReasons,
     suggestedAngle: qwen.certifydAngle || certifydRelevance(cluster.category, `${cluster.title} ${cluster.summary}`),
     sourceItemIds: cluster.items.map((item) => item.id),
     sourceUrls: originalSources.map((source) => source.sourceUrl),
@@ -846,7 +907,7 @@ function opportunityFromCluster(cluster, coverage, qwen) {
     confidence: sourceCount > 1 && coverage.level !== 'Needs source' ? 'Medium' : 'Low',
     status: 'ACTIVE',
     riskFlags: [...new Set(qwen.riskFlags || [])],
-    generatedBy: qwen.recommended === false ? 'source-cluster' : (qwen.fallback ? 'deterministic-analysis' : (qwen.certifydAngle ? 'qwen' : 'deterministic-analysis')),
+    generatedBy: qwen.recommended === false ? 'source-cluster' : (qwen.fallback ? 'deterministic-story-promotion' : (qwen.certifydAngle ? 'qwen' : 'deterministic-story-promotion')),
     evidenceLabel,
     topic: `Write a Certifyd article about: ${title}. Use this angle: ${qwen.certifydAngle || certifydRelevance(cluster.category, cluster.summary)}`,
     sourceType: 'rss',
@@ -861,12 +922,18 @@ function whyTrending(cluster) {
   return `Recent source from ${item?.publisher || 'an approved feed'}${item?.publishedAt ? ` on ${dateOnly(item.publishedAt)}` : ''}.`;
 }
 
-function isCertifydRelevantCluster(cluster) {
+function isPromotableCluster(cluster, config = {}) {
+  const threshold = positiveNumber(config.trendResearch?.promotionRelevanceThreshold, DEFAULT_PROMOTION_RELEVANCE_THRESHOLD);
+  if (Number(cluster.certifydRelevanceScore || 0) < threshold) return false;
+  return hasCertifydRelevanceEvidence(cluster);
+}
+
+function hasCertifydRelevanceEvidence(cluster) {
   const lead = cluster.items?.[0];
   const leadText = `${lead?.title || cluster.title || ''} ${lead?.summary || ''} ${(lead?.keywords || []).join(' ')}`.toLowerCase();
   const sourceText = `${cluster.title || ''} ${cluster.summary || ''} ${(cluster.keywords || []).join(' ')}`.toLowerCase();
   if (!leadText.trim() || !sourceText.trim()) return false;
-  return matchesCertifydRelevance(leadText) && matchesCertifydRelevance(sourceText);
+  return (cluster.items || []).some((item) => item.certifydRelevanceMatched) || (matchesCertifydRelevance(leadText) && matchesCertifydRelevance(sourceText));
 }
 
 function matchesCertifydRelevance(text) {
@@ -920,6 +987,19 @@ const CERTIFYD_RELEVANCE_TERMS = [
   /\bbot(s)?\b/,
   /\bstreaming\b/,
   /\blicens(e|ing)\b/,
+];
+
+const CERTIFYD_RELEVANCE_RULES = [
+  { pattern: /\bcreator(s)?\b|\bartist(s)?\b|\bfan(s)?\b|\baudience(s)?\b/, weight: 4, reason: 'creator, fan or audience impact' },
+  { pattern: /\bright(s)?\b|\blicens(e|ing)\b|\broyalt(y|ies)\b|\bcopyright\b|\bpermission(s)?\b|\bclearance\b/, weight: 4, reason: 'rights, permissions or licensing pressure' },
+  { pattern: /\battribution\b|\bauthorship\b|\bprovenance\b|\bauthenticity\b|\bcredit(s)?\b|\bverified\b/, weight: 4, reason: 'attribution, provenance or verification relevance' },
+  { pattern: /\bcommerce\b|\bpayment(s)?\b|\bsubscription(s)?\b|\bmembership(s)?\b|\bdirect-to-fan\b|\bcheckout\b|\breceipt(s)?\b|\bcustomer(s)?\b/, weight: 4, reason: 'direct commerce or payment model relevance' },
+  { pattern: /\bAI\b|\bartificial intelligence\b|\bgenerative\b|\bsynthetic media\b|\btraining data\b|\bdeepfake(s)?\b|\bmodel(s)?\b/i, weight: 3, reason: 'AI and content-authenticity pressure' },
+  { pattern: /\bplatform dependency\b|\bplatform distribution\b|\bdiscovery\b|\bstreaming\b|\bdistribution\b|\balgorithm(s)?\b/, weight: 3, reason: 'platform dependency, discovery or distribution relevance' },
+  { pattern: /\bidentity\b|\bprofile(s)?\b|\bverification\b|\blogin\b|\bauthentication\b|\bcredential(s)?\b/, weight: 4, reason: 'digital identity or profile relevance' },
+  { pattern: /\bfraud\b|\bbot(s)?\b|\bfake\b|\bscam(s)?\b|\bimpersonation\b/, weight: 4, reason: 'anti-fraud or trust relevance' },
+  { pattern: /\bpublish(ing|er|ers)?\b|\bmedia\b|\bjournalis(m|t|ts)\b|\bnewsletter(s)?\b|\bpress\b/, weight: 2, reason: 'publishing or media business relevance' },
+  { pattern: /\bathlete(s)?\b|\bsport(s)?\b|\bleague(s)?\b|\bteam(s)?\b|\bticket(s|ing)?\b/, weight: 3, reason: 'sports creator or fan-business relevance' },
 ];
 
 function certifydRelevance(category, text) {
@@ -986,6 +1066,8 @@ function normalizeSourceStories(sourceItems, opportunities = []) {
       status,
       retentionStatus: status,
       retentionReason,
+      certifydRelevanceScore: Number(item.certifydRelevanceScore || 0),
+      certifydRelevanceReasons: Array.isArray(item.certifydRelevanceReasons) ? item.certifydRelevanceReasons : [],
       opportunityIds: linked.map((opportunity) => opportunity.id).filter(Boolean),
       opportunityTitles: linked.map((opportunity) => opportunity.title).filter(Boolean),
       sourceType: item.sourceType || item.provider || 'rss',
