@@ -295,7 +295,7 @@ function opportunityCard(item, csrf, canCreate) {
       <dt>Original source${originalLinks.length === 1 ? '' : 's'}</dt><dd>${originalLinks.length ? originalLinks.map((source) => `<a href="${escapeHtml(source.url)}" rel="noreferrer" target="_blank">Read original ↗</a>`).join(' · ') : '<span class="muted">No original source URL supplied.</span>'}</dd>
       <dt>Risk</dt><dd>${riskFlags.length ? riskFlags.map((flag) => `<span class="pill bad">${escapeHtml(flag)}</span>`).join(' ') : '<span class="pill good">No source risk flagged</span>'}</dd>
     </dl>
-    <div class="mini-actions">
+    <div class="opportunity-actions">
       ${canCreate ? quickGenerateForm({ csrf, label: 'Generate Article', topic: item.topic || item.title, className: 'primary', extraFields: { trendOpportunityId: item.id || '', trendSourceItemIds: sourceIds, trendBrainRecordIds: brainIds, sourceRestrictions: restrictions } }) : '<p class="muted">Generation unavailable for this role.</p>'}
       ${sourceIds ? `<a class="ghost" href="/app/content/trends/${encodeURIComponent(item.id || '')}/sources">View Sources</a>` : ''}
       <form method="post" action="/app/content/actions/trends/save"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="opportunityId" value="${escapeHtml(item.id || '')}"><button class="ghost" type="submit">${item.saved ? 'Saved' : 'Save'}</button></form>
