@@ -376,7 +376,7 @@ export function validateGeneratedArticle(value, groundedContext) {
   if (/\b(live|currently|already)\b/i.test(value.bodyMarkdown) && /\b(planned|roadmap|future|not yet|under development)\b/i.test(JSON.stringify(groundedContext.featureStatus))) {
     warnings.push('Review live/planned feature language before approval.');
   }
-  const externalAdoptionHits = detectUnsupportedExternalAdoptionClaims(value.bodyMarkdown);
+  const externalAdoptionHits = detectUnsupportedExternalAdoptionClaims(value.bodyMarkdown, groundedContext);
   if (externalAdoptionHits.length) {
     throw new GenerationValidationError('Generated draft made unsupported external Certifyd adoption claims.', externalAdoptionHits);
   }
@@ -521,6 +521,9 @@ function buildSystemInstruction() {
     'Use external source summaries only for facts about the news subject; do not invent facts beyond those summaries.',
     'Do not invent customers, partnerships, revenue, adoption, launch dates, technical capabilities or legal claims.',
     'Never say the external company, article subject, rights holder, investor, label, distributor or platform uses, leverages, integrates with, partners with, is powered by, or benefits from Certifyd unless that exact relationship appears in the supplied context.',
+    'CERTIFYD CONNECTION RULE: never state or imply that a source-story company uses, integrates with, partners with, relies on, or will use Certifyd unless SOURCE FACTS explicitly establish that relationship.',
+    'Certifyd knowledge may only explain why the development matters to Certifyd, how it relates conceptually to approved capabilities or positioning, and what broader industry problem or direction it illustrates.',
+    'Never invent payment, royalty, licensing or technical mechanics not present in SOURCE FACTS.',
     'For news about companies outside Certifyd, explain only why the news is relevant to Certifyd readers. Do not turn relevance into a relationship or adoption claim.',
     'If the prompt mentions bots, bot farming, fake engagement, fake streams or fraud, frame Certifyd as an alternative to fake attention metrics and direct the draft toward real customer activity, direct commerce, attribution and review-safe anti-fraud commentary.',
     'Never describe Certifyd as a tool for creating, running, controlling, automating or scaling bots.',
@@ -566,6 +569,9 @@ function buildUserPrompt(input, groundedContext) {
     '- For music licensing, AI inputs/outputs, derivative works, settlement, opt-in, compensation or creator choice stories, prefer permissions, creator control, provenance, rights/clearance, compensation/commerce and attribution.',
     '- Do not force every Certifyd knowledge theme into the article.',
     '- Frame Certifyd relevance as analysis, not as a claim that the news subject uses Certifyd.',
+    '- Keep source facts and Certifyd commentary epistemically separate: SOURCE FACTS describe the companies/story; CERTIFYD KNOWLEDGE explains conceptual relevance only.',
+    '- Never write phrases like “integrating Certifyd,” “through Certifyd,” “using Certifyd,” “facilitated through Certifyd,” or “powered by Certifyd” about source-story companies unless SOURCE FACTS explicitly say that.',
+    '- Do not claim what a company product aims to do unless SOURCE FACTS say it.',
     '',
     'OUTPUT RULES',
     '- Return article Markdown only: title, intro, useful sections and conclusion if warranted.',
@@ -687,12 +693,21 @@ async function loadAttachedExternalSourceSummaries(config, input) {
     .filter((item) => item.title && item.summary);
 }
 
-function detectUnsupportedExternalAdoptionClaims(markdown) {
+function detectUnsupportedExternalAdoptionClaims(markdown, groundedContext = {}) {
   const text = String(markdown || '').replace(/\s+/g, ' ');
   const patterns = [
-    /\bby\s+(?:using|leveraging|adopting)\s+Certifyd(?:’s|'s)?\s+(?:platform|network|ecosystem|capabilities|provenance|attribution)[^.]{0,220}\b(?:Universal Music Group|UMG|Spotify|Deezer|Suno|Providence|Wasserman|THE•TEAM|company|label|platform|distributor)\b/gi,
-    /\b(?:Universal Music Group|UMG|Spotify|Deezer|Suno|Providence|Wasserman|THE•TEAM|company|label|platform|distributor)\b[^.]{0,180}\b(?:uses?|using|leverages?|leveraging|adopts?|adopting|integrates?|integrating|partners?|partnering|powered by|benefits? from)\b[^.]{0,120}\bCertifyd\b/gi,
+    /\bby\s+(?:using|leveraging|adopting|integrating)\s+Certifyd(?:’s|'s)?\s+(?:platform|network|ecosystem|capabilities|provenance|attribution|infrastructure)?[^.]{0,220}\b(?:Universal Music Group|UMG|Spotify|Deezer|Suno|BMG|Providence|Wasserman|THE•TEAM|company|label|platform|distributor)\b/gi,
+    /\b(?:Universal Music Group|UMG|Spotify|Deezer|Suno|BMG|Providence|Wasserman|THE•TEAM|company|label|platform|distributor)\b[^.]{0,180}\b(?:uses?|using|leverages?|leveraging|adopts?|adopting|integrates?|integrating|partners?|partnering|relies? on|will use|powered by|benefits? from)\b[^.]{0,120}\bCertifyd\b/gi,
   ];
+  if (!sourceFactsEstablishCertifydRelationship(groundedContext)) {
+    patterns.push(
+      /\b(?:integrating|using|adopting|leveraging)\s+Certifyd\b/gi,
+      /\b(?:through|via|with|on)\s+Certifyd(?:’s|'s)?\s+(?:platform|network|ecosystem|infrastructure|capabilities|provenance|attribution|payment|payments|royalty|royalties)?\b/gi,
+      /\bfacilitated\s+(?:by|through|via)\s+Certifyd\b/gi,
+      /\bpowered\s+by\s+Certifyd\b/gi,
+      /\bCertifyd\b[^.]{0,120}\b(?:facilitates?|routes?|pays?|distributes?|deposits?|licenses?|clears?)\b[^.]{0,120}\b(?:Suno|BMG|Universal Music Group|UMG|Spotify|Deezer|company|label|platform|distributor|royalt(?:y|ies)|payment|payments)\b/gi,
+    );
+  }
   const hits = [];
   for (const pattern of patterns) {
     for (const match of text.matchAll(pattern)) {
@@ -700,6 +715,13 @@ function detectUnsupportedExternalAdoptionClaims(markdown) {
     }
   }
   return [...new Set(hits)].slice(0, 8);
+}
+
+function sourceFactsEstablishCertifydRelationship(groundedContext = {}) {
+  const sourceFacts = Array.isArray(groundedContext.externalSourceFacts) ? groundedContext.externalSourceFacts : [];
+  const sourceText = sourceFacts.map((source) => `${source.title || ''} ${source.summary || ''}`).join(' ').replace(/\s+/g, ' ');
+  if (!/\bCertifyd\b/i.test(sourceText)) return false;
+  return /\b(?:uses?|using|leverages?|leveraging|adopts?|adopting|integrates?|integrating|partners?|partnering|relies? on|powered by|through|via|with)\b[^.]{0,160}\bCertifyd\b|\bCertifyd\b[^.]{0,160}\b(?:uses?|using|leverages?|leveraging|integrates?|integrating|partners?|partnering|powers?|facilitates?)\b/i.test(sourceText);
 }
 
 function sentenceAround(text, index) {

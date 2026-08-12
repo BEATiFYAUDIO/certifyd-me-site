@@ -598,6 +598,55 @@ test('source story generation keeps BMG Suno article coherent without internal c
   assert.equal(researchRecord.generationDiagnostics.externalArticleSourcesSentToModel[0].articleUrl, 'https://www.billboard.com/pro/bmg-suno-licensing-deal-ai-music-model/');
 });
 
+test('BMG Suno source story rejects invented Certifyd relationship mechanics', async () => {
+  const config = await makeConfig();
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'billboard-bmg-suno',
+      publisher: 'Billboard',
+      publishedAt: '2026-08-12T09:00:00.000Z',
+      title: 'BMG and Suno Reach Licensing Deal for AI Music Model',
+      summary: 'Billboard reports that BMG and Suno reached a licensing agreement covering creator opt-in for AI inputs and outputs, compensation for participating artists and songwriters, derivative works, and settlement of prior use.',
+      articleUrl: 'https://www.billboard.com/pro/bmg-suno-licensing-deal-ai-music-model/',
+      categories: ['Music', 'AI', 'Creator Commerce'],
+      certifydRelevanceScore: 13,
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'BMG and Suno Reach Licensing Deal for AI Music Model',
+    objective: 'Explain the source facts and relevant Certifyd angle.',
+    trendSourceItemIds: 'billboard-bmg-suno',
+  });
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OllamaQwenGenerationProvider(config, {
+    fetchImpl: makeOllamaFetch(validArticle(sourceId, {
+      title: 'BMG and Suno Licensing Deal',
+      suggestedSlug: 'bmg-suno-licensing-deal',
+      bodyMarkdown: [
+        '# BMG and Suno Licensing Deal',
+        '',
+        'Billboard reports that BMG and Suno reached a licensing agreement covering creator opt-in, compensation, derivative works and settlement of prior use.',
+        '',
+        '## Why it matters',
+        '',
+        'By integrating Certifyd into its platform, Suno can facilitate royalty direct deposits to participating artists through Certifyd payment rails.',
+      ].join('\n'),
+    })),
+  });
+  await assert.rejects(
+    () => provider.generateArticle({
+      actorEmail: 'writer@example.test',
+      topic: 'BMG and Suno Reach Licensing Deal for AI Music Model',
+      audience: 'Creators',
+      objective: 'Explain the source facts and relevant Certifyd angle.',
+      trendSourceItemIds: 'billboard-bmg-suno',
+    }, context),
+    /Generated draft made unsupported external Certifyd adoption claims/,
+  );
+});
+
 test('generation validation rejects leaked internal context headings', async () => {
   const config = await makeConfig();
   const context = await makeContext(config);
