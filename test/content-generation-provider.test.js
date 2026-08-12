@@ -400,7 +400,7 @@ test('trend source summaries are included separately from Certifyd Brain context
   const payload = JSON.parse(chatCall.options.body);
   const outboundPrompt = JSON.stringify(payload.messages);
   assert.match(outboundPrompt, /about half of the draft about the external business\/news facts/i);
-  assert.match(outboundPrompt, /External source facts for the business\/news side/i);
+  assert.match(outboundPrompt, /SOURCE FACTS/i);
   assert.match(outboundPrompt, /Music Business Worldwide/i);
   assert.match(outboundPrompt, /Label revenue rises as direct fan activity grows/i);
   const researchRecord = JSON.parse(await fs.readFile(path.join(config.outputDir, generationResult.runId, 'research-record.json'), 'utf8'));
@@ -414,9 +414,9 @@ test('trend source summaries are included separately from Certifyd Brain context
   assert.ok(researchRecord.generationDiagnostics.brainSourcesScanned >= 2);
   assert.ok(researchRecord.generationDiagnostics.brainRecordsSelected.length >= 2);
   assert.ok(researchRecord.generationDiagnostics.brainRecordsSentToModel.length >= 2);
-  assert.match(outboundPrompt, /Approved Certifyd knowledge by theme/i);
-  assert.match(outboundPrompt, /FACTS FROM SOURCE ARTICLE/i);
-  assert.match(outboundPrompt, /APPROVED CERTIFYD KNOWLEDGE/i);
+  assert.match(outboundPrompt, /CERTIFYD KNOWLEDGE/i);
+  assert.match(outboundPrompt, /EDITORIAL ANGLE/i);
+  assert.match(outboundPrompt, /WRITING INSTRUCTIONS/i);
   const userPrompt = payload.messages.find((message) => message.role === 'user')?.content || '';
   assert.ok(userPrompt.length < 4500, `Qwen prompt should stay compact, got ${userPrompt.length} chars`);
 });
@@ -501,6 +501,128 @@ test('Brain retrieval covers positioning, rights, commerce and network dependenc
   assert.ok(context.approvedKnowledge.some((record) => /Permissions and rights/.test(record.theme)));
   assert.ok(context.approvedKnowledge.some((record) => /Network and platform dependency/.test(record.theme)));
   assert.ok(context.generationDiagnostics.brainRecordsSelected.every((record) => record.selectionReason));
+});
+
+test('source story generation keeps BMG Suno article coherent without internal context leakage', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  const records = [
+    ['content-agent/knowledge/capabilities/access.md', '# Access\n\nAPPROVED\n\nCertifyd access records help describe permissions, creator opt-in and creator-controlled access decisions.'],
+    ['content-agent/knowledge/capabilities/provenance.md', '# Provenance\n\nAPPROVED\n\nCertifyd provenance records help connect work, attribution, permissions and publication context.'],
+    ['content-agent/knowledge/capabilities/commerce.md', '# Commerce\n\nAPPROVED\n\nCertifyd supports direct creator commerce context, compensation pathways and owned customer relationships where configured.'],
+    ['content-agent/knowledge/capabilities/payments.md', '# Payments\n\nAPPROVED\n\nCertifyd payment records can support transaction context where payment workflows are configured.'],
+    ['content-agent/knowledge/capabilities/publishing.md', '# Publishing\n\nAPPROVED\n\nCertifyd publishing context can connect releases, derivative works, credits and rights-clearance review.'],
+  ];
+  for (const [relative, text] of records) {
+    const file = path.join(config.siteRoot, relative);
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(file, text);
+  }
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'billboard-bmg-suno',
+      publisher: 'Billboard',
+      publishedAt: '2026-08-12T09:00:00.000Z',
+      title: 'BMG and Suno Reach Licensing Deal for AI Music Model',
+      summary: 'Billboard reports that BMG and Suno reached a licensing agreement covering creator opt-in for AI inputs and outputs, compensation for participating artists and songwriters, derivative works, and settlement of prior use.',
+      articleUrl: 'https://www.billboard.com/pro/bmg-suno-licensing-deal-ai-music-model/',
+      categories: ['Music', 'AI', 'Creator Commerce'],
+      certifydRelevanceScore: 13,
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'BMG and Suno Reach Licensing Deal for AI Music Model',
+    objective: 'Explain the source facts and relevant Certifyd angle around permissions, creator control, derivative works, attribution and compensation.',
+    trendSourceItemIds: 'billboard-bmg-suno',
+  });
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OllamaQwenGenerationProvider(config, {
+    fetchImpl: makeOllamaFetch(validArticle(sourceId, {
+      title: 'BMG and Suno Show Why AI Music Licensing Needs Creator Choice',
+      suggestedSlug: 'bmg-suno-ai-music-licensing-creator-choice',
+      excerpt: 'A grounded look at BMG and Suno’s licensing agreement and why creator opt-in, compensation and derivative-work permissions matter.',
+      bodyMarkdown: [
+        '# BMG and Suno Show Why AI Music Licensing Needs Creator Choice',
+        '',
+        'Billboard reports that BMG and Suno reached a licensing agreement for an AI music model after earlier disputes over prior use.',
+        '',
+        '## What the deal puts on the table',
+        '',
+        'The reported agreement centers on creator opt-in for AI inputs and outputs, compensation for participating artists and songwriters, derivative works and settlement of prior use.',
+        '',
+        '## Why this matters for creator control',
+        '',
+        'The business signal is not just that AI music deals are happening. It is that permission, attribution, rights clearance and compensation have to be explicit when creative work becomes training input, output or derivative material.',
+        '',
+        '## The Certifyd relevance',
+        '',
+        'Certifyd’s approved knowledge points to provenance, permissions, publishing context and commerce records as useful infrastructure for creator-owned decision making. That makes this kind of licensing story relevant without implying any adoption by BMG or Suno.',
+      ].join('\n'),
+      claims: [{ text: 'Certifyd provenance records help connect work, attribution, permissions and publication context.', sourceIds: [sourceId], confidence: 'supported' }],
+    }), calls),
+  });
+  const article = await provider.generateArticle({
+    actorEmail: 'writer@example.test',
+    topic: 'BMG and Suno Reach Licensing Deal for AI Music Model',
+    audience: 'Creators',
+    objective: 'Explain the source facts and relevant Certifyd angle.',
+    trendSourceItemIds: 'billboard-bmg-suno',
+  }, context);
+  const result = await persistGeneratedArticleRun(config, article, {
+    actorEmail: 'writer@example.test',
+    topic: 'BMG and Suno Reach Licensing Deal for AI Music Model',
+    audience: 'Creators',
+    objective: 'Explain the source facts and relevant Certifyd angle.',
+    trendSourceItemIds: 'billboard-bmg-suno',
+  }, context, provider);
+
+  const chatCall = calls.find((call) => call.url.endsWith('/api/chat'));
+  const payload = JSON.parse(chatCall.options.body);
+  const outboundPrompt = JSON.stringify(payload.messages);
+  assert.match(outboundPrompt, /SOURCE FACTS/i);
+  assert.match(outboundPrompt, /CERTIFYD KNOWLEDGE/i);
+  assert.match(outboundPrompt, /EDITORIAL ANGLE/i);
+  assert.match(outboundPrompt, /WRITING INSTRUCTIONS/i);
+  assert.match(outboundPrompt, /BMG and Suno Reach Licensing Deal/i);
+  assert.match(outboundPrompt, /https:\/\/www\.billboard\.com\/pro\/bmg-suno-licensing-deal-ai-music-model\//);
+  assert.doesNotMatch(article.bodyMarkdown, /^(#{1,6}\s+)?(Definition|Source Scope|Approved Certifyd Knowledge|Brain Context|Prompt Instructions)\s*$/im);
+  assert.match(article.bodyMarkdown, /BMG and Suno/i);
+  assert.match(article.bodyMarkdown, /creator opt-in/i);
+  assert.match(article.bodyMarkdown, /compensation/i);
+  assert.match(article.bodyMarkdown, /derivative works/i);
+  assert.ok(context.approvedKnowledge.some((record) => /Permissions and rights|Commerce and payments|Provenance/i.test(record.theme)));
+  const researchRecord = JSON.parse(await fs.readFile(path.join(config.outputDir, result.runId, 'research-record.json'), 'utf8'));
+  assert.equal(researchRecord.trendProvenance.sourceUrls[0].sourceUrl, 'https://www.billboard.com/pro/bmg-suno-licensing-deal-ai-music-model/');
+  assert.equal(researchRecord.generationDiagnostics.externalArticleSourcesSentToModel[0].articleUrl, 'https://www.billboard.com/pro/bmg-suno-licensing-deal-ai-music-model/');
+});
+
+test('generation validation rejects leaked internal context headings', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OllamaQwenGenerationProvider(config, {
+    fetchImpl: makeOllamaFetch(validArticle(sourceId, {
+      title: 'Leaked Context Draft',
+      suggestedSlug: 'leaked-context-draft',
+      bodyMarkdown: [
+        '# Leaked Context Draft',
+        '',
+        '## Definition',
+        '',
+        'Internal context appears here.',
+        '',
+        '## Approved Certifyd Knowledge',
+        '',
+        'This should not become article copy.',
+      ].join('\n'),
+    })),
+  });
+  await assert.rejects(
+    () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Leak test', audience: 'Creators', objective: 'Test validation.' }, context),
+    /Generation failed validation — internal context leaked into article/,
+  );
 });
 
 test('one active local generation per user is enforced', async () => {

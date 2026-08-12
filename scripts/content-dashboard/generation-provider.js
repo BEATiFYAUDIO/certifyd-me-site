@@ -342,6 +342,9 @@ export function validateGeneratedArticle(value, groundedContext) {
   if (value.seoDescription && typeof value.seoDescription !== 'string') throw new GenerationValidationError('Generated seoDescription is malformed.');
   if (value.coverImage && typeof value.coverImage !== 'string') throw new GenerationValidationError('Generated coverImage is malformed.');
   if (value.bodyMarkdown.length > 18000) throw new GenerationValidationError('Generated article is too long.');
+  if (detectInternalContextLeak(value.bodyMarkdown).length) {
+    throw new GenerationValidationError('Generation failed validation — internal context leaked into article.');
+  }
   const sourceIds = new Set(groundedContext.sourceRecords.map((source) => source.id));
   const warnings = [...(value.warnings || []).map(String).map((warning) => warning.trim()).filter(Boolean)];
   const normalizedClaims = [];
@@ -519,6 +522,7 @@ function buildSystemInstruction() {
     'Clearly distinguish live, beta and planned features.',
     'Use “network” rather than “platform” when describing Certifyd unless a source explicitly requires another term.',
     'Keep it short: one H1 title, 3 to 5 short sections, no JSON, no YAML, no code fences.',
+    'Never use internal prompt labels, context labels, Brain template headings or source-scope headings as article headings.',
     'Do not mention this generation process or source IDs.',
   ].join('\n');
 }
@@ -528,7 +532,7 @@ function buildUserPrompt(input, groundedContext) {
   const guardrails = buildTopicGuardrails(input).map((item) => `- ${item}`).join('\n');
   const claims = context.approvedClaims.map((item) => `- ${item}`).join('\n') || '- No approved claims selected.';
   const productFacts = context.productFacts.map((item) => `- ${item}`).join('\n') || '- No product facts selected.';
-  const approvedKnowledge = context.approvedKnowledge.map((item) => `- ${item.theme}: ${item.id}: ${item.excerpt}`).join('\n') || '- No additional approved Brain knowledge selected.';
+  const approvedKnowledge = context.approvedKnowledge.map((item) => `- ${item.theme}: ${item.excerpt}`).join('\n') || '- No additional approved Certifyd knowledge selected.';
   const externalSources = context.externalSourceFacts.map((item) => `- ${item.publisher}${item.publishedAt ? ` (${item.publishedAt})` : ''}: ${item.title}. ${item.summary}${item.articleUrl ? ` Source: ${item.articleUrl}` : ''}`).join('\n') || '- No external source summaries attached.';
   const prohibited = context.prohibitedClaims.map((item) => `- ${item}`).join('\n') || '- Avoid unsupported claims.';
   return [
@@ -537,30 +541,31 @@ function buildUserPrompt(input, groundedContext) {
     `Objective: ${input.objective || input.businessObjective || 'Create a grounded Certifyd article.'}`,
     `Angle: ${input.angle || 'Explain the business relevance clearly.'}`,
     '',
-    'Guardrails:',
+    'WRITING INSTRUCTIONS',
     guardrails,
     '',
-    'Approved Certifyd claims:',
-    claims,
-    '',
-    'Approved Certifyd knowledge by theme:',
-    approvedKnowledge,
-    '',
-    'External source facts for the business/news side of the article:',
+    'SOURCE FACTS',
     externalSources,
     '',
-    'Product facts:',
+    'CERTIFYD KNOWLEDGE',
+    claims,
+    approvedKnowledge,
     productFacts,
     '',
     'Do not claim:',
     prohibited,
     '',
-    'Required distinction:',
-    '- FACTS FROM SOURCE ARTICLE: use only the external source summaries.',
-    '- APPROVED CERTIFYD KNOWLEDGE: use only the approved Brain context above.',
-    '- EDITORIAL INFERENCE: clearly frame relevance as analysis, not as a claim that the news subject uses Certifyd.',
+    'EDITORIAL ANGLE',
+    '- Start with the source facts as the news/business story.',
+    '- Connect only the relevant Certifyd knowledge themes to the story.',
+    '- For music licensing, AI inputs/outputs, derivative works, settlement, opt-in, compensation or creator choice stories, prefer permissions, creator control, provenance, rights/clearance, compensation/commerce and attribution.',
+    '- Do not force every Certifyd knowledge theme into the article.',
+    '- Frame Certifyd relevance as analysis, not as a claim that the news subject uses Certifyd.',
     '',
-    'Write the draft now in Markdown only. Keep it concise and useful. Start with the external business/news facts, then connect them to Certifyd using only approved Certifyd context. Do not use generic blog filler or mention founder review in the article body.',
+    'OUTPUT RULES',
+    '- Return article Markdown only: title, intro, useful sections and conclusion if warranted.',
+    '- Do not output these labels as article headings: SOURCE FACTS, CERTIFYD KNOWLEDGE, EDITORIAL ANGLE, WRITING INSTRUCTIONS, Definition, Source Scope, Approved Certifyd Knowledge, Brain Context, Prompt Instructions.',
+    '- Do not use generic blog filler or mention founder review in the article body.',
   ].join('\n');
 }
 
@@ -1166,6 +1171,30 @@ function detectProhibitedLanguage(bodyMarkdown) {
     if (new RegExp(`\\b${escapeRegExp(term)}\\b`, 'i').test(bodyMarkdown)) warnings.push(`Review risky or prohibited claim language: ${term}`);
   }
   return warnings;
+}
+
+function detectInternalContextLeak(bodyMarkdown) {
+  const text = String(bodyMarkdown || '');
+  const internalHeadings = [
+    'Definition',
+    'Source Scope',
+    'Approved Certifyd Knowledge',
+    'Brain Context',
+    'Prompt Instructions',
+    'SOURCE FACTS',
+    'CERTIFYD KNOWLEDGE',
+    'EDITORIAL ANGLE',
+    'WRITING INSTRUCTIONS',
+  ];
+  const hits = [];
+  for (const heading of internalHeadings) {
+    const headingPattern = new RegExp(`^\\s{0,3}#{1,6}\\s+${escapeRegExp(heading)}\\s*$`, 'gim');
+    const barePattern = new RegExp(`^\\s*${escapeRegExp(heading)}\\s*$`, 'gim');
+    if (headingPattern.test(text) || barePattern.test(text)) hits.push(heading);
+  }
+  const repeatedTemplateSections = text.match(/^\s{0,3}#{1,6}\s+(Definition|Source Scope|Approved Certifyd Knowledge)\s*$/gim) || [];
+  if (repeatedTemplateSections.length >= 2) hits.push('repeated internal template sections');
+  return [...new Set(hits)];
 }
 
 function normalizeOllamaUsage(body) {
