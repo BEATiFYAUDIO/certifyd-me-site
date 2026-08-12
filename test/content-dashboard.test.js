@@ -216,9 +216,39 @@ test('4bab retained source stories show existing draft instead of duplicate gene
     assert.equal(response.status, 200);
     const html = await response.text();
     assert.match(html, /Existing source draft story[\s\S]*Draft exists[\s\S]*Open draft/);
-    assert.doesNotMatch(html, /Existing source draft story[\s\S]*Generate Article[\s\S]*New retained source story/);
+    assert.match(html, /Existing source draft story[\s\S]*Generate Article[\s\S]*Draft exists/);
     assert.match(html, /New retained source story[\s\S]*Low Certifyd relevance[\s\S]*Generate Article/);
+    assert.equal((html.match(/Generate Article/g) || []).length, 2);
   }, { CONTENT_AGENT_ROOT: tmpRoot });
+});
+
+
+test('4bac retained source generation returns existing draft instead of duplicating', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-source-duplicate-action-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  await createMinimalRun(path.join(outputDir, 'existing-source-run'), {
+    title: 'Existing source draft story',
+    status: 'PENDING_FOUNDER_REVIEW',
+    research: { trendProvenance: { sourceItemIds: ['source-existing'] } },
+  });
+  const actions = new ContentDashboardActions(getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  }));
+  const form = new FormData();
+  form.set('provider', 'deterministic');
+  form.set('topic', 'Write a Certifyd article about an existing source');
+  form.set('audience', 'Creators, partners and investors');
+  form.set('objective', 'Create a grounded Certifyd article using approved Brain context.');
+  form.set('trendSourceItemIds', 'source-existing');
+
+  const result = await actions.generateDraft({ actor: { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' }, form });
+
+  assert.equal(result.runId, 'existing-source-run');
+  assert.match(result.output, /Draft already exists/);
+  assert.equal((await fs.readdir(outputDir)).length, 1);
 });
 
 test('4bb article workspace shows direct-published deployment records', async () => {

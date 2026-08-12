@@ -75,6 +75,15 @@ export class ContentDashboardActions {
     if (!input.topic || !input.audience || !input.objective) {
       throw Object.assign(new Error('Topic, audience and objective are required.'), { statusCode: 400 });
     }
+    const existingSourceDraft = await this.findExistingSourceDraft(input.trendSourceItemIds);
+    if (existingSourceDraft) {
+      await this.audit.append({ action: 'article_generation_duplicate_source', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId: existingSourceDraft.runId, result: 'SKIPPED', note: `Existing draft for source story: ${existingSourceDraft.sourceId}` });
+      return {
+        ok: true,
+        runId: existingSourceDraft.runId,
+        output: `Draft already exists for this source story: ${existingSourceDraft.title || existingSourceDraft.runId}`,
+      };
+    }
     const provider = createGenerationProvider(this.config, { provider: providerName });
     const groundedContext = await buildGroundedContext(this.config, input);
     try {
@@ -86,6 +95,19 @@ export class ContentDashboardActions {
       await this.audit.append({ action: 'article_generation', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, result: 'FAILED', note: `${provider.providerName}:${safeError(error)}` });
       throw error;
     }
+  }
+
+  async findExistingSourceDraft(trendSourceItemIds) {
+    const requested = new Set(String(trendSourceItemIds || '').split(',').map((value) => value.trim()).filter(Boolean));
+    if (!requested.size) return null;
+    const runs = await this.runs.listRuns();
+    for (const run of runs) {
+      const full = await this.runs.readRun(run.runId).catch(() => null);
+      const sourceIds = full?.research?.trendProvenance?.sourceItemIds || full?.manifest?.trendProvenance?.sourceItemIds || [];
+      const match = sourceIds.find((id) => requested.has(String(id || '').trim()));
+      if (match) return { runId: run.runId, title: run.title, sourceId: match };
+    }
+    return null;
   }
 
   async generateDeterministic({ actor, inputPath = 'engine/fixtures/core-article-request.json' }) {
