@@ -20,6 +20,7 @@ export const DEFAULT_RECOMMENDATION_TOTAL_LIMIT = 20;
 export const DEFAULT_RECOMMENDATION_CATEGORY_LIMIT = 5;
 export const DEFAULT_RECOMMENDATION_CANDIDATE_LIMIT = 80;
 export const DEFAULT_PROMOTION_RELEVANCE_THRESHOLD = 8;
+export const DEFAULT_RETAINED_SOURCE_FRACTION = 0.5;
 
 export const CATEGORY_DEFINITIONS = {
   Music: ['music industry', 'artist revenue', 'streaming', 'royalties', 'labels', 'independent artists', 'music rights', 'music distribution', 'fan membership', 'ticketing', 'creator ownership'],
@@ -382,12 +383,13 @@ class RssTrendProvider {
     });
     void settled;
     const recentItems = filterRecentItems(allItems, maxAgeDays);
-    const deduped = dedupeSourceItems(recentItems).map(enrichSourceStoryForPromotion);
+    const uniqueItems = dedupeSourceItems(recentItems);
+    const deduped = retainSourceStories(recentItems, this.config).map(enrichSourceStoryForPromotion);
     const clusters = clusterSourceItems(deduped);
     const brainRecords = await loadApprovedBrainRecords(this.config);
     const evaluated = [];
     const evaluateWithQwen = this.options.evaluateWithQwen === true || this.config.trendResearch?.qwenEvaluationEnabled === true;
-    const candidateLimit = recommendationCandidateLimit(this.config);
+    const candidateLimit = Math.max(recommendationCandidateLimit(this.config), recommendationTotalLimit(this.config) * 4);
     for (const cluster of clusters.slice(0, candidateLimit)) {
       if (!isPromotableCluster(cluster, this.config)) continue;
       const coverage = computeBrainCoverage(cluster, brainRecords);
@@ -414,7 +416,7 @@ class RssTrendProvider {
         sourceFailures: errors.length,
         storiesCollected: allItems.length,
         storiesRetained: deduped.length,
-        duplicatesRemoved: Math.max(0, recentItems.length - deduped.length),
+        duplicatesRemoved: Math.max(0, recentItems.length - uniqueItems.length),
         opportunitiesCreated: items.length,
       },
     };
@@ -423,7 +425,7 @@ class RssTrendProvider {
 
 
 export function recommendationTotalLimit(config = {}) {
-  return positiveNumber(config.trendResearch?.recommendationTotalLimit, DEFAULT_RECOMMENDATION_TOTAL_LIMIT);
+  return Math.max(positiveNumber(config.trendResearch?.recommendationTotalLimit, DEFAULT_RECOMMENDATION_TOTAL_LIMIT), DEFAULT_RECOMMENDATION_TOTAL_LIMIT);
 }
 
 export function recommendationCategoryLimit(config = {}) {
@@ -619,6 +621,25 @@ function sanitizeText(value) {
 function filterRecentItems(items, maxAgeDays) {
   const cutoff = Date.now() - Number(maxAgeDays || 7) * 24 * 60 * 60 * 1000;
   return items.filter((item) => !item.publishedAt || Date.parse(item.publishedAt) >= cutoff);
+}
+
+export function retainSourceStories(items, config = {}) {
+  const unique = dedupeSourceItems(items);
+  const minFraction = Math.max(DEFAULT_RETAINED_SOURCE_FRACTION, Math.min(1, Number(config.trendResearch?.retainedSourceFraction || DEFAULT_RETAINED_SOURCE_FRACTION)));
+  const target = Math.ceil(unique.length * minFraction);
+  const legallyRetainable = unique.filter(isLegallyRetainableSourceStory);
+  const sorted = [...legallyRetainable].sort((a, b) => sourceStoryRetentionScore(b) - sourceStoryRetentionScore(a));
+  return sorted.slice(0, Math.max(target, sorted.length));
+}
+
+function isLegallyRetainableSourceStory(item = {}) {
+  return Boolean(originalArticleUrl(item) && (item.title || item.sourceTitle) && (item.summary || item.description));
+}
+
+function sourceStoryRetentionScore(item = {}) {
+  const ageDays = item.publishedAt ? (Date.now() - Date.parse(item.publishedAt)) / (24 * 60 * 60 * 1000) : 30;
+  const freshness = Number.isFinite(ageDays) ? Math.max(0, 30 - ageDays) : 0;
+  return Number(item.sourcePriority || 0) + freshness + Math.min(20, String(item.summary || item.description || '').length / 40);
 }
 
 export function dedupeSourceItems(items) {
@@ -826,7 +847,18 @@ async function evaluateClusterWithQwen(config, cluster, coverage, options = {}) 
 function buildOpportunityPrompt(cluster, coverage) {
   const sources = cluster.items.slice(0, 4).map((item) => `- ${item.publisher} (${dateOnly(item.publishedAt)}): ${item.title}. ${trim(item.summary, 180)}`).join('\n');
   const brain = coverage.records.slice(0, 3).map((record) => `- ${record.id}: ${trim(record.excerpt, 180)}`).join('\n') || '- No approved Brain match.';
-  return `Category: ${cluster.category}\nSources:\n${sources}\nApproved Brain excerpts:\n${brain}\nReturn JSON exactly like {"recommended":true,"suggestedTitle":"string","whyItMatters":"string","certifydAngle":"string","riskFlags":["string"]}.`;
+  return [
+    `Category: ${cluster.category}`,
+    'Source facts from retained RSS/Atom item metadata:',
+    sources,
+    'Approved Certifyd Brain context:',
+    brain,
+    'Task: decide whether this source story should become a Certifyd editorial opportunity.',
+    'Wire the source story to Certifyd only through the approved Brain context above.',
+    'Keep source facts, approved Certifyd knowledge, and editorial inference separate.',
+    'Do not invent Certifyd partnerships, live capabilities, customer relationships, legal outcomes, or facts not present in the source facts or approved Brain context.',
+    'Return JSON exactly like {"recommended":true,"suggestedTitle":"string","whyItMatters":"string","certifydAngle":"string","riskFlags":["string"]}.'
+  ].join('\n');
 }
 
 function parseQwenOpportunity(content) {

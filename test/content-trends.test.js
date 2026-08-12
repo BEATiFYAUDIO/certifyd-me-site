@@ -14,6 +14,7 @@ import {
   getTrendingOpportunities,
   parseFeedItems,
   readTrendSourceDetail,
+  retainSourceStories,
   saveTrendOpportunity,
   scanTrendOpportunities,
   selectRecommendedOpportunities,
@@ -280,6 +281,51 @@ test('Atom parsing, dedupe and clustering keep source summaries compact', () => 
   const clusters = clusterSourceItems(deduped);
   assert.equal(clusters.length, 1);
   assert.equal(clusters[0].category, 'AI');
+});
+
+test('RSS retention keeps at least half of legally retainable unique source stories', async () => {
+  const agentRoot = await tempAgentRoot();
+  const stories = Array.from({ length: 10 }, (_, index) => ({
+    title: `Creator commerce source story ${index}`,
+    description: `Retainable summary about creator commerce, ownership and direct customer relationships ${index}.`,
+    link: `https://example.test/creator-commerce-${index}`,
+  }));
+  const scan = await scanTrendOpportunities(config(agentRoot), { fetchImpl: async () => response(rssFeed(stories)) });
+
+  assert.ok(scan.summary.storiesRetained >= 5);
+  assert.equal(scan.summary.storiesRetained, scan.sourceStories.length);
+  assert.ok(scan.sourceStories.every((story) => story.sourceUrl && story.summary));
+
+  const retained = retainSourceStories(parseFeedItems(rssFeed(stories), { id: 'example', publisher: 'Example', feedUrl: 'https://example.test/feed.xml', categories: ['Creator Commerce'] }, 'https://example.test/feed.xml'), config(agentRoot));
+  assert.ok(retained.length >= 5);
+});
+
+test('Qwen trend evaluation receives retained source facts and approved Brain relevance instructions', async () => {
+  const agentRoot = await tempAgentRoot();
+  const feed = rssFeed([
+    {
+      title: 'Creators build direct commerce through owned fan relationships',
+      description: 'Creator economy teams are using direct sales, receipts and fan memberships to reduce platform dependency.',
+      link: 'https://example.test/owned-fan-commerce',
+    },
+  ]);
+  const cfg = config(agentRoot, { ollama: { enabled: true }, trendResearch: { qwenEvaluationEnabled: true } });
+  let outboundPrompt = '';
+  await scanTrendOpportunities(cfg, {
+    fetchImpl: async (url, init) => {
+      if (String(url).includes('/api/chat')) {
+        const body = JSON.parse(init.body);
+        outboundPrompt = body.messages.find((message) => message.role === 'user')?.content || '';
+        return response(JSON.stringify({ message: { content: JSON.stringify({ recommended: true, suggestedTitle: 'Owned fan commerce', whyItMatters: 'The source connects to Certifyd direct commerce through approved Brain context.', certifydAngle: 'Certifyd can frame receipts, profiles and direct relationships as creator-owned business infrastructure.', riskFlags: [] }) } }), { contentType: 'application/json' });
+      }
+      return response(feed);
+    },
+  });
+
+  assert.match(outboundPrompt, /Source facts from retained RSS\/Atom item metadata/);
+  assert.match(outboundPrompt, /Approved Certifyd Brain context/);
+  assert.match(outboundPrompt, /creator-controlled public profiles/i);
+  assert.match(outboundPrompt, /Do not invent Certifyd partnerships/i);
 });
 
 test('Qwen trend ranking falls back when local model returns malformed analysis', async () => {
