@@ -700,20 +700,47 @@ test('raw leaked Qwen text is rejected before fallback coercion', async () => {
   );
 });
 
-test('source story generation fails before Qwen when requested source is not attached', async () => {
+test('source-backed generation with zero external source evidence fails before Qwen is called', async () => {
   const config = await makeConfig();
   await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
   await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
-    sourceItems: [],
-    opportunities: [],
+    sourceItems: [{
+      id: 'billboard-beyonce-lawsuit',
+      publisher: 'Billboard',
+      publishedAt: '2026-08-12T09:00:00.000Z',
+      title: 'Beyoncé infringement lawsuit story',
+      summary: '',
+      articleUrl: '',
+    }],
+    opportunities: [{
+      id: 'opp-beyonce-lawsuit',
+      sourceItemIds: ['billboard-beyonce-lawsuit'],
+    }],
   }, null, 2));
+  let qwenCalled = false;
   await assert.rejects(
-    () => makeContext(config, {
-      topic: 'BMG and Suno Reach Licensing Deal for AI Music Model',
-      trendSourceItemIds: 'billboard-bmg-suno',
-    }),
-    /Requested source story was not found in the latest trend state: billboard-bmg-suno/,
+    async () => {
+      const context = await makeContext(config, {
+        topic: 'Beyoncé infringement lawsuit story',
+        trendOpportunityId: 'opp-beyonce-lawsuit',
+      });
+      const provider = new OllamaQwenGenerationProvider(config, {
+        fetchImpl: async () => {
+          qwenCalled = true;
+          return mockResponse({});
+        },
+      });
+      return provider.generateArticle({
+        actorEmail: 'writer@example.test',
+        topic: 'Beyoncé infringement lawsuit story',
+        audience: 'Creators',
+        objective: 'Explain the source facts and Certifyd relevance.',
+        trendOpportunityId: 'opp-beyonce-lawsuit',
+      }, context);
+    },
+    /Cannot generate source-backed article — original source evidence is unavailable\./,
   );
+  assert.equal(qwenCalled, false);
 });
 
 test('one active local generation per user is enforced', async () => {

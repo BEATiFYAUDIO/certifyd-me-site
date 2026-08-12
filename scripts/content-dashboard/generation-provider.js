@@ -261,8 +261,9 @@ export async function buildGroundedContext(config, input) {
   const selected = selectRelevantSources(sourceRecords, input).slice(0, SAFE_SOURCE_LIMIT);
   const externalSourceFacts = await loadAttachedExternalSourceSummaries(config, input);
   const requestedSourceIds = parseIdList(input.trendSourceItemIds, 40);
-  if (requestedSourceIds.length && !externalSourceFacts.length) {
-    throw new GenerationConfigurationError(`Requested source story was not found in the latest trend state: ${requestedSourceIds.join(', ')}`);
+  const sourceBackedGeneration = requestedSourceIds.length > 0 || Boolean(cleanId(input.trendOpportunityId));
+  if (sourceBackedGeneration && !hasUsableExternalSourceFacts(externalSourceFacts)) {
+    throw new GenerationConfigurationError('Cannot generate source-backed article — original source evidence is unavailable.');
   }
   const context = {
     audience: input.audience || input.targetAudience || '',
@@ -572,10 +573,11 @@ function buildUserPrompt(input, groundedContext) {
     '- Keep source facts and Certifyd commentary epistemically separate: SOURCE FACTS describe the companies/story; CERTIFYD KNOWLEDGE explains conceptual relevance only.',
     '- Never write phrases like “integrating Certifyd,” “through Certifyd,” “using Certifyd,” “facilitated through Certifyd,” or “powered by Certifyd” about source-story companies unless SOURCE FACTS explicitly say that.',
     '- Do not claim what a company product aims to do unless SOURCE FACTS say it.',
+    '- Let the article structure follow the actual story. Do not use boilerplate headings like Business Relevance, Core Knowledge Themes, or Certifyd Relevance.',
     '',
     'OUTPUT RULES',
     '- Return article Markdown only: title, intro, useful sections and conclusion if warranted.',
-    '- Do not output these labels as article headings: SOURCE FACTS, CERTIFYD KNOWLEDGE, EDITORIAL ANGLE, WRITING INSTRUCTIONS, Definition, Source Scope, Approved Certifyd Knowledge, Brain Context, Prompt Instructions.',
+    '- Do not output these labels as article headings: SOURCE FACTS, CERTIFYD KNOWLEDGE, EDITORIAL ANGLE, WRITING INSTRUCTIONS, Definition, Source Scope, Approved Certifyd Knowledge, Brain Context, Prompt Instructions, Business Relevance, Core Knowledge Themes, Certifyd Relevance.',
     '- Do not use generic blog filler or mention founder review in the article body.',
   ].join('\n');
 }
@@ -691,6 +693,15 @@ async function loadAttachedExternalSourceSummaries(config, input) {
       categories: Array.isArray(item.categories) ? item.categories.slice(0, 5) : [],
     }))
     .filter((item) => item.title && item.summary);
+}
+
+function hasUsableExternalSourceFacts(externalSourceFacts = []) {
+  return externalSourceFacts.some((source) => (
+    safePublicUrl(source.articleUrl)
+    && String(source.publisher || '').trim()
+    && String(source.title || '').trim()
+    && String(source.summary || '').trim()
+  ));
 }
 
 function detectUnsupportedExternalAdoptionClaims(markdown, groundedContext = {}) {
@@ -1214,6 +1225,9 @@ function detectInternalContextLeak(bodyMarkdown) {
     'Approved Certifyd Knowledge',
     'Brain Context',
     'Prompt Instructions',
+    'Business Relevance',
+    'Core Knowledge Themes',
+    'Certifyd Relevance',
     'SOURCE FACTS',
     'CERTIFYD KNOWLEDGE',
     'EDITORIAL ANGLE',
