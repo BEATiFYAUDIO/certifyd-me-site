@@ -2,13 +2,18 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://certifyd.me/</loc>
-    <lastmod>2026-08-14</lastmod>
+    <lastmod>2026-08-15</lastmod>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://certifyd.me/blog/</loc>
-    <lastmod>2026-08-14</lastmod>
+    <lastmod>2026-08-15</lastmod>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://certifyd.me/blog/previewing-ultrafast-mode-gpt-5-6-sol-at-up-to-14x-the-speed/</loc>
+    <lastmod>2026-08-15</lastmod>
+    <priority>0.6</priority>
   </url>
   <url>
     <loc>https://certifyd.me/blog/certifyd-weekly-roundup-ai-streaming-rights-infrastructure-shaping-musics-future/</loc>
