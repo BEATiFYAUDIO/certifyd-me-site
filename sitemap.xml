@@ -2,13 +2,18 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://certifyd.me/</loc>
-    <lastmod>2026-08-17</lastmod>
+    <lastmod>2026-08-18</lastmod>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://certifyd.me/blog/</loc>
-    <lastmod>2026-08-17</lastmod>
+    <lastmod>2026-08-18</lastmod>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://certifyd.me/blog/inside-spitfire-audios-shift-to-scalable-royalty-payments-powered-by-tipalti/</loc>
+    <lastmod>2026-08-18</lastmod>
+    <priority>0.6</priority>
   </url>
   <url>
     <loc>https://certifyd.me/blog/music-is-everywhere-so-why-is-it-getting-harder-to-be-a-musician/</loc>
