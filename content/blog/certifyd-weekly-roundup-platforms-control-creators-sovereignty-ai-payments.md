@@ -4,7 +4,7 @@ slug: "certifyd-weekly-roundup-platforms-control-creators-sovereignty-ai-payment
 author: "Certifyd"
 date: "2026-08-21"
 updated: "2026-08-21"
-excerpt: "This week, TikTok explored payments through DMs, Amazon's Twitch gave creators an AI training opt-out, Alibaba entered AI music, Peacock raised prices, and Vassal Benford looked toward a more sovereign future for musicians. Different stories, same underlying q"
+excerpt: "This week, TikTok explored payments through DMs, Amazon's Twitch gave creators an AI training opt-out, Alibaba entered AI music, Peacock raised prices, and Vassal Benford looked toward a more sovereign future for musicians."
 coverImage: "/images/blog/certifyd-weekly-roundup-platforms-control-creators-sovereignty-ai-payments-1787322568879.png"
 coverImageAlt: ""
 coverImageCredit: ""
