@@ -399,7 +399,8 @@ test('trend source summaries are included separately from Certifyd Brain context
   const chatCall = calls.find((call) => call.url.endsWith('/api/chat'));
   const payload = JSON.parse(chatCall.options.body);
   const outboundPrompt = JSON.stringify(payload.messages);
-  assert.match(outboundPrompt, /about half of the draft about the external business\/news facts/i);
+  assert.doesNotMatch(outboundPrompt, /about half of the draft about the external business\/news facts/i);
+  assert.match(outboundPrompt, /external story is the factual foundation/i);
   assert.match(outboundPrompt, /SOURCE FACTS/i);
   assert.match(outboundPrompt, /Music Business Worldwide/i);
   assert.match(outboundPrompt, /Label revenue rises as direct fan activity grows/i);
@@ -414,7 +415,7 @@ test('trend source summaries are included separately from Certifyd Brain context
   assert.ok(researchRecord.generationDiagnostics.brainSourcesScanned >= 2);
   assert.ok(researchRecord.generationDiagnostics.brainRecordsSelected.length >= 2);
   assert.ok(researchRecord.generationDiagnostics.brainRecordsSentToModel.length >= 2);
-  assert.match(outboundPrompt, /CERTIFYD KNOWLEDGE/i);
+  assert.match(outboundPrompt, /CERTIFYD FACTS/i);
   assert.match(outboundPrompt, /EDITORIAL ANGLE/i);
   assert.match(outboundPrompt, /WRITING INSTRUCTIONS/i);
   const userPrompt = payload.messages.find((message) => message.role === 'user')?.content || '';
@@ -472,14 +473,15 @@ test('retained source story generation creates a normal review draft with source
   assert.match(claimLedger.warnings.join('\n'), /Low Certifyd relevance source/i);
 });
 
-test('Brain retrieval covers positioning, rights, commerce and network dependency for music-rights stories', async () => {
+test('Brain retrieval prioritizes rights and provenance over generic payments for AI licensing stories', async () => {
   const config = await makeConfig();
   const records = [
-    ['content-agent/knowledge/capabilities/access.md', '# Access\n\nAPPROVED\n\nCertifyd access records help describe permissions and creator-controlled access decisions.'],
+    ['content-agent/knowledge/capabilities/access.md', '# Access\n\n## Current Status\n`BETA`\n\n## Confidence\n`MEDIUM`\n\n## Supported Current Claims\n- Certifyd access records help describe permissions and creator-controlled access decisions.'],
+    ['content-agent/knowledge/capabilities/provenance.md', '# Provenance\n\n## Current Status\n`UNCLEAR`\n\n## Confidence\n`LOW`\n\n## Qualified Claims\n- Provenance may be discussed as a rights and attribution context when framed carefully.'],
+    ['content-agent/knowledge/capabilities/publishing.md', '# Publishing\n\nAPPROVED\n\nCertifyd publishing context can connect releases, derivative works, credits and rights-clearance review.'],
     ['content-agent/knowledge/capabilities/commerce.md', '# Commerce\n\nAPPROVED\n\nCertifyd supports direct creator commerce context and owned customer relationships.'],
     ['content-agent/knowledge/capabilities/payments.md', '# Payments\n\nAPPROVED\n\nCertifyd payment records can support transaction context where payment workflows are configured.'],
-    ['content-agent/knowledge/capabilities/network-distribution.md', '# Network Distribution\n\nAPPROVED\n\nCertifyd Network reduces dependency on single-platform distribution by routing identity, discovery and commerce through creator-controlled records.'],
-    ['content-agent/knowledge/ecosystem.md', '# Certifyd Ecosystem\n\nAPPROVED\n\nCertifyd connects creators, fans, partners and commerce infrastructure around creator-owned relationships.'],
+    ['content-agent/knowledge/investors/investment-thesis.md', '# Investment Thesis\n\nAPPROVED\n\nCertifyd has investor-facing business-model materials.'],
   ];
   for (const [relative, text] of records) {
     const file = path.join(config.siteRoot, relative);
@@ -487,19 +489,27 @@ test('Brain retrieval covers positioning, rights, commerce and network dependenc
     await fs.writeFile(file, text);
   }
   const context = await makeContext(config, {
-    topic: 'IFPI, Sony and UMG take legal action against parasitic streaming app Musi',
-    objective: 'Connect music rights, permissions, creator commerce, payments and platform dependency without inventing capabilities.',
-    sourceRestrictions: 'Relevant approved Brain records: brain:founder-decisions,brain:capabilities/commerce,brain:capabilities/payments,brain:capabilities/access,brain:capabilities/network-distribution.',
-    trendBrainRecordIds: 'brain:founder-decisions,brain:capabilities/commerce,brain:capabilities/payments,brain:capabilities/access,brain:capabilities/network-distribution',
+    topic: 'BMG and Suno Reach Licensing Deal for AI Music Model',
+    objective: 'Explain creator opt-in, licensing, derivative works, compensation and rights clearance without inventing adoption.',
+    sourceRestrictions: 'Relevant approved Brain records: brain:capabilities/access,brain:capabilities/provenance,brain:capabilities/publishing,brain:capabilities/payments,brain:investors/investment-thesis.',
+    trendBrainRecordIds: 'brain:capabilities/access,brain:capabilities/provenance,brain:capabilities/publishing,brain:capabilities/payments,brain:investors/investment-thesis',
   });
   const selectedIds = context.sourceRecords.map((source) => source.id);
-  assert.ok(selectedIds.includes('brain:capabilities/commerce'));
-  assert.ok(selectedIds.includes('brain:capabilities/payments'));
   assert.ok(selectedIds.includes('brain:capabilities/access'));
-  assert.ok(selectedIds.includes('brain:capabilities/network-distribution'));
-  assert.ok(context.approvedKnowledge.some((record) => /Commerce and payments/.test(record.theme)));
+  assert.ok(selectedIds.includes('brain:capabilities/provenance'));
+  assert.ok(selectedIds.includes('brain:capabilities/publishing'));
+  assert.ok(selectedIds.indexOf('brain:capabilities/access') < selectedIds.indexOf('brain:capabilities/payments'));
+  assert.ok(selectedIds.indexOf('brain:capabilities/provenance') < selectedIds.indexOf('brain:investors/investment-thesis'));
   assert.ok(context.approvedKnowledge.some((record) => /Permissions and rights/.test(record.theme)));
-  assert.ok(context.approvedKnowledge.some((record) => /Network and platform dependency/.test(record.theme)));
+  assert.ok(context.approvedKnowledge.some((record) => /Provenance/.test(record.theme)));
+  const accessRecord = context.approvedKnowledge.find((record) => record.id === 'brain:capabilities/access');
+  const provenanceRecord = context.approvedKnowledge.find((record) => record.id === 'brain:capabilities/provenance');
+  assert.equal(accessRecord.currentStatus, 'BETA');
+  assert.equal(accessRecord.confidence, 'MEDIUM');
+  assert.deepEqual(accessRecord.supportedClaims, ['Certifyd access records help describe permissions and creator-controlled access decisions.']);
+  assert.equal(provenanceRecord.currentStatus, 'UNCLEAR');
+  assert.equal(provenanceRecord.confidence, 'LOW');
+  assert.deepEqual(provenanceRecord.qualifiedClaims, ['Provenance may be discussed as a rights and attribution context when framed carefully.']);
   assert.ok(context.generationDiagnostics.brainRecordsSelected.every((record) => record.selectionReason));
 });
 
@@ -582,9 +592,10 @@ test('source story generation keeps BMG Suno article coherent without internal c
   const payload = JSON.parse(chatCall.options.body);
   const outboundPrompt = JSON.stringify(payload.messages);
   assert.match(outboundPrompt, /SOURCE FACTS/i);
-  assert.match(outboundPrompt, /CERTIFYD KNOWLEDGE/i);
+  assert.match(outboundPrompt, /CERTIFYD FACTS/i);
   assert.match(outboundPrompt, /EDITORIAL ANGLE/i);
   assert.match(outboundPrompt, /WRITING INSTRUCTIONS/i);
+  assert.match(outboundPrompt, /\[billboard-bmg-suno\]/i);
   assert.match(outboundPrompt, /BMG and Suno Reach Licensing Deal/i);
   assert.match(outboundPrompt, /https:\/\/www\.billboard\.com\/pro\/bmg-suno-licensing-deal-ai-music-model\//);
   assert.doesNotMatch(article.bodyMarkdown, /^(#{1,6}\s+)?(Definition|Source Scope|Approved Certifyd Knowledge|Brain Context|Prompt Instructions)\s*$/im);
@@ -596,6 +607,9 @@ test('source story generation keeps BMG Suno article coherent without internal c
   const researchRecord = JSON.parse(await fs.readFile(path.join(config.outputDir, result.runId, 'research-record.json'), 'utf8'));
   assert.equal(researchRecord.trendProvenance.sourceUrls[0].sourceUrl, 'https://www.billboard.com/pro/bmg-suno-licensing-deal-ai-music-model/');
   assert.equal(researchRecord.generationDiagnostics.externalArticleSourcesSentToModel[0].articleUrl, 'https://www.billboard.com/pro/bmg-suno-licensing-deal-ai-music-model/');
+  assert.equal(researchRecord.generationDiagnostics.selectedSourceCount, 1);
+  assert.equal(researchRecord.generationDiagnostics.externalSourcesLoaded, 1);
+  assert.deepEqual(researchRecord.generationDiagnostics.externalSourceIdsSentToModel, ['billboard-bmg-suno']);
 });
 
 test('BMG Suno source story rejects invented Certifyd relationship mechanics', async () => {
@@ -741,6 +755,29 @@ test('source-backed generation with zero external source evidence fails before Q
     /Cannot generate source-backed article — original source evidence is unavailable\./,
   );
   assert.equal(qwenCalled, false);
+});
+
+test('source-backed generation fails when selected source ID disappears', async () => {
+  const config = await makeConfig();
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'available-source',
+      publisher: 'Billboard',
+      publishedAt: '2026-08-12T09:00:00.000Z',
+      title: 'Available source story',
+      summary: 'A valid source summary exists, but it is not the selected item.',
+      articleUrl: 'https://www.billboard.com/pro/available-source/',
+    }],
+    opportunities: [],
+  }, null, 2));
+  await assert.rejects(
+    () => makeContext(config, {
+      topic: 'Missing selected source',
+      trendSourceItemIds: 'missing-selected-source',
+    }),
+    /selected source evidence is unavailable: missing-selected-source/,
+  );
 });
 
 test('one active local generation per user is enforced', async () => {

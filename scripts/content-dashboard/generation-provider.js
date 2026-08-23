@@ -246,25 +246,39 @@ export class OllamaQwenGenerationProvider {
 export async function buildGroundedContext(config, input) {
   const brainRoot = path.resolve(config.agentRoot || path.join(config.siteRoot, 'content-agent'), 'knowledge');
   const sourceRecords = [];
+  const externalSourceFacts = await loadAttachedExternalSourceSummaries(config, input);
+  const requestedSourceIds = parseIdList(input.trendSourceItemIds, 40);
+  const sourceBackedGeneration = requestedSourceIds.length > 0 || Boolean(cleanId(input.trendOpportunityId));
+  if (sourceBackedGeneration) {
+    const loadedSourceIds = new Set(externalSourceFacts.map((source) => cleanId(source.id)));
+    const missingSourceIds = requestedSourceIds.filter((id) => !loadedSourceIds.has(cleanId(id)));
+    if (missingSourceIds.length) {
+      throw new GenerationConfigurationError(`Cannot generate source-backed article — selected source evidence is unavailable: ${missingSourceIds.join(', ')}`);
+    }
+    if (!hasUsableExternalSourceFacts(externalSourceFacts)) {
+      throw new GenerationConfigurationError('Cannot generate source-backed article — original source evidence is unavailable.');
+    }
+  }
   await walkMarkdown(brainRoot, async (file) => {
     const relative = path.relative(brainRoot, file);
     const text = await fs.readFile(file, 'utf8');
     if (!isSafeBrainText(relative, text)) return;
+    const metadata = extractBrainRecordMetadata(text);
     sourceRecords.push({
       id: sourceId(relative),
       path: `content-agent/knowledge/${relative}`,
       title: titleFromMarkdown(relative, text),
       excerpt: cleanText(text).slice(0, 1800),
       reviewState: brainReviewState(relative, text),
+      currentStatus: metadata.currentStatus,
+      confidence: metadata.confidence,
+      supportedClaims: metadata.supportedClaims,
+      qualifiedClaims: metadata.qualifiedClaims,
+      prohibitedClaims: metadata.prohibitedClaims,
+      safeWording: metadata.safeWording,
     });
   });
-  const selected = selectRelevantSources(sourceRecords, input).slice(0, SAFE_SOURCE_LIMIT);
-  const externalSourceFacts = await loadAttachedExternalSourceSummaries(config, input);
-  const requestedSourceIds = parseIdList(input.trendSourceItemIds, 40);
-  const sourceBackedGeneration = requestedSourceIds.length > 0 || Boolean(cleanId(input.trendOpportunityId));
-  if (sourceBackedGeneration && !hasUsableExternalSourceFacts(externalSourceFacts)) {
-    throw new GenerationConfigurationError('Cannot generate source-backed article — original source evidence is unavailable.');
-  }
+  const selected = selectRelevantSources(sourceRecords, input, externalSourceFacts).slice(0, SAFE_SOURCE_LIMIT);
   const context = {
     audience: input.audience || input.targetAudience || '',
     contentObjective: input.objective || input.businessObjective || '',
@@ -284,6 +298,12 @@ export async function buildGroundedContext(config, input) {
       theme: source.primarySelectionTheme || source.selectionThemes?.[0] || 'Approved Certifyd knowledge',
       excerpt: source.excerpt,
       selectionReason: source.selectionReason,
+      currentStatus: source.currentStatus,
+      confidence: source.confidence,
+      supportedClaims: source.supportedClaims || [],
+      qualifiedClaims: source.qualifiedClaims || [],
+      prohibitedClaims: source.prohibitedClaims || [],
+      safeWording: source.safeWording || [],
     })),
     externalSourceFacts,
     relatedArticles: await readRelatedArticles(config.siteRoot),
@@ -295,12 +315,16 @@ export async function buildGroundedContext(config, input) {
         title: source.title,
         path: source.path,
         reviewState: source.reviewState,
+        currentStatus: source.currentStatus,
+        confidence: source.confidence,
       })),
       brainRecordsSelected: selected.map((source) => ({
         id: source.id,
         title: source.title,
         path: source.path,
         reviewState: source.reviewState,
+        currentStatus: source.currentStatus,
+        confidence: source.confidence,
         selectionScore: source.selectionScore,
         primarySelectionTheme: source.primarySelectionTheme || '',
         selectionThemes: source.selectionThemes || [],
@@ -318,6 +342,10 @@ export async function buildGroundedContext(config, input) {
         publishedAt: source.publishedAt,
         articleUrl: source.articleUrl,
       })),
+      selectedSourceCount: requestedSourceIds.length || externalSourceFacts.length,
+      externalSourcesLoaded: externalSourceFacts.length,
+      externalSourceIdsLoaded: externalSourceFacts.map((source) => source.id),
+      externalSourceTitlesLoaded: externalSourceFacts.map((source) => source.title),
       requestedSourceItemIds: requestedSourceIds,
       requestedBrainRecordIds: parseBrainIdList(input.trendBrainRecordIds, 40),
     },
@@ -518,7 +546,7 @@ function buildSystemInstruction() {
   return [
     'Write a concise Certifyd blog draft in Markdown only.',
     'Use only the supplied Certifyd context for company facts.',
-    'When external source summaries are supplied, make about half of the draft about the external business/news facts and about half about the Certifyd relevance.',
+    'The external story is the factual foundation of the article. Include only as much Certifyd analysis as is necessary to explain the underlying industry problem and why it is relevant to Certifyd.',
     'Use external source summaries only for facts about the news subject; do not invent facts beyond those summaries.',
     'Do not invent customers, partnerships, revenue, adoption, launch dates, technical capabilities or legal claims.',
     'Never say the external company, article subject, rights holder, investor, label, distributor or platform uses, leverages, integrates with, partners with, is powered by, or benefits from Certifyd unless that exact relationship appears in the supplied context.',
@@ -526,6 +554,7 @@ function buildSystemInstruction() {
     'Certifyd knowledge may only explain why the development matters to Certifyd, how it relates conceptually to approved capabilities or positioning, and what broader industry problem or direction it illustrates.',
     'Never invent payment, royalty, licensing or technical mechanics not present in SOURCE FACTS.',
     'For news about companies outside Certifyd, explain only why the news is relevant to Certifyd readers. Do not turn relevance into a relationship or adoption claim.',
+    'CURRENT or LIVE Brain claims may be described as existing capabilities. BETA claims must be called beta/testing. PLANNED claims must use future or roadmap language. UNCLEAR or LOW CONFIDENCE claims must not become definitive product claims.',
     'If the prompt mentions bots, bot farming, fake engagement, fake streams or fraud, frame Certifyd as an alternative to fake attention metrics and direct the draft toward real customer activity, direct commerce, attribution and review-safe anti-fraud commentary.',
     'Never describe Certifyd as a tool for creating, running, controlling, automating or scaling bots.',
     'Clearly distinguish live, beta and planned features.',
@@ -541,8 +570,8 @@ function buildUserPrompt(input, groundedContext) {
   const guardrails = buildTopicGuardrails(input).map((item) => `- ${item}`).join('\n');
   const claims = context.approvedClaims.map((item) => `- ${item}`).join('\n') || '- No approved claims selected.';
   const productFacts = context.productFacts.map((item) => `- ${item}`).join('\n') || '- No product facts selected.';
-  const approvedKnowledge = context.approvedKnowledge.map((item) => `- ${item.theme}: ${item.excerpt}`).join('\n') || '- No additional approved Certifyd knowledge selected.';
-  const externalSources = context.externalSourceFacts.map((item) => `- ${item.publisher}${item.publishedAt ? ` (${item.publishedAt})` : ''}: ${item.title}. ${item.summary}${item.articleUrl ? ` Source: ${item.articleUrl}` : ''}`).join('\n') || '- No external source summaries attached.';
+  const approvedKnowledge = context.approvedKnowledge.map(formatBrainKnowledgeForPrompt).join('\n') || '- No additional approved Certifyd knowledge selected.';
+  const externalSources = context.externalSourceFacts.map((item) => `- [${item.id || 'source'}] ${item.publisher}${item.publishedAt ? ` (${item.publishedAt})` : ''}: ${item.title}. ${item.summary}${item.articleUrl ? ` Source: ${item.articleUrl}` : ''}`).join('\n') || '- No external source summaries attached.';
   const prohibited = context.prohibitedClaims.map((item) => `- ${item}`).join('\n') || '- Avoid unsupported claims.';
   return [
     `Topic: ${input.topic || input.workingTitle || 'Certifyd article'}`,
@@ -554,9 +583,11 @@ function buildUserPrompt(input, groundedContext) {
     guardrails,
     '',
     'SOURCE FACTS',
+    'Facts about the source story. Claims about external companies must come from this section.',
     externalSources,
     '',
-    'CERTIFYD KNOWLEDGE',
+    'CERTIFYD FACTS',
+    'Claims about Certifyd. Respect status and confidence qualifiers.',
     claims,
     approvedKnowledge,
     productFacts,
@@ -570,43 +601,70 @@ function buildUserPrompt(input, groundedContext) {
     '- For music licensing, AI inputs/outputs, derivative works, settlement, opt-in, compensation or creator choice stories, prefer permissions, creator control, provenance, rights/clearance, compensation/commerce and attribution.',
     '- Do not force every Certifyd knowledge theme into the article.',
     '- Frame Certifyd relevance as analysis, not as a claim that the news subject uses Certifyd.',
-    '- Keep source facts and Certifyd commentary epistemically separate: SOURCE FACTS describe the companies/story; CERTIFYD KNOWLEDGE explains conceptual relevance only.',
+    '- Keep source facts and Certifyd commentary epistemically separate: SOURCE FACTS describe the companies/story; CERTIFYD FACTS describe Certifyd; CERTIFYD ANALYSIS explains conceptual relevance only.',
     '- Never write phrases like “integrating Certifyd,” “through Certifyd,” “using Certifyd,” “facilitated through Certifyd,” or “powered by Certifyd” about source-story companies unless SOURCE FACTS explicitly say that.',
     '- Do not claim what a company product aims to do unless SOURCE FACTS say it.',
     '- Let the article structure follow the actual story. Do not use boilerplate headings like Business Relevance, Core Knowledge Themes, or Certifyd Relevance.',
+    '- Avoid generic AI-blog filler such as “in a significant move,” “rapidly evolving landscape,” “plays a crucial role,” “robust capabilities,” “catalyst for innovation,” or “creators and investors alike.”',
     '',
     'OUTPUT RULES',
     '- Return article Markdown only: title, intro, useful sections and conclusion if warranted.',
-    '- Do not output these labels as article headings: SOURCE FACTS, CERTIFYD KNOWLEDGE, EDITORIAL ANGLE, WRITING INSTRUCTIONS, Definition, Source Scope, Approved Certifyd Knowledge, Brain Context, Prompt Instructions, Business Relevance, Core Knowledge Themes, Certifyd Relevance.',
+    '- Do not output these labels as article headings: SOURCE FACTS, CERTIFYD FACTS, CERTIFYD KNOWLEDGE, CERTIFYD ANALYSIS, EDITORIAL ANGLE, WRITING INSTRUCTIONS, Definition, Source Scope, Approved Certifyd Knowledge, Brain Context, Prompt Instructions, Business Relevance, Core Knowledge Themes, Certifyd Relevance.',
     '- Do not use generic blog filler or mention founder review in the article body.',
   ].join('\n');
 }
 
 function compactGroundedContextForModel(groundedContext) {
   const compactList = (values, limit, chars) => (values || []).slice(0, limit).map((value) => clampText(value, chars));
+  const compactClaimList = (values, limit, chars) => (values || []).slice(0, limit).map((value) => clampText(value, chars));
   return {
-    approvedClaims: compactList(groundedContext.approvedClaims, 2, 120),
-    productFacts: compactList(groundedContext.productFacts, 2, 120),
-    approvedKnowledge: (groundedContext.approvedKnowledge || []).slice(0, 5).map((source) => ({
+    approvedClaims: compactList(groundedContext.approvedClaims, 3, 220),
+    productFacts: compactList(groundedContext.productFacts, 3, 220),
+    approvedKnowledge: (groundedContext.approvedKnowledge || []).slice(0, 6).map((source) => ({
       id: source.id,
       theme: source.theme,
-      excerpt: clampText(source.excerpt, 100),
+      currentStatus: source.currentStatus || '',
+      confidence: source.confidence || '',
+      supportedClaims: compactClaimList(source.supportedClaims, 3, 180),
+      qualifiedClaims: compactClaimList(source.qualifiedClaims, 3, 180),
+      prohibitedClaims: compactClaimList(source.prohibitedClaims, 3, 180),
+      safeWording: compactClaimList(source.safeWording, 2, 180),
+      excerpt: clampText(source.excerpt, 320),
     })),
-    terminology: compactList(groundedContext.terminology, 1, 120),
-    prohibitedClaims: compactList(groundedContext.prohibitedClaims, 2, 120),
-    externalSourceFacts: (groundedContext.externalSourceFacts || []).slice(0, 2).map((source) => ({
+    terminology: compactList(groundedContext.terminology, 1, 180),
+    prohibitedClaims: compactList(groundedContext.prohibitedClaims, 3, 220),
+    externalSourceFacts: (groundedContext.externalSourceFacts || []).slice(0, 4).map((source) => ({
+      id: source.id,
       publisher: clampText(source.publisher, 80),
       publishedAt: clampText(source.publishedAt, 16),
-      title: clampText(source.title, 100),
-      summary: clampText(source.summary, 160),
+      title: clampText(source.title, 160),
+      summary: clampText(source.summary, 420),
       articleUrl: clampText(source.articleUrl, 160),
+      categories: Array.isArray(source.categories) ? source.categories.slice(0, 5) : [],
+      certifydRelevanceScore: Number(source.certifydRelevanceScore || 0),
     })),
-    sources: (groundedContext.sourceRecords || []).slice(0, 5).map((source) => ({
+    sources: (groundedContext.sourceRecords || []).slice(0, 6).map((source) => ({
       id: source.id,
       title: source.title,
       path: source.path,
+      currentStatus: source.currentStatus || '',
+      confidence: source.confidence || '',
     })),
   };
+}
+
+function formatBrainKnowledgeForPrompt(item) {
+  const lines = [
+    `- [${item.id}] ${item.theme}${item.currentStatus ? ` — status: ${item.currentStatus}` : ''}${item.confidence ? `; confidence: ${item.confidence}` : ''}`,
+  ];
+  for (const claim of item.supportedClaims || []) lines.push(`  Supported: ${claim}`);
+  for (const claim of item.qualifiedClaims || []) lines.push(`  Qualified: ${claim}`);
+  for (const claim of item.safeWording || []) lines.push(`  Safe wording: ${claim}`);
+  for (const claim of item.prohibitedClaims || []) lines.push(`  Prohibited: ${claim}`);
+  if (!(item.supportedClaims || []).length && !(item.qualifiedClaims || []).length && !(item.safeWording || []).length) {
+    lines.push(`  Context: ${item.excerpt}`);
+  }
+  return lines.join('\n');
 }
 
 function recordGenerationPromptDiagnostics(input, groundedContext, systemInstruction, userPrompt) {
@@ -635,6 +693,9 @@ function recordGenerationPromptDiagnostics(input, groundedContext, systemInstruc
       prohibitedClaims: compact.prohibitedClaims,
     },
     externalArticleSourcesSentToModel: compact.externalSourceFacts,
+    externalSourcesSentToModelCount: compact.externalSourceFacts.length,
+    externalSourceIdsSentToModel: compact.externalSourceFacts.map((source) => source.id).filter(Boolean),
+    externalSourceTitlesSentToModel: compact.externalSourceFacts.map((source) => source.title).filter(Boolean),
     contextSize: {
       maxContextChars: groundedContext.contextSizing?.maxContextChars || 0,
       fullContextChars: groundedContext.contextSizing?.fullContextChars || 0,
@@ -681,7 +742,6 @@ async function loadAttachedExternalSourceSummaries(config, input) {
   if (!requestedIds.size) return [];
   return (state.sourceItems || [])
     .filter((item) => requestedIds.has(cleanId(item.id)))
-    .slice(0, 6)
     .map((item) => ({
       id: cleanId(item.id),
       publisher: clampText(cleanText(item.publisher || item.sourceName || 'Source').replace(/\n+/g, ' '), 80),
@@ -714,6 +774,9 @@ function detectUnsupportedExternalAdoptionClaims(markdown, groundedContext = {})
     patterns.push(
       /\b(?:integrating|using|adopting|leveraging)\s+Certifyd\b/gi,
       /\b(?:through|via|with|on)\s+Certifyd(?:’s|'s)?\s+(?:platform|network|ecosystem|infrastructure|capabilities|provenance|attribution|payment|payments|royalty|royalties)?\b/gi,
+      /\bwith\s+Certifyd(?:’s|'s)?\s+(?:technology|platform|network|infrastructure|capabilities|payment|payments|royalty|royalties)[^.]{0,160}\b(?:Suno|BMG|Universal Music Group|UMG|Spotify|Deezer|company|label|platform|distributor)\b/gi,
+      /\bCertifyd\s+enables\s+(?:Suno|BMG|Universal Music Group|UMG|Spotify|Deezer|company|label|platform|distributor)\b/gi,
+      /\b(?:Suno|BMG|Universal Music Group|UMG|Spotify|Deezer|company|label|platform|distributor)\b[^.]{0,160}\b(?:licenses?|licensed|clears?|cleared|settles?|settled|processes?|processed|routes?|routed|receives?|received)\b[^.]{0,120}\b(?:through|via|with|on)\s+Certifyd\b/gi,
       /\bfacilitated\s+(?:by|through|via)\s+Certifyd\b/gi,
       /\bpowered\s+by\s+Certifyd\b/gi,
       /\bCertifyd\b[^.]{0,120}\b(?:facilitates?|routes?|pays?|distributes?|deposits?|licenses?|clears?)\b[^.]{0,120}\b(?:Suno|BMG|Universal Music Group|UMG|Spotify|Deezer|company|label|platform|distributor|royalt(?:y|ies)|payment|payments)\b/gi,
@@ -1052,26 +1115,31 @@ function normalizeBlogCoverImage(value, context = {}) {
   return raw;
 }
 
-function selectRelevantSources(sources, input) {
-  const query = `${input.topic || ''} ${input.objective || ''} ${input.sourceRestrictions || ''}`.toLowerCase();
+function selectRelevantSources(sources, input, externalSourceFacts = []) {
+  const sourceQuery = externalSourceFacts.map((source) => `${source.title || ''} ${source.summary || ''} ${(source.categories || []).join(' ')}`).join(' ');
+  const query = `${input.topic || ''} ${input.objective || ''} ${input.angle || ''} ${input.sourceRestrictions || ''} ${sourceQuery}`.toLowerCase();
   const requestedIds = new Set(parseBrainIdList(input.trendBrainRecordIds, 40));
-  const queryTerms = query.split(/[^a-z0-9]+/).filter((term) => term.length > 3);
+  const storyThemes = inferStoryThemes(query);
+  const queryTerms = [...new Set(query.split(/[^a-z0-9]+/).filter((term) => term.length > 3 && !/^(brain|source|story|article|certifyd|about|with|from|that|this|their|will|should|would|relevant|approved|records)$/.test(term)))].slice(0, 24);
   const scored = sources.map((source) => {
     const haystack = `${source.path} ${source.title} ${source.excerpt}`.toLowerCase();
     const themes = matchedBrainThemes(source);
-    let score = /approved-public-claims|facts|capabilities|products|vocabulary|founder-decisions|investors/.test(source.path) ? 4 : 0;
-    if (requestedIds.has(source.id)) score += 8;
-    if (themes.length) score += 3;
+    let score = brainBaseScore(source);
+    if (requestedIds.has(source.id)) score += 7;
+    score += storyThemeScore(source, storyThemes);
     for (const term of queryTerms) {
       if (haystack.includes(term)) score += 1;
     }
+    if (/investors|investment-thesis|revenue-model/i.test(source.path) && !storyThemes.has('finance')) score -= 5;
+    if (/capabilities\/payments|capabilities\/payouts/i.test(source.path) && !storyThemes.has('commerce')) score -= 3;
+    if (/founder-decisions|constitution|ecosystem/i.test(source.path) && storyThemes.size >= 2) score -= 1;
     return {
       source: {
         ...source,
         selectionScore: score,
         primarySelectionTheme: primaryBrainTheme(source, themes),
         selectionThemes: themes.map((theme) => theme.label),
-        selectionReason: selectionReason(source, score, themes, requestedIds),
+        selectionReason: selectionReason(source, score, themes, requestedIds, storyThemes),
       },
       score,
       themes,
@@ -1080,11 +1148,6 @@ function selectRelevantSources(sources, input) {
   const ranked = scored.sort((a, b) => b.score - a.score || a.source.path.localeCompare(b.source.path));
   const selected = [];
   const selectedIds = new Set();
-  for (const theme of BRAIN_SELECTION_THEMES) {
-    const match = ranked.find((item) => item.source.primarySelectionTheme === theme.label && !selectedIds.has(item.source.id))
-      || ranked.find((item) => item.themes.some((candidate) => candidate.id === theme.id) && !selectedIds.has(item.source.id));
-    if (match) addSelected(match.source);
-  }
   for (const item of ranked) addSelected(item.source);
   return selected;
 
@@ -1093,6 +1156,46 @@ function selectRelevantSources(sources, input) {
     selectedIds.add(source.id);
     selected.push(source);
   }
+}
+
+function brainBaseScore(source) {
+  if (/capabilities|products|facts/i.test(source.path)) return 3;
+  if (/approved-public-claims/i.test(source.path)) return 2;
+  if (/founder-decisions|constitution|ecosystem/i.test(source.path)) return 1;
+  return 0;
+}
+
+function inferStoryThemes(text) {
+  const haystack = String(text || '').toLowerCase();
+  const themes = new Set();
+  if (/\b(ai|artificial intelligence|generative|model|training data|synthetic|suno|deepfake)\b/.test(haystack)) themes.add('ai');
+  if (/\b(rights?|licens(?:e|ing)|copyright|permission|clearance|settlement|infringement|repertoire|royalt(?:y|ies)|opt[-\s]?in)\b/.test(haystack)) themes.add('rights');
+  if (/\b(derivative|derivatives|remix|cover|sample|mash[-\s]?up|adaptation|inputs?|outputs?)\b/.test(haystack)) themes.add('derivatives');
+  if (/\b(attribution|authorship|provenance|credit|credits|verified|verification|source context)\b/.test(haystack)) themes.add('provenance');
+  if (/\b(payment|payments|commerce|compensation|payout|receipt|checkout|subscription|membership|direct[-\s]?to[-\s]?fan|customer)\b/.test(haystack)) themes.add('commerce');
+  if (/\b(platform|spotify|youtube|tiktok|streaming|algorithm|distribution|distributor|discovery|blackbox|dependency)\b/.test(haystack)) themes.add('dependency');
+  if (/\b(identity|profile|credential|authentication|domain|account verification)\b/.test(haystack)) themes.add('identity');
+  if (/\b(counterfeit|fraud|fake|bot|impersonation|scam|unauthorized merch|unauthorized merchandise)\b/.test(haystack)) themes.add('fraud');
+  if (/\b(investor|investment|valuation|funding|acquisition|earnings|revenue growth)\b/.test(haystack)) themes.add('finance');
+  return themes;
+}
+
+function storyThemeScore(source, storyThemes) {
+  const haystack = `${source.id} ${source.path} ${source.title} ${source.excerpt}`.toLowerCase();
+  let score = 0;
+  const match = (theme, value) => {
+    if (storyThemes.has(theme)) score += value;
+  };
+  if (/capabilities\/access|capabilities\/consistency-review|\bright|permission|clearance|license|licensing/i.test(haystack)) match('rights', 8);
+  if (/capabilities\/provenance|capabilities\/receipts|release-records|attribution|authorship|proof|verification/i.test(haystack)) match('provenance', 7);
+  if (/publishing|release-records|derivative|remix|sample|version/i.test(haystack)) match('derivatives', 6);
+  if (/ai|inputs?|outputs?|synthetic|model|machine/i.test(haystack)) match('ai', 5);
+  if (/capabilities\/commerce|capabilities\/payments|capabilities\/payouts|commerce|payment|payout|receipt|compensation/i.test(haystack)) match('commerce', 5);
+  if (/network-distribution|partner-integrations|platform|distribution|discovery|dependency|routing/i.test(haystack)) match('dependency', 5);
+  if (/identity|profiles|credential|account verification|domain/i.test(haystack)) match('identity', 5);
+  if (/fraud|fake|bot|counterfeit|impersonation|authenticity/i.test(haystack)) match('fraud', 5);
+  if (/investors|investment-thesis|revenue-model|valuation|funding/i.test(haystack)) match('finance', 4);
+  return score;
 }
 
 function primaryBrainTheme(source, themes) {
@@ -1117,9 +1220,10 @@ function matchedBrainThemes(source) {
   return BRAIN_SELECTION_THEMES.filter((theme) => theme.patterns.some((pattern) => pattern.test(haystack)));
 }
 
-function selectionReason(source, score, themes, requestedIds) {
+function selectionReason(source, score, themes, requestedIds, storyThemes = new Set()) {
   const reasons = [];
   if (requestedIds.has(source.id)) reasons.push('requested by trend opportunity');
+  if (storyThemes.size) reasons.push(`ranked against source-story themes: ${[...storyThemes].join(', ')}`);
   if (themes.length) reasons.push(`matches ${themes.map((theme) => theme.label).join(', ')}`);
   if (/approved-public-claims|facts|capabilities|products|vocabulary|founder-decisions|investors/.test(source.path)) reasons.push('approved/high-signal Brain path');
   return `${reasons.join('; ') || 'ranked by topic relevance'}; score ${score}`;
@@ -1138,6 +1242,70 @@ function isSafeBrainText(relative, text) {
   if (SECRET_PATTERN.test(relative)) return false;
   if (SECRET_PATTERN.test(text) && /-----BEGIN|sk-|ghp_|cf-|api key|private key/i.test(text)) return false;
   return true;
+}
+
+function extractBrainRecordMetadata(text) {
+  const clean = cleanText(text);
+  return {
+    currentStatus: extractInlineSectionValue(clean, 'Current Status') || inferStatusFromText(clean),
+    confidence: extractInlineSectionValue(clean, 'Confidence') || inferConfidenceFromText(clean),
+    supportedClaims: [
+      ...extractListSection(clean, 'Supported Current Claims'),
+      ...extractListSection(clean, 'Current Claims'),
+    ].slice(0, 8),
+    qualifiedClaims: [
+      ...extractListSection(clean, 'Qualified Claims'),
+      ...extractListSection(clean, 'Current Limitations'),
+      ...extractListSection(clean, 'Limitations'),
+    ].slice(0, 8),
+    prohibitedClaims: [
+      ...extractListSection(clean, 'Prohibited Claims'),
+      ...extractListSection(clean, 'Additional Prohibited Claims'),
+      ...extractListSection(clean, 'Unsafe Wording'),
+    ].slice(0, 8),
+    safeWording: [
+      ...extractListSection(clean, 'Safe Current Wording'),
+      ...extractListSection(clean, 'Safe Wording'),
+    ].slice(0, 6),
+  };
+}
+
+function extractInlineSectionValue(text, heading) {
+  const pattern = new RegExp(`^##\\s+${escapeRegExp(heading)}\\s*\\n+([^\\n#]+)`, 'im');
+  const value = text.match(pattern)?.[1] || '';
+  return value.replace(/[`*_]/g, '').trim().slice(0, 80);
+}
+
+function extractListSection(text, heading) {
+  const section = extractMarkdownSection(text, heading);
+  if (!section) return [];
+  return section
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => /^[-*]\s+/.test(line))
+    .map((line) => line.replace(/^[-*]\s+/, '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
+function extractMarkdownSection(text, heading) {
+  const pattern = new RegExp(`^##\\s+${escapeRegExp(heading)}\\s*$`, 'im');
+  const match = pattern.exec(text);
+  if (!match) return '';
+  const start = match.index + match[0].length;
+  const rest = text.slice(start);
+  const next = rest.search(/^##\s+/m);
+  return (next >= 0 ? rest.slice(0, next) : rest).trim();
+}
+
+function inferStatusFromText(text) {
+  const match = text.match(/\b(LIVE|CURRENT|BETA|PLANNED|ROADMAP|UNCLEAR|IMPLEMENTATION-SPECIFIC)\b/i);
+  return match ? match[1].toUpperCase() : '';
+}
+
+function inferConfidenceFromText(text) {
+  const match = text.match(/\b(LOW|MEDIUM|HIGH)\s+confidence\b|\bconfidence\s*[:\-]?\s*(LOW|MEDIUM|HIGH)\b/i);
+  return (match?.[1] || match?.[2] || '').toUpperCase();
 }
 
 function trimGroundedContext(context, maxChars) {

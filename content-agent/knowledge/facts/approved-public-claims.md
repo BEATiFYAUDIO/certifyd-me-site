@@ -429,3 +429,17 @@ These ideas may be discussed only as a direction, model, goal, intended capabili
 - **Supporting source file:** `BEATiFYAUDIO/certifyd-me-site-preview`; `content-agent/knowledge/source-scrapes-2026-07-28.md`.
 - **Confidence:** High that preview copy exists; low as final public-claim approval.
 - **Notes or limits:** Prefer production-safe dependency-reduction wording over absolute ownership, guaranteed worldwide distribution, royalty, or payment claims.
+
+## Dashboard Knowledge Update — 2026-08-17T12:15:38.141Z
+
+Source suggestion: Clarify Certifyd Core responsibilities
+Approved by: darryl@example.com
+
+Certifyd Core should be described as local creator/operator software for identity, publishing context, catalog records, access and commerce workflows. The Certifyd Network should be described as the discovery, routing and distribution layer that connects those verified participants.
+
+## Dashboard Knowledge Update — 2026-08-17T12:16:06.862Z
+
+Source suggestion: Merge repeated profile language
+Approved by: darryl@example.com
+
+A Certifyd public profile should be described as an official source-of-truth page for creator identity, catalog context, credits, commerce links and verified work history. Discovery surfaces may point to that profile, but the profile remains the official home.

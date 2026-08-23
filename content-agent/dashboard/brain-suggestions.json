@@ -1,0 +1,31 @@
+{
+  "approved": [
+    "brain-update-core-responsibilities",
+    "brain-merge-profile-language"
+  ],
+  "rejected": [],
+  "history": [
+    {
+      "id": "brain-suggestion-1786968966863-2949d4753b1c4",
+      "suggestionId": "brain-merge-profile-language",
+      "decision": "approve",
+      "operation": "merge",
+      "targetPath": "facts/approved-public-claims.md",
+      "actor": "darryl@example.com",
+      "changedRecordId": "brain:facts/approved-public-claims",
+      "changedRecordPath": "facts/approved-public-claims.md",
+      "at": "2026-08-17T12:16:06.863Z"
+    },
+    {
+      "id": "brain-suggestion-1786968938145-637765aed66e8",
+      "suggestionId": "brain-update-core-responsibilities",
+      "decision": "approve",
+      "operation": "update",
+      "targetPath": "facts/approved-public-claims.md",
+      "actor": "darryl@example.com",
+      "changedRecordId": "brain:facts/approved-public-claims",
+      "changedRecordPath": "facts/approved-public-claims.md",
+      "at": "2026-08-17T12:15:38.145Z"
+    }
+  ]
+}

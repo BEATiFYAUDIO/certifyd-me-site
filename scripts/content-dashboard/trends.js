@@ -1037,6 +1037,21 @@ const CERTIFYD_RELEVANCE_RULES = [
 function certifydRelevance(category, text) {
   const haystack = String(text || '').toLowerCase();
   if (/\b(bot|fake|fraud|streaming manipulation|click farm|payola)\b/.test(haystack)) return 'This gives Certifyd a direct angle on why paid customer activity is stronger than empty engagement metrics.';
+  if (/\b(ai|artificial intelligence|generative|synthetic|training data|model|deepfake)\b/.test(haystack) && /\b(license|licensing|rights?|copyright|permission|clearance|opt[-\s]?in|derivative|output|input|settlement|royalt)/.test(haystack)) {
+    return 'This connects to AI-era permissions, rights clearance, attribution, creator opt-in and provenance around inputs, outputs and derivative works.';
+  }
+  if (/\b(license|licensing|rights?|copyright|permission|clearance|settlement|infringement|royalt|catalog|repertoire)\b/.test(haystack)) {
+    return 'This connects to rights authorization, provenance, attribution and clearer permission records around creative work.';
+  }
+  if (/\b(counterfeit|unauthorized merch|unauthorized merchandise|fake product|bootleg|piracy|infringement)\b/.test(haystack)) {
+    return 'This connects to authorization, provenance, creator identity and trusted commerce records for official work and merchandise.';
+  }
+  if (/\b(platform|spotify|youtube|tiktok|algorithm|demonetization|distribution|streaming)\b/.test(haystack) && /\b(policy|dependency|control|creator|artist|audience|fan)\b/.test(haystack)) {
+    return 'This connects to platform dependency, creator-owned identity, audience relationships and portable distribution context.';
+  }
+  if (/\b(compensation|payment|payout|receipt|royalt|revenue|subscription|membership)\b/.test(haystack)) {
+    return 'This connects to compensation, receipts, commerce context and transparent records around creator business activity.';
+  }
   if (category === 'Music') return 'This connects to creator commerce, direct fan relationships and alternatives to attention-only music economics.';
   if (category === 'AI') return 'This connects to trusted identity, attribution and source context as discovery becomes more machine-assisted.';
   if (category === 'Creator Economy') return 'This connects to creator-controlled profiles, publishing, discovery and direct commerce.';
