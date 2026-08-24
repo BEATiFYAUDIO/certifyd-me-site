@@ -174,6 +174,28 @@ test('malformed Qwen JSON is recovered into a review-only draft', async () => {
   assert.match(article.warnings.join('\n'), /malformed JSON|recovered/i);
 });
 
+test('stalled Qwen response body fails with timeout instead of hanging', async () => {
+  const config = await makeConfig();
+  config.ollama.timeoutMs = 25;
+  config.ollama.healthTimeoutMs = 25;
+  const context = await makeContext(config);
+  const provider = new OllamaQwenGenerationProvider(config, {
+    fetchImpl: async (url) => {
+      if (String(url).endsWith('/api/tags')) return mockResponse({ models: [{ name: 'qwen3:8b' }] });
+      return new Response(new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('{"message":{"content":'));
+        },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    },
+  });
+
+  await assert.rejects(
+    () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context),
+    /timed out while waiting for the local model response/i,
+  );
+});
+
 test('Qwen JSON parser accepts fenced and prefixed JSON responses', () => {
   assert.deepEqual(parseJsonContent('```json\n{"title":"A"}\n```'), { title: 'A' });
   assert.deepEqual(parseJsonContent('<think>drafting</think>\nHere is the JSON:\n{"title":"B"}\nDone.'), { title: 'B' });

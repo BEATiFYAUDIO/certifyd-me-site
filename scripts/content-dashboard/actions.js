@@ -97,6 +97,160 @@ export class ContentDashboardActions {
     }
   }
 
+  async createManualDraft({ actor, form }) {
+    const rawMarkdown = String(form.get('articleMarkdown') || '').replace(/\r\n/g, '\n').trim();
+    if (!rawMarkdown) throw Object.assign(new Error('Pasted article Markdown is required.'), { statusCode: 400 });
+    if (rawMarkdown.length > 120000) throw Object.assign(new Error('Pasted article Markdown is too large.'), { statusCode: 400 });
+
+    const body = stripFrontmatter(rawMarkdown);
+    const title = cleanArticlePromptText(
+      form.get('title') || frontmatterValue(rawMarkdown, 'title') || rawMarkdown.match(/^#\s+(.+)$/m)?.[1],
+      'Untitled pasted article',
+    );
+    const slug = safeSlug(form.get('slug') || frontmatterValue(rawMarkdown, 'slug') || title);
+    const excerpt = cleanString(form.get('excerpt') || frontmatterValue(rawMarkdown, 'excerpt') || excerptFromMarkdown(body, title), 260);
+    const author = cleanString(frontmatterValue(rawMarkdown, 'author') || 'Certifyd', 80);
+    const tags = parseTags(frontmatterValue(rawMarkdown, 'tags') || form.get('tags'));
+    const coverImage = cleanString(frontmatterValue(rawMarkdown, 'coverImage') || form.get('coverImage') || '', 240);
+    const safeCoverImage = isSafeImagePath(coverImage) ? coverImage : '';
+    const timestamp = new Date().toISOString();
+    const runId = await this.uniqueRunId(slug);
+    const canonicalUrl = blogUrl(slug);
+    const markdown = `${[
+      '---',
+      `title: ${JSON.stringify(title)}`,
+      `slug: ${JSON.stringify(slug)}`,
+      `date: ${JSON.stringify(timestamp.slice(0, 10))}`,
+      `updated: ${JSON.stringify(timestamp.slice(0, 10))}`,
+      `author: ${JSON.stringify(author)}`,
+      `excerpt: ${JSON.stringify(excerpt)}`,
+      safeCoverImage ? `coverImage: ${JSON.stringify(safeCoverImage)}` : '',
+      tags.length ? `tags: ${JSON.stringify(tags)}` : 'tags: []',
+      'status: "draft"',
+      `seoTitle: ${JSON.stringify(`${title} | Certifyd`)}`,
+      `seoDescription: ${JSON.stringify(excerpt)}`,
+      '---',
+      '',
+    ].filter(Boolean).join('\n')}${body}\n`;
+
+    const input = {
+      actorUserId: actor.id,
+      actorEmail: actor.email,
+      topic: title,
+      audience: 'Creators, partners and investors',
+      objective: 'Founder-pasted article draft for manual review and publishing.',
+      contentType: 'article',
+      channel: 'Blog',
+      sourceRestrictions: 'Manual founder-supplied article. Do not infer external source evidence.',
+    };
+    const groundedContext = await buildGroundedContext(this.config, input).catch(() => ({
+      sourceRecords: [],
+      prohibitedClaims: [],
+      externalSourceFacts: [],
+      generationDiagnostics: { manualDraft: true, brainContextUnavailable: true },
+    }));
+
+    const base = this.runs.runPath(runId);
+    await this.writeRunText(base, 'draft.md', markdown);
+    await this.writeRunText(base, 'drafts/v1.md', markdown);
+    await this.writeRunText(base, 'final-article.md', markdown);
+    await this.writeRunText(base, 'final/article.md', markdown);
+    await this.writeRunText(base, 'blog/blog-post.md', `${body}\n`);
+    const article = {
+      title,
+      slug,
+      author,
+      excerpt,
+      seoTitle: `${title} | Certifyd`,
+      seoDescription: excerpt,
+      coverImage: safeCoverImage,
+      tags,
+      bodyMarkdown: body,
+      version: 'v1',
+      status: 'draft',
+      canonicalUrl,
+      sourceType: 'manual-paste',
+    };
+    await this.writeRunJson(base, 'intake.json', {
+      workingTitle: title,
+      targetAudience: input.audience,
+      primaryTopic: 'Manual paste',
+      contentType: 'article',
+      provider: 'manual-paste',
+    });
+    await this.writeRunJson(base, 'final/article.json', article);
+    await this.writeRunJson(base, 'blog/blog-post.json', {
+      ...article,
+      description: excerpt,
+      body,
+      status: 'draft',
+    });
+    await this.writeRunJson(base, 'claim-ledger.json', {
+      claims: [],
+      warnings: ['Manual founder-supplied article. Founder review required before publishing.'],
+    });
+    await this.writeRunJson(base, 'claim-ledgers/v1.json', {
+      claims: [],
+      warnings: ['Manual founder-supplied article. Founder review required before publishing.'],
+    });
+    await this.writeRunJson(base, 'research-record.json', {
+      selectedEvidence: groundedContext.sourceRecords || [],
+      claimsThatMustNotBeMade: groundedContext.prohibitedClaims || [],
+      externalSourceFacts: [],
+      generationDiagnostics: {
+        ...(groundedContext.generationDiagnostics || {}),
+        manualDraft: true,
+        provider: 'manual-paste',
+      },
+    });
+    await this.writeRunJson(base, 'seo-package.json', { seoTitle: article.seoTitle, metaDescription: excerpt, suggestedSlug: slug });
+    await this.writeRunJson(base, 'seo/seo-package.json', { seoTitle: article.seoTitle, metaDescription: excerpt, suggestedSlug: slug });
+    await this.writeRunJson(base, 'publication-manifest.json', {
+      runId,
+      title,
+      slug,
+      version: 'v1',
+      currentStatus: 'PENDING_FOUNDER_REVIEW',
+      status: 'PENDING_FOUNDER_REVIEW',
+      publishability: 'BLOCKED_PENDING_APPROVAL',
+      canonicalUrl,
+      audience: input.audience,
+      topic: 'Manual paste',
+      contentType: 'article',
+      modelProvider: 'manual-paste',
+      modelMode: 'Manual paste',
+      unresolvedIssueCount: 0,
+      updatedAt: timestamp,
+    });
+    await this.writeRunJson(base, 'lifecycle.json', {
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      status: 'PENDING_FOUNDER_REVIEW',
+      events: [{ type: 'MANUAL_ARTICLE_CREATED', actor: actor.email, at: timestamp, note: 'Article pasted manually into Blog Engine.' }],
+    });
+    await this.writeRunJson(base, 'reviews/founder-review.json', {
+      reviewStatus: 'PENDING_FOUNDER_REVIEW',
+      articleVersion: 'v1',
+      timestamp,
+      source: 'manual-paste',
+    });
+    await this.writeRunJson(base, 'model-requests/article-generation.json', {
+      provider: 'manual-paste',
+      model: 'none',
+      stage: 'manual-article-paste',
+      promptTemplateVersion: 'none',
+      timestamp,
+      responseStatus: 'NOT_APPLICABLE',
+      deterministicFallbackUsed: false,
+    });
+    await this.audit.append({ action: 'article_manual_paste', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, version: 'v1', result: 'SUCCESS', note: title });
+    return {
+      ok: true,
+      runId,
+      output: `Created manual article draft: ${title}\nRun: ${runId}\nStatus: pending founder review\nExpected public URL after approval: ${canonicalUrl}`,
+    };
+  }
+
   async findExistingSourceDraft(trendSourceItemIds) {
     const requested = new Set(String(trendSourceItemIds || '').split(',').map((value) => value.trim()).filter(Boolean));
     if (!requested.size) return null;
@@ -876,6 +1030,18 @@ export class ContentDashboardActions {
     await fs.mkdir(path.dirname(file), { recursive: true });
     await fs.writeFile(file, value, 'utf8');
   }
+
+  async uniqueRunId(slug) {
+    const root = this.config.outputDir;
+    const base = safeSlug(slug).slice(0, 70) || 'manual-article';
+    for (let index = 0; index < 20; index += 1) {
+      const suffix = index === 0 ? Date.now().toString(36) : `${Date.now().toString(36)}-${index}`;
+      const runId = validateRunId(`${base}-${suffix}`);
+      const stat = await fs.stat(path.join(root, runId)).catch(() => null);
+      if (!stat) return runId;
+    }
+    throw Object.assign(new Error('Could not create a unique draft ID.'), { statusCode: 500 });
+  }
 }
 
 function cryptoRandomId() {
@@ -1003,6 +1169,18 @@ function frontmatterValue(markdown, key) {
   const escaped = String(key).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const line = match[1].match(new RegExp(`^${escaped}:\\s*(.+)$`, 'mi'))?.[1] || '';
   return String(line).trim().replace(/^["']|["']$/g, '');
+}
+
+function parseTags(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return [];
+  if (raw.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed.map((tag) => cleanString(tag, 40)).filter(Boolean).slice(0, 12);
+    } catch {}
+  }
+  return raw.split(',').map((tag) => cleanString(tag, 40)).filter(Boolean).slice(0, 12);
 }
 
 function excerptFromMarkdown(markdown, title) {

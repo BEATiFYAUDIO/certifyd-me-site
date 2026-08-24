@@ -141,6 +141,7 @@ async function handleAction(req, res, url, ctx) {
   };
   let result;
   if (action.endsWith('/generate')) { needs('content.article.create'); validateIntake(form); result = await ctx.actions.generateDraft({ actor: ctx.user, form, signal: abortController.signal }); }
+  else if (action.endsWith('/manual-paste')) { needs('content.article.create'); result = await ctx.actions.createManualDraft({ actor: ctx.user, form }); }
   else if (action.endsWith('/trends/scan')) { needs('content.article.create'); result = await scanTrendOpportunities(ctx.config); }
   else if (action.endsWith('/trends/dismiss')) { needs('content.article.edit'); result = await dismissTrendOpportunity(ctx.config, String(form.get('opportunityId') || '')); }
   else if (action.endsWith('/trends/save')) { needs('content.article.edit'); result = await saveTrendOpportunity(ctx.config, String(form.get('opportunityId') || ''), ctx.user); }
@@ -269,6 +270,21 @@ function qwenPromptForm({ csrf, compact = false, advanced = false } = {}) {
     <div class="actions"><button class="primary" type="submit">Ask Qwen</button><a class="ghost" href="/app/content/model-health">Check Qwen</a></div>
   </form>`;
   return compact ? `${body}<div class="example-chips" aria-label="Prompt examples">${['Compare Certifyd to Spotify', 'Explain creator ownership', 'Respond to this article', 'Write about local AI', 'Turn this document into a blog article'].map((example) => quickGenerateForm({ csrf, label: example, topic: example })).join('')}</div>` : body;
+}
+
+function manualPasteForm({ csrf } = {}) {
+  return `<details class="manual-paste-panel">
+    <summary class="ghost">Paste article manually</summary>
+    <form class="article-editor-form" method="post" action="/app/content/actions/manual-paste">
+      <input type="hidden" name="_csrf" value="${escapeHtml(csrf)}">
+      <p class="muted">Paste finished Markdown with optional frontmatter. This creates a normal draft for founder review without calling Qwen.</p>
+      <label>Title override<input name="title" maxlength="180" placeholder="Optional; otherwise first # heading or frontmatter title is used"></label>
+      <label>Excerpt override<input name="excerpt" maxlength="260" placeholder="Optional; otherwise generated from the article body"></label>
+      <label>Tags<input name="tags" maxlength="240" placeholder="music, creator ownership, commerce"></label>
+      <label>Article Markdown<textarea name="articleMarkdown" rows="16" required spellcheck="true" placeholder="---&#10;title: &quot;Article title&quot;&#10;---&#10;&#10;# Article title&#10;&#10;Paste the article body here."></textarea></label>
+      <div class="actions"><button class="primary" type="submit">Create Manual Draft</button></div>
+    </form>
+  </details>`;
 }
 
 function opportunityCard(item, csrf, canCreate) {
@@ -577,6 +593,7 @@ async function renderArticles(ctx, url) {
       <h2>What should Certifyd write about?</h2>
     </div>
     ${canCreate ? qwenPromptForm({ csrf, compact: true, advanced: showAdvanced }) : '<p class="notice">You can review content, but this role cannot generate new drafts.</p>'}
+    ${canCreate ? manualPasteForm({ csrf }) : ''}
     ${showAdvanced ? '<a class="ghost" href="/app/content/articles">Hide advanced</a>' : '<a class="ghost" href="/app/content/articles?advanced=1">Advanced</a>'}
   </section>`;
   const workflow = `<section class="workspace-section panel compact-panel"><div class="section-head"><div><p class="eyebrow">C. Drafts / In Review</p><h2>Drafts / In Review</h2><p class="muted">Active drafts and founder-review items stay before the full library.</p></div><a class="ghost" href="/app/content/articles?view=review">Open review queue</a></div><div class="review-list">${draftsAndReview || '<p class="empty">No drafts or review items found.</p>'}</div></section>`;

@@ -10,6 +10,7 @@ const DEFAULT_OLLAMA_MODEL = 'qwen2.5:1.5b';
 const SAFE_SOURCE_LIMIT = 16;
 const MAX_INTERACTIVE_OUTPUT_TOKENS = 900;
 const MAX_ARTICLE_GENERATION_TOKENS = 520;
+const DEFAULT_OLLAMA_HEALTH_TIMEOUT_MS = 5000;
 const SECRET_PATTERN = /(?:api[_-]?key|secret|token|password|private[_-]?key|session|credential|jwt|bearer|cloudflare|github_app_private_key)/i;
 const activeUsers = new Set();
 let activeGlobalGenerations = 0;
@@ -46,6 +47,14 @@ export class GenerationRateLimitError extends Error {
     super(message);
     this.name = 'GenerationRateLimitError';
     this.statusCode = 429;
+  }
+}
+
+class ResponseReadTimeoutError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'ResponseReadTimeoutError';
+    this.statusCode = 408;
   }
 }
 
@@ -174,11 +183,11 @@ export class OllamaQwenGenerationProvider {
       return { enabled: false, reachable: false, model: this.modelName, modelInstalled: false };
     }
     const baseUrl = assertAllowedOllamaBaseUrl(this.config.ollama.baseUrl);
-    const response = await fetchWithTimeout(this.fetchImpl, `${baseUrl}/api/tags`, { method: 'GET', signal }, this.config.ollama.timeoutMs);
+    const response = await fetchWithTimeout(this.fetchImpl, `${baseUrl}/api/tags`, { method: 'GET', signal }, healthTimeoutMs(this.config));
     if (!response.ok) {
       throw new GenerationConfigurationError(`Ollama health check failed with HTTP ${response.status}.`);
     }
-    const body = await response.json().catch(() => ({}));
+    const body = await readJsonWithTimeout(response, healthTimeoutMs(this.config), 'Ollama health check');
     const models = Array.isArray(body.models) ? body.models.map((model) => String(model.name || '')) : [];
     const modelInstalled = models.includes(this.modelName);
     return { enabled: true, reachable: true, model: this.modelName, modelInstalled };
@@ -223,7 +232,7 @@ export class OllamaQwenGenerationProvider {
       if (!response.ok) {
         throw new GenerationConfigurationError(await ollamaErrorMessage(response, this.modelName));
       }
-      const body = await response.json().catch(() => ({}));
+      const body = await readJsonWithTimeout(response, this.config.ollama.timeoutMs, 'Qwen generation');
       const content = String(body?.message?.content || '').trim();
       if (!content) throw new GenerationValidationError('Qwen returned no structured article content.');
       this.lastRequest = {
@@ -232,8 +241,8 @@ export class OllamaQwenGenerationProvider {
       };
       return validateGeneratedArticle(articleFromQwenDraft(content, input, groundedContext), groundedContext);
     } catch (error) {
-      if (error?.name === 'AbortError' || /aborted due to timeout|timed out|timeout/i.test(error?.message || '')) {
-        throw Object.assign(new Error('Qwen generation timed out. Try a shorter prompt or reduce the requested draft size.'), { statusCode: 408 });
+      if (error?.name === 'AbortError' || error instanceof ResponseReadTimeoutError || /aborted due to timeout|timed out|timeout/i.test(error?.message || '')) {
+        throw Object.assign(new Error('Qwen generation timed out while waiting for the local model response. Try again or reduce the requested draft size.'), { statusCode: 408 });
       }
       if (error instanceof GenerationConfigurationError || error instanceof GenerationValidationError || error instanceof GenerationRateLimitError) throw error;
       throw Object.assign(new Error(sanitizeLogMessage(error?.message || 'Qwen generation failed.')), { statusCode: 502 });
@@ -534,6 +543,7 @@ export function getDefaultOllamaConfig(env = process.env) {
     baseUrl: env.OLLAMA_BASE_URL || DEFAULT_OLLAMA_BASE_URL,
     model: env.OLLAMA_CONTENT_MODEL || DEFAULT_OLLAMA_MODEL,
     timeoutMs: positiveNumber(env.OLLAMA_REQUEST_TIMEOUT_MS, 120000),
+    healthTimeoutMs: positiveNumber(env.OLLAMA_HEALTH_TIMEOUT_MS, Math.min(positiveNumber(env.OLLAMA_REQUEST_TIMEOUT_MS, 120000), DEFAULT_OLLAMA_HEALTH_TIMEOUT_MS)),
     maxOutputTokens: boundedNumber(env.OLLAMA_MAX_OUTPUT_TOKENS, 700, 192, MAX_INTERACTIVE_OUTPUT_TOKENS),
     temperature: boundedNumber(env.OLLAMA_TEMPERATURE, 0.35, 0, 1),
     maxContextChars: boundedNumber(env.OLLAMA_CONTEXT_LIMIT, 4096, 2000, 8000),
@@ -835,6 +845,30 @@ async function fetchWithTimeout(fetchImpl, url, options, timeoutMs) {
   const timeout = AbortSignal.timeout(timeoutMs);
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
   return fetchImpl(url, { ...options, signal });
+}
+
+function healthTimeoutMs(config) {
+  return positiveNumber(config?.ollama?.healthTimeoutMs, Math.min(positiveNumber(config?.ollama?.timeoutMs, 120000), DEFAULT_OLLAMA_HEALTH_TIMEOUT_MS));
+}
+
+async function readJsonWithTimeout(response, timeoutMs, label) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      if (response?.body && typeof response.body.cancel === 'function') {
+        response.body.cancel().catch(() => {});
+      }
+      reject(new ResponseReadTimeoutError(`${label} timed out while reading response JSON.`));
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([response.json(), timeout]);
+  } catch (error) {
+    if (error instanceof ResponseReadTimeoutError) throw error;
+    throw new GenerationValidationError(`${label} returned malformed JSON.`);
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 function enterGenerationSlot(config, userKey) {

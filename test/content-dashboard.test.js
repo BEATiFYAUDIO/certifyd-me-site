@@ -1557,6 +1557,41 @@ test('20e article Markdown can be edited and saved manually', async () => {
   assert.equal(lifecycle.events.at(-1).type, 'ARTICLE_EDITED');
 });
 
+test('20f pasted article creates a normal review draft without Qwen', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-manual-paste-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  await fs.mkdir(path.join(tmpRoot, 'knowledge', 'facts'), { recursive: true });
+  await fs.writeFile(path.join(tmpRoot, 'knowledge', 'facts', 'approved-public-claims.md'), '# Approved Public Claims\n\nAPPROVED\nCertifyd helps creators connect identity, commerce and publishing context.\n');
+  const actions = new ContentDashboardActions(getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  }));
+  const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+  const form = new URLSearchParams({
+    title: 'Manual Pasted Article',
+    tags: 'music, commerce',
+    articleMarkdown: '# Manual Pasted Article\n\nThis article was pasted directly into the Blog Engine.',
+  });
+
+  const result = await actions.createManualDraft({ actor, form });
+  assert.match(result.output, /Created manual article draft/);
+  assert.ok(validateRunId(result.runId));
+  const runDir = path.join(outputDir, result.runId);
+  const manifest = JSON.parse(await fs.readFile(path.join(runDir, 'publication-manifest.json'), 'utf8'));
+  assert.equal(manifest.currentStatus, 'PENDING_FOUNDER_REVIEW');
+  assert.equal(manifest.modelProvider, 'manual-paste');
+  assert.match(await fs.readFile(path.join(runDir, 'final', 'article.md'), 'utf8'), /This article was pasted directly/);
+  const request = JSON.parse(await fs.readFile(path.join(runDir, 'model-requests', 'article-generation.json'), 'utf8'));
+  assert.equal(request.provider, 'manual-paste');
+  assert.equal(request.responseStatus, 'NOT_APPLICABLE');
+  const review = JSON.parse(await fs.readFile(path.join(runDir, 'reviews', 'founder-review.json'), 'utf8'));
+  assert.equal(review.reviewStatus, 'PENDING_FOUNDER_REVIEW');
+  const research = JSON.parse(await fs.readFile(path.join(runDir, 'research-record.json'), 'utf8'));
+  assert.equal(research.generationDiagnostics.manualDraft, true);
+});
+
 test('21 no dashboard page offers live PUBLISHED action', async () => withServer(async (base) => {
   const cookie = await login(base, 'founder@example.test');
   const response = await fetch(`${base}/app/content/publishing`, { headers: { cookie } });
