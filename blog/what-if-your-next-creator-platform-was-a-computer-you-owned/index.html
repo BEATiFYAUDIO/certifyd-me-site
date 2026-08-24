@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <link rel="icon" type="image/svg+xml" href="/images/certifyd-tab-icon.svg?v=20260601a" />
+  <link rel="shortcut icon" type="image/svg+xml" href="/images/certifyd-tab-icon.svg?v=20260601a" />
+  <link rel="apple-touch-icon" href="/images/certifyd-tab-icon.svg?v=20260601a" />
+  <title>What If Your Next Creator Platform Was a Computer You Owned? | Certifyd</title>
+  <meta name="description" content="Raspberry Pi has published an official guide to building a cyberdeck as homemade personal computers surge in popularity. Behind the maker trend is a bigger idea: what happens when creators run their digital infrastructure on computers they actually control?" />
+  <meta name="author" content="Certifyd" />
+  <link rel="canonical" href="https://certifyd.me/blog/what-if-your-next-creator-platform-was-a-computer-you-owned/" />
+
+
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="What If Your Next Creator Platform Was a Computer You Owned?" />
+  <meta property="og:description" content="Raspberry Pi has published an official guide to building a cyberdeck as homemade personal computers surge in popularity. Behind the maker trend is a bigger idea: what happens when creators run their digital infrastructure on computers they actually control?" />
+  <meta property="og:url" content="https://certifyd.me/blog/what-if-your-next-creator-platform-was-a-computer-you-owned/" />
+  <meta property="og:site_name" content="Certifyd" />
+  <meta property="og:image" content="https://certifyd.me/images/blog/what-if-your-next-creator-platform-was-a-computer-you-owned-1787588847465.png" />
+  <meta property="article:published_time" content="2026-08-24T00:00:00.000Z" />
+  <meta property="article:modified_time" content="2026-08-24T00:00:00.000Z" />
+  <meta property="article:author" content="Certifyd" />
+  <meta property="article:tag" content="Certifyd" />
+  <meta property="article:tag" content="Raspberry Pi" />
+  <meta property="article:tag" content="creator economy" />
+  <meta property="article:tag" content="creator ownership" />
+  <meta property="article:tag" content="Certifyd Core" />
+  <meta property="article:tag" content="sovereign infrastructure" />
+  <meta name="keywords" content="Certifyd, Raspberry Pi, creator economy, creator ownership, Certifyd Core, sovereign infrastructure" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="What If Your Next Creator Platform Was a Computer You Owned?" />
+  <meta name="twitter:description" content="Raspberry Pi has published an official guide to building a cyberdeck as homemade personal computers surge in popularity. Behind the maker trend is a bigger idea: what happens when creators run their digital infrastructure on computers they actually control?" />
+  <meta name="twitter:image" content="https://certifyd.me/images/blog/what-if-your-next-creator-platform-was-a-computer-you-owned-1787588847465.png" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","@id":"https://certifyd.me/blog/what-if-your-next-creator-platform-was-a-computer-you-owned/#article","url":"https://certifyd.me/blog/what-if-your-next-creator-platform-was-a-computer-you-owned/","headline":"What If Your Next Creator Platform Was a Computer You Owned?","description":"Raspberry Pi has published an official guide to building a cyberdeck as homemade personal computers surge in popularity. Behind the maker trend is a bigger idea: what happens when creators run their digital infrastructure on computers they actually control?","image":["https://certifyd.me/images/blog/what-if-your-next-creator-platform-was-a-computer-you-owned-1787588847465.png"],"author":{"@type":"Organization","name":"Certifyd","url":"https://certifyd.me"},"publisher":{"@type":"Organization","name":"Certifyd","logo":{"@type":"ImageObject","url":"https://certifyd.me/images/certifyd-tab-icon.svg"}},"datePublished":"2026-08-24T00:00:00.000Z","dateModified":"2026-08-24T00:00:00.000Z","mainEntityOfPage":{"@type":"WebPage","@id":"https://certifyd.me/blog/what-if-your-next-creator-platform-was-a-computer-you-owned/"}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"Certifyd","url":"https://certifyd.me","logo":{"@type":"ImageObject","url":"https://certifyd.me/images/certifyd-tab-icon.svg"},"description":"Certifyd provides creator-owned publishing, identity, attribution and direct commerce infrastructure."}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://certifyd.me/"},{"@type":"ListItem","position":2,"name":"Blog","item":"https://certifyd.me/blog/"},{"@type":"ListItem","position":3,"name":"What If Your Next Creator Platform Was a Computer You Owned?","item":"https://certifyd.me/blog/what-if-your-next-creator-platform-was-a-computer-you-owned/"}]}</script>
+  <style>
+    :root{--bg-deep:#062337;--panel-strong:rgba(5,24,38,.74);--border:rgba(205,238,255,.24);--text:#e8ecf1;--muted:#b4bdc8;--brand:#ff8a00;--blue:#5f9fff;--wrap:1560px;--pad:clamp(18px,4vw,48px)}*{box-sizing:border-box}html{background:var(--bg-deep);scroll-behavior:smooth}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--text);background:linear-gradient(180deg,rgba(7,34,52,.96),rgba(8,55,78,.9)),radial-gradient(900px 620px at 14% -8%,rgba(95,159,255,.24),transparent 60%),radial-gradient(740px 520px at 90% 8%,rgba(255,138,0,.12),transparent 62%),var(--bg-deep);line-height:1.65}a{color:inherit;text-decoration:none}img{display:block;max-width:100%}.skip-link{position:absolute;left:var(--pad);top:10px;z-index:100;transform:translateY(-140%);border-radius:999px;background:#000;color:#fff;padding:10px 14px;font-weight:900;transition:transform .18s ease}.skip-link:focus{transform:translateY(0)}:focus-visible{outline:3px solid var(--blue);outline-offset:4px;box-shadow:0 0 0 5px rgba(95,159,255,.28);border-radius:12px}.wrap{width:100%;max-width:var(--wrap);margin:0 auto;padding-inline:var(--pad)}header.site-header{position:sticky;top:0;z-index:10;border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(8,10,13,.82),rgba(8,10,13,.68));backdrop-filter:blur(16px);box-shadow:0 18px 70px rgba(0,0,0,.30)}.header-rail{background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.008))}.header-inner{max-width:1560px;min-height:82px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px}.brand{display:flex;align-items:center;height:64px;overflow:visible;min-width:0}.brand img{height:56px;width:auto;object-fit:contain;filter:drop-shadow(0 12px 28px rgba(0,0,0,.45))}.nav-desktop{justify-self:stretch;width:100%;display:flex;justify-content:space-evenly;gap:0;align-items:center;white-space:nowrap}.nav-desktop a{padding:10px 7px;font-size:.9rem;border-radius:12px;min-height:44px;display:flex;align-items:center;justify-content:center;text-align:center;border:1px solid transparent;opacity:.9}.nav-desktop a:hover,.nav-desktop a[aria-current="page"]{opacity:1;background:rgba(255,255,255,.07);border-color:var(--border);color:#fff}.nav-mobile{display:none;position:relative;justify-self:end}.nav-mobile summary{list-style:none;cursor:pointer;padding:8px 10px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.07);min-height:40px;width:50px;display:flex;align-items:center;justify-content:center}.nav-mobile summary::-webkit-details-marker{display:none}.burger{display:inline-block;width:22px;height:14px;position:relative}.burger::before,.burger::after,.burger span{content:"";position:absolute;left:0;right:0;height:2px;background:#d9e0ea;border-radius:999px}.burger::before{top:0}.burger::after{bottom:0}.burger span{top:6px}.nav-drawer{position:absolute;right:0;top:calc(100% + 12px);min-width:260px;padding:10px;border-radius:18px;border:1px solid var(--border);background:rgba(8,10,13,.88);backdrop-filter:blur(16px);display:grid;gap:6px;box-shadow:0 30px 90px rgba(0,0,0,.55)}.nav-drawer a{padding:12px;border-radius:14px;min-height:44px;display:flex;align-items:center}.nav-drawer a:hover,.nav-drawer a[aria-current="page"]{background:rgba(255,255,255,.07)}main{padding:clamp(44px,7vw,96px) 0}.eyebrow{margin:0 0 14px;color:var(--brand);font-size:.78rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase}h1{margin:0;font-size:clamp(3rem,8vw,6.6rem);line-height:.9;letter-spacing:-.08em;text-wrap:balance}.description{margin:22px 0 0;max-width:760px;color:#d8ecf8;font-size:clamp(1.08rem,2vw,1.38rem)}.article-meta{display:flex;flex-wrap:wrap;gap:9px;margin:28px 0 0;color:#d8ecf8}.chip{border:1px solid var(--border);border-radius:999px;padding:8px 12px;background:rgba(255,255,255,.06);font-weight:800;font-size:.82rem}.tag-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.tag-list span{border:1px solid var(--border);border-radius:999px;padding:6px 9px;color:#d8ecf8;font-size:.78rem;font-weight:800}.article-hero-image{margin:36px 0;border:1px solid var(--border);border-radius:28px;overflow:hidden;background:#071421;box-shadow:0 30px 90px rgba(0,0,0,.34)}.article-hero-image img{width:100%;aspect-ratio:16/9;object-fit:cover}.article-image-credit{margin:0;padding:9px 14px;color:#bfd9e8;font-size:.82rem;background:rgba(0,0,0,.22)}.article-image-credit a{text-decoration:underline;text-underline-offset:3px}article{border:1px solid var(--border);border-radius:28px;background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.025)),var(--panel-strong);padding:clamp(24px,5vw,54px);box-shadow:0 30px 90px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.08)}article :first-child{margin-top:0}article h1{font-size:clamp(2rem,5vw,4rem)}article h2{margin:2em 0 .5em;font-size:clamp(1.7rem,3vw,2.45rem);line-height:1;letter-spacing:-.05em}article p,article li{color:#d8ecf8;font-size:1.04rem}article ol>li+li{margin-top:1.35em}article li>ul{margin-top:.55em;margin-bottom:.2em}article li>p{margin:.2em 0 .45em}article blockquote{margin:0 0 1.4em;padding:16px 18px;border-left:3px solid var(--brand);border-radius:14px;background:rgba(255,138,0,.08)}article blockquote p{margin:0;color:#fff;font-weight:800}article ul{padding-left:1.3em}footer{border-top:1px solid var(--border);padding:24px 0;color:#bfd9e8;background:rgba(5,24,38,.52)}@media(max-width:860px){.nav-desktop{display:none}.nav-mobile{display:block}.header-inner{min-height:96px;padding-block:8px}}@media(max-width:720px){.brand img{height:62px;max-width:min(70vw,410px)}main{padding-top:38px}article{border-radius:22px}}
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="site-header"><div class="header-rail"><div class="wrap header-inner"><a class="brand" href="/"><img src="/images/certifyd_logo_transparent.svg" alt="Certifyd" /></a><nav class="nav-desktop" aria-label="Primary">
+          <a href="/profile/">Profile</a>
+          <a href="https://fan.certifyd.me" target="_blank" rel="noreferrer">Discover</a>
+          <a href="/retail-partners/">Partners</a>
+          <a href="/services">Checkout</a>
+          <a href="https://awards.certifyd.me" target="_blank" rel="noreferrer">Awards</a>
+          <a href="/blog/" aria-current="page">Blog</a>
+          <a href="/join/">Join Network</a>
+          <a href="https://investor.certifyd.me/">Investment Opportunity</a>
+        </nav><details class="nav-mobile"><summary aria-label="Open menu"><span class="burger" aria-hidden="true"><span></span></span></summary><nav class="nav-drawer" aria-label="Mobile navigation">
+            <a href="/profile/">Profile</a>
+            <a href="https://fan.certifyd.me" target="_blank" rel="noreferrer">Discover</a>
+            <a href="/retail-partners/">Partners</a>
+            <a href="/services">Checkout</a>
+            <a href="https://awards.certifyd.me" target="_blank" rel="noreferrer">Awards</a>
+            <a href="/blog/" aria-current="page">Blog</a>
+            <a href="/join/">Join Network</a>
+            <a href="https://investor.certifyd.me/">Investment Opportunity</a>
+          </nav></details></div></div></header>
+  <main id="main"><section class="wrap"><p class="eyebrow">Certifyd Blog</p><h1>What If Your Next Creator Platform Was a Computer You Owned?</h1><p class="description">Raspberry Pi has published an official guide to building a cyberdeck as homemade personal computers surge in popularity. Behind the maker trend is a bigger idea: what happens when creators run their digital infrastructure on computers they actually control?</p><div class="article-meta"><span class="chip">By Certifyd</span><span class="chip">Published August 24, 2026</span><span class="chip">Updated August 24, 2026</span></div><div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>Raspberry Pi</span><span>creator economy</span><span>creator ownership</span><span>Certifyd Core</span><span>sovereign infrastructure</span></div><div class="article-hero-image"><img src="/images/blog/what-if-your-next-creator-platform-was-a-computer-you-owned-1787588847465.png" alt="" loading="eager" decoding="async" onerror="this.src='/images/certifyd-main-image-independent-scene-20260613.png'" /></div><article><p>Something interesting is happening in personal computing. People are building computers again—not just buying them.</p>
+<p>Homemade &quot;cyberdecks&quot; built from Raspberry Pis, portable displays, keyboards, batteries and sometimes wonderfully strange recycled enclosures have been spreading across social media. The trend has become large enough that Raspberry Pi has now published its own official guide showing people how to build one.</p>
+<p>The guide itself is straightforward. Raspberry Pi&#39;s example uses a Pi 5, portable power, storage, a Bluetooth keyboard and a Pelican-style case to create a compact computer that can go almost anywhere. Other creators have taken the concept considerably further, turning purses, old cases and other objects into genuinely personal computers.</p>
+<p>It&#39;s a fun maker trend.</p>
+<p>But there&#39;s a much bigger idea hiding inside it.</p>
+<p>For much of the last two decades, the technology industry has been moving our digital lives away from computers we own and toward services we access. Our photos live in somebody else&#39;s cloud. Our audiences live inside social networks. Our media lives on streaming platforms. Our businesses increasingly depend on software that can disappear the moment a subscription ends.</p>
+<p>The cyberdeck movement points in the opposite direction.</p>
+<p><strong>What if the computer became personal again?</strong></p>
+<h2>Raspberry Pi Is Embracing the Cyberdeck</h2>
+<p>Raspberry Pi&#39;s head of social, Ashley Whittaker, acknowledged just how visible cyberdecks have become, saying the company &quot;hasn&#39;t been able to get away from cyberdecks this year.&quot;</p>
+<p>The company&#39;s response is notable because Raspberry Pi isn&#39;t merely highlighting a few interesting community projects. It has published a parts list and detailed instructions for assembling one yourself, lowering the barrier for anyone curious about personally built portable computing.</p>
+<p>The timing is interesting for another reason. Raspberry Pi hardware has become more expensive as memory and component costs have increased, with The Verge reporting that the 16GB Raspberry Pi 5 used in the official cyberdeck received a $100 price increase earlier this year.</p>
+<p>And yet people continue building.</p>
+<p>That suggests at least part of the attraction isn&#39;t simply price. A cyberdeck is something increasingly unusual in modern consumer technology: <strong>a computer that feels unmistakably yours.</strong></p>
+<p>You choose the hardware. You choose the operating system. You decide what runs on it. You can modify it, repair it, repurpose it and connect it to whatever services you choose.</p>
+<p>That used to be a fairly ordinary definition of personal computing.</p>
+<p>Today, it almost feels radical.</p>
+<h2>We Put the Personal Computer Back in the Data Center</h2>
+<p>The original personal-computer revolution was partly about moving computing power away from institutions and putting it into the hands of individuals.</p>
+<p>Then something curious happened.</p>
+<p>Computers became dramatically more powerful, but many of the things we actually did with them moved back onto centralized infrastructure. Instead of owning software, we subscribed to it. Instead of storing information locally, we synchronized it to cloud services. Instead of operating websites and communities, we created accounts on platforms.</p>
+<p>The devices remained personal.</p>
+<p>Much of the infrastructure did not.</p>
+<p>There were excellent reasons for that transition. Cloud infrastructure made sophisticated technology available to billions of people without requiring them to understand servers, networking, databases or security. Platforms made publishing globally almost effortless.</p>
+<p>But convenience came with a trade-off that is becoming increasingly obvious in the creator economy.</p>
+<p>Creators built enormous digital businesses on infrastructure they didn&#39;t control.</p>
+<h2>Creators Own the Work, But Often Not the Infrastructure</h2>
+<p>A musician might own a recording while depending on one company to distribute it, another to stream it, another to communicate with fans, another to sell merchandise and another to process payments.</p>
+<p>Their audience can number in the millions without the creator actually controlling the infrastructure connecting them to those people.</p>
+<p>If a platform changes its algorithm, reach can disappear. If monetization requirements change, income can change with them. If an account is suspended, years of audience building can suddenly become inaccessible. Even moving from one service to another can mean rebuilding relationships that the creator thought were theirs in the first place.</p>
+<p>That is why the renewed interest in personally operated computers is more interesting than it initially appears.</p>
+<p>A Raspberry Pi doesn&#39;t solve the creator economy.</p>
+<p>But it demonstrates something important: <strong>personally controlled infrastructure is becoming practical again.</strong></p>
+<h2>A Raspberry Pi Can Be More Than a Cyberdeck</h2>
+<p>This is where the cyberdeck story intersects directly with what we&#39;re building at Certifyd.</p>
+<p><strong>Certifyd Core is creator infrastructure designed to run under the creator&#39;s control.</strong></p>
+<p>And yes, Certifyd Core can run on a Raspberry Pi.</p>
+<p>Instead of treating a small computer purely as a desktop or maker project, it can become persistent infrastructure for a creator. Core can establish a cryptographically provable identity, publish creative works, maintain provenance and relationships, and participate in commerce while operating from hardware controlled by the participant.</p>
+<p>That changes the architecture considerably.</p>
+<p>The creator doesn&#39;t simply create an account inside Certifyd&#39;s computer system. They can operate part of the network themselves.</p>
+<p>A Raspberry Pi sitting on a desk can become a creator node.</p>
+<p>A mini PC can become a creator node.</p>
+<p>A more powerful computer can become a creator node.</p>
+<p>And, technically, that homemade cyberdeck could become one too.</p>
+<h2>Certifyd Core Is the Infrastructure, Not the App</h2>
+<p>This distinction is central to Certifyd.</p>
+<p>Certifyd Core isn&#39;t intended to become another giant application where every part of a creator&#39;s digital life has to occur. It provides infrastructure that applications can interact with.</p>
+<p>A social application can provide conversation and discovery. A fan application can present media and creator profiles. A marketplace can facilitate commerce. Other developers can build entirely different experiences around the same underlying network.</p>
+<p>The creator&#39;s Core can remain underneath those experiences.</p>
+<p>That means the application and the creator&#39;s infrastructure no longer have to be the same thing. If a better social application emerges, the creator shouldn&#39;t necessarily have to rebuild their identity. If a new fan experience is developed, the creator shouldn&#39;t need to upload their entire digital existence into another silo.</p>
+<p>The applications can change.</p>
+<p><strong>The creator remains.</strong></p>
+<h2>This Isn&#39;t About Making Everyone a System Administrator</h2>
+<p>There&#39;s an obvious objection to this model: most musicians don&#39;t want to operate servers.</p>
+<p>They shouldn&#39;t have to become network engineers.</p>
+<p>Personally controlled infrastructure only becomes useful at scale if it can eventually become almost as easy to operate as the centralized services it competes with. That means better packaging, simpler installation, automatic maintenance, recovery systems, good interfaces and service providers that can help people who don&#39;t want to manage every technical detail themselves.</p>
+<p>Certifyd Core is still in technical beta, and operating independently controlled infrastructure currently requires more technical involvement than using a conventional creator platform. That&#39;s precisely why we&#39;re testing it this way now.</p>
+<p>But Raspberry Pi itself offers a useful lesson.</p>
+<p>A small computer used to require considerable technical knowledge. Today, millions of people use Raspberry Pis for home automation, media servers, development environments, networking projects and countless other purposes because hardware and software gradually made those capabilities accessible.</p>
+<p>Creator infrastructure can follow a similar path.</p>
+<p>Sovereignty doesn&#39;t have to mean inconvenience forever.</p>
+<h2>What Could a Creator Node Actually Do?</h2>
+<p>Imagine a musician with a small persistent computer in their studio running Certifyd Core.</p>
+<p>Their creator identity originates there. Their published works can carry provenance and attribution. Collaborators can be represented through explicit relationships and splits. Derivative works can retain connections to upstream creators rather than losing that context as files move across the internet.</p>
+<p>Commerce can also occur around those relationships. Certifyd Core can use Bitcoin and Lightning as settlement infrastructure, allowing value to move without requiring Certifyd itself to become the permanent financial intermediary between every creator and fan.</p>
+<p>Applications can still make all of this pleasant to use.</p>
+<p>Fans shouldn&#39;t need an IP address or command line to discover a musician. They can use a beautifully designed application. Creators shouldn&#39;t need to manually inspect cryptographic signatures to know who they&#39;re interacting with. Software can handle that complexity.</p>
+<p>The important distinction is where the authority ultimately lives.</p>
+<p>The interface can be convenient without requiring the underlying identity and relationships to belong to the interface provider.</p>
+<h2>The Hardware Is Becoming Interesting Again</h2>
+<p>The cyberdeck trend is part of something broader happening across technology.</p>
+<p>Home servers are becoming approachable. Mini PCs offer substantial computing power in tiny packages. Raspberry Pis can perform tasks that once required expensive servers. Local AI models are moving workloads that recently seemed permanently destined for massive data centers back onto personal hardware.</p>
+<p>None of this means the cloud is disappearing.</p>
+<p>It means the choice is returning.</p>
+<p>For creators, that choice could become particularly important. The last generation of creator technology largely asked which platform creators should join. The next generation may increasingly ask which infrastructure creators want to control and which services they want to connect to it.</p>
+<p>That&#39;s a very different relationship with technology.</p>
+<h2>What If Your Next Creator Platform Wasn&#39;t a Platform?</h2>
+<p>That&#39;s the bigger idea hiding inside Raspberry Pi&#39;s wonderfully nerdy cyberdeck tutorial.</p>
+<p>The machine in the case isn&#39;t revolutionary because it has a keyboard, battery and Raspberry Pi. It&#39;s interesting because somebody built a computer around their own needs and then decided what that computer should become.</p>
+<p>Creators could eventually approach their digital infrastructure the same way.</p>
+<p>Your identity doesn&#39;t necessarily have to originate with a social network. Your catalog doesn&#39;t necessarily have to exist only inside a streaming service. Your audience relationships don&#39;t necessarily have to belong to whichever application currently has the most users.</p>
+<p>Some of that infrastructure can live with you.</p>
+<p>Then platforms can compete for the privilege of providing useful services around it.</p>
+<p>That turns the creator-platform relationship around.</p>
+<p>Instead of asking:</p>
+<p><strong>&quot;Which platform should I build my career on?&quot;</strong></p>
+<p>we can start asking:</p>
+<p><strong>&quot;Which platforms do I want to connect to the career I&#39;ve already built?&quot;</strong></p>
+<p>Raspberry Pi&#39;s cyberdeck might look like a niche maker project.</p>
+<p>But the philosophy behind it is much bigger.</p>
+<p><strong>The personal computer is getting personal again. Maybe the creator economy should too.</strong></p>
+<hr>
+<p><em>Certifyd covers developments in technology, music and the creator economy and examines what they mean for creator ownership, sovereign infrastructure and direct digital commerce.</em></p>
+</article></section></main>
+  <footer><div class="wrap"><a href="/blog/">Blog</a> · <a href="/feed.xml">RSS</a> · Certifyd</div></footer>
+</body>
+</html>
