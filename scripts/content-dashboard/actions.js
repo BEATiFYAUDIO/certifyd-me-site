@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 import { validateRunId, validateVersion } from './security.js';
 import { ContentRunRepository } from './repository.js';
 import { createPublisher } from './publisher.js';
-import { buildGroundedContext, createGenerationProvider, normalizeProviderName, persistGeneratedArticleRun } from './generation-provider.js';
+import { buildGroundedContext, createDeterministicFallbackArticle, createGenerationProvider, normalizeProviderName, persistGeneratedArticleRun } from './generation-provider.js';
 import { cleanArticlePromptText, isSafeImagePath, normalizeArticleTitle, selectArticleCoverImage } from './article-utils.js';
 import { appendGlobalPexelsHistory, selectAutomatedCoverImage } from './cover-image-provider.js';
 import { isApprovedBrainRecord } from './brain-utils.js';
@@ -93,6 +93,16 @@ export class ContentDashboardActions {
       return result;
     } catch (error) {
       await this.audit.append({ action: 'article_generation', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, result: 'FAILED', note: `${provider.providerName}:${safeError(error)}` });
+      if (provider.supportsLiveGeneration && shouldCreateDeterministicGenerationFallback(error)) {
+        const fallbackProvider = createGenerationProvider(this.config, { provider: 'deterministic' });
+        const article = await createDeterministicFallbackArticle(input, groundedContext, safeError(error));
+        const result = await persistGeneratedArticleRun(this.config, article, input, groundedContext, fallbackProvider);
+        await this.audit.append({ action: 'article_generation_fallback', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId: result.runId, result: 'SUCCESS', note: `deterministic:${safeError(error)}` });
+        return {
+          ...result,
+          output: `${result.output}\nQwen did not return a usable article, so Blog Engine created a source-backed review draft instead.`,
+        };
+      }
       throw error;
     }
   }
@@ -1054,6 +1064,16 @@ function cleanString(value, maxLength) {
 
 function safeError(error) {
   return String(error?.message || error || 'Generation failed.').replace(/sk-[a-zA-Z0-9_-]+/g, '[redacted]').slice(0, 600);
+}
+
+function shouldCreateDeterministicGenerationFallback(error) {
+  const message = String(error?.message || '');
+  if (/Cannot generate source-backed article|selected source evidence is unavailable|original source evidence is unavailable/i.test(message)) return false;
+  return error?.statusCode === 408
+    || /timed out while waiting for the local model response/i.test(message)
+    || /Qwen returned no structured article content/i.test(message)
+    || /Generated draft made unsupported external Certifyd adoption claims/i.test(message)
+    || /internal context leaked into article/i.test(message);
 }
 
 function safeSlug(value) {

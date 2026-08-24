@@ -128,6 +128,9 @@ export class DeterministicGenerationProvider {
   async generateArticle(input, groundedContext) {
     assertGroundedContextReady(groundedContext);
     const sourceIds = groundedContext.sourceRecords.slice(0, 4).map((source) => source.id);
+    const sourceBacked = sourceBackedDraft(input, groundedContext, sourceIds);
+    if (sourceBacked) return validateGeneratedArticle(sourceBacked, groundedContext);
+
     const title = titleFromPrompt(input.topic || input.workingTitle, 'Certifyd Draft');
     const suggestedSlug = slugify(title);
     const body = [
@@ -159,6 +162,18 @@ export class DeterministicGenerationProvider {
       warnings: ['Template-generated draft requiring editorial review.'],
     }, groundedContext);
   }
+}
+
+export async function createDeterministicFallbackArticle(input, groundedContext, reason = '') {
+  const provider = new DeterministicGenerationProvider({ ollama: { timeoutMs: 0 } });
+  const value = await provider.generateArticle(input, groundedContext);
+  return {
+    ...value,
+    warnings: [
+      reason || 'Local AI generation did not return a usable article. The dashboard created a source-backed review draft.',
+      ...(value.warnings || []),
+    ].filter(Boolean),
+  };
 }
 
 export class OllamaQwenGenerationProvider {
@@ -940,6 +955,128 @@ function articleFromQwenDraft(content, input, groundedContext) {
     claims: [],
     warnings: [],
   };
+}
+
+function sourceBackedDraft(input, groundedContext, sourceIds) {
+  const sources = Array.isArray(groundedContext.externalSourceFacts) ? groundedContext.externalSourceFacts.filter((source) => source.title && source.summary) : [];
+  if (!sources.length) return null;
+  const primary = sources[0];
+  const title = titleFromPrompt(primary.title || input.topic || input.workingTitle, 'Certifyd Source Story');
+  const tags = tagsFromTopic(`${input.topic || ''} ${title} ${(primary.categories || []).join(' ')}`);
+  const themes = inferStoryThemes(`${title} ${primary.summary} ${(primary.categories || []).join(' ')}`);
+  const sections = [
+    `# ${title}`,
+    '',
+    sourceIntro(primary),
+    '',
+    `## What happened`,
+    '',
+    sourceFactParagraph(primary),
+    ...supportingSourceParagraphs(sources.slice(1)),
+    '',
+    `## Why it matters for creators`,
+    '',
+    creatorRelevanceParagraph(themes, primary),
+    '',
+    `## Where Certifyd fits`,
+    '',
+    certifydAnalysisParagraph(themes, groundedContext),
+    '',
+    `## The broader signal`,
+    '',
+    broaderSignalParagraph(themes),
+  ];
+  const bodyMarkdown = sections.filter(Boolean).join('\n');
+  const excerpt = excerptFromBody(bodyMarkdown, title);
+  return {
+    title,
+    suggestedSlug: slugify(title),
+    excerpt,
+    author: 'Certifyd',
+    tags,
+    seoTitle: `${title} | Certifyd`,
+    seoDescription: excerpt,
+    coverImage: selectArticleCoverImage({ title, tags, excerpt, body: bodyMarkdown }),
+    bodyMarkdown,
+    claims: sourceIds.length ? [{
+      text: 'Certifyd analysis in this draft is grounded in approved Brain records and must remain separate from source-story facts.',
+      sourceIds: sourceIds.slice(0, 4),
+      confidence: 'needs-review',
+    }] : [],
+    warnings: ['Source-backed deterministic draft created for founder review. Verify wording before approval.'],
+  };
+}
+
+function sourceIntro(source) {
+  const publisher = source.publisher ? `${source.publisher} reports that ` : '';
+  return `${publisher}${lowercaseFirst(cleanSentence(source.summary || source.title))}`;
+}
+
+function sourceFactParagraph(source) {
+  const date = source.publishedAt ? ` Published ${source.publishedAt}.` : '';
+  const url = source.articleUrl ? ` Original source: ${source.articleUrl}` : '';
+  return `${cleanSentence(source.summary || source.title)}${date}${url}`;
+}
+
+function supportingSourceParagraphs(sources) {
+  if (!sources.length) return [];
+  return [
+    '',
+    `Additional source context points in the same direction: ${sources.map((source) => `${source.publisher || 'a source'} covered “${source.title}”`).join('; ')}.`,
+  ];
+}
+
+function creatorRelevanceParagraph(themes, source) {
+  if (themes.has('rights') || themes.has('derivatives') || themes.has('ai')) {
+    return 'For creators, the important issue is not only whether a new licensing deal exists. It is whether creators can understand how work is used, choose when participation is allowed, and see how compensation, attribution and derivative activity are handled.';
+  }
+  if (themes.has('commerce')) {
+    return 'For creators, the story points back to control over customer relationships, payments and the business context around the work rather than depending entirely on opaque platform reporting.';
+  }
+  if (themes.has('dependency')) {
+    return 'For creators, the signal is platform dependency. Distribution and discovery matter, but creators need durable identity, context and audience relationships that do not disappear when a platform changes direction.';
+  }
+  return `For creators, ${source.publisher || 'the source'} is pointing at a business shift that affects how creative work is discovered, trusted, monetized or connected to an audience.`;
+}
+
+function certifydAnalysisParagraph(themes, groundedContext) {
+  const approved = (groundedContext.approvedKnowledge || [])
+    .filter((source) => /permission|right|provenance|receipt|commerce|payment|control|ownership|attribution|discovery|network|publishing/i.test(`${source.theme} ${source.excerpt} ${(source.supportedClaims || []).join(' ')}`))
+    .slice(0, 2);
+  const approvedText = approved
+    .map((source) => firstUsefulClaim(source) || source.excerpt)
+    .filter(Boolean)
+    .map((text) => cleanSentence(text))
+    .join(' ');
+  const base = themes.has('rights') || themes.has('derivatives')
+    ? 'This is relevant to Certifyd because rights, permissions, provenance, attribution and compensation are becoming central infrastructure questions for creative work.'
+    : 'This is relevant to Certifyd because creator businesses need verified identity, publishing context, direct commerce and durable network relationships.';
+  return [base, approvedText].filter(Boolean).join(' ');
+}
+
+function broaderSignalParagraph(themes) {
+  if (themes.has('ai') && themes.has('rights')) {
+    return 'The direction is clear: AI and distribution systems will keep creating new uses for existing work. The stronger path for creators is transparent permissioning, clear provenance, accountable attribution and commerce rails that make participation understandable before value moves.';
+  }
+  if (themes.has('commerce')) {
+    return 'The broader signal is that attention alone is not enough. Creator businesses need routes from discovery to payment, proof and long-term customer relationships.';
+  }
+  return 'The broader signal is that creator infrastructure is moving toward verified identity, clearer context and more direct relationships between creators, partners and audiences.';
+}
+
+function firstUsefulClaim(source) {
+  return [...(source.supportedClaims || []), ...(source.qualifiedClaims || []), ...(source.safeWording || [])]
+    .find((claim) => claim && !/^no\b/i.test(claim));
+}
+
+function cleanSentence(value) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!text) return '';
+  return /[.!?]$/.test(text) ? text : `${text}.`;
+}
+
+function lowercaseFirst(value) {
+  return String(value || '').replace(/^([A-Z])/, (match) => match.toLowerCase());
 }
 
 function looksLikeStructuredJson(content) {

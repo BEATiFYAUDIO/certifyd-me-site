@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {
   buildGroundedContext,
+  createDeterministicFallbackArticle,
   createGenerationProvider,
   GenerationConfigurationError,
   GenerationValidationError,
@@ -109,6 +110,41 @@ test('deterministic provider remains available offline', async () => {
   const article = await provider.generateArticle({ topic: 'Core Explainer', audience: 'Creators', objective: 'Explain Core.' }, context);
   assert.equal(article.status, 'draft');
   assert.equal(provider.providerName, 'deterministic');
+});
+
+test('deterministic source-backed fallback creates a real article from source facts', async () => {
+  const config = await makeConfig();
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'source-bmg-suno',
+      publisher: 'Billboard',
+      publishedAt: '2026-08-12T09:00:00.000Z',
+      title: 'BMG and Suno Reach Licensing Deal for AI Music Model',
+      summary: 'BMG and Suno reached a licensing agreement covering creator opt-in for AI inputs and outputs, compensation for participating artists and songwriters, derivative works and settlement of prior use.',
+      articleUrl: 'https://www.billboard.com/pro/bmg-suno-licensing-deal-ai-music-model/',
+      categories: ['Music', 'AI'],
+      certifydRelevanceScore: 16,
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'BMG and Suno Reach Licensing Deal for AI Music Model',
+    trendSourceItemIds: 'source-bmg-suno',
+  });
+  const article = await createDeterministicFallbackArticle({
+    topic: 'BMG and Suno Reach Licensing Deal for AI Music Model',
+    audience: 'Creators',
+    objective: 'Explain the source facts and Certifyd relevance.',
+    trendSourceItemIds: 'source-bmg-suno',
+  }, context, 'Qwen timed out');
+
+  assert.match(article.bodyMarkdown, /BMG and Suno reached a licensing agreement/i);
+  assert.match(article.bodyMarkdown, /creator opt-in/i);
+  assert.match(article.bodyMarkdown, /permissions|creator control|provenance|attribution|compensation/i);
+  assert.doesNotMatch(article.bodyMarkdown, /Source Scope|Approved Certifyd Knowledge|Business Relevance|Core Knowledge Themes|Certifyd Relevance/);
+  assert.doesNotMatch(article.bodyMarkdown, /integrating Certifyd|through Certifyd|using Certifyd/i);
+  assert.match(article.warnings.join('\n'), /Qwen timed out/);
 });
 
 test('Ollama health reports missing model without auto-download', async () => {
