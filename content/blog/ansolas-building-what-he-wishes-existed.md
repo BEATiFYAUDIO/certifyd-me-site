@@ -2,9 +2,9 @@
 title: "He’s Building What He Wishes Existed: Ansolas and the Independent Creator Mindset"
 slug: "ansolas-building-what-he-wishes-existed"
 author: "Certifyd"
-date: "2026-08-25"
-updated: "2026-08-25"
-excerpt: "Musician and longtime software developer Marc Ansolas has spent years working independently across music and technology. His latest project, Logic Loop Manager, started with a simple idea: if the tool you need doesn't exist, build it."
+date: "2026-08-26"
+updated: "2026-08-26"
+excerpt: "Marc Marc Wensauer aka AnSolas has spent years working independently across music and technology. His latest project, Logic Loop Manager, started with a simple idea: if the tool you need doesn't exist, build it."
 coverImage: "/images/blog/meet-ansolas-musician-building-his-own-tools-1787665014248.png"
 coverImageAlt: ""
 coverImageCredit: ""
@@ -18,7 +18,7 @@ seoDescription: "Musician and longtime Beatify collaborator Ansolas is building 
 
 # He’s Building What He Wishes Existed: Ansolas and the Independent Creator Mindset
 
-Some creators wait for a platform to solve their problems. Marc Ansolas has spent much of his career taking a different approach: when something he needs doesn't exist, he starts thinking about how to build it himself.
+Some creators wait for a platform to solve their problems. Marc Wensauer aka AnSolas has spent much of his career taking a different approach: when something he needs doesn't exist, he starts thinking about how to build it himself.
 
 I've known Ansolas for years. He's a musician, software developer, builder and friend who has consistently approached technology from the perspective of an independent creator rather than someone waiting for an industry platform to tell him how he should work. Music and technology aren't separate interests for him; they're two parts of the same creative practice.
 
