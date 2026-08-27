@@ -400,6 +400,7 @@ export function validateGeneratedArticle(value, groundedContext) {
   if (value.seoDescription && typeof value.seoDescription !== 'string') throw new GenerationValidationError('Generated seoDescription is malformed.');
   if (value.coverImage && typeof value.coverImage !== 'string') throw new GenerationValidationError('Generated coverImage is malformed.');
   if (value.bodyMarkdown.length > 18000) throw new GenerationValidationError('Generated article is too long.');
+  value.bodyMarkdown = repairInternalContextHeadings(value.bodyMarkdown);
   if (detectInternalContextLeak(value.bodyMarkdown).length) {
     throw new GenerationValidationError('Generation failed validation — internal context leaked into article.');
   }
@@ -920,7 +921,7 @@ function parseGeneratedArticleContent(content, input, groundedContext) {
     return completeGeneratedArticleFields(parseJsonContent(content), input);
   } catch (error) {
     if (!(error instanceof GenerationValidationError)) throw error;
-    if (detectInternalContextLeak(content).length) {
+    if (detectBlockingInternalContextLeak(content).length) {
       throw new GenerationValidationError('Generation failed validation — internal context leaked into article.');
     }
     return coerceArticleFromMalformedOutput(content, input, groundedContext, error.message);
@@ -928,7 +929,7 @@ function parseGeneratedArticleContent(content, input, groundedContext) {
 }
 
 function articleFromQwenDraft(content, input, groundedContext) {
-  if (detectInternalContextLeak(content).length) {
+  if (detectBlockingInternalContextLeak(content).length) {
     throw new GenerationValidationError('Generation failed validation — internal context leaked into article.');
   }
   if (looksLikeStructuredJson(content)) {
@@ -1581,6 +1582,40 @@ function detectInternalContextLeak(bodyMarkdown) {
   const repeatedTemplateSections = text.match(/^\s{0,3}#{1,6}\s+(Definition|Source Scope|Approved Certifyd Knowledge)\s*$/gim) || [];
   if (repeatedTemplateSections.length >= 2) hits.push('repeated internal template sections');
   return [...new Set(hits)];
+}
+
+function detectBlockingInternalContextLeak(bodyMarkdown) {
+  const blocking = new Set([
+    'Source Scope',
+    'Approved Certifyd Knowledge',
+    'Brain Context',
+    'Prompt Instructions',
+    'SOURCE FACTS',
+    'CERTIFYD KNOWLEDGE',
+    'EDITORIAL ANGLE',
+    'WRITING INSTRUCTIONS',
+    'repeated internal template sections',
+  ]);
+  return detectInternalContextLeak(bodyMarkdown).filter((hit) => blocking.has(hit));
+}
+
+function repairInternalContextHeadings(bodyMarkdown) {
+  const replacements = new Map([
+    ['Definition', 'What It Means'],
+    ['Business Relevance', 'Why It Matters'],
+    ['Core Knowledge Themes', 'What Creators Should Notice'],
+    ['Certifyd Relevance', 'Why It Matters for Certifyd Readers'],
+    ['CERTIFYD FACTS', 'What Certifyd Adds'],
+    ['CERTIFYD ANALYSIS', 'What It Means for Certifyd Readers'],
+  ]);
+  let text = String(bodyMarkdown || '');
+  for (const [from, to] of replacements) {
+    const headingPattern = new RegExp(`^(\\s{0,3}#{1,6}\\s+)${escapeRegExp(from)}\\s*$`, 'gim');
+    const barePattern = new RegExp(`^(\\s*)${escapeRegExp(from)}\\s*$`, 'gim');
+    text = text.replace(headingPattern, `$1${to}`);
+    text = text.replace(barePattern, `$1## ${to}`);
+  }
+  return text;
 }
 
 function normalizeOllamaUsage(body) {

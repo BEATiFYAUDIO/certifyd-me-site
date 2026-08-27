@@ -746,6 +746,34 @@ test('generation validation rejects leaked internal context headings', async () 
   );
 });
 
+test('generation validation repairs boilerplate headings without blocking usable drafts', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OllamaQwenGenerationProvider(config, {
+    fetchImpl: makeOllamaFetch(validArticle(sourceId, {
+      title: 'Boilerplate Heading Draft',
+      suggestedSlug: 'boilerplate-heading-draft',
+      bodyMarkdown: [
+        '# Boilerplate Heading Draft',
+        '',
+        '## Business Relevance',
+        '',
+        'Creators need infrastructure that keeps commerce, identity and publishing connected.',
+        '',
+        '## Certifyd Relevance',
+        '',
+        'Certifyd helps explain why creator-controlled infrastructure matters.',
+      ].join('\n'),
+    })),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Boilerplate heading test', audience: 'Creators', objective: 'Test validation.' }, context);
+  assert.match(article.bodyMarkdown, /## Why It Matters/);
+  assert.match(article.bodyMarkdown, /## Why It Matters for Certifyd Readers/);
+  assert.doesNotMatch(article.bodyMarkdown, /## Business Relevance/);
+  assert.doesNotMatch(article.bodyMarkdown, /## Certifyd Relevance/);
+});
+
 test('raw leaked Qwen text is rejected before fallback coercion', async () => {
   const config = await makeConfig();
   const context = await makeContext(config);
