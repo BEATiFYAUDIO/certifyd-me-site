@@ -7,9 +7,9 @@ import { readTrendState } from './trends.js';
 
 const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
 const DEFAULT_OLLAMA_MODEL = 'qwen2.5:1.5b';
-const SAFE_SOURCE_LIMIT = 16;
-const MAX_INTERACTIVE_OUTPUT_TOKENS = 900;
-const MAX_ARTICLE_GENERATION_TOKENS = 520;
+const SAFE_SOURCE_LIMIT = 20;
+const MAX_INTERACTIVE_OUTPUT_TOKENS = 6000;
+const MAX_ARTICLE_GENERATION_TOKENS = 1200;
 const DEFAULT_OLLAMA_HEALTH_TIMEOUT_MS = 5000;
 const SECRET_PATTERN = /(?:api[_-]?key|secret|token|password|private[_-]?key|session|credential|jwt|bearer|cloudflare|github_app_private_key)/i;
 const activeUsers = new Set();
@@ -558,11 +558,11 @@ export function getDefaultOllamaConfig(env = process.env) {
     enabled: env.OLLAMA_ENABLED === 'true',
     baseUrl: env.OLLAMA_BASE_URL || DEFAULT_OLLAMA_BASE_URL,
     model: env.OLLAMA_CONTENT_MODEL || DEFAULT_OLLAMA_MODEL,
-    timeoutMs: positiveNumber(env.OLLAMA_REQUEST_TIMEOUT_MS, 120000),
-    healthTimeoutMs: positiveNumber(env.OLLAMA_HEALTH_TIMEOUT_MS, Math.min(positiveNumber(env.OLLAMA_REQUEST_TIMEOUT_MS, 120000), DEFAULT_OLLAMA_HEALTH_TIMEOUT_MS)),
-    maxOutputTokens: boundedNumber(env.OLLAMA_MAX_OUTPUT_TOKENS, 700, 192, MAX_INTERACTIVE_OUTPUT_TOKENS),
+    timeoutMs: positiveNumber(env.OLLAMA_REQUEST_TIMEOUT_MS, 240000),
+    healthTimeoutMs: positiveNumber(env.OLLAMA_HEALTH_TIMEOUT_MS, Math.min(positiveNumber(env.OLLAMA_REQUEST_TIMEOUT_MS, 240000), DEFAULT_OLLAMA_HEALTH_TIMEOUT_MS)),
+    maxOutputTokens: boundedNumber(env.OLLAMA_MAX_OUTPUT_TOKENS, 1200, 192, MAX_INTERACTIVE_OUTPUT_TOKENS),
     temperature: boundedNumber(env.OLLAMA_TEMPERATURE, 0.35, 0, 1),
-    maxContextChars: boundedNumber(env.OLLAMA_CONTEXT_LIMIT, 4096, 2000, 8000),
+    maxContextChars: boundedNumber(env.OLLAMA_CONTEXT_LIMIT, 16000, 4000, 32000),
     think: env.OLLAMA_THINK === 'true',
     maxConcurrentGenerations: positiveNumber(env.OLLAMA_MAX_CONCURRENT_GENERATIONS, 1),
   };
@@ -584,7 +584,10 @@ function buildSystemInstruction() {
     'If the prompt mentions bots, bot farming, fake engagement, fake streams or fraud, frame Certifyd as an alternative to fake attention metrics and direct the draft toward real customer activity, direct commerce, attribution and review-safe anti-fraud commentary.',
     'Never describe Certifyd as a tool for creating, running, controlling, automating or scaling bots.',
     'Clearly distinguish live, beta and planned features.',
+    'The brand is exactly “Certifyd”. Never expand it as “Certified by Design” or any other phrase.',
     'Use “network” rather than “platform” when describing Certifyd unless a source explicitly requires another term.',
+    'Do not describe Certifyd as a platform when the supplied context supports network, ecosystem, surface, app, infrastructure, or capability language.',
+    'Avoid generic AI-blog openings such as “in today’s digital age,” “ever-evolving landscape,” “rapidly evolving landscape,” or “myriad of challenges.”',
     'Keep it short: one H1 title, 3 to 5 short sections, no JSON, no YAML, no code fences.',
     'Never use internal prompt labels, context labels, Brain template headings or source-scope headings as article headings.',
     'Do not mention this generation process or source IDs.',
@@ -599,20 +602,25 @@ function buildUserPrompt(input, groundedContext) {
   const approvedKnowledge = context.approvedKnowledge.map(formatBrainKnowledgeForPrompt).join('\n') || '- No additional approved Certifyd knowledge selected.';
   const externalSources = context.externalSourceFacts.map((item) => `- [${item.id || 'source'}] ${item.publisher}${item.publishedAt ? ` (${item.publishedAt})` : ''}: ${item.title}. ${item.summary}${item.articleUrl ? ` Source: ${item.articleUrl}` : ''}`).join('\n') || '- No external source summaries attached.';
   const prohibited = context.prohibitedClaims.map((item) => `- ${item}`).join('\n') || '- Avoid unsupported claims.';
+  const hasExternalSources = context.externalSourceFacts.length > 0;
+  const sourceModeInstruction = context.externalSourceFacts.length
+    ? 'An external source story is attached; start from those facts, then add Certifyd relevance.'
+    : 'No external source story is attached; write a Certifyd explainer and do not use news-story framing or imply a recent external event.';
   return [
     `Topic: ${input.topic || input.workingTitle || 'Certifyd article'}`,
     `Audience: ${input.audience || input.targetAudience || 'Certifyd readers'}`,
     `Objective: ${input.objective || input.businessObjective || 'Create a grounded Certifyd article.'}`,
     `Angle: ${input.angle || 'Explain the business relevance clearly.'}`,
+    sourceModeInstruction,
     '',
-    'WRITING INSTRUCTIONS',
+    'Instructions for the draft:',
     guardrails,
     '',
-    'SOURCE FACTS',
+    'Facts from the source story:',
     'Facts about the source story. Claims about external companies must come from this section.',
     externalSources,
     '',
-    'CERTIFYD FACTS',
+    'Approved Certifyd context:',
     'Claims about Certifyd. Respect status and confidence qualifiers.',
     claims,
     approvedKnowledge,
@@ -621,8 +629,10 @@ function buildUserPrompt(input, groundedContext) {
     'Do not claim:',
     prohibited,
     '',
-    'EDITORIAL ANGLE',
-    '- Start with the source facts as the news/business story.',
+    'Editorial angle:',
+    hasExternalSources
+      ? '- Start with the source facts as the news/business story.'
+      : '- Start with the Certifyd business problem and approved Brain context.',
     '- Connect only the relevant Certifyd knowledge themes to the story.',
     '- For music licensing, AI inputs/outputs, derivative works, settlement, opt-in, compensation or creator choice stories, prefer permissions, creator control, provenance, rights/clearance, compensation/commerce and attribution.',
     '- Do not force every Certifyd knowledge theme into the article.',
@@ -633,7 +643,7 @@ function buildUserPrompt(input, groundedContext) {
     '- Let the article structure follow the actual story. Do not use boilerplate headings like Business Relevance, Core Knowledge Themes, or Certifyd Relevance.',
     '- Avoid generic AI-blog filler such as “in a significant move,” “rapidly evolving landscape,” “plays a crucial role,” “robust capabilities,” “catalyst for innovation,” or “creators and investors alike.”',
     '',
-    'OUTPUT RULES',
+    'Output rules:',
     '- Return article Markdown only: title, intro, useful sections and conclusion if warranted.',
     '- Do not output these labels as article headings: SOURCE FACTS, CERTIFYD FACTS, CERTIFYD KNOWLEDGE, CERTIFYD ANALYSIS, EDITORIAL ANGLE, WRITING INSTRUCTIONS, Definition, Source Scope, Approved Certifyd Knowledge, Brain Context, Prompt Instructions, Business Relevance, Core Knowledge Themes, Certifyd Relevance.',
     '- Do not use generic blog filler or mention founder review in the article body.',
@@ -644,28 +654,29 @@ function compactGroundedContextForModel(groundedContext) {
   const compactList = (values, limit, chars) => (values || []).slice(0, limit).map((value) => clampText(value, chars));
   const compactClaimList = (values, limit, chars) => (values || []).slice(0, limit).map((value) => clampText(value, chars));
   return {
-    approvedClaims: compactList(groundedContext.approvedClaims, 3, 220),
-    productFacts: compactList(groundedContext.productFacts, 3, 220),
-    approvedKnowledge: (groundedContext.approvedKnowledge || []).slice(0, 6).map((source) => ({
+    approvedClaims: compactList(groundedContext.approvedClaims, 8, 360),
+    productFacts: compactList(groundedContext.productFacts, 8, 360),
+    approvedKnowledge: (groundedContext.approvedKnowledge || []).slice(0, 10).map((source) => ({
       id: source.id,
+      title: source.title || '',
       theme: source.theme,
       currentStatus: source.currentStatus || '',
       confidence: source.confidence || '',
-      supportedClaims: compactClaimList(source.supportedClaims, 3, 180),
-      qualifiedClaims: compactClaimList(source.qualifiedClaims, 3, 180),
-      prohibitedClaims: compactClaimList(source.prohibitedClaims, 3, 180),
-      safeWording: compactClaimList(source.safeWording, 2, 180),
-      excerpt: clampText(source.excerpt, 320),
+      supportedClaims: compactClaimList(source.supportedClaims, 5, 260),
+      qualifiedClaims: compactClaimList(source.qualifiedClaims, 5, 260),
+      prohibitedClaims: compactClaimList(source.prohibitedClaims, 5, 240),
+      safeWording: compactClaimList(source.safeWording, 4, 260),
+      excerpt: clampText(source.excerpt, 700),
     })),
-    terminology: compactList(groundedContext.terminology, 1, 180),
-    prohibitedClaims: compactList(groundedContext.prohibitedClaims, 3, 220),
+    terminology: compactList(groundedContext.terminology, 3, 260),
+    prohibitedClaims: compactList(groundedContext.prohibitedClaims, 6, 280),
     externalSourceFacts: (groundedContext.externalSourceFacts || []).slice(0, 4).map((source) => ({
       id: source.id,
       publisher: clampText(source.publisher, 80),
       publishedAt: clampText(source.publishedAt, 16),
       title: clampText(source.title, 160),
-      summary: clampText(source.summary, 420),
-      articleUrl: clampText(source.articleUrl, 160),
+      summary: clampText(source.summary, 700),
+      articleUrl: clampText(source.articleUrl, 240),
       categories: Array.isArray(source.categories) ? source.categories.slice(0, 5) : [],
       certifydRelevanceScore: Number(source.certifydRelevanceScore || 0),
     })),
@@ -697,15 +708,14 @@ function recordGenerationPromptDiagnostics(input, groundedContext, systemInstruc
   const compact = compactGroundedContextForModel(groundedContext);
   groundedContext.generationDiagnostics = {
     ...(groundedContext.generationDiagnostics || {}),
-    promptTemplateVersion: 'dashboard-ollama-qwen-v2',
+    promptTemplateVersion: 'dashboard-ollama-qwen-v3',
     finalPromptStructure: [
       'system instruction',
       'topic/audience/objective/angle',
       'guardrails',
-      'approved Certifyd claims',
-      'approved Certifyd knowledge by theme',
-      'external source facts',
-      'product facts',
+      'source story facts',
+      'approved Certifyd context by claim and theme',
+      'product facts and status qualifiers',
       'do-not-claim list',
       'required distinction between source facts, approved Brain knowledge and editorial inference',
       'Markdown draft instruction',
@@ -791,6 +801,8 @@ function hasUsableExternalSourceFacts(externalSourceFacts = []) {
 }
 
 function detectUnsupportedExternalAdoptionClaims(markdown, groundedContext = {}) {
+  const sourceFacts = Array.isArray(groundedContext.externalSourceFacts) ? groundedContext.externalSourceFacts : [];
+  if (!sourceFacts.length) return [];
   const text = String(markdown || '').replace(/\s+/g, ' ');
   const patterns = [
     /\bby\s+(?:using|leveraging|adopting|integrating)\s+Certifyd(?:’s|'s)?\s+(?:platform|network|ecosystem|capabilities|provenance|attribution|infrastructure)?[^.]{0,220}\b(?:Universal Music Group|UMG|Spotify|Deezer|Suno|BMG|Providence|Wasserman|THE•TEAM|company|label|platform|distributor)\b/gi,
@@ -1215,6 +1227,8 @@ function cleanArticleBodyMarkdown(body, title) {
     .replace(/\r/g, '')
     .trim();
   markdown = removeGenericBlogFiller(markdown);
+  markdown = repairBrandAndStyleDrift(markdown);
+  markdown = removeDuplicateLeadingHeading(markdown, fallbackTitle);
   markdown = markdown.replace(/^#\s+(.+)$/m, (match, heading) => {
     const cleanHeading = cleanArticlePromptText(heading, '');
     return cleanHeading ? `# ${cleanHeading}` : match;
@@ -1226,6 +1240,29 @@ function cleanArticleBodyMarkdown(body, title) {
   return markdown.trim();
 }
 
+function removeDuplicateLeadingHeading(markdown, title) {
+  const lines = String(markdown || '').split('\n');
+  const normalizedTitle = normalizeComparableHeading(title);
+  let seenTitle = false;
+  const filtered = [];
+  for (const line of lines) {
+    const match = line.match(/^\s{0,3}#{1,6}\s+(.+?)\s*$/);
+    if (match && normalizeComparableHeading(match[1]) === normalizedTitle) {
+      if (seenTitle) continue;
+      seenTitle = true;
+    }
+    filtered.push(line);
+  }
+  return filtered.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function normalizeComparableHeading(value) {
+  return cleanArticlePromptText(value, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
 function removeGenericBlogFiller(markdown) {
   const blocked = [
     /creators like you/i,
@@ -1233,6 +1270,10 @@ function removeGenericBlogFiller(markdown) {
     /stay tuned/i,
     /join the conversation/i,
     /together we can/i,
+    /in today’s digital age/i,
+    /in today's digital age/i,
+    /ever-evolving landscape/i,
+    /revolutionizing this landscape/i,
     /draft generated for founder review/i,
     /not approved for publishing/i,
     /founder review is required/i,
@@ -1244,6 +1285,20 @@ function removeGenericBlogFiller(markdown) {
     .join('\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
+
+function repairBrandAndStyleDrift(markdown) {
+  return String(markdown || '')
+    .replace(/\bCertified by Design\s*\(Certifyd\)/gi, 'Certifyd')
+    .replace(/\bCertified by Design\b/gi, 'Certifyd')
+    .replace(/\bCertifyd(?:’s|'s)? platform(?:’s|'s)?\b/gi, 'Certifyd network')
+    .replace(/\bthrough the platform(?:’s|'s)?\b/gi, 'through the Certifyd ecosystem')
+    .replace(/\bon the platform\b/gi, 'through Certifyd')
+    .replace(/\bplatform reporting\b/gi, 'centralized platform reporting')
+    .replace(/\bmyriad of challenges\b/gi, 'specific business challenges')
+    .replace(/\bever-evolving landscape\b/gi, 'creator economy')
+    .replace(/\brapidly evolving landscape\b/gi, 'creator economy')
+    .replace(/\brevolutionizing this landscape\b/gi, 'changing this part of the creator economy');
 }
 
 function excerptFromBody(bodyMarkdown, title) {
@@ -1320,6 +1375,9 @@ function selectRelevantSources(sources, input, externalSourceFacts = []) {
   const ranked = scored.sort((a, b) => b.score - a.score || a.source.path.localeCompare(b.source.path));
   const selected = [];
   const selectedIds = new Set();
+  for (const item of ranked) {
+    if (/content-agent\/knowledge\/(?:facts\/approved-public-claims|products\/core)\.md$/i.test(item.source.path)) addSelected(item.source);
+  }
   for (const item of ranked) addSelected(item.source);
   return selected;
 
@@ -1550,6 +1608,13 @@ function detectProhibitedLanguage(bodyMarkdown) {
     'royalty management',
     'legal guarantee',
     'guaranteed payouts',
+    'prove ownership',
+    'prove their ownership',
+    'prove authorship',
+    'proof of ownership',
+    'proof of authorship',
+    'legitimate proof',
+    'every transaction is recorded',
   ];
   for (const term of risky) {
     if (new RegExp(`\\b${escapeRegExp(term)}\\b`, 'i').test(bodyMarkdown)) warnings.push(`Review risky or prohibited claim language: ${term}`);
@@ -1569,9 +1634,12 @@ function detectInternalContextLeak(bodyMarkdown) {
     'Core Knowledge Themes',
     'Certifyd Relevance',
     'SOURCE FACTS',
+    'CERTIFYD FACTS',
     'CERTIFYD KNOWLEDGE',
+    'CERTIFYD ANALYSIS',
     'EDITORIAL ANGLE',
     'WRITING INSTRUCTIONS',
+    'OUTPUT RULES',
   ];
   const hits = [];
   for (const heading of internalHeadings) {
@@ -1585,6 +1653,7 @@ function detectInternalContextLeak(bodyMarkdown) {
 }
 
 function detectBlockingInternalContextLeak(bodyMarkdown) {
+  const repaired = repairInternalContextHeadings(bodyMarkdown);
   const blocking = new Set([
     'Source Scope',
     'Approved Certifyd Knowledge',
@@ -1594,9 +1663,10 @@ function detectBlockingInternalContextLeak(bodyMarkdown) {
     'CERTIFYD KNOWLEDGE',
     'EDITORIAL ANGLE',
     'WRITING INSTRUCTIONS',
+    'OUTPUT RULES',
     'repeated internal template sections',
   ]);
-  return detectInternalContextLeak(bodyMarkdown).filter((hit) => blocking.has(hit));
+  return detectInternalContextLeak(repaired).filter((hit) => blocking.has(hit));
 }
 
 function repairInternalContextHeadings(bodyMarkdown) {
@@ -1605,8 +1675,13 @@ function repairInternalContextHeadings(bodyMarkdown) {
     ['Business Relevance', 'Why It Matters'],
     ['Core Knowledge Themes', 'What Creators Should Notice'],
     ['Certifyd Relevance', 'Why It Matters for Certifyd Readers'],
+    ['SOURCE FACTS', 'What Happened'],
     ['CERTIFYD FACTS', 'What Certifyd Adds'],
+    ['CERTIFYD KNOWLEDGE', 'What Certifyd Adds'],
     ['CERTIFYD ANALYSIS', 'What It Means for Certifyd Readers'],
+    ['EDITORIAL ANGLE', 'Why This Angle Matters'],
+    ['WRITING INSTRUCTIONS', 'What Creators Should Know'],
+    ['OUTPUT RULES', 'What To Take Away'],
   ]);
   let text = String(bodyMarkdown || '');
   for (const [from, to] of replacements) {

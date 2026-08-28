@@ -348,9 +348,39 @@ test('risky wording is preserved as warnings when claims have evidence', async (
   assert.match(article.warnings.join('\n'), /permanent record/);
 });
 
+test('generation cleanup repairs brand drift and flags provenance overclaims', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OllamaQwenGenerationProvider(config, {
+    fetchImpl: makeOllamaFetch(validArticle(sourceId, {
+      bodyMarkdown: [
+        '# Provenance Draft',
+        '',
+        'Certified by Design (Certifyd) helps creators avoid platform reporting.',
+        '',
+        'Creators can prove ownership and prove authorship with legitimate proof.',
+      ].join('\n'),
+      claims: [{ text: 'Certifyd supports creator commerce context.', sourceIds: [sourceId], confidence: 'supported' }],
+    })),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Provenance', audience: 'Creators', objective: 'Explain carefully.' }, context);
+  assert.doesNotMatch(article.bodyMarkdown, /Certified by Design/i);
+  assert.match(article.bodyMarkdown, /Certifyd/);
+  assert.match(article.warnings.join('\n'), /prove ownership|prove authorship|legitimate proof/);
+});
+
 test('external company Certifyd adoption claims are rejected', async () => {
   const config = await makeConfig();
   const context = await makeContext(config);
+  context.externalSourceFacts = [{
+    id: 'umg-buyback',
+    publisher: 'Music Business Worldwide',
+    publishedAt: '2026-08-01',
+    title: 'Universal Music Group Completes Share Buyback',
+    summary: 'Universal Music Group completed a share buyback. The source facts do not mention Certifyd.',
+    articleUrl: 'https://example.test/umg-buyback',
+  }];
   const sourceId = context.sourceRecords[0].id;
   const provider = new OllamaQwenGenerationProvider(config, {
     fetchImpl: makeOllamaFetch(validArticle(sourceId, {
@@ -363,6 +393,23 @@ test('external company Certifyd adoption claims are rejected', async () => {
     () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Universal Music Group share buyback', audience: 'Creators', objective: 'Explain relevance.' }, context),
     /unsupported external Certifyd adoption claims/i,
   );
+});
+
+test('generic Certifyd capability wording is not treated as external adoption without source facts', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OllamaQwenGenerationProvider(config, {
+    fetchImpl: makeOllamaFetch(validArticle(sourceId, {
+      title: 'Direct Fan Commerce',
+      suggestedSlug: 'direct-fan-commerce',
+      bodyMarkdown: 'With Certifyd capabilities, creators can describe direct fan commerce and audience relationships without depending entirely on platform reporting.',
+      claims: [{ text: 'Certifyd connects publishing, discovery, and direct creator-to-fan commerce.', sourceIds: [sourceId], confidence: 'supported' }],
+    })),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Direct fan commerce', audience: 'Creators', objective: 'Explain Certifyd relevance.' }, context);
+  assert.equal(article.status, 'draft');
+  assert.match(article.bodyMarkdown, /direct fan commerce/i);
 });
 
 test('local AI generation is disabled unless explicitly enabled', async () => {
@@ -409,6 +456,26 @@ test('bot farming prompts are sent to Qwen with explicit anti-fraud guardrails',
   assert.match(outboundPrompt, /not enabling automation/i);
   assert.match(outboundPrompt, /Do not say Certifyd creates, manages, controls, monitors or secures bot farms/i);
   assert.match(outboundPrompt, /real customer activity/i);
+});
+
+test('plain Certifyd explainer prompts do not force source-story framing', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  const context = await makeContext(config, { topic: 'Direct fan commerce', objective: 'Explain the Certifyd business problem.' });
+  const provider = new OllamaQwenGenerationProvider(config, { fetchImpl: makeOllamaFetch(validArticle(context.sourceRecords[0].id), calls) });
+  await provider.generateArticle({
+    actorEmail: 'writer@example.test',
+    topic: 'Direct fan commerce',
+    audience: 'Creators',
+    objective: 'Explain the Certifyd business problem.',
+  }, context);
+
+  const chatCall = calls.find((call) => call.url.endsWith('/api/chat'));
+  const payload = JSON.parse(chatCall.options.body);
+  const outboundPrompt = JSON.stringify(payload.messages);
+  assert.match(outboundPrompt, /No external source story is attached/i);
+  assert.match(outboundPrompt, /Start with the Certifyd business problem/i);
+  assert.doesNotMatch(outboundPrompt, /Start with the source facts as the news\/business story/i);
 });
 
 test('trend source summaries are included separately from Certifyd Brain context', async () => {
@@ -459,7 +526,7 @@ test('trend source summaries are included separately from Certifyd Brain context
   const outboundPrompt = JSON.stringify(payload.messages);
   assert.doesNotMatch(outboundPrompt, /about half of the draft about the external business\/news facts/i);
   assert.match(outboundPrompt, /external story is the factual foundation/i);
-  assert.match(outboundPrompt, /SOURCE FACTS/i);
+  assert.match(outboundPrompt, /Facts from the source story/i);
   assert.match(outboundPrompt, /Music Business Worldwide/i);
   assert.match(outboundPrompt, /Label revenue rises as direct fan activity grows/i);
   const researchRecord = JSON.parse(await fs.readFile(path.join(config.outputDir, generationResult.runId, 'research-record.json'), 'utf8'));
@@ -473,11 +540,11 @@ test('trend source summaries are included separately from Certifyd Brain context
   assert.ok(researchRecord.generationDiagnostics.brainSourcesScanned >= 2);
   assert.ok(researchRecord.generationDiagnostics.brainRecordsSelected.length >= 2);
   assert.ok(researchRecord.generationDiagnostics.brainRecordsSentToModel.length >= 2);
-  assert.match(outboundPrompt, /CERTIFYD FACTS/i);
-  assert.match(outboundPrompt, /EDITORIAL ANGLE/i);
-  assert.match(outboundPrompt, /WRITING INSTRUCTIONS/i);
+  assert.match(outboundPrompt, /Approved Certifyd context/i);
+  assert.match(outboundPrompt, /Editorial angle/i);
+  assert.match(outboundPrompt, /Instructions for the draft/i);
   const userPrompt = payload.messages.find((message) => message.role === 'user')?.content || '';
-  assert.ok(userPrompt.length < 4500, `Qwen prompt should stay compact, got ${userPrompt.length} chars`);
+  assert.ok(userPrompt.length < 7000, `Qwen prompt should stay compact enough for local Qwen, got ${userPrompt.length} chars`);
 });
 
 test('retained source story generation creates a normal review draft with source provenance', async () => {
@@ -649,10 +716,16 @@ test('source story generation keeps BMG Suno article coherent without internal c
   const chatCall = calls.find((call) => call.url.endsWith('/api/chat'));
   const payload = JSON.parse(chatCall.options.body);
   const outboundPrompt = JSON.stringify(payload.messages);
-  assert.match(outboundPrompt, /SOURCE FACTS/i);
-  assert.match(outboundPrompt, /CERTIFYD FACTS/i);
-  assert.match(outboundPrompt, /EDITORIAL ANGLE/i);
-  assert.match(outboundPrompt, /WRITING INSTRUCTIONS/i);
+  assert.match(outboundPrompt, /Facts from the source story/i);
+  assert.match(outboundPrompt, /Approved Certifyd context/i);
+  assert.match(outboundPrompt, /Editorial angle/i);
+  assert.match(outboundPrompt, /Instructions for the draft/i);
+  assert.doesNotMatch(outboundPrompt, /^SOURCE FACTS$/im);
+  assert.doesNotMatch(outboundPrompt, /^CERTIFYD FACTS$/im);
+  assert.doesNotMatch(outboundPrompt, /^EDITORIAL ANGLE$/im);
+  assert.doesNotMatch(outboundPrompt, /^WRITING INSTRUCTIONS$/im);
+  assert.equal(payload.options.num_predict, 1200);
+  assert.equal(payload.options.num_ctx, 24000);
   assert.match(outboundPrompt, /\[billboard-bmg-suno\]/i);
   assert.match(outboundPrompt, /BMG and Suno Reach Licensing Deal/i);
   assert.match(outboundPrompt, /https:\/\/www\.billboard\.com\/pro\/bmg-suno-licensing-deal-ai-music-model\//);
@@ -772,6 +845,62 @@ test('generation validation repairs boilerplate headings without blocking usable
   assert.match(article.bodyMarkdown, /## Why It Matters for Certifyd Readers/);
   assert.doesNotMatch(article.bodyMarkdown, /## Business Relevance/);
   assert.doesNotMatch(article.bodyMarkdown, /## Certifyd Relevance/);
+});
+
+test('generation validation repairs copied prompt labels without dropping article content', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OllamaQwenGenerationProvider(config, {
+    fetchImpl: makeOllamaFetch(validArticle(sourceId, {
+      title: 'Prompt Label Draft',
+      suggestedSlug: 'prompt-label-draft',
+      bodyMarkdown: [
+        '# Prompt Label Draft',
+        '',
+        '## SOURCE FACTS',
+        '',
+        'A source story describes a creator commerce shift.',
+        '',
+        '## CERTIFYD FACTS',
+        '',
+        'Certifyd connects publishing, discovery, and direct creator-to-fan commerce.',
+        '',
+        '## EDITORIAL ANGLE',
+        '',
+        'The useful angle is audience independence, not platform dependency.',
+      ].join('\n'),
+    })),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Prompt label test', audience: 'Creators', objective: 'Test validation.' }, context);
+  assert.match(article.bodyMarkdown, /## What Happened/);
+  assert.match(article.bodyMarkdown, /## What Certifyd Adds/);
+  assert.match(article.bodyMarkdown, /## Why This Angle Matters/);
+  assert.doesNotMatch(article.bodyMarkdown, /## SOURCE FACTS/);
+  assert.doesNotMatch(article.bodyMarkdown, /## CERTIFYD FACTS/);
+  assert.doesNotMatch(article.bodyMarkdown, /## EDITORIAL ANGLE/);
+});
+
+test('generation cleanup removes duplicate leading title headings', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OllamaQwenGenerationProvider(config, {
+    fetchImpl: makeOllamaFetch(validArticle(sourceId, {
+      title: 'Why Independent Creators Need Direct Fan Commerce',
+      suggestedSlug: 'why-independent-creators-need-direct-fan-commerce',
+      bodyMarkdown: [
+        '# Why Independent Creators Need Direct Fan Commerce',
+        '',
+        '### Why Independent Creators Need Direct Fan Commerce',
+        '',
+        'Creators need direct commerce routes that preserve audience relationships.',
+      ].join('\n'),
+    })),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Direct fan commerce', audience: 'Creators', objective: 'Explain clearly.' }, context);
+  const titleHeadings = article.bodyMarkdown.match(/^#{1,6}\s+Why Independent Creators Need Direct Fan Commerce$/gim) || [];
+  assert.equal(titleHeadings.length, 1);
 });
 
 test('raw leaked Qwen text is rejected before fallback coercion', async () => {
