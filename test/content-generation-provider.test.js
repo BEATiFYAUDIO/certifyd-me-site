@@ -527,8 +527,11 @@ test('trend source summaries are included separately from Certifyd Brain context
   assert.doesNotMatch(outboundPrompt, /about half of the draft about the external business\/news facts/i);
   assert.match(outboundPrompt, /external story is the factual foundation/i);
   assert.match(outboundPrompt, /Facts from the source story/i);
+  assert.match(outboundPrompt, /Internal editorial brief/i);
   assert.match(outboundPrompt, /Music Business Worldwide/i);
   assert.match(outboundPrompt, /Label revenue rises as direct fan activity grows/i);
+  assert.ok(outboundPrompt.indexOf('Facts from the source story') < outboundPrompt.indexOf('Internal editorial brief'));
+  assert.ok(outboundPrompt.indexOf('Internal editorial brief') < outboundPrompt.indexOf('Approved Certifyd context'));
   const researchRecord = JSON.parse(await fs.readFile(path.join(config.outputDir, generationResult.runId, 'research-record.json'), 'utf8'));
   assert.deepEqual(researchRecord.trendProvenance.sourceUrls, [{
     id: 'source-article-1',
@@ -540,11 +543,75 @@ test('trend source summaries are included separately from Certifyd Brain context
   assert.ok(researchRecord.generationDiagnostics.brainSourcesScanned >= 2);
   assert.ok(researchRecord.generationDiagnostics.brainRecordsSelected.length >= 2);
   assert.ok(researchRecord.generationDiagnostics.brainRecordsSentToModel.length >= 2);
+  assert.equal(researchRecord.generationDiagnostics.brainSelectionStage, 'after-editorial-brief');
+  assert.equal(researchRecord.generationDiagnostics.originalSourceArticlesRetrieved.length, 1);
+  assert.ok(researchRecord.generationDiagnostics.verifiedFactsExtracted.length >= 2);
+  assert.match(researchRecord.generationDiagnostics.editorialThesisGenerated, /Label revenue rises as direct fan activity grows|creator commerce/i);
   assert.match(outboundPrompt, /Approved Certifyd context/i);
   assert.match(outboundPrompt, /Editorial angle/i);
   assert.match(outboundPrompt, /Instructions for the draft/i);
   const userPrompt = payload.messages.find((message) => message.role === 'user')?.content || '';
   assert.ok(userPrompt.length < 7000, `Qwen prompt should stay compact enough for local Qwen, got ${userPrompt.length} chars`);
+});
+
+test('news-like article generation without original source evidence is blocked before Brain-only drafting', async () => {
+  const config = await makeConfig();
+  await assert.rejects(
+    () => makeContext(config, {
+      topic: 'Authentic Brands Group Acquires Majority Stake in IP of Drake’s OVO Brand',
+      objective: 'Write a Certifyd Blog article about the acquisition and why it matters for creator IP.',
+    }),
+    /Cannot generate news article — attach at least one original article URL with a source summary before generation\./,
+  );
+});
+
+test('source-first generation limits Brain records to the editorial thesis instead of generic context', async () => {
+  const config = await makeConfig();
+  const records = [
+    ['content-agent/knowledge/capabilities/access.md', '# Access\n\nAPPROVED\n\nCertifyd access records help describe permissions and creator-controlled access decisions.'],
+    ['content-agent/knowledge/capabilities/provenance.md', '# Provenance\n\nAPPROVED\n\nCertifyd provenance records help connect work, attribution, permissions and publication context.'],
+    ['content-agent/knowledge/capabilities/publishing.md', '# Publishing\n\nAPPROVED\n\nCertifyd publishing context can connect releases, derivative works, credits and rights-clearance review.'],
+    ['content-agent/knowledge/capabilities/commerce.md', '# Commerce\n\nAPPROVED\n\nCertifyd supports direct creator commerce context and owned customer relationships.'],
+    ['content-agent/knowledge/capabilities/payments.md', '# Payments\n\nAPPROVED\n\nCertifyd payment records can support transaction context where payment workflows are configured.'],
+    ['content-agent/knowledge/capabilities/analytics.md', '# Analytics\n\nAPPROVED\n\nCertifyd analytics can help review activity.'],
+    ['content-agent/knowledge/capabilities/payouts.md', '# Payouts\n\nAPPROVED\n\nCertifyd payout records can help configured payment workflows.'],
+    ['content-agent/knowledge/capabilities/fan.md', '# Fan\n\nAPPROVED\n\nCertifyd Fan is a fan-facing discovery and playback app.'],
+    ['content-agent/knowledge/capabilities/awards.md', '# Awards\n\nAPPROVED\n\nCertifyd Awards recognizes creator work.'],
+    ['content-agent/knowledge/investors/investment-thesis.md', '# Investment Thesis\n\nAPPROVED\n\nCertifyd has investor-facing business-model materials.'],
+  ];
+  for (const [relative, text] of records) {
+    const file = path.join(config.siteRoot, relative);
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(file, text);
+  }
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'ip-acquisition-story',
+      publisher: 'Music Business Worldwide',
+      publishedAt: '2026-08-28T09:00:00.000Z',
+      title: 'Authentic Brands Group Acquires Majority Stake in OVO Brand IP',
+      summary: 'A report says Authentic Brands Group acquired a majority stake in Drake’s OVO brand intellectual property, including brand rights and licensing interests.',
+      articleUrl: 'https://example.test/abg-ovo-ip',
+      categories: ['Music', 'Rights', 'Creator IP'],
+      certifydRelevanceScore: 12,
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Authentic Brands Group Acquires Majority Stake in OVO Brand IP',
+    objective: 'Explain the source facts and creator-owned IP angle.',
+    sourceRestrictions: 'Relevant approved Brain records: brain:capabilities/access,brain:capabilities/provenance,brain:capabilities/publishing,brain:capabilities/commerce,brain:capabilities/payments,brain:capabilities/analytics,brain:capabilities/payouts,brain:capabilities/fan,brain:capabilities/awards,brain:investors/investment-thesis.',
+    trendBrainRecordIds: 'brain:capabilities/access,brain:capabilities/provenance,brain:capabilities/publishing,brain:capabilities/commerce,brain:capabilities/payments,brain:capabilities/analytics,brain:capabilities/payouts,brain:capabilities/fan,brain:capabilities/awards,brain:investors/investment-thesis',
+    trendSourceItemIds: 'ip-acquisition-story',
+  });
+  const selectedIds = context.sourceRecords.map((source) => source.id);
+  assert.ok(selectedIds.length <= 6);
+  assert.ok(selectedIds.includes('brain:capabilities/provenance'));
+  assert.ok(selectedIds.includes('brain:capabilities/access') || selectedIds.includes('brain:capabilities/publishing'));
+  assert.ok(context.generationDiagnostics.brainRecordsSelected.every((record) => /after|source-story|rights|provenance|finance|creator-owned|ranked/i.test(record.selectionReason)));
+  assert.equal(context.generationDiagnostics.brainSelectionStage, 'after-editorial-brief');
+  assert.match(context.editorialBrief.possibleThesis, /creative IP|creator permission|provenance|compensation|ownership|rights/i);
 });
 
 test('retained source story generation creates a normal review draft with source provenance', async () => {
@@ -613,18 +680,33 @@ test('Brain retrieval prioritizes rights and provenance over generic payments fo
     await fs.mkdir(path.dirname(file), { recursive: true });
     await fs.writeFile(file, text);
   }
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'billboard-bmg-suno-ranking',
+      publisher: 'Billboard',
+      publishedAt: '2026-08-12T09:00:00.000Z',
+      title: 'BMG and Suno Reach Licensing Deal for AI Music Model',
+      summary: 'Billboard reports that BMG and Suno reached a licensing agreement involving creator opt-in, AI inputs and outputs, derivative works, compensation and settlement of prior use.',
+      articleUrl: 'https://www.billboard.com/pro/bmg-suno-licensing-deal-ai-music-model/',
+      categories: ['Music', 'AI', 'Rights'],
+      certifydRelevanceScore: 13,
+    }],
+    opportunities: [],
+  }, null, 2));
   const context = await makeContext(config, {
     topic: 'BMG and Suno Reach Licensing Deal for AI Music Model',
     objective: 'Explain creator opt-in, licensing, derivative works, compensation and rights clearance without inventing adoption.',
     sourceRestrictions: 'Relevant approved Brain records: brain:capabilities/access,brain:capabilities/provenance,brain:capabilities/publishing,brain:capabilities/payments,brain:investors/investment-thesis.',
     trendBrainRecordIds: 'brain:capabilities/access,brain:capabilities/provenance,brain:capabilities/publishing,brain:capabilities/payments,brain:investors/investment-thesis',
+    trendSourceItemIds: 'billboard-bmg-suno-ranking',
   });
   const selectedIds = context.sourceRecords.map((source) => source.id);
   assert.ok(selectedIds.includes('brain:capabilities/access'));
   assert.ok(selectedIds.includes('brain:capabilities/provenance'));
   assert.ok(selectedIds.includes('brain:capabilities/publishing'));
   assert.ok(selectedIds.indexOf('brain:capabilities/access') < selectedIds.indexOf('brain:capabilities/payments'));
-  assert.ok(selectedIds.indexOf('brain:capabilities/provenance') < selectedIds.indexOf('brain:investors/investment-thesis'));
+  assert.equal(selectedIds.includes('brain:investors/investment-thesis'), false);
   assert.ok(context.approvedKnowledge.some((record) => /Permissions and rights/.test(record.theme)));
   assert.ok(context.approvedKnowledge.some((record) => /Provenance/.test(record.theme)));
   const accessRecord = context.approvedKnowledge.find((record) => record.id === 'brain:capabilities/access');

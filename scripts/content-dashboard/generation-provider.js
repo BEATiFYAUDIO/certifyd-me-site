@@ -8,6 +8,8 @@ import { readTrendState } from './trends.js';
 const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
 const DEFAULT_OLLAMA_MODEL = 'qwen2.5:1.5b';
 const SAFE_SOURCE_LIMIT = 20;
+const SOURCE_BACKED_BRAIN_LIMIT = 6;
+const EXPLAINER_BRAIN_LIMIT = 8;
 const MAX_INTERACTIVE_OUTPUT_TOKENS = 6000;
 const MAX_ARTICLE_GENERATION_TOKENS = 1200;
 const DEFAULT_OLLAMA_HEALTH_TIMEOUT_MS = 5000;
@@ -273,6 +275,7 @@ export async function buildGroundedContext(config, input) {
   const externalSourceFacts = await loadAttachedExternalSourceSummaries(config, input);
   const requestedSourceIds = parseIdList(input.trendSourceItemIds, 40);
   const sourceBackedGeneration = requestedSourceIds.length > 0 || Boolean(cleanId(input.trendOpportunityId));
+  const newsLikeGeneration = sourceBackedGeneration || looksLikeExternalNewsArticle(input);
   if (sourceBackedGeneration) {
     const loadedSourceIds = new Set(externalSourceFacts.map((source) => cleanId(source.id)));
     const missingSourceIds = requestedSourceIds.filter((id) => !loadedSourceIds.has(cleanId(id)));
@@ -283,6 +286,10 @@ export async function buildGroundedContext(config, input) {
       throw new GenerationConfigurationError('Cannot generate source-backed article — original source evidence is unavailable.');
     }
   }
+  if (newsLikeGeneration && !hasUsableExternalSourceFacts(externalSourceFacts)) {
+    throw new GenerationConfigurationError('Cannot generate news article — attach at least one original article URL with a source summary before generation.');
+  }
+  const editorialBrief = buildEditorialBrief(input, externalSourceFacts);
   await walkMarkdown(brainRoot, async (file) => {
     const relative = path.relative(brainRoot, file);
     const text = await fs.readFile(file, 'utf8');
@@ -302,7 +309,7 @@ export async function buildGroundedContext(config, input) {
       safeWording: metadata.safeWording,
     });
   });
-  const selected = selectRelevantSources(sourceRecords, input, externalSourceFacts).slice(0, SAFE_SOURCE_LIMIT);
+  const selected = selectRelevantSources(sourceRecords, input, externalSourceFacts, editorialBrief).slice(0, SAFE_SOURCE_LIMIT);
   const context = {
     audience: input.audience || input.targetAudience || '',
     contentObjective: input.objective || input.businessObjective || '',
@@ -330,6 +337,7 @@ export async function buildGroundedContext(config, input) {
       safeWording: source.safeWording || [],
     })),
     externalSourceFacts,
+    editorialBrief,
     relatedArticles: await readRelatedArticles(config.siteRoot),
     sourceRecords: selected,
     generationDiagnostics: {
@@ -366,6 +374,18 @@ export async function buildGroundedContext(config, input) {
         publishedAt: source.publishedAt,
         articleUrl: source.articleUrl,
       })),
+      originalSourceArticlesRetrieved: externalSourceFacts.filter((source) => source.articleUrl).map((source) => ({
+        id: source.id,
+        title: source.title,
+        publisher: source.publisher,
+        articleUrl: source.articleUrl,
+        retrievalStatus: source.summary ? 'rss-summary-with-original-url' : 'url-only',
+      })),
+      supplementalSourcesRetrieved: [],
+      verifiedFactsExtracted: editorialBrief.verifiedFacts,
+      editorialThesisGenerated: editorialBrief.possibleThesis,
+      editorialBrief,
+      brainSelectionStage: 'after-editorial-brief',
       selectedSourceCount: requestedSourceIds.length || externalSourceFacts.length,
       externalSourcesLoaded: externalSourceFacts.length,
       externalSourceIdsLoaded: externalSourceFacts.map((source) => source.id),
@@ -601,6 +621,7 @@ function buildUserPrompt(input, groundedContext) {
   const productFacts = context.productFacts.map((item) => `- ${item}`).join('\n') || '- No product facts selected.';
   const approvedKnowledge = context.approvedKnowledge.map(formatBrainKnowledgeForPrompt).join('\n') || '- No additional approved Certifyd knowledge selected.';
   const externalSources = context.externalSourceFacts.map((item) => `- [${item.id || 'source'}] ${item.publisher}${item.publishedAt ? ` (${item.publishedAt})` : ''}: ${item.title}. ${item.summary}${item.articleUrl ? ` Source: ${item.articleUrl}` : ''}`).join('\n') || '- No external source summaries attached.';
+  const editorialBrief = formatEditorialBriefForPrompt(context.editorialBrief);
   const prohibited = context.prohibitedClaims.map((item) => `- ${item}`).join('\n') || '- Avoid unsupported claims.';
   const hasExternalSources = context.externalSourceFacts.length > 0;
   const sourceModeInstruction = context.externalSourceFacts.length
@@ -620,8 +641,12 @@ function buildUserPrompt(input, groundedContext) {
     'Facts about the source story. Claims about external companies must come from this section.',
     externalSources,
     '',
+    'Internal editorial brief:',
+    'Use this to choose the article argument, but do not publish these labels or mention the brief.',
+    editorialBrief,
+    '',
     'Approved Certifyd context:',
-    'Claims about Certifyd. Respect status and confidence qualifiers.',
+    'Claims about Certifyd selected after the editorial brief. Respect status and confidence qualifiers.',
     claims,
     approvedKnowledge,
     productFacts,
@@ -680,6 +705,7 @@ function compactGroundedContextForModel(groundedContext) {
       categories: Array.isArray(source.categories) ? source.categories.slice(0, 5) : [],
       certifydRelevanceScore: Number(source.certifydRelevanceScore || 0),
     })),
+    editorialBrief: compactEditorialBrief(groundedContext.editorialBrief),
     sources: (groundedContext.sourceRecords || []).slice(0, 6).map((source) => ({
       id: source.id,
       title: source.title,
@@ -714,6 +740,7 @@ function recordGenerationPromptDiagnostics(input, groundedContext, systemInstruc
       'topic/audience/objective/angle',
       'guardrails',
       'source story facts',
+      'internal editorial brief',
       'approved Certifyd context by claim and theme',
       'product facts and status qualifiers',
       'do-not-claim list',
@@ -729,6 +756,7 @@ function recordGenerationPromptDiagnostics(input, groundedContext, systemInstruc
       prohibitedClaims: compact.prohibitedClaims,
     },
     externalArticleSourcesSentToModel: compact.externalSourceFacts,
+    editorialBriefSentToModel: compact.editorialBrief,
     externalSourcesSentToModelCount: compact.externalSourceFacts.length,
     externalSourceIdsSentToModel: compact.externalSourceFacts.map((source) => source.id).filter(Boolean),
     externalSourceTitlesSentToModel: compact.externalSourceFacts.map((source) => source.title).filter(Boolean),
@@ -763,6 +791,120 @@ function buildTopicGuardrails(input) {
     );
   }
   return guardrails;
+}
+
+function looksLikeExternalNewsArticle(input = {}) {
+  const text = `${input.topic || ''} ${input.workingTitle || ''} ${input.objective || ''}`.toLowerCase();
+  if (!text || /\bcertifyd\b/.test(text) && !/\b(acquires?|acquisition|stake|lawsuit|settlement|licens(?:e|ing) deal|funding|merger|partners?|launches?|shuts down|earnings|ipo|sale|sold|buys?|bought)\b/.test(text)) return false;
+  return /\b(acquires?|acquisition|majority stake|minority stake|lawsuit|settlement|licens(?:e|ing) deal|funding round|raises? \$|merger|partners? with|launches?|shuts down|earnings|ipo|sale of|sold to|buys?|bought)\b/.test(text);
+}
+
+function buildEditorialBrief(input = {}, externalSourceFacts = []) {
+  const primary = externalSourceFacts.find((source) => source.title && source.summary) || null;
+  const sourceText = externalSourceFacts.map((source) => `${source.title || ''}. ${source.summary || ''}`).join(' ');
+  const themes = inferStoryThemes(`${input.topic || ''} ${input.objective || ''} ${sourceText}`);
+  const verifiedFacts = extractVerifiedFacts(externalSourceFacts);
+  const possibleThesis = buildPossibleThesis(themes, primary);
+  return {
+    primaryEvent: primary ? cleanSentence(`${primary.publisher || 'A source'} reports: ${primary.title}. ${primary.summary}`) : cleanSentence(input.topic || input.workingTitle || ''),
+    verifiedFacts,
+    relevantContext: summarizeRelevantContext(externalSourceFacts),
+    editorialTension: editorialTensionFromThemes(themes),
+    possibleThesis,
+    certifydRelevance: certifydRelevanceFromThemes(themes),
+    competitiveDistinction: competitiveDistinctionFromThemes(themes),
+    themes: [...themes],
+  };
+}
+
+function extractVerifiedFacts(externalSourceFacts = []) {
+  return externalSourceFacts
+    .filter((source) => source.title && source.summary)
+    .flatMap((source) => {
+      const facts = [
+        `${source.publisher || 'Source'} published "${source.title}"${source.publishedAt ? ` on ${source.publishedAt}` : ''}.`,
+        ...splitFactSentences(source.summary).slice(0, 4),
+      ];
+      if (source.articleUrl) facts.push(`Original article URL: ${source.articleUrl}`);
+      return facts;
+    })
+    .map((fact) => cleanSentence(fact))
+    .filter(Boolean)
+    .slice(0, 8);
+}
+
+function splitFactSentences(text) {
+  return String(text || '')
+    .split(/(?<=[.!?])\s+/)
+    .map((item) => item.trim())
+    .filter((item) => item.length > 20);
+}
+
+function summarizeRelevantContext(externalSourceFacts = []) {
+  const publishers = [...new Set(externalSourceFacts.map((source) => source.publisher).filter(Boolean))];
+  const categories = [...new Set(externalSourceFacts.flatMap((source) => source.categories || []).filter(Boolean))];
+  return [
+    publishers.length ? `Coverage source(s): ${publishers.join(', ')}.` : '',
+    categories.length ? `Source categories: ${categories.join(', ')}.` : '',
+  ].filter(Boolean).join(' ') || 'No supplemental source context was attached.';
+}
+
+function editorialTensionFromThemes(themes) {
+  if (themes.has('rights') || themes.has('derivatives') || themes.has('ai')) return 'The tension is whether new licensing and AI uses give creators clear consent, attribution, provenance and compensation, or simply move rights into another opaque system.';
+  if (themes.has('commerce')) return 'The tension is whether commerce creates durable creator-owned customer relationships or only another platform-controlled transaction layer.';
+  if (themes.has('dependency')) return 'The tension is whether creators gain distribution while remaining dependent on channels they do not control.';
+  if (themes.has('finance')) return 'The tension is whether creative IP value flows back to creators and their businesses or is captured mainly through outside ownership structures.';
+  return 'The tension is what this development reveals about creator control, verification and durable business infrastructure.';
+}
+
+function buildPossibleThesis(themes, primary) {
+  const subject = primary?.title || 'this story';
+  if (themes.has('rights') || themes.has('derivatives') || themes.has('ai')) return `${subject} shows why creator permission, provenance, attribution and compensation need to be explicit before new value is created from existing work.`;
+  if (themes.has('commerce')) return `${subject} points to the need for creator commerce that preserves the relationship between the creator business and the customer.`;
+  if (themes.has('dependency')) return `${subject} shows why creators need distribution and discovery without losing control of identity, context and audience relationships.`;
+  if (themes.has('finance')) return `${subject} shows that creative IP is becoming a financial asset class, which makes ownership, rights context and creator leverage more important.`;
+  return `${subject} is useful for Certifyd readers when it is connected to concrete creator ownership, trust, commerce or infrastructure questions.`;
+}
+
+function certifydRelevanceFromThemes(themes) {
+  if (themes.has('rights') || themes.has('derivatives') || themes.has('ai')) return 'Use only Certifyd Brain records about provenance, permissions, publishing context, access or rights review.';
+  if (themes.has('commerce')) return 'Use only Certifyd Brain records about direct commerce, payments, receipts, Fan or owned customer relationships.';
+  if (themes.has('dependency')) return 'Use only Certifyd Brain records about Core, identity, network distribution, publishing context or platform dependency.';
+  if (themes.has('finance')) return 'Use only Certifyd Brain records about creator ownership, IP context, provenance or business-model framing.';
+  return 'Use only the smallest relevant set of Certifyd Brain records; avoid broad ecosystem summaries.';
+}
+
+function competitiveDistinctionFromThemes(themes) {
+  if (themes.has('commerce')) return 'Certifyd analysis should focus on creator-owned relationship and transaction context, not generic monetization language.';
+  if (themes.has('rights') || themes.has('ai')) return 'Certifyd analysis should focus on verifiable context and creator-controlled permissions, not vague AI or analytics claims.';
+  if (themes.has('dependency')) return 'Certifyd analysis should focus on network and creator-controlled infrastructure rather than platform dependence.';
+  return 'Certifyd analysis should be specific and supported by selected Brain records.';
+}
+
+function compactEditorialBrief(brief = {}) {
+  return {
+    primaryEvent: clampText(brief.primaryEvent || '', 420),
+    verifiedFacts: (brief.verifiedFacts || []).slice(0, 6).map((fact) => clampText(fact, 220)),
+    relevantContext: clampText(brief.relevantContext || '', 260),
+    editorialTension: clampText(brief.editorialTension || '', 320),
+    possibleThesis: clampText(brief.possibleThesis || '', 320),
+    certifydRelevance: clampText(brief.certifydRelevance || '', 260),
+    competitiveDistinction: clampText(brief.competitiveDistinction || '', 260),
+    themes: Array.isArray(brief.themes) ? brief.themes.slice(0, 8) : [],
+  };
+}
+
+function formatEditorialBriefForPrompt(brief = {}) {
+  const cleanBrief = compactEditorialBrief(brief);
+  return [
+    `- Primary event: ${cleanBrief.primaryEvent || 'No source-backed event attached.'}`,
+    cleanBrief.verifiedFacts.length ? `- Verified facts:\n${cleanBrief.verifiedFacts.map((fact) => `  - ${fact}`).join('\n')}` : '- Verified facts: none extracted.',
+    `- Relevant context: ${cleanBrief.relevantContext || 'No related context attached.'}`,
+    `- Editorial tension: ${cleanBrief.editorialTension || 'None established.'}`,
+    `- Possible thesis: ${cleanBrief.possibleThesis || 'None established.'}`,
+    `- Certifyd relevance: ${cleanBrief.certifydRelevance || 'Use only directly relevant Brain records.'}`,
+    `- Competitive distinction: ${cleanBrief.competitiveDistinction || 'Do not force a comparison.'}`,
+  ].join('\n');
 }
 
 async function loadAttachedExternalSourceSummaries(config, input) {
@@ -1342,17 +1484,20 @@ function normalizeBlogCoverImage(value, context = {}) {
   return raw;
 }
 
-function selectRelevantSources(sources, input, externalSourceFacts = []) {
+function selectRelevantSources(sources, input, externalSourceFacts = [], editorialBrief = {}) {
   const sourceQuery = externalSourceFacts.map((source) => `${source.title || ''} ${source.summary || ''} ${(source.categories || []).join(' ')}`).join(' ');
-  const query = `${input.topic || ''} ${input.objective || ''} ${input.angle || ''} ${input.sourceRestrictions || ''} ${sourceQuery}`.toLowerCase();
+  const thesisQuery = `${editorialBrief.possibleThesis || ''} ${editorialBrief.editorialTension || ''} ${editorialBrief.certifydRelevance || ''} ${editorialBrief.competitiveDistinction || ''}`;
+  const query = `${input.topic || ''} ${input.objective || ''} ${input.angle || ''} ${sourceQuery} ${thesisQuery}`.toLowerCase();
   const requestedIds = new Set(parseBrainIdList(input.trendBrainRecordIds, 40));
   const storyThemes = inferStoryThemes(query);
-  const queryTerms = [...new Set(query.split(/[^a-z0-9]+/).filter((term) => term.length > 3 && !/^(brain|source|story|article|certifyd|about|with|from|that|this|their|will|should|would|relevant|approved|records)$/.test(term)))].slice(0, 24);
+  const sourceBacked = externalSourceFacts.length > 0;
+  const selectionLimit = sourceBacked ? SOURCE_BACKED_BRAIN_LIMIT : EXPLAINER_BRAIN_LIMIT;
+  const queryTerms = [...new Set(query.split(/[^a-z0-9]+/).filter((term) => term.length > 3 && !/^(brain|source|story|article|certifyd|about|with|from|that|this|their|will|should|would|relevant|approved|records|company|companies|industry|creator|creators|business)$/.test(term)))].slice(0, sourceBacked ? 14 : 20);
   const scored = sources.map((source) => {
     const haystack = `${source.path} ${source.title} ${source.excerpt}`.toLowerCase();
     const themes = matchedBrainThemes(source);
     let score = brainBaseScore(source);
-    if (requestedIds.has(source.id)) score += 7;
+    if (requestedIds.has(source.id)) score += sourceBacked ? 3 : 7;
     score += storyThemeScore(source, storyThemes);
     for (const term of queryTerms) {
       if (haystack.includes(term)) score += 1;
@@ -1360,6 +1505,7 @@ function selectRelevantSources(sources, input, externalSourceFacts = []) {
     if (/investors|investment-thesis|revenue-model/i.test(source.path) && !storyThemes.has('finance')) score -= 5;
     if (/capabilities\/payments|capabilities\/payouts/i.test(source.path) && !storyThemes.has('commerce')) score -= 3;
     if (/founder-decisions|constitution|ecosystem/i.test(source.path) && storyThemes.size >= 2) score -= 1;
+    if (sourceBacked && !themes.some((theme) => storyThemes.has(theme.id) || (theme.id === 'ownership' && storyThemes.has('finance')))) score -= 4;
     return {
       source: {
         ...source,
@@ -1375,14 +1521,16 @@ function selectRelevantSources(sources, input, externalSourceFacts = []) {
   const ranked = scored.sort((a, b) => b.score - a.score || a.source.path.localeCompare(b.source.path));
   const selected = [];
   const selectedIds = new Set();
-  for (const item of ranked) {
-    if (/content-agent\/knowledge\/(?:facts\/approved-public-claims|products\/core)\.md$/i.test(item.source.path)) addSelected(item.source);
+  if (!sourceBacked) {
+    for (const item of ranked) {
+      if (/content-agent\/knowledge\/(?:facts\/approved-public-claims|products\/core)\.md$/i.test(item.source.path)) addSelected(item.source);
+    }
   }
   for (const item of ranked) addSelected(item.source);
   return selected;
 
   function addSelected(source) {
-    if (selectedIds.has(source.id) || selected.length >= SAFE_SOURCE_LIMIT) return;
+    if (selectedIds.has(source.id) || selected.length >= selectionLimit) return;
     selectedIds.add(source.id);
     selected.push(source);
   }

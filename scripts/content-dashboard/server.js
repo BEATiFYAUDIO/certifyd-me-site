@@ -662,13 +662,21 @@ function generationDiagnosticsHtml(diagnostics = {}) {
   const sent = Array.isArray(diagnostics.brainRecordsSentToModel) ? diagnostics.brainRecordsSentToModel : [];
   const claims = Array.isArray(diagnostics.relevantApprovedClaims) ? diagnostics.relevantApprovedClaims : [];
   const external = Array.isArray(diagnostics.externalArticleSourcesUsed) ? diagnostics.externalArticleSourcesUsed : [];
+  const originalSources = Array.isArray(diagnostics.originalSourceArticlesRetrieved) ? diagnostics.originalSourceArticlesRetrieved : [];
+  const verifiedFacts = Array.isArray(diagnostics.verifiedFactsExtracted) ? diagnostics.verifiedFactsExtracted : [];
   const sizing = diagnostics.contextSize || {};
   const exact = diagnostics.exactBrainContextSentToModel || {};
+  const brief = diagnostics.editorialBrief || {};
   return [
     `<p><strong>Brain sources used:</strong> ${escapeHtml(selected.length)}</p>`,
     `<p><strong>Brain records retrieved:</strong> ${escapeHtml(diagnostics.brainSourcesScanned ?? diagnostics.brainRecordsRetrieved?.length ?? 0)}</p>`,
     `<p><strong>Brain records sent to model:</strong> ${escapeHtml(sent.length)}</p>`,
+    `<p><strong>Brain selection stage:</strong> ${escapeHtml(diagnostics.brainSelectionStage || 'before-final-prompt')}</p>`,
+    `<p><strong>Original source articles retrieved:</strong> ${escapeHtml(originalSources.length)}</p>`,
+    `<p><strong>Editorial thesis:</strong> ${escapeHtml(diagnostics.editorialThesisGenerated || brief.possibleThesis || 'Not recorded')}</p>`,
     `<p><strong>Context size:</strong> ${escapeHtml(sizing.totalPromptChars || 0)} prompt chars · ${escapeHtml(sizing.finalContextChars || 0)} context chars · ${sizing.truncated ? '<span class="pill warn">truncated</span>' : '<span class="pill good">not truncated</span>'}</p>`,
+    verifiedFacts.length ? `<details><summary class="ghost">Verified facts extracted</summary><ul class="source-list">${verifiedFacts.map((fact) => `<li>${escapeHtml(fact)}</li>`).join('')}</ul></details>` : '',
+    brief.primaryEvent ? `<details><summary class="ghost">Editorial brief</summary><ul class="source-list"><li><strong>Primary event</strong><br>${escapeHtml(brief.primaryEvent || '')}</li><li><strong>Editorial tension</strong><br>${escapeHtml(brief.editorialTension || '')}</li><li><strong>Certifyd relevance</strong><br>${escapeHtml(brief.certifydRelevance || '')}</li><li><strong>Competitive distinction</strong><br>${escapeHtml(brief.competitiveDistinction || '')}</li></ul></details>` : '',
     selected.length ? `<details><summary class="ghost">Brain records selected</summary><ul class="source-list">${selected.map((record) => `<li><strong>${escapeHtml(record.title || record.id)}</strong><br><code>${escapeHtml(record.id || '')}</code><br><span class="muted">${escapeHtml(record.selectionReason || '')}</span></li>`).join('')}</ul></details>` : '',
     sent.length ? `<details><summary class="ghost">Brain records actually sent</summary><ul class="source-list">${sent.map((record) => `<li><strong>${escapeHtml(record.title || record.id)}</strong><br><code>${escapeHtml(record.id || '')}</code><br><span class="muted">${escapeHtml(record.path || '')}</span></li>`).join('')}</ul></details>` : '',
     claims.length ? `<details><summary class="ghost">Relevant approved claims</summary><ul class="source-list">${claims.map((claim) => `<li><strong>${escapeHtml(claim.title || claim.id)}</strong><br><code>${escapeHtml(claim.id || '')}</code><br>${escapeHtml(claim.excerpt || '')}</li>`).join('')}</ul></details>` : '',
