@@ -103,6 +103,54 @@ test('4b article workspace owns full Qwen generation and trending opportunities'
   assert.match(html, /generation-progress/);
 }));
 
+test('4bd generation action redirects immediately to background status page', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-bg-generation-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  await fs.mkdir(path.join(tmpRoot, 'knowledge/facts'), { recursive: true });
+  await fs.mkdir(path.join(tmpRoot, 'knowledge/products'), { recursive: true });
+  await fs.writeFile(path.join(tmpRoot, 'knowledge/facts/approved-public-claims.md'), [
+    '# Approved Public Claims',
+    '',
+    'Certifyd Core is the foundational engine for identity, publishing and direct commerce.',
+    'Certifyd connects publishing, discovery, and direct creator-to-fan commerce.',
+  ].join('\n'));
+  await fs.writeFile(path.join(tmpRoot, 'knowledge/products/core.md'), [
+    '# Certifyd Core',
+    '',
+    'Certifyd Core runs locally for creator and operator workflows.',
+  ].join('\n'));
+  await withServer(async (base) => {
+  const cookie = await login(base, 'founder@example.test');
+  const csrf = await getCsrf(base, cookie);
+  const started = Date.now();
+  const response = await fetch(`${base}/app/content/actions/generate`, {
+    method: 'POST',
+    redirect: 'manual',
+    headers: { cookie, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      _csrf: csrf,
+      provider: 'deterministic',
+      topic: 'Core background generation',
+      audience: 'Creators',
+      objective: 'Explain Core with approved Brain context.',
+      contentType: 'article',
+    }),
+  });
+  assert.equal(response.status, 303);
+  const location = response.headers.get('location') || '';
+  assert.match(location, /^\/app\/content\/generation\//);
+  assert.ok(Date.now() - started < 1000, 'generation POST should not wait for draft completion');
+
+  const status = await fetch(`${base}${location}`, { headers: { cookie } });
+  assert.equal(status.status, 200);
+  const html = await status.text();
+  assert.match(html, /Generating draft\.|Draft ready\./);
+  }, {
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+  });
+});
+
 
 test('4ba article ideas separate recommended opportunities from retained source stories', async () => {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-trends-view-'));

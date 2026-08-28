@@ -25,6 +25,8 @@ import {
 } from './trends.js';
 
 const STATIC_TYPES = new Map([['.html','text/html; charset=utf-8'],['.css','text/css; charset=utf-8'],['.js','text/javascript; charset=utf-8'],['.svg','image/svg+xml'],['.png','image/png'],['.jpg','image/jpeg'],['.jpeg','image/jpeg'],['.webp','image/webp'],['.xml','application/xml; charset=utf-8'],['.txt','text/plain; charset=utf-8'],['.mp4','video/mp4']]);
+const generationJobs = new Map();
+const GENERATION_JOB_TTL_MS = 60 * 60 * 1000;
 
 export function createContentDashboardServer(options = {}) {
   const config = options.config || getDashboardConfig(options.env || process.env);
@@ -140,7 +142,12 @@ async function handleAction(req, res, url, ctx) {
     if (!ctx.permissions.includes(permission)) throw Object.assign(new Error('Forbidden'), { statusCode: 403 });
   };
   let result;
-  if (action.endsWith('/generate')) { needs('content.article.create'); validateIntake(form); result = await ctx.actions.generateDraft({ actor: ctx.user, form, signal: abortController.signal }); }
+  if (action.endsWith('/generate')) {
+    needs('content.article.create');
+    validateIntake(form);
+    const job = startGenerationJob(ctx, snapshotForm(form));
+    return redirect(res, `/app/content/generation/${encodeURIComponent(job.id)}`);
+  }
   else if (action.endsWith('/manual-paste')) { needs('content.article.create'); result = await ctx.actions.createManualDraft({ actor: ctx.user, form }); }
   else if (action.endsWith('/trends/scan')) { needs('content.article.create'); result = await scanTrendOpportunities(ctx.config); }
   else if (action.endsWith('/trends/dismiss')) { needs('content.article.edit'); result = await dismissTrendOpportunity(ctx.config, String(form.get('opportunityId') || '')); }
@@ -192,6 +199,8 @@ async function handlePage(req, res, url, ctx) {
   const trendSourcesMatch = pathName.match(/^\/app\/content\/trends\/([^/]+)\/sources$/);
   if (trendSourcesMatch) { allow('content.article.view'); return sendHtml(res, await renderTrendSources(ctx, trendSourcesMatch[1])); }
   if (pathName === '/app/content/model-health') { allow('content.article.create'); return sendJson(res, await ctx.actions.generationHealth({ provider: 'ollama' })); }
+  const generationMatch = pathName.match(/^\/app\/content\/generation\/([^/]+)$/);
+  if (generationMatch) { allow('content.article.create'); return sendHtml(res, renderGenerationStatus(ctx, generationMatch[1])); }
   if (pathName === '/app/content/brain') { allow('brain.read'); return sendHtml(res, await renderBrain(ctx, url)); }
   if (pathName === '/app/content/topics') { allow('content.article.view'); return redirect(res, '/app/content/articles?view=ideas'); }
   if (pathName === '/app/content/publishing') { allow('content.publishing.view'); return redirect(res, '/app/content/articles?view=approved'); }
@@ -830,6 +839,91 @@ function actionResultLinks(result) {
   if (!runId) return '';
   const encodedRunId = encodeURIComponent(runId);
   return `<div class="actions"><a class="primary" href="/app/content/articles/${encodedRunId}">Open generated draft</a><a class="ghost" href="/app/content/articles?view=drafts">View Drafts</a><a class="ghost" href="/app/content/articles?view=review">Review Queue</a></div>`;
+}
+
+function snapshotForm(form) {
+  const fields = new URLSearchParams();
+  const names = [
+    'provider',
+    'topic',
+    'workingTitle',
+    'audience',
+    'targetAudience',
+    'objective',
+    'businessObjective',
+    'writingStyle',
+    'sourceRestrictions',
+    'trendOpportunityId',
+    'trendSourceItemIds',
+    'trendBrainRecordIds',
+    'contentType',
+    'channel',
+  ];
+  for (const name of names) {
+    for (const value of form.getAll(name) || []) fields.append(name, String(value || ''));
+  }
+  return formAdapter(fields, new Map());
+}
+
+function startGenerationJob(ctx, form) {
+  pruneGenerationJobs();
+  const id = crypto.randomUUID();
+  const createdAt = new Date().toISOString();
+  const job = {
+    id,
+    actorId: ctx.user.id,
+    actorEmail: ctx.user.email,
+    status: 'running',
+    createdAt,
+    updatedAt: createdAt,
+    result: null,
+    error: null,
+  };
+  generationJobs.set(id, job);
+  ctx.actions.generateDraft({ actor: ctx.user, form })
+    .then((result) => {
+      job.status = 'complete';
+      job.result = result;
+      job.updatedAt = new Date().toISOString();
+    })
+    .catch((error) => {
+      job.status = 'failed';
+      job.error = {
+        message: error?.message || 'Generation failed.',
+        statusCode: error?.statusCode || 500,
+      };
+      job.updatedAt = new Date().toISOString();
+    });
+  return job;
+}
+
+function renderGenerationStatus(ctx, id) {
+  pruneGenerationJobs();
+  const job = generationJobs.get(String(id || ''));
+  if (!job || job.actorId !== ctx.user.id) {
+    return layout({ title: 'Generation Status', user: ctx.user, permissions: ctx.permissions, body: '<p class="eyebrow">Generation</p><h1>Generation not found.</h1><p class="notice danger">This generation job expired or is not available for this account.</p><p><a class="ghost" href="/app/content/articles?view=ideas">Back to articles</a></p>' });
+  }
+  if (job.status === 'complete') {
+    const output = escapeHtml(job.result?.output || 'Generated draft is ready.');
+    return layout({ title: 'Generation Complete', user: ctx.user, permissions: ctx.permissions, body: `<p class="eyebrow">Generation</p><h1>Draft ready.</h1><pre>${output}</pre>${actionResultLinks(job.result)}<p><a class="ghost" href="/app/content">Back to dashboard</a></p>` });
+  }
+  if (job.status === 'failed') {
+    const message = escapeHtml(job.error?.message || 'Generation failed.');
+    return layout({ title: 'Generation Failed', user: ctx.user, permissions: ctx.permissions, body: `<p class="eyebrow">Generation</p><h1>Generation failed.</h1><p class="notice danger">${message}</p><p><a class="ghost" href="/app/content/articles?view=ideas">Try again</a></p>` });
+  }
+  return layout({
+    title: 'Generating Draft',
+    user: ctx.user,
+    permissions: ctx.permissions,
+    body: `<meta http-equiv="refresh" content="8"><p class="eyebrow">Generation</p><h1>Generating draft.</h1><section class="panel"><div class="generation-progress" role="status" aria-live="polite"><span>Qwen is generating in the background. This page will refresh automatically; you can leave it open without hitting the Cloudflare timeout.</span><i></i></div><p class="muted">Started ${escapeHtml(formatDashboardDateTime(job.createdAt))}. Last updated ${escapeHtml(formatDashboardDateTime(job.updatedAt))}.</p></section><p><a class="ghost" href="/app/content/articles?view=drafts">View Drafts</a></p>`,
+  });
+}
+
+function pruneGenerationJobs() {
+  const cutoff = Date.now() - GENERATION_JOB_TTL_MS;
+  for (const [id, job] of generationJobs) {
+    if (Date.parse(job.updatedAt || job.createdAt || '') < cutoff) generationJobs.delete(id);
+  }
 }
 
 function settingsSummary(name, safe) {
