@@ -17,7 +17,7 @@ async function makeFixture(files) {
   await fs.mkdir(path.join(root, 'images'), { recursive: true });
   await fs.copyFile(path.join(TEMPLATE_DIR, 'blog-index.html'), path.join(root, 'templates', 'blog-index.html'));
   await fs.copyFile(path.join(TEMPLATE_DIR, 'blog-article.html'), path.join(root, 'templates', 'blog-article.html'));
-  await fs.writeFile(path.join(root, 'index.html'), '<html><head><style></style></head><body><main>Home</main><!-- Lightboxes --></body></html>');
+  await fs.writeFile(path.join(root, 'index.html'), '<html><head><title>Certifyd</title><meta name="description" content="Certifyd test homepage."><link rel="canonical" href="https://certifyd.me/"><style></style></head><body><main>Home</main><!-- Lightboxes --></body></html>');
   await fs.writeFile(path.join(root, 'network.html'), '<html>Network</html>');
   await fs.writeFile(path.join(root, 'images', 'fallback.png'), 'x');
   for (const [name, body] of Object.entries(files)) {

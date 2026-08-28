@@ -7,6 +7,14 @@ const ROOT = process.cwd();
 const BASE_URL = 'https://certifyd.me';
 const CONTENT_DIR = path.join(ROOT, 'content', 'blog');
 const BLOG_DIR = path.join(ROOT, 'blog');
+const STATIC_PAGES = [
+  { file: 'index.html', canonical: `${BASE_URL}/` },
+  { file: 'profile/index.html', canonical: `${BASE_URL}/profile/` },
+  { file: 'join/index.html', canonical: `${BASE_URL}/join/` },
+  { file: 'retail-partners/index.html', canonical: `${BASE_URL}/retail-partners/` },
+  { file: 'media-promotion/index.html', canonical: `${BASE_URL}/media-promotion/` },
+  { file: 'services/index.html', canonical: `${BASE_URL}/services/` },
+];
 const errors = [];
 
 function fail(message) {
@@ -35,6 +43,19 @@ function extract(html, regex) {
 
 function extractAll(html, regex) {
   return [...String(html || '').matchAll(regex)].map((match) => match[1]);
+}
+
+function extractMetaContent(html, nameOrProperty, value) {
+  const tags = String(html || '').match(/<meta\b[^>]*>/gi) || [];
+  const target = String(value || '').toLowerCase();
+  const attr = String(nameOrProperty || '').toLowerCase();
+  for (const tag of tags) {
+    const haystack = tag.toLowerCase();
+    if (!haystack.includes(`${attr}="${target}"`) && !haystack.includes(`${attr}='${target}'`)) continue;
+    const content = tag.match(/\bcontent=(["'])(.*?)\1/i)?.[2] || '';
+    if (content) return content;
+  }
+  return '';
 }
 
 async function readBlogSources() {
@@ -68,9 +89,9 @@ async function validateGeneratedArticles(published) {
       continue;
     }
     const title = extract(html, /<title>([^<]+)<\/title>/i);
-    const description = extract(html, /<meta name="description" content="([^"]+)"/i);
+    const description = extractMetaContent(html, 'name', 'description');
     const canonical = extract(html, /<link rel="canonical" href="([^"]+)"/i);
-    const ogUrl = extract(html, /<meta property="og:url" content="([^"]+)"/i);
+    const ogUrl = extractMetaContent(html, 'property', 'og:url');
     const expectedCanonical = `${BASE_URL}/blog/${slug}/`;
     if (!title) fail(`${file}: missing title.`);
     if (!description) fail(`${file}: missing meta description.`);
@@ -86,6 +107,23 @@ async function validateGeneratedArticles(published) {
     canonicals.set(canonical, file);
     validateJsonLd(file, html, expectedCanonical);
     validateInternalArticleLinks(file, html, published);
+  }
+}
+
+async function validateStaticPages() {
+  for (const page of STATIC_PAGES) {
+    const file = path.join(ROOT, page.file);
+    const html = await fs.readFile(file, 'utf8').catch(() => '');
+    if (!html) continue;
+    const title = extract(html, /<title>([^<]+)<\/title>/i);
+    const description = extractMetaContent(html, 'name', 'description');
+    const canonical = extract(html, /<link rel="canonical" href="([^"]+)"/i);
+    const ogUrl = extractMetaContent(html, 'property', 'og:url');
+    if (!title) fail(`${file}: missing title.`);
+    if (!description) fail(`${file}: missing meta description.`);
+    if (!canonical) fail(`${file}: missing canonical.`);
+    if (canonical && canonical !== page.canonical) fail(`${file}: canonical mismatch: ${canonical}`);
+    if (ogUrl && ogUrl !== canonical) fail(`${file}: og:url does not match canonical.`);
   }
 }
 
@@ -122,10 +160,11 @@ function validateSitemap(locs, published, excluded) {
   const seen = new Set();
   for (const loc of locs) {
     if (!/^https:\/\/certifyd\.me\/.+/.test(loc) && loc !== `${BASE_URL}/`) fail(`sitemap.xml has malformed absolute URL: ${loc}`);
-    if (loc.includes('/app/') || loc.includes('/admin') || loc.includes('/login') || loc.includes('vassal.certifyd.me') || loc.includes('preview')) fail(`sitemap.xml includes private/preview URL: ${loc}`);
+    if (isPrivateSitemapUrl(loc)) fail(`sitemap.xml includes private/preview URL: ${loc}`);
     if (seen.has(loc)) fail(`sitemap.xml has duplicate URL: ${loc}`);
     seen.add(loc);
     if (/\/blog\/[a-z0-9-]+$/.test(loc)) fail(`sitemap.xml URL missing trailing slash: ${loc}`);
+    if (/^https:\/\/certifyd\.me\/(?:profile|join|retail-partners|media-promotion|services)$/.test(loc)) fail(`sitemap.xml static URL missing trailing slash: ${loc}`);
   }
   for (const slug of published.keys()) {
     const loc = `${BASE_URL}/blog/${slug}/`;
@@ -137,6 +176,17 @@ function validateSitemap(locs, published, excluded) {
   }
 }
 
+function isPrivateSitemapUrl(loc) {
+  let url;
+  try {
+    url = new URL(loc);
+  } catch {
+    return false;
+  }
+  if (url.hostname === 'vassal.certifyd.me' || url.hostname.includes('preview')) return true;
+  return url.pathname.split('/').filter(Boolean).some((part) => ['app', 'admin', 'login', 'preview'].includes(part));
+}
+
 async function validateRobots() {
   const robots = await fs.readFile(path.join(ROOT, 'robots.txt'), 'utf8').catch(() => '');
   if (!robots.includes(`Sitemap: ${BASE_URL}/sitemap.xml`)) fail('robots.txt missing exact sitemap declaration.');
@@ -146,6 +196,7 @@ async function validateRobots() {
 async function main() {
   const { published, excluded } = await readBlogSources();
   const locs = await readSitemapLocs();
+  await validateStaticPages();
   await validateGeneratedArticles(published);
   validateSitemap(locs, published, excluded);
   await validateRobots();
