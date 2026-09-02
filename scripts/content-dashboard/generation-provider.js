@@ -8,7 +8,7 @@ import { readTrendState } from './trends.js';
 const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
 const DEFAULT_OLLAMA_MODEL = 'qwen2.5:1.5b';
 const SAFE_SOURCE_LIMIT = 20;
-const SOURCE_BACKED_BRAIN_LIMIT = 6;
+const SOURCE_BACKED_BRAIN_LIMIT = 3;
 const EXPLAINER_BRAIN_LIMIT = 8;
 const MAX_INTERACTIVE_OUTPUT_TOKENS = 6000;
 const MAX_ARTICLE_GENERATION_TOKENS = 1200;
@@ -30,6 +30,21 @@ const EDITORIAL_REASONING_RUBRIC = [
   '9. Avoid tempting but irrelevant Certifyd angles.',
   '10. Draft from source facts to consequence to narrow Certifyd relevance. Do not publish this reasoning pass.',
 ].join('\n');
+
+const GENERIC_EDITORIAL_HEADINGS = [
+  'What happened',
+  'Why it matters for creators',
+  'Why It Matters for Creators',
+  'Where Certifyd fits',
+  'Where Certifyd Fits',
+  'Why it matters to Certifyd',
+  'Why It Matters to Certifyd',
+  'The broader signal',
+  'The Broader Signal',
+  'Business Story',
+  'News Story Recap',
+  'Editorial Notes',
+];
 
 const BRAIN_SELECTION_THEMES = [
   { id: 'positioning', label: 'Certifyd positioning', patterns: [/constitution|ecosystem|founder-decisions|approved-public-claims|investment-thesis/i, /\bpositioning|creator-owned|network|business model\b/i] },
@@ -438,6 +453,21 @@ export function validateGeneratedArticle(value, groundedContext) {
   if (detectInternalContextLeak(value.bodyMarkdown).length) {
     throw new GenerationValidationError('Generation failed validation — internal context leaked into article.');
   }
+  const hasExternalSources = Array.isArray(groundedContext.externalSourceFacts) && groundedContext.externalSourceFacts.length > 0;
+  if (hasExternalSources) {
+    const genericHeadingHits = detectGenericEditorialHeadings(value.bodyMarkdown);
+    if (genericHeadingHits.length) {
+      throw new GenerationValidationError(`Generation failed validation — generic editorial section headings used: ${genericHeadingHits.join(', ')}.`);
+    }
+    const genericDefinitionHits = detectGenericCertifydDefinitions(value.bodyMarkdown);
+    if (genericDefinitionHits.length) {
+      throw new GenerationValidationError('Generation failed validation — generic Certifyd glossary copy leaked into article.', genericDefinitionHits);
+    }
+    const unsupportedConceptHits = detectUnsupportedEditorialConcepts(value.bodyMarkdown, groundedContext);
+    if (unsupportedConceptHits.length) {
+      throw new GenerationValidationError('Generation failed validation — article introduced source-unsupported editorial concepts.', unsupportedConceptHits);
+    }
+  }
   const sourceIds = new Set(groundedContext.sourceRecords.map((source) => source.id));
   const warnings = [...(value.warnings || []).map(String).map((warning) => warning.trim()).filter(Boolean)];
   const normalizedClaims = [];
@@ -467,6 +497,12 @@ export function validateGeneratedArticle(value, groundedContext) {
   const externalAdoptionHits = detectUnsupportedExternalAdoptionClaims(value.bodyMarkdown, groundedContext);
   if (externalAdoptionHits.length) {
     throw new GenerationValidationError('Generated draft made unsupported external Certifyd adoption claims.', externalAdoptionHits);
+  }
+  if (hasExternalSources) {
+    const depthFailures = detectShallowEditorialDraft(value.bodyMarkdown);
+    if (depthFailures.length) {
+      throw new GenerationValidationError(`Generation failed validation — article is too shallow for source-backed editorial: ${depthFailures.join('; ')}.`);
+    }
   }
   const tags = (value.tags || ['Certifyd']).map(String).map((tag) => tag.trim()).filter(Boolean).slice(0, 8);
   return {
@@ -624,6 +660,8 @@ function buildSystemInstruction() {
     'Avoid generic AI-blog openings such as “in today’s digital age,” “ever-evolving landscape,” “rapidly evolving landscape,” or “myriad of challenges.”',
     'Keep it short: one H1 title, 3 to 5 short sections, no JSON, no YAML, no code fences.',
     'Never use internal prompt labels, context labels, Brain template headings or source-scope headings as article headings.',
+    `Never use these generic editorial headings in a source-backed article: ${GENERIC_EDITORIAL_HEADINGS.join(', ')}.`,
+    'Never copy glossary-style Certifyd definitions into editorial prose unless the source story specifically requires the definition.',
     'Do not mention this generation process or source IDs.',
   ].join('\n');
 }
@@ -677,18 +715,19 @@ function buildUserPrompt(input, groundedContext) {
       ? '- Start with the source facts as the news/business story.'
       : '- Start with the Certifyd business problem and approved Brain context.',
     '- Connect only the relevant Certifyd knowledge themes to the story.',
-    '- For music licensing, AI inputs/outputs, derivative works, settlement, opt-in, compensation or creator choice stories, prefer permissions, creator control, provenance, rights/clearance, compensation/commerce and attribution.',
+    '- For music licensing, AI inputs/outputs, derivative works, settlement, opt-in, compensation or creator choice stories, prefer only the permissions, creator control, rights/clearance or compensation angles that SOURCE FACTS actually support.',
     '- Do not force every Certifyd knowledge theme into the article.',
     '- Frame Certifyd relevance as analysis, not as a claim that the news subject uses Certifyd.',
     '- Keep source facts and Certifyd commentary epistemically separate: SOURCE FACTS describe the companies/story; CERTIFYD FACTS describe Certifyd; CERTIFYD ANALYSIS explains conceptual relevance only.',
     '- Never write phrases like “integrating Certifyd,” “through Certifyd,” “using Certifyd,” “facilitated through Certifyd,” or “powered by Certifyd” about source-story companies unless SOURCE FACTS explicitly say that.',
     '- Do not claim what a company product aims to do unless SOURCE FACTS say it.',
     '- Let the article structure follow the actual story. Do not use boilerplate headings like Business Relevance, Core Knowledge Themes, or Certifyd Relevance.',
+    '- Do not use avoided concepts from the internal editorial brief in the article unless a verified source fact explicitly requires them.',
     '- Avoid generic AI-blog filler such as “in a significant move,” “rapidly evolving landscape,” “plays a crucial role,” “robust capabilities,” “catalyst for innovation,” or “creators and investors alike.”',
     '',
     'Output rules:',
     '- Return article Markdown only: title, intro, useful sections and conclusion if warranted.',
-    '- Do not output these labels as article headings: SOURCE FACTS, CERTIFYD FACTS, CERTIFYD KNOWLEDGE, CERTIFYD ANALYSIS, EDITORIAL ANGLE, EDITORIAL REASONING PROCESS, INTERNAL EDITORIAL BRIEF, WRITING INSTRUCTIONS, Definition, Source Scope, Approved Certifyd Knowledge, Brain Context, Prompt Instructions, Business Relevance, Core Knowledge Themes, Certifyd Relevance, Step 1, Step 2, Step 3, Step 4, Step 5, Step 6, Step 7, Step 8, Step 9.',
+    `- Do not output these labels as article headings: SOURCE FACTS, CERTIFYD FACTS, CERTIFYD KNOWLEDGE, CERTIFYD ANALYSIS, EDITORIAL ANGLE, EDITORIAL REASONING PROCESS, INTERNAL EDITORIAL BRIEF, WRITING INSTRUCTIONS, Definition, Source Scope, Approved Certifyd Knowledge, Brain Context, Prompt Instructions, Business Relevance, Core Knowledge Themes, Certifyd Relevance, Step 1, Step 2, Step 3, Step 4, Step 5, Step 6, Step 7, Step 8, Step 9, ${GENERIC_EDITORIAL_HEADINGS.join(', ')}.`,
     '- Do not use generic blog filler or mention founder review in the article body.',
   ].join('\n');
 }
@@ -821,7 +860,7 @@ function looksLikeExternalNewsArticle(input = {}) {
 function buildEditorialBrief(input = {}, externalSourceFacts = []) {
   const primary = externalSourceFacts.find((source) => source.title && source.summary) || null;
   const sourceText = externalSourceFacts.map((source) => `${source.title || ''}. ${source.summary || ''}`).join(' ');
-  const themes = inferStoryThemes(`${input.topic || ''} ${input.objective || ''} ${sourceText}`);
+  const themes = inferStoryThemes(sourceText || `${input.topic || ''} ${input.objective || ''}`);
   const verifiedFacts = extractVerifiedFacts(externalSourceFacts);
   const editorialTension = editorialTensionFromThemes(themes, primary);
   const possibleThesis = buildPossibleThesis(themes, primary);
@@ -878,7 +917,10 @@ function summarizeRelevantContext(externalSourceFacts = []) {
 
 function editorialTensionFromThemes(themes, primary = null) {
   const subject = primary?.title || 'this story';
-  if (themes.has('rights') || themes.has('derivatives') || themes.has('ai')) return 'The tension is whether new licensing and AI uses give creators clear consent, attribution, provenance and compensation, or simply move rights into another opaque system.';
+  if (themes.has('accountFinance')) return 'The tension is whether a social account can safely become a financial account without concentrating too much creator-business value behind one outside login.';
+  if (themes.has('infrastructure')) return 'AI is often discussed as a content problem, but this story reframes the deeper issue as infrastructure dependency.';
+  if (themes.has('rights') || themes.has('derivatives')) return 'The tension is whether new licensing and AI uses give creators clear consent, permission and compensation, or simply move rights into another opaque system.';
+  if (themes.has('ai')) return 'The tension is whether AI changes only the supply of content or also changes the systems creators depend on to operate.';
   if (themes.has('commerce')) return 'The tension is whether commerce creates durable creator-owned customer relationships or only another platform-controlled transaction layer.';
   if (themes.has('dependency')) return 'The tension is whether creators gain distribution while remaining dependent on channels they do not control.';
   if (themes.has('finance')) return 'The tension is whether creative IP value flows back to creators and their businesses or is captured mainly through outside ownership structures.';
@@ -887,7 +929,10 @@ function editorialTensionFromThemes(themes, primary = null) {
 
 function buildPossibleThesis(themes, primary) {
   const subject = primary?.title || 'this story';
-  if (themes.has('rights') || themes.has('derivatives') || themes.has('ai')) return `${subject} shows why creator permission, provenance, attribution and compensation need to be explicit before new value is created from existing work.`;
+  if (themes.has('accountFinance')) return 'When a social account also becomes a financial account, losing control of it means considerably more than losing the ability to post.';
+  if (themes.has('infrastructure')) return 'Independent music does not just have an AI problem. It has an infrastructure problem.';
+  if (themes.has('rights') || themes.has('derivatives')) return `${subject} shows why creator permission and compensation need to be explicit before new value is created from existing work.`;
+  if (themes.has('ai')) return `${subject} shows that AI pressure matters most when it changes the infrastructure independent creators rely on to operate.`;
   if (themes.has('commerce')) return `${subject} points to the need for creator commerce that preserves the relationship between the creator business and the customer.`;
   if (themes.has('dependency')) return `${subject} shows why creators need distribution and discovery without losing control of identity, context and audience relationships.`;
   if (themes.has('finance')) return `${subject} shows that creative IP is becoming a financial asset class, which makes ownership, rights context and creator leverage more important.`;
@@ -903,11 +948,30 @@ function thesisTestResult(thesis = '', themes = new Set(), externalSourceFacts =
   if (!text) return { status: 'FAIL', reason: 'Editorial thesis is empty.' };
   if (!hasStorySpecificSubject && !themes.size) return { status: 'FAIL', reason: 'Editorial thesis is not specific to the source story.' };
   if (genericDefaultOnly) return { status: 'FAIL', reason: 'Editorial thesis relies on a generic Certifyd concept not made central by source facts.' };
+  if (isReusableGenericThesis(text, sourceText, themes)) return { status: 'FAIL', reason: 'Editorial thesis could fit unrelated Certifyd stories with minor wording changes.' };
   return { status: 'PASS', reason: 'Thesis is specific enough to draft from the source facts.' };
 }
 
+function isReusableGenericThesis(thesis = '', sourceText = '', themes = new Set()) {
+  if (themes.has('infrastructure') || themes.has('accountFinance')) return false;
+  const text = String(thesis || '').toLowerCase();
+  const genericPattern = /\b(creators need|creator businesses need|direct relationships matter|platforms should|certifyd helps|own their work|ownership and control|verified identity|fair compensation|provenance and attribution|transparent|decentralized|direct commerce)\b/;
+  if (!genericPattern.test(text)) return false;
+  const supportedBySource = [
+    [/verified identity|identity/, /identity|account|credential|verification/],
+    [/fair compensation|compensation/, /compensation|settlement|payment|royalt/],
+    [/provenance|attribution/, /provenance|attribution|credit|authorship/],
+    [/direct commerce|direct relationships/, /commerce|fan|customer|transaction|purchase|payment/],
+    [/ownership and control|own their work/, /rights?|ip|ownership|stake|acqui|catalog|brand/],
+  ].some(([thesisPattern, sourcePattern]) => thesisPattern.test(text) && sourcePattern.test(sourceText));
+  return !supportedBySource;
+}
+
 function certifydRelevanceFromThemes(themes) {
-  if (themes.has('rights') || themes.has('derivatives') || themes.has('ai')) return 'Use only Certifyd Brain records about provenance, permissions, publishing context, access or rights review.';
+  if (themes.has('accountFinance')) return 'Use only Certifyd Brain records about creator-controlled identity, commerce infrastructure and account/relationship control.';
+  if (themes.has('infrastructure')) return 'Use only Certifyd Brain records about creator-operated infrastructure, Core, identity, publishing context or network distribution.';
+  if (themes.has('rights') || themes.has('derivatives')) return 'Use only Certifyd Brain records about permissions, publishing context, access or rights review.';
+  if (themes.has('ai')) return 'Use Certifyd Brain records about infrastructure or publishing context only when source facts connect AI to creator operations.';
   if (themes.has('commerce')) return 'Use only Certifyd Brain records about direct commerce, payments, receipts, Fan or owned customer relationships.';
   if (themes.has('dependency')) return 'Use only Certifyd Brain records about Core, identity, network distribution, publishing context or platform dependency.';
   if (themes.has('finance')) return 'Use only Certifyd Brain records about creator ownership, IP context, provenance or business-model framing.';
@@ -916,14 +980,19 @@ function certifydRelevanceFromThemes(themes) {
 
 function competitiveDistinctionFromThemes(themes) {
   if (themes.has('commerce')) return 'Certifyd analysis should focus on creator-owned relationship and transaction context, not generic monetization language.';
-  if (themes.has('rights') || themes.has('ai')) return 'Certifyd analysis should focus on verifiable context and creator-controlled permissions, not vague AI or analytics claims.';
+  if (themes.has('infrastructure')) return 'Certifyd analysis should focus on creator-operated infrastructure and control over operating systems, not generic AI, licensing or payout language.';
+  if (themes.has('accountFinance')) return 'Certifyd analysis should focus on account concentration and creator-controlled identity/commerce infrastructure, not music-industry rights boilerplate.';
+  if (themes.has('rights') || themes.has('ai')) return 'Certifyd analysis should focus on verifiable context and creator-controlled permissions only when the source facts support that angle.';
   if (themes.has('dependency')) return 'Certifyd analysis should focus on network and creator-controlled infrastructure rather than platform dependence.';
   return 'Certifyd analysis should be specific and supported by selected Brain records.';
 }
 
 function whatChangedFromThemes(themes, primary = null) {
   const subject = primary?.title || 'the source story';
-  if (themes.has('rights') || themes.has('derivatives') || themes.has('ai')) return `Before ${subject}, AI and rights discussions could be treated as abstract policy or licensing questions. Now the source facts make creator opt-in, derivative use, compensation and authorization part of the operational story.`;
+  if (themes.has('accountFinance')) return `Before ${subject}, social account security could be treated mainly as a posting and reputation problem. Now payment functionality makes account control a financial-risk issue too.`;
+  if (themes.has('infrastructure')) return `Before ${subject}, AI’s impact on independent music could be framed mainly around content, rights, copyright and competition. Now the source facts frame the debate around whether independent music has durable infrastructure of its own.`;
+  if (themes.has('rights') || themes.has('derivatives')) return `Before ${subject}, AI and rights discussions could be treated as abstract policy or licensing questions. Now the source facts make creator opt-in, derivative use, compensation and authorization part of the operational story.`;
+  if (themes.has('ai')) return `Before ${subject}, AI could be discussed as a content problem. Now the source facts require asking how AI changes creator operations and dependencies.`;
   if (themes.has('commerce')) return `Before ${subject}, audience activity and creator revenue could be discussed as separate layers. Now the source facts put customer relationships, payment context and creator business control closer together.`;
   if (themes.has('dependency')) return `Before ${subject}, distribution reach could look like the main win. Now the source facts make dependency on external channels part of the cost to examine.`;
   if (themes.has('finance')) return `Before ${subject}, creative work could be framed mainly as cultural output. Now the source facts emphasize IP as a financial asset whose control and context matter.`;
@@ -932,7 +1001,10 @@ function whatChangedFromThemes(themes, primary = null) {
 
 function creatorConsequenceFromThemes(themes, primary = null) {
   const subject = primary?.title || 'the story';
-  if (themes.has('rights') || themes.has('derivatives') || themes.has('ai')) return 'A creator may see new value created from existing work, but the practical consequence depends on whether permission, attribution, derivative treatment and compensation are explicit before that value moves.';
+  if (themes.has('accountFinance')) return 'A creator may already depend on a social account for identity, audience, reputation and communication; adding payments increases both the value concentrated behind that account and the consequences of losing control of it.';
+  if (themes.has('infrastructure')) return 'Independent artists lose leverage when identity, distribution, discovery, audience relationships and commerce all depend on infrastructure operated by third parties.';
+  if (themes.has('rights') || themes.has('derivatives')) return 'A creator may see new value created from existing work, but the practical consequence depends on whether permission, derivative treatment and compensation are explicit before that value moves.';
+  if (themes.has('ai')) return 'A creator may face AI-driven changes not only in content supply, but in the systems that control discovery, distribution and commercial access.';
   if (themes.has('commerce')) return 'A creator can gain sales or support while still losing the customer relationship if the transaction remains controlled by an outside account, app or marketplace.';
   if (themes.has('dependency')) return 'A creator can gain reach while concentrating identity, audience communication and business context inside systems they do not control.';
   if (themes.has('finance')) return 'A creator or rights holder may benefit from rising IP value only if ownership, permissions and business context remain clear enough to support leverage.';
@@ -942,10 +1014,18 @@ function creatorConsequenceFromThemes(themes, primary = null) {
 function selectedCertifydConceptsFromThemes(themes, thesis = '') {
   const concepts = [];
   const add = (concept, relevance, sourceConnection) => concepts.push({ concept, relevance, sourceConnection });
-  if (themes.has('rights') || themes.has('derivatives') || themes.has('ai')) {
+  if (themes.has('accountFinance')) {
+    add('Creator-controlled identity', 'Relevant because the thesis depends on what happens when identity, reputation and account access become financially valuable.', 'The source facts connect account control/security to payment functionality.');
+    add('Creator-controlled commerce infrastructure', 'Relevant because the article can examine the risk of concentrating social and financial functions inside one outside account.', 'The source facts say payment functionality made accounts appear more valuable to attackers.');
+  } else if (themes.has('infrastructure')) {
+    add('Creator-operated infrastructure', 'Relevant because the thesis is about whether independent music has durable infrastructure it can operate instead of only depend on.', 'The source facts frame the report as a fight for music infrastructure and discuss infrastructure erosion.');
+    add('Creator-controlled identity and publishing', 'Relevant because infrastructure control affects how creators maintain identity, releases, discovery context and commercial operations.', 'The source facts connect independent music, AI impact and infrastructure dependency.');
+  } else if (themes.has('rights') || themes.has('derivatives')) {
     add('Creator-controlled permissions', 'Relevant because the thesis depends on whether creators can choose or authorize new uses of existing work.', 'The source facts mention licensing, opt-in, derivative use, AI inputs/outputs, settlement or compensation.');
-    add('Provenance and publishing context', 'Relevant because the article needs a way to discuss how work, attribution and permission context stay attached to creative output.', 'The source facts connect existing creative work to new uses or derivative activity.');
+    add('Publishing and permission context', 'Relevant because the article needs a way to discuss how work and permission context stay attached to creative output.', 'The source facts connect existing creative work to new uses or derivative activity.');
     add('Commerce or compensation records', 'Relevant only where the source facts discuss compensation, settlement, payments or value flowing back to participants.', 'The source facts include compensation, transaction or settlement language.');
+  } else if (themes.has('ai')) {
+    add('Creator-operated infrastructure', 'Relevant only if the source facts show AI changing creator operations, dependency or control.', 'The source facts discuss AI’s impact on the systems creators rely on.');
   } else if (themes.has('commerce')) {
     add('Creator-controlled commerce', 'Relevant because the thesis depends on whether transactions preserve the creator business relationship.', 'The source facts discuss direct fan activity, purchases, payment layers, monetization or commerce.');
     add('Receipts and transaction context', 'Relevant because the article may need to distinguish real customer activity from platform-reported attention.', 'The source facts connect activity to revenue, payment or customer behavior.');
@@ -964,22 +1044,53 @@ function selectedCertifydConceptsFromThemes(themes, thesis = '') {
 
 function avoidAnglesFromThemes(themes) {
   const avoid = ['generic creator ownership rhetoric', 'generic blockchain or decentralization arguments'];
-  if (!(themes.has('rights') || themes.has('derivatives') || themes.has('ai'))) avoid.push('licensing, provenance or permissions unless source facts make them central');
+  if (themes.has('infrastructure')) avoid.push('generic licensing discussion', 'royalty splits', 'generic fair-compensation language', 'attribution boilerplate', 'derivative-work discussion', 'payout definitions');
+  if (themes.has('accountFinance')) avoid.push('licensing', 'provenance', 'attribution', 'derivative works', 'generic payout definitions', 'music-industry rights boilerplate');
+  if (!(themes.has('rights') || themes.has('derivatives'))) avoid.push('licensing, provenance or permissions unless source facts make them central');
   if (!themes.has('commerce')) avoid.push('direct commerce or payment rails unless source facts discuss transactions, purchases or compensation');
   if (!themes.has('dependency')) avoid.push('platform-dependency claims unless the source facts show a control or account-dependence issue');
   if (!themes.has('finance')) avoid.push('investor or IP-asset framing unless the source facts discuss ownership stakes, acquisitions or asset value');
-  return avoid.slice(0, 5);
+  return avoid.slice(0, 10);
 }
 
 function articleProgressionFromThemes(themes, primary = null) {
   const subject = primary?.title || 'the source facts';
-  if (themes.has('rights') || themes.has('derivatives') || themes.has('ai')) {
+  if (themes.has('accountFinance')) {
+    return [
+      `Open with the account-security facts in ${subject}.`,
+      'Establish that payment functionality changes the value concentrated inside a social account.',
+      'Explain why an account that handles identity, audience, reputation, communication and money creates higher stakes for creators.',
+      'Introduce creator-controlled identity and commerce infrastructure as the narrow Certifyd relevance.',
+      'End on the difference between using a social account and letting one account become the business.',
+    ];
+  }
+  if (themes.has('infrastructure')) {
+    return [
+      `Introduce the report and its infrastructure framing in ${subject}.`,
+      'Explain why that reframes the usual AI-in-music debate.',
+      'Separate visible AI problems from underlying infrastructure dependency.',
+      'Explore third-party dependency across distribution, identity, discovery and commerce.',
+      'Ask what genuinely independent infrastructure could look like.',
+      'Introduce Certifyd as one architectural example, not a product checklist.',
+      'End on the idea that independence requires control over the systems through which creators operate commercially.',
+    ];
+  }
+  if (themes.has('rights') || themes.has('derivatives')) {
     return [
       `Open with the specific source facts in ${subject}.`,
       'Establish the licensing, AI, derivative, settlement, opt-in or compensation details that make the story matter.',
       'Explain why those details change the creator’s practical position.',
-      'Introduce only Certifyd concepts that help analyze permission, provenance, publishing context or compensation.',
+      'Introduce only Certifyd concepts that help analyze permission, publishing context or compensation.',
       'End on the operational distinction between creating new value from work and making creator authorization clear before that value moves.',
+    ];
+  }
+  if (themes.has('ai')) {
+    return [
+      `Open with the AI-related source facts in ${subject}.`,
+      'Explain what the source facts actually show, without importing licensing or attribution unless present.',
+      'Identify the creator operating consequence.',
+      'Introduce only the Certifyd infrastructure concept that clarifies that consequence.',
+      'End on the structural lesson from the story.',
     ];
   }
   if (themes.has('commerce')) {
@@ -1029,7 +1140,7 @@ function compactEditorialBrief(brief = {}) {
       relevance: clampText(item.relevance || '', 220),
       sourceConnection: clampText(item.sourceConnection || '', 220),
     })),
-    avoidAngles: (brief.avoidAngles || []).slice(0, 5).map((item) => clampText(item, 140)),
+    avoidAngles: (brief.avoidAngles || []).slice(0, 10).map((item) => clampText(item, 140)),
     articleProgression: (brief.articleProgression || []).slice(0, 7).map((item) => clampText(item, 220)),
     themes: Array.isArray(brief.themes) ? brief.themes.slice(0, 8) : [],
   };
@@ -1125,6 +1236,94 @@ function sourceFactsEstablishCertifydRelationship(groundedContext = {}) {
   return /\b(?:uses?|using|leverages?|leveraging|adopts?|adopting|integrates?|integrating|partners?|partnering|relies? on|powered by|through|via|with)\b[^.]{0,160}\bCertifyd\b|\bCertifyd\b[^.]{0,160}\b(?:uses?|using|leverages?|leveraging|integrates?|integrating|partners?|partnering|powers?|facilitates?)\b/i.test(sourceText);
 }
 
+function detectGenericEditorialHeadings(bodyMarkdown) {
+  const text = String(bodyMarkdown || '');
+  return GENERIC_EDITORIAL_HEADINGS.filter((heading) => {
+    const pattern = new RegExp(`^\\s{0,3}#{1,6}\\s+${escapeRegExp(heading)}\\s*$`, 'im');
+    return pattern.test(text);
+  });
+}
+
+function detectGenericCertifydDefinitions(bodyMarkdown) {
+  const text = String(bodyMarkdown || '').replace(/\s+/g, ' ');
+  const patterns = [
+    /\bA payout is\b[^.]{0,220}\./gi,
+    /\bCertifyd public copy describes\b[^.]{0,220}\./gi,
+    /\bProvenance is evidence about\b[^.]{0,220}\./gi,
+    /\b(?:A|An)\s+(?:receipt|record|credential|profile|release record)\s+is\b[^.]{0,220}\./gi,
+  ];
+  return patterns.flatMap((pattern) => [...text.matchAll(pattern)].map((match) => match[0].trim()));
+}
+
+function detectShallowEditorialDraft(bodyMarkdown) {
+  const text = String(bodyMarkdown || '');
+  const bodyOnly = text
+    .split('\n')
+    .filter((line) => !/^\s{0,3}#{1,6}\s+/.test(line))
+    .join(' ');
+  const wordCount = (bodyOnly.match(/\b[\w’'-]+\b/g) || []).length;
+  const paragraphs = text
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.replace(/^\s{0,3}#{1,6}\s+.+$/gm, '').trim())
+    .filter((paragraph) => (paragraph.match(/\b[\w’'-]+\b/g) || []).length >= 20);
+  const failures = [];
+  if (wordCount < 220) failures.push(`word count ${wordCount} is below 220`);
+  if (paragraphs.length < 4) failures.push(`only ${paragraphs.length} substantive paragraphs`);
+  return failures;
+}
+
+function detectUnsupportedEditorialConcepts(markdown, groundedContext = {}) {
+  const sourceText = editorialSourceText(groundedContext.externalSourceFacts || []);
+  const text = String(markdown || '').replace(/\s+/g, ' ');
+  const hits = [];
+  const unsupported = [
+    ['licensing', /\blicens(?:e|es|ed|ing)|licensing deal\b/i, /\blicens(?:e|es|ed|ing)|permission|rights?|copyright|clearance|settlement|opt[-\s]?in/i],
+    ['payout', /\bpayouts?\b/i, /\bpayouts?\b/i],
+    ['royalty', /\broyalt(?:y|ies)\b/i, /\broyalt(?:y|ies)\b/i],
+    ['generic fair compensation', /\bfair compensation\b/i, /\bfair compensation\b|compensation|settlement|payment/i],
+    ['attribution', /\battribution\b/i, /\battribution|authorship|credit|credits/i],
+    ['provenance', /\bprovenance\b/i, /\bprovenance|source context|origin|authorship|credit|credits/i],
+    ['derivative works', /\bderivative works?\b|\bderivative activity\b/i, /\bderivative|inputs?|outputs?|remix|sample|cover|adaptation/i],
+    ['successful breach', /\bsuccessful breaches?\b|\baccounts? (?:were|was) breached\b/i, /\bsuccessful breaches?|evidence of successful breaches?|no evidence of successful breaches?/i],
+  ];
+  for (const [label, articlePattern, sourcePattern] of unsupported) {
+    if (articlePattern.test(text) && !sourcePattern.test(sourceText)) hits.push(label);
+  }
+  return [...new Set(hits)];
+}
+
+function detectUnsupportedBriefConcepts(brief = {}, externalSourceFacts = []) {
+  const sourceText = editorialSourceText(externalSourceFacts);
+  const briefText = [
+    brief.editorialTension,
+    brief.whatChanged,
+    brief.creatorConsequence,
+    brief.possibleThesis,
+    ...(brief.articleProgression || []),
+  ].join(' ').replace(/\s+/g, ' ');
+  const hits = [];
+  const unsupported = [
+    ['licensing', /\blicens(?:e|es|ed|ing)|licensing deal\b/i, /\blicens(?:e|es|ed|ing)|permission|rights?|copyright|clearance|settlement|opt[-\s]?in/i],
+    ['payout', /\bpayouts?\b/i, /\bpayouts?\b/i],
+    ['royalty', /\broyalt(?:y|ies)\b/i, /\broyalt(?:y|ies)\b/i],
+    ['attribution', /\battribution\b/i, /\battribution|authorship|credit|credits/i],
+    ['provenance', /\bprovenance\b/i, /\bprovenance|source context|origin|authorship|credit|credits/i],
+    ['derivative works', /\bderivative works?\b|\bderivative activity\b/i, /\bderivative|inputs?|outputs?|remix|sample|cover|adaptation/i],
+  ];
+  for (const [label, briefPattern, sourcePattern] of unsupported) {
+    if (briefPattern.test(briefText) && !sourcePattern.test(sourceText)) hits.push(label);
+  }
+  return [...new Set(hits)];
+}
+
+function editorialSourceText(externalSourceFacts = []) {
+  return externalSourceFacts
+    .map((source) => `${source.publisher || ''} ${source.title || ''} ${source.summary || ''} ${(source.categories || []).join(' ')}`)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
 function sentenceAround(text, index) {
   const start = Math.max(0, text.lastIndexOf('.', index - 1) + 1);
   const next = text.indexOf('.', index);
@@ -1151,12 +1350,16 @@ function assertEditorialGateReady(groundedContext = {}) {
   if (!String(brief.creatorConsequence || '').trim()) failures.push('CREATOR CONSEQUENCE is empty');
   if (!String(brief.possibleThesis || '').trim()) failures.push('EDITORIAL THESIS is empty');
   if (String(brief.thesisTest?.status || '').toUpperCase() !== 'PASS') failures.push('THESIS TEST != PASS');
-  if (!Array.isArray(brief.articleProgression) || brief.articleProgression.filter((step) => String(step || '').trim()).length < 4) failures.push('ARTICLE ARGUMENT has fewer than 4 steps');
+  if (!Array.isArray(brief.articleProgression) || brief.articleProgression.filter((step) => String(step || '').trim().length >= 16).length < 4) failures.push('ARTICLE ARGUMENT has fewer than 4 steps');
+  if ((brief.selectedCertifydConcepts || []).length > 3) failures.push('more than 3 Certifyd concepts selected');
   for (const concept of brief.selectedCertifydConcepts || []) {
     if (!String(concept?.sourceConnection || '').trim()) {
       failures.push('a selected Certifyd concept has no Source connection');
       break;
     }
+  }
+  for (const unsupported of detectUnsupportedBriefConcepts(brief, groundedContext.externalSourceFacts || [])) {
+    failures.push(`EDITORIAL BRIEF contains source-unsupported concept: ${unsupported}`);
   }
   if (failures.length) {
     throw new GenerationConfigurationError(`Article generation blocked by editorial gate: ${failures.join('; ')}.`);
@@ -1286,32 +1489,49 @@ function sourceBackedDraft(input, groundedContext, sourceIds) {
   const sources = Array.isArray(groundedContext.externalSourceFacts) ? groundedContext.externalSourceFacts.filter((source) => source.title && source.summary) : [];
   if (!sources.length) return null;
   const primary = sources[0];
+  const brief = groundedContext.editorialBrief || {};
   const title = titleFromPrompt(primary.title || input.topic || input.workingTitle, 'Certifyd Source Story');
   const tags = tagsFromTopic(`${input.topic || ''} ${title} ${(primary.categories || []).join(' ')}`);
-  const themes = inferStoryThemes(`${title} ${primary.summary} ${(primary.categories || []).join(' ')}`);
+  const progression = Array.isArray(brief.articleProgression) && brief.articleProgression.length >= 4
+    ? brief.articleProgression
+    : articleProgressionFromThemes(inferStoryThemes(`${title} ${primary.summary} ${(primary.categories || []).join(' ')}`), primary);
+  const conceptParagraph = selectedConceptsParagraph(brief);
   const sections = [
     `# ${title}`,
     '',
     sourceIntro(primary),
     '',
-    `## What happened`,
+    `## ${subjectHeadingFromProgression(progression[0], 'The Report Reframes the Debate')}`,
     '',
     sourceFactParagraph(primary),
     ...supportingSourceParagraphs(sources.slice(1)),
     '',
-    `## Why it matters for creators`,
+    `## ${subjectHeadingFromProgression(progression[1], 'What Changed for Creators')}`,
     '',
-    creatorRelevanceParagraph(themes, primary),
+    brief.whatChanged || progression[1],
     '',
-    `## Where Certifyd fits`,
+    cleanSentence(progression[1]),
     '',
-    certifydAnalysisParagraph(themes, groundedContext),
+    `## ${subjectHeadingFromProgression(progression[2], 'The Creator Consequence')}`,
     '',
-    `## The broader signal`,
+    brief.creatorConsequence || progression[2],
     '',
-    broaderSignalParagraph(themes),
+    cleanSentence(progression[2]),
+    '',
+    `## ${subjectHeadingFromProgression(progression[3], 'The Infrastructure Question')}`,
+    '',
+    [
+      brief.possibleThesis,
+      progression.slice(4, 7).map((step) => cleanSentence(step)).join(' '),
+      conceptParagraph,
+    ].filter(Boolean).join(' '),
+    '',
+    [
+      brief.certifydRelevance ? cleanSentence(brief.certifydRelevance) : '',
+      brief.competitiveDistinction ? cleanSentence(brief.competitiveDistinction) : '',
+    ].filter(Boolean).join(' '),
   ];
-  const bodyMarkdown = sections.filter(Boolean).join('\n');
+  const bodyMarkdown = sections.join('\n').replace(/\n{3,}/g, '\n\n').trim();
   const excerpt = excerptFromBody(bodyMarkdown, title);
   return {
     title,
@@ -1330,6 +1550,24 @@ function sourceBackedDraft(input, groundedContext, sourceIds) {
     }] : [],
     warnings: ['Source-backed deterministic draft created for founder review. Verify wording before approval.'],
   };
+}
+
+function subjectHeadingFromProgression(step = '', fallback = 'The Story') {
+  const text = String(step || '').replace(/^\d+\.\s*/, '').trim();
+  if (/infrastructure/i.test(text)) return 'The Infrastructure Question';
+  if (/account|financial|payment/i.test(text)) return 'When Accounts Hold More Value';
+  if (/permission|licens|rights|derivative|compensation/i.test(text)) return 'The Rights Question Gets Operational';
+  if (/customer|relationship|commerce|transaction/i.test(text)) return 'The Relationship Around the Transaction';
+  if (/dependency|platform|third-party|outside layer/i.test(text)) return 'The Cost of Dependency';
+  return fallback;
+}
+
+function selectedConceptsParagraph(brief = {}) {
+  const concepts = (brief.selectedCertifydConcepts || [])
+    .filter((item) => item?.concept && item?.relevance && item?.sourceConnection)
+    .slice(0, 3);
+  if (!concepts.length) return '';
+  return concepts.map((item) => `${item.concept} is relevant here because ${lowercaseFirst(cleanSentence(item.relevance).replace(/^Relevant because\s+/i, ''))}`).join(' ');
 }
 
 function sourceIntro(source) {
@@ -1660,6 +1898,8 @@ function selectRelevantSources(sources, input, externalSourceFacts = [], editori
   const query = `${input.topic || ''} ${input.objective || ''} ${input.angle || ''} ${sourceQuery} ${thesisQuery}`.toLowerCase();
   const requestedIds = new Set(parseBrainIdList(input.trendBrainRecordIds, 40));
   const storyThemes = inferStoryThemes(query);
+  const avoidText = (editorialBrief.avoidAngles || []).join(' ').toLowerCase();
+  const selectedConceptText = (editorialBrief.selectedCertifydConcepts || []).map((concept) => `${concept.concept || ''} ${concept.relevance || ''} ${concept.sourceConnection || ''}`).join(' ').toLowerCase();
   const sourceBacked = externalSourceFacts.length > 0;
   const selectionLimit = sourceBacked ? SOURCE_BACKED_BRAIN_LIMIT : EXPLAINER_BRAIN_LIMIT;
   const queryTerms = [...new Set(query.split(/[^a-z0-9]+/).filter((term) => term.length > 3 && !/^(brain|source|story|article|certifyd|about|with|from|that|this|their|will|should|would|relevant|approved|records|company|companies|industry|creator|creators|business)$/.test(term)))].slice(0, sourceBacked ? 14 : 20);
@@ -1674,6 +1914,7 @@ function selectRelevantSources(sources, input, externalSourceFacts = [], editori
     }
     if (/investors|investment-thesis|revenue-model/i.test(source.path) && !storyThemes.has('finance')) score -= 5;
     if (/capabilities\/payments|capabilities\/payouts/i.test(source.path) && !storyThemes.has('commerce')) score -= 3;
+    if (sourceBacked && isAvoidedBrainSource(source, avoidText, sourceQuery, selectedConceptText)) score -= 12;
     if (/founder-decisions|constitution|ecosystem/i.test(source.path) && storyThemes.size >= 2) score -= 1;
     if (sourceBacked && !themes.some((theme) => storyThemes.has(theme.id) || (theme.id === 'ownership' && storyThemes.has('finance')))) score -= 4;
     return {
@@ -1701,9 +1942,44 @@ function selectRelevantSources(sources, input, externalSourceFacts = [], editori
 
   function addSelected(source) {
     if (selectedIds.has(source.id) || selected.length >= selectionLimit) return;
+    if (sourceBacked && isAvoidedBrainSource(source, avoidText, sourceQuery, selectedConceptText)) return;
+    if (sourceBacked && !brainSourceMatchesSelectedConcept(source, selectedConceptText, storyThemes)) return;
     selectedIds.add(source.id);
     selected.push(source);
   }
+}
+
+function isAvoidedBrainSource(source, avoidText = '', sourceText = '', selectedConceptText = '') {
+  const haystack = `${source.id} ${source.path} ${source.title} ${source.excerpt} ${(source.supportedClaims || []).join(' ')} ${(source.qualifiedClaims || []).join(' ')}`.toLowerCase();
+  const sourceRequires = (pattern) => pattern.test(sourceText);
+  const conceptRequires = (pattern) => pattern.test(selectedConceptText);
+  const blocked = [
+    [/licens|rights|permission|clearance/, /licens|right|permission|clearance|access/],
+    [/payout|royalty|fair-compensation|compensation/, /payout|royalt|compensation/],
+    [/attribution/, /attribution|authorship|credit|provenance/],
+    [/derivative/, /derivative|remix|sample|cover|inputs?|outputs?/],
+    [/provenance/, /provenance|receipt|proof|verification/],
+  ];
+  return blocked.some(([avoidPattern, sourcePattern]) => (
+    avoidPattern.test(avoidText)
+    && sourcePattern.test(haystack)
+    && !sourceRequires(sourcePattern)
+    && !conceptRequires(sourcePattern)
+  ));
+}
+
+function brainSourceMatchesSelectedConcept(source, selectedConceptText = '', storyThemes = new Set()) {
+  if (!selectedConceptText) return true;
+  const haystack = `${source.id} ${source.path} ${source.title} ${source.excerpt}`.toLowerCase();
+  if (storyThemes.has('infrastructure')) {
+    return /core|infrastructure|network|node|operator|identity|profile|publishing|distribution|discovery|approved-public-claims/.test(haystack);
+  }
+  if (storyThemes.has('accountFinance')) {
+    return /identity|profile|credential|commerce|payment|account|network|infrastructure|core|approved-public-claims/.test(haystack);
+  }
+  return selectedConceptText.split(/[^a-z0-9]+/)
+    .filter((term) => term.length > 5 && !/^(creator|certifyd|relevant|source|facts|thesis|because|specific|concept|context|records)$/.test(term))
+    .some((term) => haystack.includes(term));
 }
 
 function brainBaseScore(source) {
@@ -1717,6 +1993,8 @@ function inferStoryThemes(text) {
   const haystack = String(text || '').toLowerCase();
   const themes = new Set();
   if (/\b(ai|artificial intelligence|generative|model|training data|synthetic|suno|deepfake)\b/.test(haystack)) themes.add('ai');
+  if (/\b(infrastructure|erosion|independent sector|independent music|indies?|operated by third parties|third[-\s]?party dependency|creator-operated|durable infrastructure)\b/.test(haystack)) themes.add('infrastructure');
+  if (/\b(x money|financial account|payment functionality|payments functionality|password[-\s]?reset|unsolicited password|attackers|breach|account.*valuable|accounts.*valuable)\b/.test(haystack)) themes.add('accountFinance');
   if (/\b(rights?|licens(?:e|ing)|copyright|permission|clearance|settlement|infringement|repertoire|royalt(?:y|ies)|opt[-\s]?in)\b/.test(haystack)) themes.add('rights');
   if (/\b(derivative|derivatives|remix|cover|sample|mash[-\s]?up|adaptation|inputs?|outputs?)\b/.test(haystack)) themes.add('derivatives');
   if (/\b(attribution|authorship|provenance|credit|credits|verified|verification|source context)\b/.test(haystack)) themes.add('provenance');
@@ -1738,6 +2016,8 @@ function storyThemeScore(source, storyThemes) {
   if (/capabilities\/provenance|capabilities\/receipts|release-records|attribution|authorship|proof|verification/i.test(haystack)) match('provenance', 7);
   if (/publishing|release-records|derivative|remix|sample|version/i.test(haystack)) match('derivatives', 6);
   if (/ai|inputs?|outputs?|synthetic|model|machine/i.test(haystack)) match('ai', 5);
+  if (/core|infrastructure|network-distribution|node|operator|publishing|identity|profile|distribution|discovery/i.test(haystack)) match('infrastructure', 7);
+  if (/identity|profiles|commerce|payment|account|credential|network|infrastructure/i.test(haystack)) match('accountFinance', 7);
   if (/capabilities\/commerce|capabilities\/payments|capabilities\/payouts|commerce|payment|payout|receipt|compensation/i.test(haystack)) match('commerce', 5);
   if (/network-distribution|partner-integrations|platform|distribution|discovery|dependency|routing/i.test(haystack)) match('dependency', 5);
   if (/identity|profiles|credential|account verification|domain/i.test(haystack)) match('identity', 5);
