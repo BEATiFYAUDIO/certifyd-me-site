@@ -90,6 +90,20 @@ function validArticle(sourceId, overrides = {}) {
   };
 }
 
+function completeEditorialGate(context, overrides = {}) {
+  context.editorialBrief = {
+    ...(context.editorialBrief || {}),
+    verifiedFacts: ['A source story reports a concrete business event.'],
+    editorialTension: 'The source facts create a concrete creator-business tension.',
+    creatorConsequence: 'Creators need to understand the practical business consequence of the source facts.',
+    possibleThesis: 'This source story creates a specific creator-business argument.',
+    thesisTest: { status: 'PASS', reason: 'Fixture thesis is specific enough for this test.' },
+    articleProgression: ['Open with the source facts.', 'Explain what changed.', 'Show the creator consequence.', 'Connect only narrow Certifyd relevance.'],
+    selectedCertifydConcepts: [{ concept: 'Narrow Certifyd relevance', relevance: 'Relevant to this source story.', sourceConnection: 'The source facts create this connection.' }],
+    ...overrides,
+  };
+}
+
 function makeOllamaFetch(article, calls = []) {
   return async (url, options = {}) => {
     calls.push({ url: String(url), options });
@@ -381,6 +395,9 @@ test('external company Certifyd adoption claims are rejected', async () => {
     summary: 'Universal Music Group completed a share buyback. The source facts do not mention Certifyd.',
     articleUrl: 'https://example.test/umg-buyback',
   }];
+  completeEditorialGate(context, {
+    possibleThesis: 'Universal Music Group Completes Share Buyback creates a specific creator-business argument.',
+  });
   const sourceId = context.sourceRecords[0].id;
   const provider = new OllamaQwenGenerationProvider(config, {
     fetchImpl: makeOllamaFetch(validArticle(sourceId, {
@@ -548,10 +565,17 @@ test('trend source summaries are included separately from Certifyd Brain context
   assert.ok(researchRecord.generationDiagnostics.verifiedFactsExtracted.length >= 2);
   assert.match(researchRecord.generationDiagnostics.editorialThesisGenerated, /Label revenue rises as direct fan activity grows|creator commerce/i);
   assert.match(outboundPrompt, /Approved Certifyd context/i);
+  assert.match(outboundPrompt, /Editorial reasoning process/i);
+  assert.match(outboundPrompt, /First understand the source story on its own terms/i);
+  assert.match(outboundPrompt, /Reject it if it could fit 10 unrelated Certifyd articles/i);
+  assert.match(outboundPrompt, /Only after the thesis exists, choose at most 3 Certifyd concepts/i);
+  assert.ok(outboundPrompt.indexOf('Facts from the source story') < outboundPrompt.indexOf('Editorial reasoning process'));
+  assert.ok(outboundPrompt.indexOf('Editorial reasoning process') < outboundPrompt.indexOf('Internal editorial brief'));
+  assert.ok(outboundPrompt.indexOf('Internal editorial brief') < outboundPrompt.indexOf('Approved Certifyd context'));
   assert.match(outboundPrompt, /Editorial angle/i);
   assert.match(outboundPrompt, /Instructions for the draft/i);
   const userPrompt = payload.messages.find((message) => message.role === 'user')?.content || '';
-  assert.ok(userPrompt.length < 7000, `Qwen prompt should stay compact enough for local Qwen, got ${userPrompt.length} chars`);
+  assert.ok(userPrompt.length < 9500, `Qwen prompt should stay compact enough for local Qwen, got ${userPrompt.length} chars`);
 });
 
 test('news-like article generation without original source evidence is blocked before Brain-only drafting', async () => {
@@ -825,6 +849,54 @@ test('source story generation keeps BMG Suno article coherent without internal c
   assert.deepEqual(researchRecord.generationDiagnostics.externalSourceIdsSentToModel, ['billboard-bmg-suno']);
 });
 
+test('source-backed article generation is blocked by the editorial hard gate before Qwen is called', async () => {
+  const config = await makeConfig();
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'source-hard-gate',
+      publisher: 'Music Business Worldwide',
+      publishedAt: '2026-08-12T09:00:00.000Z',
+      title: 'Creator Commerce Report',
+      summary: 'A source story reports direct fan commerce and customer relationship changes.',
+      articleUrl: 'https://example.test/creator-commerce-report',
+      categories: ['Music', 'Commerce'],
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Creator Commerce Report',
+    trendSourceItemIds: 'source-hard-gate',
+  });
+  context.editorialBrief.verifiedFacts = [];
+  context.editorialBrief.editorialTension = '';
+  context.editorialBrief.creatorConsequence = '';
+  context.editorialBrief.possibleThesis = '';
+  context.editorialBrief.thesisTest = { status: 'FAIL', reason: 'Test failure.' };
+  context.editorialBrief.articleProgression = ['one', 'two', 'three'];
+  context.editorialBrief.selectedCertifydConcepts = [{ concept: 'Creator-controlled commerce', relevance: 'Relevant.', sourceConnection: '' }];
+  let qwenCalled = false;
+  const provider = new OllamaQwenGenerationProvider(config, {
+    fetchImpl: async (url) => {
+      if (String(url).endsWith('/api/tags')) return mockResponse({ models: [{ name: 'qwen3:8b' }] });
+      qwenCalled = true;
+      return mockResponse({ message: { content: '{}' } });
+    },
+  });
+
+  await assert.rejects(
+    () => provider.generateArticle({
+      actorEmail: 'writer@example.test',
+      topic: 'Creator Commerce Report',
+      audience: 'Creators',
+      objective: 'Explain the source facts.',
+      trendSourceItemIds: 'source-hard-gate',
+    }, context),
+    /Article generation blocked by editorial gate: CORE FACTS is empty; EDITORIAL TENSION is empty; CREATOR CONSEQUENCE is empty; EDITORIAL THESIS is empty; THESIS TEST != PASS; ARTICLE ARGUMENT has fewer than 4 steps; a selected Certifyd concept has no Source connection/,
+  );
+  assert.equal(qwenCalled, false);
+});
+
 test('BMG Suno source story rejects invented Certifyd relationship mechanics', async () => {
   const config = await makeConfig();
   await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
@@ -892,6 +964,33 @@ test('generation validation rejects leaked internal context headings', async () 
         '## Approved Certifyd Knowledge',
         '',
         'This should not become article copy.',
+      ].join('\n'),
+    })),
+  });
+  await assert.rejects(
+    () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Leak test', audience: 'Creators', objective: 'Test validation.' }, context),
+    /Generation failed validation — internal context leaked into article/,
+  );
+});
+
+test('generation validation rejects leaked editorial reasoning step headings', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OllamaQwenGenerationProvider(config, {
+    fetchImpl: makeOllamaFetch(validArticle(sourceId, {
+      title: 'Leaked Editorial Reasoning Draft',
+      suggestedSlug: 'leaked-editorial-reasoning-draft',
+      bodyMarkdown: [
+        '# Leaked Editorial Reasoning Draft',
+        '',
+        '## STEP 1 - IDENTIFY WHAT ACTUALLY HAPPENED',
+        '',
+        'A source story appears here.',
+        '',
+        '## CERTIFYD CONCEPT',
+        '',
+        'This should remain internal.',
       ].join('\n'),
     })),
   });
