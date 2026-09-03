@@ -4,7 +4,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { getDashboardConfig, permissionsForRole } from './config.js';
 import { ContentRunRepository, ContentBrainRepository } from './repository.js';
-import { approvedBrainEvidence, ContentDashboardActions, AuditLogRepository } from './actions.js';
+import { approvedBrainEvidence, ContentDashboardActions, AuditLogRepository, requiresApprovedBrainContext } from './actions.js';
 import { createCsrfToken, escapeHtml, parseCookies, safeReturnPath, validateRunId, verifyCsrf, verifySession, signSession } from './security.js';
 import { card, humanizeLabel, layout, loginPage, renderMarkdown, statusPill } from './render.js';
 import { verifyCloudflareAccessRequest } from './cloudflare-access.js';
@@ -629,7 +629,7 @@ async function renderArticle(ctx, runId, csrf) {
   const externalCount = externalSources.length;
   const distributionAssets = Array.isArray(run.distribution?.assets) ? run.distribution.assets : [];
   const versions = Array.isArray(run.versions) ? run.versions : [];
-  const body = `<section class="article-workspace-head"><p class="eyebrow">Article Workspace</p><h1>${escapeHtml(summary.title || 'Untitled article')}</h1>${runSummaryHtml(summary)}</section><section id="cover-image" class="workspace-section">${card('Cover Image', coverImageControls(run, csrf, ctx.permissions, ctx.config))}</section>${brainContextWarning(brainEvidence)}${actionButtons(summary, csrf, ctx.permissions, ctx.config)}<div class="workspace-tabs"><a href="#write">Write</a><a href="#preview">Preview</a><a href="#sources">Sources</a><a href="#distribution">Distribution</a><a href="#history">History</a></div><section id="write" class="workspace-section">${card('Write', articleEditor(run, csrf, ctx.permissions))}</section><section id="preview" class="workspace-section">${card('Preview', articlePreviewHtml(run))}</section><section id="sources" class="workspace-section"><div class="grid">${card('Source coverage', `<p>Claims: ${claims.length}</p><p>Unresolved blockers: ${escapeHtml(summary.unresolvedIssueCount ?? 0)}</p><p>Approved Brain records: ${brainEvidence.length}</p><p>External original articles: ${externalCount}</p>`)}${card('Generation diagnostics', generationDiagnosticsHtml(run.research?.generationDiagnostics))}${card('Original articles used', externalSourceList(externalSources))}${card('Approved Brain context', brainContextList(brainEvidence))}${card('Claims', claimTable(claims))}</div></section><section id="distribution" class="workspace-section">${card('Distribution', distributionList(distributionAssets, run.distribution?.plan))}</section><section id="history" class="workspace-section">${card('History', versions.map((item) => `<p>${escapeHtml(item.version)}</p>`).join('') || '<p>No versions found.</p>')}</section>`;
+  const body = `<section class="article-workspace-head"><p class="eyebrow">Article Workspace</p><h1>${escapeHtml(summary.title || 'Untitled article')}</h1>${runSummaryHtml(summary)}</section><section id="cover-image" class="workspace-section">${card('Cover Image', coverImageControls(run, csrf, ctx.permissions, ctx.config))}</section>${brainContextWarning(brainEvidence, run)}${actionButtons(summary, csrf, ctx.permissions, ctx.config)}<div class="workspace-tabs"><a href="#write">Write</a><a href="#preview">Preview</a><a href="#sources">Sources</a><a href="#distribution">Distribution</a><a href="#history">History</a></div><section id="write" class="workspace-section">${card('Write', articleEditor(run, csrf, ctx.permissions))}</section><section id="preview" class="workspace-section">${card('Preview', articlePreviewHtml(run))}</section><section id="sources" class="workspace-section"><div class="grid">${card('Source coverage', `<p>Claims: ${claims.length}</p><p>Unresolved blockers: ${escapeHtml(summary.unresolvedIssueCount ?? 0)}</p><p>Approved Brain records: ${brainEvidence.length}</p><p>External original articles: ${externalCount}</p>`)}${card('Generation diagnostics', generationDiagnosticsHtml(run.research?.generationDiagnostics))}${card('Original articles used', externalSourceList(externalSources))}${card('Approved Brain context', brainContextList(brainEvidence, run))}${card('Claims', claimTable(claims))}</div></section><section id="distribution" class="workspace-section">${card('Distribution', distributionList(distributionAssets, run.distribution?.plan))}</section><section id="history" class="workspace-section">${card('History', versions.map((item) => `<p>${escapeHtml(item.version)}</p>`).join('') || '<p>No versions found.</p>')}</section>`;
   return layout({ title: summary.title || 'Article', user: ctx.user, permissions: ctx.permissions, active: 'Blog Engine', body });
 }
 
@@ -690,7 +690,12 @@ async function renderFounderReview(ctx, runId, csrf) {
   const summary = run.summary || {};
   const claims = Array.isArray(run.claimLedger?.claims) ? run.claimLedger.claims : [];
   const brainEvidence = approvedBrainEvidence(run);
-  const body = `<p class="eyebrow">Founder Review</p><h1>${escapeHtml(summary.title || 'Untitled article')}</h1><p class="notice">Approval requires founder permission, exact displayed version, zero blocking claims, approved Brain context and explicit confirmation. This approves version ${escapeHtml(summary.version || 'v1')} for Certifyd Blog publishing preparation.</p>${runSummaryHtml(summary)}${brainContextWarning(brainEvidence)}${card('Final Checklist', `<ul><li>Version: ${escapeHtml(summary.version || 'v1')}</li><li>Blocking claims: ${escapeHtml(summary.unresolvedIssueCount ?? 0)}</li><li>Approved Brain records: ${brainEvidence.length}</li><li>Canonical URL: ${escapeHtml(summary.canonicalUrl || 'Not set')}</li><li>Publishability: ${escapeHtml(humanizeLabel(summary.publishability || 'UNKNOWN'))}</li></ul>`)}${card('Approved Brain context', brainContextList(brainEvidence))}${card('Blocked or Qualified Claims', claimTable(claims.filter((claim) => claim.status !== 'APPROVED')))}${card('Article Preview', articlePreviewHtml(run))}${actionButtons(summary, csrf, ctx.permissions, ctx.config)}`;
+  const brainRequired = requiresApprovedBrainContext(run);
+  const approvalNotice = brainRequired
+    ? 'Approval requires founder permission, exact displayed version, zero blocking claims, approved Brain context and explicit confirmation.'
+    : 'Approval requires founder permission, exact displayed version, zero blocking claims and explicit confirmation. Manual pasted drafts do not require generated Brain context.';
+  const brainChecklist = brainRequired ? `<li>Approved Brain records: ${brainEvidence.length}</li>` : '<li>Approved Brain records: Not required for manual pasted draft</li>';
+  const body = `<p class="eyebrow">Founder Review</p><h1>${escapeHtml(summary.title || 'Untitled article')}</h1><p class="notice">${escapeHtml(approvalNotice)} This approves version ${escapeHtml(summary.version || 'v1')} for Certifyd Blog publishing preparation.</p>${runSummaryHtml(summary)}${brainContextWarning(brainEvidence, run)}${card('Final Checklist', `<ul><li>Version: ${escapeHtml(summary.version || 'v1')}</li><li>Blocking claims: ${escapeHtml(summary.unresolvedIssueCount ?? 0)}</li>${brainChecklist}<li>Canonical URL: ${escapeHtml(summary.canonicalUrl || 'Not set')}</li><li>Publishability: ${escapeHtml(humanizeLabel(summary.publishability || 'UNKNOWN'))}</li></ul>`)}${card('Approved Brain context', brainContextList(brainEvidence, run))}${card('Blocked or Qualified Claims', claimTable(claims.filter((claim) => claim.status !== 'APPROVED')))}${card('Article Preview', articlePreviewHtml(run))}${actionButtons(summary, csrf, ctx.permissions, ctx.config)}`;
   return layout({ title: 'Founder Review', user: ctx.user, permissions: ctx.permissions, active: 'Blog Engine', body });
 }
 
@@ -1046,13 +1051,17 @@ function claimTable(claims) {
   return `<table class="table"><thead><tr><th>Claim</th><th>Status</th><th>Classification</th><th>Note</th></tr></thead><tbody>${claims.map((claim) => `<tr><td>${escapeHtml(claim.text || claim.claim || '')}</td><td>${statusPill(claim.status)}</td><td>${escapeHtml(claim.classification || '')}</td><td>${escapeHtml(claim.reviewerNote || claim.requiredQualification || claim.blockingReason || '')}</td></tr>`).join('')}</tbody></table>`;
 }
 
-function brainContextWarning(records) {
+function brainContextWarning(records, run) {
   if (records.length) return '';
+  if (!requiresApprovedBrainContext(run)) return '';
   return '<div class="notice danger"><strong>Approved Brain context required.</strong><p>This draft cannot be approved or published until it is regenerated or revised with relevant approved Brain records.</p></div>';
 }
 
-function brainContextList(records) {
+function brainContextList(records, run) {
   if (!records.length) {
+    if (!requiresApprovedBrainContext(run)) {
+      return '<p class="notice">Manual pasted draft. Approved Brain context is not required for approval or publishing.</p>';
+    }
     return '<p class="notice danger">No approved Brain records were attached to this draft.</p>';
   }
   return `<ol class="source-list">${records.map((record) => `<li><strong>${escapeHtml(record.title || record.id || 'Brain record')}</strong><p><code>${escapeHtml(record.path || record.id || '')}</code></p>${record.excerpt ? `<p class="muted">${escapeHtml(String(record.excerpt).slice(0, 260))}</p>` : ''}</li>`).join('')}</ol>`;

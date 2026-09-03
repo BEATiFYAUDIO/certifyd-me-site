@@ -1667,6 +1667,37 @@ test('20g manual pasted article can be approved and prepared without approved Br
   assert.match(validated.output, /Publishing package is ready/);
 });
 
+test('20h manual pasted article review page does not show approved Brain context as required', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-manual-review-no-brain-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const configEnv = {
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  };
+  const actions = new ContentDashboardActions(getDashboardConfig({ ...env, ...configEnv }));
+  const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+  const result = await actions.createManualDraft({
+    actor,
+    form: new URLSearchParams({
+      title: 'Founder Manual Review Article',
+      slug: 'founder-manual-review-article',
+      articleMarkdown: '# Founder Manual Review Article\n\nThis article was written manually and pasted into the Blog Engine.',
+    }),
+  });
+
+  await withServer(async (base) => {
+    const cookie = await login(base, 'founder@example.test');
+    const review = await fetch(`${base}/app/content/review/${result.runId}`, { headers: { cookie } });
+    assert.equal(review.status, 200);
+    const html = await review.text();
+    assert.match(html, /Manual pasted drafts do not require generated Brain context/);
+    assert.match(html, /Approved Brain records: Not required for manual pasted draft/);
+    assert.doesNotMatch(html, /Approved Brain context required\./);
+    assert.doesNotMatch(html, /This draft cannot be approved or published until it is regenerated or revised/);
+  }, configEnv);
+});
+
 test('21 no dashboard page offers live PUBLISHED action', async () => withServer(async (base) => {
   const cookie = await login(base, 'founder@example.test');
   const response = await fetch(`${base}/app/content/publishing`, { headers: { cookie } });
