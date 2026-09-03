@@ -467,7 +467,7 @@ export class ContentDashboardActions {
     if (!run.blogPackage?.repositoryPath && !run.blogPackage?.body) errors.push('Blog package has not been prepared.');
     if (!stripFrontmatter(run.articleMarkdown || run.draftMarkdown || run.blogPackage?.body || '')) errors.push('Article body is empty.');
     if (!slug) errors.push('Article slug is missing.');
-    if (!approvedBrainEvidence(run).length) errors.push(REQUIRED_BRAIN_CONTEXT_ERROR);
+    if (requiresApprovedBrainContext(run) && !approvedBrainEvidence(run).length) errors.push(REQUIRED_BRAIN_CONTEXT_ERROR);
     await this.audit.append({ action: 'publishing_validation', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: errors.length ? 'FAILED' : 'SUCCESS', note: errors.join(' ') });
     if (errors.length) throw Object.assign(new Error(errors.join(' ')), { statusCode: 409 });
     return { ok: true, output: `Publishing package is ready for Certifyd Blog: ${blogUrl(slug)}` };
@@ -481,7 +481,7 @@ export class ContentDashboardActions {
     if (!['PUBLISHING', 'PUBLISHED'].includes(run.summary.status)) errors.push('Only published or publishing articles can be republished directly.');
     if (!run.blogPackage?.repositoryPath && !run.blogPackage?.body && !stripFrontmatter(run.articleMarkdown || run.draftMarkdown || '')) errors.push('Article body is empty.');
     if (!slug) errors.push('Article slug is missing.');
-    if (!approvedBrainEvidence(run).length) errors.push(REQUIRED_BRAIN_CONTEXT_ERROR);
+    if (requiresApprovedBrainContext(run) && !approvedBrainEvidence(run).length) errors.push(REQUIRED_BRAIN_CONTEXT_ERROR);
     await this.audit.append({ action: 'publishing_republish_validation', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: errors.length ? 'FAILED' : 'SUCCESS', note: errors.join(' ') });
     if (errors.length) throw Object.assign(new Error(errors.join(' ')), { statusCode: 409 });
     return { ok: true, output: `Publishing package is ready to republish: ${blogUrl(slug)}` };
@@ -1226,7 +1226,27 @@ export function approvedBrainEvidence(runOrResearch) {
   });
 }
 
+export function isManualPasteRun(runOrResearch) {
+  const run = runOrResearch || {};
+  const manifest = run.manifest || run.summary || {};
+  const research = run.research || runOrResearch || {};
+  const blogPackage = run.blogPackage || {};
+  const modelRequests = Array.isArray(run.modelRequests) ? run.modelRequests : [];
+  return Boolean(
+    manifest.modelProvider === 'manual-paste'
+      || blogPackage.sourceType === 'manual-paste'
+      || research.generationDiagnostics?.manualDraft === true
+      || research.generationDiagnostics?.provider === 'manual-paste'
+      || modelRequests.some((request) => request?.provider === 'manual-paste' || request?.stage === 'manual-article-paste')
+  );
+}
+
+export function requiresApprovedBrainContext(runOrResearch) {
+  return !isManualPasteRun(runOrResearch);
+}
+
 export function assertApprovedBrainContext(run) {
+  if (!requiresApprovedBrainContext(run)) return;
   if (!approvedBrainEvidence(run).length) {
     throw Object.assign(new Error(REQUIRED_BRAIN_CONTEXT_ERROR), { statusCode: 409 });
   }

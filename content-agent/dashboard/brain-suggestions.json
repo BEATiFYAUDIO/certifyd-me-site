@@ -1,10 +1,22 @@
 {
   "approved": [
     "brain-update-core-responsibilities",
-    "brain-merge-profile-language"
+    "brain-merge-profile-language",
+    "brain-new-creator-ownership-guidance"
   ],
   "rejected": [],
   "history": [
+    {
+      "id": "brain-suggestion-1787912707037-eafd25ced6f0f",
+      "suggestionId": "brain-new-creator-ownership-guidance",
+      "decision": "approve",
+      "operation": "new",
+      "targetPath": "facts/creator-ownership-writing-guidance.md",
+      "actor": "darryl@example.com",
+      "changedRecordId": "brain:facts/creator-ownership-writing-guidance",
+      "changedRecordPath": "facts/creator-ownership-writing-guidance.md",
+      "at": "2026-08-28T10:25:07.037Z"
+    },
     {
       "id": "brain-suggestion-1786968966863-2949d4753b1c4",
       "suggestionId": "brain-merge-profile-language",

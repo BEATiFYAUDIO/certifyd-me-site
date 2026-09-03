@@ -1640,6 +1640,33 @@ test('20f pasted article creates a normal review draft without Qwen', async () =
   assert.equal(research.generationDiagnostics.manualDraft, true);
 });
 
+test('20g manual pasted article can be approved and prepared without approved Brain context', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-manual-no-brain-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const actions = new ContentDashboardActions(getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  }));
+  const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+  const form = new URLSearchParams({
+    title: 'Founder Manual Article',
+    slug: 'founder-manual-article',
+    articleMarkdown: '# Founder Manual Article\n\nThis article was written manually and pasted into the Blog Engine.',
+  });
+
+  const result = await actions.createManualDraft({ actor, form });
+  const approved = await actions.approve({ actor, runId: result.runId, version: 'v1', confirm: 'true' });
+  assert.match(approved.output, /Approved/);
+
+  const prepared = await actions.preparePublishing({ actor, runId: result.runId });
+  assert.match(prepared.output, /Prepared for Certifyd Blog/);
+
+  const validated = await actions.validatePublishing({ actor, runId: result.runId });
+  assert.match(validated.output, /Publishing package is ready/);
+});
+
 test('21 no dashboard page offers live PUBLISHED action', async () => withServer(async (base) => {
   const cookie = await login(base, 'founder@example.test');
   const response = await fetch(`${base}/app/content/publishing`, { headers: { cookie } });
