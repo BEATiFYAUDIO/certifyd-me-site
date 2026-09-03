@@ -4,8 +4,8 @@ slug: "musixmatch-adds-label-hub-as-lyricfind-debuts-verified-artist-program"
 author: "Certifyd"
 date: "2026-09-03"
 updated: "2026-09-03"
-excerpt: "Musixmatch and LyricFind are giving labels and artists more control over the information attached to their music. LyricFind's Verified Artist Program points toward an even bigger question: what if verified artist identity and catalogue records originated with "
-coverImage: "/images/blog/musixmatch-adds-label-hub-as-lyricfind-debuts-verified-artist-program-1788401140839.png"
+excerpt: "Musixmatch and LyricFind are giving labels and artists more control over music data. But the authoritative records still live inside centralized systems operated by somebody else."
+coverImage: "/images/blog/musixmatch-adds-label-hub-as-lyricfind-debuts-verified-artist-program-1788450827835.png"
 coverImageAlt: ""
 coverImageCredit: ""
 coverImageCreditUrl: ""
@@ -16,197 +16,109 @@ seoTitle: "Musixmatch Adds Label Hub as LyricFind Debuts Verified Artist Program
 seoDescription: "Musixmatch and LyricFind are giving labels and artists more control over the information attached to their music. LyricFind's Verified Artist Program points toward an even bigger question: what if verified artist identity and catalogue records originated with "
 ---
 
-The music industry has become extraordinarily good at distributing recordings. A song can move from an artist's computer to streaming services, social networks, video platforms and markets around the world remarkably quickly.
+# Musixmatch Adds Label Hub as LyricFind Debuts Verified Artist Program
 
-The information surrounding that song is more complicated.
+The music industry has become extraordinarily good at distributing recordings. A song can move from an artist's computer to streaming services, social networks, video platforms and markets around the world remarkably quickly. The information surrounding that song is more complicated because every destination needs to know what the work is, who created it and who has the authority to change the information attached to it.
 
-Who wrote it? Who performed it? What are the correct lyrics? Which version is authoritative? Who should be allowed to change that information? And when an artist appears inside one of these enormous digital catalogues, how does the service know that the person asking to make those changes is actually the artist?
+Musixmatch and LyricFind have both announced products aimed at improving that process. Musixmatch is giving labels more sophisticated tools for managing lyrics and catalogue information, while LyricFind's new Verified Artist Program allows artists to claim their catalogues and manage lyrics and translations directly. Both are responding to a legitimate problem in digital music.
 
-Two new products from Musixmatch and LyricFind are approaching parts of that problem from different directions. The tools themselves are useful. But they also point toward a much bigger question for digital music.
+But there is a deeper architectural problem neither model appears to solve.
 
-What if artists didn't have to establish who they are again inside every system their work enters?
+**The artist gets more control over the record. The company still controls the system where the record lives.**
 
-## Musixmatch Is Going Deeper With Labels
+## Musixmatch Is Building Better Tools for Labels
 
-Music Ally reports that Musixmatch has launched Musixmatch Pro for Labels, bringing together tools for teams working with lyrics and catalogue information.
+Music Ally reports that Musixmatch has launched Musixmatch Pro for Labels, bringing together tools for label teams including AI transcription and time-syncing, curation, lyric distribution and what the company calls "catalogue intelligence." Musixmatch is also positioning lyrics as promotional infrastructure, giving labels ways to create lyric-driven assets for digital and social channels.
 
-The service includes AI transcription and time-syncing, curation, lyric distribution and what Musixmatch calls "catalogue intelligence." The company is also pitching the system as a way for labels to create lyric-driven promotional assets for digital and social channels.
+This isn't a small experiment. More than 400 labels were introduced to the product during its beta phase, according to Music Ally. That reflects how important the information surrounding a recording has become as music moves through an increasingly complicated digital ecosystem.
 
-This isn't merely a concept. According to Music Ally, more than 400 labels were introduced to the hub during its beta phase.
+A release is no longer represented simply by an audio file. Lyrics, credits, artwork, identifiers, translations, ownership information and other metadata can travel alongside it, often through completely different systems. Whoever maintains those records therefore occupies an increasingly important position in the infrastructure surrounding the music.
 
-It's another indication of how important the information surrounding a recording has become.
+## LyricFind Gives Artists More Direct Control
 
-Music is no longer simply delivered as an audio file. A release travels with lyrics, credits, artwork, identifiers, promotional material, translations and other information that may surface differently depending on where somebody encounters it.
+LyricFind is approaching the same broad problem from the artist side. Its Verified Artist Program allows musicians to claim their catalogues, submit new lyrics and translations ahead of releases, and use AI transcription tools. Music Ally reports that the program is free for artists and points users toward additional tools for creating video and visual assets.
 
-Managing that information at scale is becoming infrastructure in its own right.
+The phrase **"claim their catalogues"** is important. Before somebody can authoritatively alter information attached to a recording, the service needs some confidence that the person making the change actually has a legitimate relationship to that work. Verification gives artists a more direct role in establishing that relationship instead of leaving platforms to infer authority from whoever happens to have access to an account.
 
-## LyricFind Is Starting With the Artist
+That's useful functionality, particularly in an environment where incorrect attribution, fraudulent uploads and hijacked artist profiles have become increasingly visible problems. But claiming a catalogue inside LyricFind is still fundamentally different from owning the infrastructure where the authoritative relationship between creator and work originates.
 
-LyricFind's announcement is particularly interesting from the creator side.
+## Your Identity. Their Database.
 
-Its new Verified Artist Program allows musicians to claim their catalogues and then submit lyrics, translations and other information ahead of releases. Music Ally reports that the program is free for artists and also connects into LyricFind's broader tools for creating videos and visual assets.
+Most internet verification begins with an account inside somebody else's system. You create the account, provide whatever evidence the company requires, and the company decides whether the record representing you should be considered verified. The badge may belong to your profile, but the verification relationship itself exists within infrastructure controlled by the service.
 
-There's an important idea hiding inside the phrase **"claim their catalogues."**
+Catalogue claims work in much the same way. An artist can gain permission to manage information, correct lyrics or establish a relationship with particular recordings, but those records still exist inside the provider's database. The creator has been granted greater authority within the system without becoming the origin of the system.
 
-Before somebody should be able to authoritatively change information attached to a recording, the system needs some confidence about their relationship to that work.
+That distinction becomes important when the artist leaves. A verification relationship established inside one service doesn't automatically become an identity that another service can independently recognize. The creator moves to the next database and, in some form, establishes themselves again.
 
-That's what verification starts to solve.
+The artist hasn't changed. The infrastructure has.
 
-And it represents a meaningful improvement over a digital music environment where platforms are simply expected to infer authority from whoever successfully gains access to a profile or submits information through the correct channel.
+## Centralized Verification Doesn't Become Creator Ownership
 
-The artist gets a more direct role in maintaining the information attached to their work.
+There is a tendency to describe greater access to platform records as greater ownership. Those aren't necessarily the same thing.
 
-That's good.
+A centralized service can give creators excellent administrative tools. It can provide exports, APIs, verification programs and sophisticated controls over the information associated with their work. Those features can make the service substantially better for artists without changing the fundamental architecture underneath it.
 
-But it also raises the next question.
+The company still operates the database. It determines how accounts are created, how verification works, what information can be stored, how that information can be accessed and ultimately whether the service continues to exist under the same terms.
 
-## What Happens After You're Verified?
+That isn't unique to Musixmatch or LyricFind. It is how most of the modern internet has been built.
 
-An artist can be verified by LyricFind. They can be verified by a streaming service. They can operate verified accounts on social networks. A distributor can know who they are. A label can maintain another authoritative record about them.
+The problem is that creators now conduct enough of their professional lives through these systems that the distinction between **access to your information** and **control of your infrastructure** matters considerably more than it once did.
 
-Each system can solve verification inside its own boundaries.
+## The Music Industry Keeps Reconstructing the Same Artist
 
-The problem is that the artist remains the same person across all of them.
+An artist might have an authoritative relationship with a distributor, a verified Spotify profile, an official YouTube channel, a social account with a verification badge and now a claimed catalogue inside a lyrics service. Labels, publishers, collecting societies and other industry databases may maintain additional records describing the same person and many of the same works.
 
-Their identity doesn't fundamentally change when a song moves from a lyric database to a streaming service, from a streaming service into a game, or from a social network into a commerce experience.
+Each system has legitimate reasons for maintaining its own records and deciding what it trusts. The strange part is that the creator at the center of all of them usually isn't the common source.
 
-Yet the internet frequently treats identity as though it belongs to whichever database happens to be displaying it.
+Instead, the industry repeatedly reconstructs the artist.
 
-That is why verification badges are useful without completely solving the underlying problem.
+This becomes increasingly awkward as music escapes the traditional boundaries of music platforms. Recordings now surface in games, social networks, fitness applications, virtual environments, creator tools and new discovery experiences. Every additional destination potentially creates another representation of the artist and another database that has to establish some relationship between identity and work.
 
-They answer:
+The internet has become extremely good at moving the song while remaining surprisingly inefficient at moving authoritative information about who created it.
 
-**"Has this service verified this person?"**
+## What If the Artist Were the Starting Point?
 
-There's another architecture that starts with a different question:
-
-**"Can this person establish an identity that services can verify?"**
-
-The difference sounds subtle.
-
-It isn't.
-
-## Claiming Your Identity Isn't the Same as Originating It
-
-Most digital identity systems begin with an account.
-
-You create an account with a company. The company stores a record representing you. You provide enough evidence to prove that you are who you say you are. If everything checks out, the company may mark that record as verified.
-
-That model works.
-
-But the authoritative relationship still originates inside the company's system.
-
-The same is true of catalogue information. An artist may be allowed to claim a catalogue, correct information and exercise greater authority over the records associated with their music. But they're still claiming those records inside infrastructure somebody else operates.
-
-What happens when they move somewhere else?
-
-Usually, some version of the process begins again.
-
-That may have been perfectly reasonable when the internet consisted largely of separate destinations. But music increasingly moves through interconnected services. A single work can appear in streaming platforms, social networks, games, creator applications, marketplaces, fan communities and services that haven't been invented yet.
-
-Reconstructing creator identity and authority independently inside every destination starts to look increasingly inefficient.
-
-## What If the Artist Came First?
-
-There's another way to think about the problem.
-
-Instead of:
+The conventional architecture effectively begins:
 
 **Platform → account → verification → artist**
 
-start with:
+A creator-controlled architecture can begin differently:
 
 **Artist → identity → work → verification by services**
 
-Under that model, the creator isn't asking every destination to create an authoritative version of them from scratch.
+That doesn't mean every company must blindly trust whatever a creator publishes about themselves. Spotify, LyricFind, Musixmatch, YouTube, distributors and other services should still determine what evidence they require and what information they are willing to display.
 
-The creator already has an identity.
+The difference is that they wouldn't necessarily need to create the creator's digital identity from scratch.
 
-They already have a relationship to their work.
+An artist could establish an identity and relationship to their work before arriving at the destination. A service could then verify the relationship between that identity and the account or catalogue it maintains. The platform remains free to operate its own product, while the creator no longer needs the platform itself to be the original source of their digital existence.
 
-They already have records describing what they published.
+## The Authority Has to Start Somewhere
 
-Services can then decide what they trust, what they display and what additional verification they require. Nothing about creator-controlled identity requires Spotify, LyricFind, Musixmatch, YouTube or anybody else to surrender control over their own products.
+This is the architectural distinction Certifyd Core is built around.
 
-The difference is where the chain begins.
+Core is locally operated creator infrastructure. Rather than requiring identity, works, release records and publishing context to originate exclusively inside a centralized Certifyd database, creators can operate the infrastructure where those records begin and make them available to a wider network.
 
-The artist becomes the origin rather than merely another record inside the destination.
+That doesn't require replacing specialized services. A lyrics company can remain excellent at lyrics, a streaming service can remain excellent at streaming, a distributor can distribute music, and a social network can connect artists with enormous audiences. Creator sovereignty isn't about refusing to use platforms; it's about changing the relationship between the creator and the platforms they choose to use.
 
-## This Is Where Certifyd Goes One Step Further
+The creator can bring something with them.
 
-Certifyd Core approaches creator identity from that direction.
+Their identity doesn't have to begin at the login screen. Their relationship to their work doesn't have to exist solely because a platform database says it does. Applications can become destinations and services around the creator rather than containers in which the creator's professional identity must permanently reside.
 
-A creator doesn't simply create a Certifyd account in a central Certifyd database and wait for the company to declare it authentic. Core is locally operated creator infrastructure. Identity, works, release records and publishing context can originate from infrastructure the creator operates.
+## Verification Is Useful. Sovereignty Is Different.
 
-Those records can then participate in a wider network.
+LyricFind's Verified Artist Program recognizes that artists should have more direct authority over information attached to their music. Musixmatch's label tools recognize that accurate catalogue information has become an important operational layer of the music business. Both developments illustrate how valuable authoritative music data has become.
 
-That distinction matters because Certifyd isn't trying to become the one enormous database where the entire music industry must maintain its identity.
+But better controls inside centralized databases shouldn't be confused with creator-controlled infrastructure.
 
-Quite the opposite.
+If the artist can claim the record but the provider remains the ultimate custodian of the database, the architecture hasn't fundamentally changed. The artist has a better seat inside somebody else's system.
 
-A lyric service could remain excellent at lyrics. A streaming service could remain excellent at streaming. A game could become an extraordinary music-discovery environment. A label could operate sophisticated catalogue tools. A social network could connect creators with hundreds of millions of people.
+That may be a worthwhile improvement. It just isn't the destination.
 
-The creator shouldn't necessarily have to become a different person in every one of them.
+The more interesting future begins when verification becomes a relationship between a service and an identity that exists independently of that service. A platform profile can then represent the creator without needing to *become* the creator.
 
-The long-term opportunity isn't simply giving artists better tools to manage their identity and catalogue inside industry databases.
+That distinction matters because the music industry is going to keep creating new destinations for music. Creators shouldn't have to reconstruct themselves every time another one appears.
 
-It's allowing those databases to connect to identity and catalogue records the artist already controls.
+**Your identity. Your work. Their application.**
 
-## Better Verification Is Still Progress
-
-None of this diminishes what Musixmatch or LyricFind are building.
-
-Music Ally notes that the common thread between their announcements is an attempt to bring labels and artists deeper into the lyrics ecosystem while positioning lyrics technology as a more important part of promoting releases.
-
-That's useful progress.
-
-Giving artists a direct mechanism to claim their catalogues is better than excluding them from the process. Giving labels better ways to maintain information across large catalogues solves a real operational problem. Making accurate lyrics and related information easier to distribute improves the digital representation of music.
-
-The interesting part is where this direction eventually leads.
-
-Once you accept that the artist should have more authority over the information attached to their work, it becomes reasonable to ask why that authority should have to originate separately inside every service.
-
-## Verification Could Become Portable
-
-The internet has already taught people to recognize the idea of a verified account.
-
-The next evolution may be a verified identity that isn't inseparable from the account.
-
-That could change the relationship between creators and platforms considerably.
-
-Instead of a platform effectively saying:
-
-**"This is Darryl because we say this account belongs to Darryl."**
-
-the relationship could become:
-
-**"This account corresponds to an identity Darryl controls, and we've verified that relationship."**
-
-Now the platform isn't the creator's identity.
-
-It's one place where that identity appears.
-
-The same principle can extend to works. A recording, composition, video or other creative asset can have an origin and history that doesn't need to be reconstructed every time it enters another database.
-
-That becomes increasingly important as creative work moves through more systems, not fewer.
-
-## The Profile Shouldn't Become the Person
-
-This question is becoming harder for the music industry to ignore.
-
-We recently wrote about streaming profiles belonging to jazz musicians being used to distribute questionable new releases, including profiles of artists who had been dead for decades. That situation exposed the weakness of treating a platform profile as though it were equivalent to the creator themselves.
-
-Verification is one response to that problem.
-
-Creator-controlled identity goes further.
-
-The profile becomes a representation of the artist rather than the source of the artist's digital existence.
-
-That's a small architectural change with potentially enormous consequences.
-
-Musixmatch and LyricFind are showing how valuable it can be when labels and artists gain more direct authority over the information surrounding their music.
-
-The next step is making that authority portable.
-
-Because an artist shouldn't need to become somebody new every time their music arrives somewhere new.
+Not the other way around.
 
