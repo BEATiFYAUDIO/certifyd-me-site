@@ -93,6 +93,15 @@ export function styles() {
 .upload-row input[type=file]{padding:10px;background:#05080d}
 .advanced-cover{border:1px solid var(--border);border-radius:16px;padding:12px;background:rgba(255,255,255,.025)}
 .advanced-cover summary{cursor:pointer;color:var(--muted);font-weight:900}
+.distribution-package{display:grid;gap:16px;margin:18px 0;padding:16px;border:1px solid var(--border);border-radius:18px;background:rgba(255,255,255,.025)}
+.distribution-package h3,.distribution-package h4{margin:0;color:var(--text)}
+.distribution-package-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.distribution-package-meta p{margin:0;overflow-wrap:anywhere}
+.distribution-copy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:12px}
+.distribution-copy-card{display:grid;gap:10px;padding:14px;border:1px solid var(--border);border-radius:16px;background:rgba(5,8,13,.42)}
+.distribution-copy-card form,.distribution-copy-card label{display:grid;gap:10px}
+.distribution-copy-card textarea{min-height:120px;resize:vertical}
+.distribution-copy-card .mini-actions{justify-content:flex-start}
 @media(max-width:780px){.upload-row{grid-template-columns:1fr}}
 @media(max-width:780px){.action-panel{grid-template-columns:1fr}.action-row>*{width:100%}.confirm-action{grid-template-columns:1fr}.article-workspace-head h1{font-size:clamp(2rem,12vw,3.8rem)}}
 </style>`;

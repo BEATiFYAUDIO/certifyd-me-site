@@ -12,6 +12,7 @@ import { AuditLogRepository, ContentDashboardActions } from '../scripts/content-
 import { ContentBrainRepository } from '../scripts/content-dashboard/repository.js';
 import { KNOWLEDGE_SUGGESTIONS, applyKnowledgeSuggestion, listPendingKnowledgeSuggestions } from '../scripts/content-dashboard/brain-suggestions.js';
 import { GitHubPullRequestPublisher } from '../scripts/content-dashboard/publisher.js';
+import { distributionPackageOverallStatus } from '../scripts/content-dashboard/distribution-package.js';
 
 const env = {
   ...process.env,
@@ -736,6 +737,71 @@ test('20ac disconnected destination fails without blocking manual export distrib
   const state = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'distribution', 'destinations.json'), 'utf8'));
   assert.equal(state.destinations.devto.status, 'failed');
   assert.equal(state.destinations.markdown.status, 'manual_export_ready');
+});
+
+test('20ad distribution package generation, edits and statuses persist without changing other destinations', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-distribution-package-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const runId = 'distribution-package-001';
+  await createMinimalRun(path.join(outputDir, runId), {
+    title: 'Jason Isbell, Suno and Artist Identity',
+    slug: 'jason-isbell-suno-ai-artist-identity',
+    status: 'PUBLISHED',
+    publishability: 'PUBLISHED',
+    excerpt: 'Existing legal rights and identity rights are one layer, while digital systems still need machine-readable identity, provenance, authority and permission.',
+    markdown: '# Jason Isbell, Suno and Artist Identity\n\nExisting legal rights and identity rights are one layer, while digital systems still need machine-readable identity, provenance, authority and permission.\n\nFor creators, the practical consequence is not just whether AI threatens artists. It is whether identity, provenance and permission can travel with work when platforms and automated systems touch it.\n\nThe Certifyd angle is narrow: creator infrastructure needs public context that can distinguish official identity, authority and permission without replacing the legal rights layer.',
+  });
+  const actions = new ContentDashboardActions(getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  }));
+  const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+
+  await actions.generateDistributionCopy({ actor, runId });
+  let pkg = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'distribution', 'package.json'), 'utf8'));
+  assert.match(pkg.linkedin.text, /machine-readable identity, provenance, authority and permission/);
+  assert.ok(pkg.x.characterCount <= 280);
+  assert.equal(pkg.linkedin.status, 'ready');
+  const originalX = pkg.x.text;
+
+  await actions.saveDistributionCopy({ actor, runId, destinationId: 'linkedin', fields: { text: 'Edited LinkedIn copy.' } });
+  pkg = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'distribution', 'package.json'), 'utf8'));
+  assert.equal(pkg.linkedin.text, 'Edited LinkedIn copy.');
+  assert.equal(pkg.x.text, originalX);
+
+  await actions.generateDistributionCopy({ actor, runId, destinationId: 'linkedin' });
+  pkg = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'distribution', 'package.json'), 'utf8'));
+  assert.notEqual(pkg.linkedin.text, 'Edited LinkedIn copy.');
+  assert.equal(pkg.x.text, originalX);
+
+  await actions.markDistributionCopyStatus({ actor, runId, destinationId: 'x', status: 'sent' });
+  pkg = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'distribution', 'package.json'), 'utf8'));
+  assert.equal(pkg.x.status, 'sent');
+  assert.equal(distributionPackageOverallStatus(pkg), 'partially-distributed');
+});
+
+test('20ae unpublished drafts cannot generate distribution packages', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-distribution-draft-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const runId = 'distribution-draft-001';
+  await createMinimalRun(path.join(outputDir, runId), {
+    title: 'Draft Distribution',
+    slug: 'draft-distribution',
+    status: 'DRAFT',
+    publishability: 'NEEDS_FOUNDER_REVIEW',
+  });
+  const actions = new ContentDashboardActions(getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  }));
+  await assert.rejects(
+    actions.generateDistributionCopy({ actor: { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' }, runId }),
+    /Only approved, ready, publishing or published articles/,
+  );
 });
 
 test('20aa publishing preparation normalizes Markdown heading titles', async () => {

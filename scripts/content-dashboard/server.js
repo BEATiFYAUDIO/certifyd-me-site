@@ -166,6 +166,9 @@ async function handleAction(req, res, url, ctx) {
   else if (action.endsWith('/publishing/verify-live')) { needs('content.article.publish.prepare'); result = await ctx.actions.verifyLivePublication({ actor: ctx.user, runId: form.get('runId') }); }
   else if (action.endsWith('/publishing/unpublish')) { needs('content.article.publish.prepare'); result = await ctx.actions.unpublishFromCertifyd({ actor: ctx.user, runId: form.get('runId'), confirmUnpublish: form.get('confirmUnpublish') }); }
   else if (action.endsWith('/publishing/verify-unpublished')) { needs('content.article.publish.prepare'); result = await ctx.actions.verifyUnpublishedPublication({ actor: ctx.user, runId: form.get('runId') }); }
+  else if (action.endsWith('/distribution/package/generate')) { needs('content.distribution.manage'); result = await ctx.actions.generateDistributionCopy({ actor: ctx.user, runId: form.get('runId'), destinationId: form.get('destinationId') }); }
+  else if (action.endsWith('/distribution/package/save')) { needs('content.distribution.manage'); result = await ctx.actions.saveDistributionCopy({ actor: ctx.user, runId: form.get('runId'), destinationId: form.get('destinationId'), fields: { text: form.get('text'), caption: form.get('caption'), shortCopy: form.get('shortCopy'), longCopy: form.get('longCopy'), status: form.get('status') } }); }
+  else if (action.endsWith('/distribution/package/status')) { needs('content.distribution.manage'); result = await ctx.actions.markDistributionCopyStatus({ actor: ctx.user, runId: form.get('runId'), destinationId: form.get('destinationId'), status: form.get('status') }); }
   else if (action.endsWith('/distribution/publish')) { needs('content.distribution.manage'); result = await ctx.actions.distributeArticle({ actor: ctx.user, runId: form.get('runId'), version: form.get('version'), destinations: form.getAll('destinations') }); }
   else if (action.endsWith('/distribution/retry')) { needs('content.distribution.manage'); result = await ctx.actions.distributeArticle({ actor: ctx.user, runId: form.get('runId'), version: form.get('version'), destinations: form.getAll('destinations'), retryFailed: true }); }
   else if (action.endsWith('/distribution/defaults')) { needs('content.distribution.manage'); result = await ctx.actions.saveDistributionDefaults({ actor: ctx.user, destinations: form.getAll('destinations') }); }
@@ -178,6 +181,8 @@ async function handleAction(req, res, url, ctx) {
     return redirect(res, `/app/content/articles/${validateRunId(String(form.get('runId') || ''))}#cover-image`);
   }
   if (action.includes('/distribution/')) {
+    const returnTo = safeReturnPath(String(form.get('returnTo') || ''));
+    if (returnTo) return redirect(res, returnTo);
     return redirect(res, `/app/content/distribution${form.get('runId') ? `?runId=${encodeURIComponent(validateRunId(String(form.get('runId') || '')))}` : ''}`);
   }
   if (action.endsWith('/brain/suggestion')) {
@@ -629,7 +634,7 @@ async function renderArticle(ctx, runId, csrf) {
   const externalCount = externalSources.length;
   const distributionAssets = Array.isArray(run.distribution?.assets) ? run.distribution.assets : [];
   const versions = Array.isArray(run.versions) ? run.versions : [];
-  const body = `<section class="article-workspace-head"><p class="eyebrow">Article Workspace</p><h1>${escapeHtml(summary.title || 'Untitled article')}</h1>${runSummaryHtml(summary)}</section><section id="cover-image" class="workspace-section">${card('Cover Image', coverImageControls(run, csrf, ctx.permissions, ctx.config))}</section>${brainContextWarning(brainEvidence, run)}${actionButtons(summary, csrf, ctx.permissions, ctx.config)}<div class="workspace-tabs"><a href="#write">Write</a><a href="#preview">Preview</a><a href="#sources">Sources</a><a href="#distribution">Distribution</a><a href="#history">History</a></div><section id="write" class="workspace-section">${card('Write', articleEditor(run, csrf, ctx.permissions))}</section><section id="preview" class="workspace-section">${card('Preview', articlePreviewHtml(run))}</section><section id="sources" class="workspace-section"><div class="grid">${card('Source coverage', `<p>Claims: ${claims.length}</p><p>Unresolved blockers: ${escapeHtml(summary.unresolvedIssueCount ?? 0)}</p><p>Approved Brain records: ${brainEvidence.length}</p><p>External original articles: ${externalCount}</p>`)}${card('Generation diagnostics', generationDiagnosticsHtml(run.research?.generationDiagnostics))}${card('Original articles used', externalSourceList(externalSources))}${card('Approved Brain context', brainContextList(brainEvidence, run))}${card('Claims', claimTable(claims))}</div></section><section id="distribution" class="workspace-section">${card('Distribution', distributionList(distributionAssets, run.distribution?.plan))}</section><section id="history" class="workspace-section">${card('History', versions.map((item) => `<p>${escapeHtml(item.version)}</p>`).join('') || '<p>No versions found.</p>')}</section>`;
+  const body = `<section class="article-workspace-head"><p class="eyebrow">Article Workspace</p><h1>${escapeHtml(summary.title || 'Untitled article')}</h1>${runSummaryHtml(summary)}</section><section id="cover-image" class="workspace-section">${card('Cover Image', coverImageControls(run, csrf, ctx.permissions, ctx.config))}</section>${brainContextWarning(brainEvidence, run)}${actionButtons(summary, csrf, ctx.permissions, ctx.config)}<div class="workspace-tabs"><a href="#write">Write</a><a href="#preview">Preview</a><a href="#sources">Sources</a><a href="#distribution">Distribution</a><a href="#history">History</a></div><section id="write" class="workspace-section">${card('Write', articleEditor(run, csrf, ctx.permissions))}</section><section id="preview" class="workspace-section">${card('Preview', articlePreviewHtml(run))}</section><section id="sources" class="workspace-section"><div class="grid">${card('Source coverage', `<p>Claims: ${claims.length}</p><p>Unresolved blockers: ${escapeHtml(summary.unresolvedIssueCount ?? 0)}</p><p>Approved Brain records: ${brainEvidence.length}</p><p>External original articles: ${externalCount}</p>`)}${card('Generation diagnostics', generationDiagnosticsHtml(run.research?.generationDiagnostics))}${card('Original articles used', externalSourceList(externalSources))}${card('Approved Brain context', brainContextList(brainEvidence, run))}${card('Claims', claimTable(claims))}</div></section><section id="distribution" class="workspace-section">${card('Distribution', distributionList(distributionAssets, run.distribution?.plan, run.distribution?.package, summary, csrf, ctx.permissions.includes('content.distribution.manage'), `/app/content/articles/${encodeURIComponent(runId)}#distribution`))}</section><section id="history" class="workspace-section">${card('History', versions.map((item) => `<p>${escapeHtml(item.version)}</p>`).join('') || '<p>No versions found.</p>')}</section>`;
   return layout({ title: summary.title || 'Article', user: ctx.user, permissions: ctx.permissions, active: 'Blog Engine', body });
 }
 
@@ -1067,12 +1072,57 @@ function brainContextList(records, run) {
   return `<ol class="source-list">${records.map((record) => `<li><strong>${escapeHtml(record.title || record.id || 'Brain record')}</strong><p><code>${escapeHtml(record.path || record.id || '')}</code></p>${record.excerpt ? `<p class="muted">${escapeHtml(String(record.excerpt).slice(0, 260))}</p>` : ''}</li>`).join('')}</ol>`;
 }
 
-function distributionList(assets, plan = {}) {
+function distributionList(assets, plan = {}, pkg = {}, run = {}, csrf = '', canManage = false, returnTo = '') {
   const primary = plan?.primaryTarget
     ? `<div class="notice"><strong>${escapeHtml(plan.primaryTarget.channel || 'Certifyd Blog')}</strong><p>${escapeHtml(plan.primaryTarget.url || '')}</p><p>Repository path: ${escapeHtml(plan.primaryTarget.repositoryPath || '')}</p></div>`
     : '<div class="notice"><strong>Certifyd Blog</strong><p>Prepare publishing to create the canonical blog package for <code>https://certifyd.me/blog/[slug]/</code>.</p></div>';
-  if (!assets?.length) return `${primary}<p>No distribution assets found.</p>`;
-  return `${primary}${assets.map((asset) => `<details><summary>${escapeHtml(asset.channel)} · ${escapeHtml(asset.status || 'DRAFT')}</summary><pre>${escapeHtml(asset.body)}</pre></details>`).join('')}`;
+  const packageHtml = distributionPackagePanel(pkg, run, csrf, canManage, returnTo);
+  const assetHtml = assets?.length
+    ? `<details><summary>Legacy export assets</summary>${assets.map((asset) => `<details><summary>${escapeHtml(asset.channel)} · ${escapeHtml(asset.status || 'DRAFT')}</summary><pre>${escapeHtml(asset.body)}</pre></details>`).join('')}</details>`
+    : '';
+  return `${primary}${packageHtml}${assetHtml}`;
+}
+
+function distributionPackagePanel(pkg = {}, run = {}, csrf = '', canManage = false, returnTo = '') {
+  const hasPackage = Boolean(pkg?.linkedin || pkg?.x || pkg?.facebook || pkg?.instagram || pkg?.generic);
+  const overall = distributionPackageStatus(pkg);
+  const slug = pkg.articleSlug || run.slug || '';
+  const canonicalUrl = pkg.canonicalUrl || run.canonicalUrl || '';
+  const coverImage = pkg.coverImage || '';
+  const generate = canManage
+    ? `<form method="post" action="/app/content/actions/distribution/package/generate"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="runId" value="${escapeHtml(run.runId || '')}"><input type="hidden" name="returnTo" value="${escapeHtml(returnTo)}"><button class="primary" type="submit">${hasPackage ? 'Regenerate package' : 'Generate package'}</button></form>`
+    : '';
+  if (!hasPackage) {
+    return `<section class="distribution-package"><div class="section-head"><div><h3>Distribution Package</h3><p class="muted">Generate platform copy from the final article after approval. This does not publish anywhere.</p></div><span>${statusPill(overall)}</span></div><p class="muted">Canonical: ${escapeHtml(canonicalUrl || 'Not set')}</p>${generate}</section>`;
+  }
+  const meta = `<div class="distribution-package-meta"><p><strong>Canonical</strong><br>${canonicalUrl ? `<a href="${escapeHtml(canonicalUrl)}" rel="noreferrer" target="_blank">${escapeHtml(canonicalUrl)}</a>` : 'Not set'}</p><p><strong>Slug</strong><br>${escapeHtml(slug || 'Not set')}</p>${coverImage ? `<p><strong>Cover</strong><br><code>${escapeHtml(coverImage)}</code></p>` : ''}</div>`;
+  return `<section class="distribution-package"><div class="section-head"><div><h3>Distribution Package</h3><p class="muted">Manual/social copy generated from the final article.</p></div><div class="mini-actions"><span>${statusPill(overall)}</span>${generate}</div></div>${meta}<div class="distribution-copy-grid">${distributionCopyCard('linkedin', 'LinkedIn', pkg.linkedin?.text || '', pkg.linkedin?.status, csrf, run.runId, returnTo)}${distributionCopyCard('x', 'X', pkg.x?.text || '', pkg.x?.status, csrf, run.runId, returnTo, pkg.x?.characterCount)}${distributionCopyCard('facebook', 'Facebook', pkg.facebook?.text || '', pkg.facebook?.status, csrf, run.runId, returnTo)}${distributionCopyCard('instagram', 'Instagram', pkg.instagram?.caption || '', pkg.instagram?.status, csrf, run.runId, returnTo, null, 'caption')}${genericCopyCard(pkg.generic || {}, csrf, run.runId, returnTo)}</div></section>`;
+}
+
+function distributionCopyCard(id, label, text, status = 'ready', csrf = '', runId = '', returnTo = '', characterCount = null, fieldName = 'text') {
+  const target = `distribution-copy-${escapeHtml(runId)}-${escapeHtml(id)}`;
+  const count = id === 'x' ? `<span class="pill ${Number(characterCount || 0) <= 280 ? 'good' : 'bad'}">${escapeHtml(String(characterCount || 0))}/280</span>` : '';
+  return `<article class="distribution-copy-card"><div class="meta-row"><h4>${escapeHtml(label)}</h4>${statusPill(status || 'ready')}${count}</div><form method="post" action="/app/content/actions/distribution/package/save"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="destinationId" value="${escapeHtml(id)}"><input type="hidden" name="returnTo" value="${escapeHtml(returnTo)}"><textarea id="${target}" name="${escapeHtml(fieldName)}" rows="7">${escapeHtml(text)}</textarea><div class="mini-actions"><button class="ghost" type="button" data-copy-target="${target}">Copy</button><button class="ghost" type="submit">Save</button>${distributionPackageAction('Regenerate', 'generate', runId, id, csrf, returnTo)}${distributionPackageAction('Mark copied', 'status', runId, id, csrf, returnTo, 'copied')}${distributionPackageAction('Mark sent', 'status', runId, id, csrf, returnTo, 'sent')}</div></form></article>`;
+}
+
+function genericCopyCard(generic = {}, csrf = '', runId = '', returnTo = '') {
+  const shortId = `distribution-copy-${escapeHtml(runId)}-generic-short`;
+  const longId = `distribution-copy-${escapeHtml(runId)}-generic-long`;
+  return `<article class="distribution-copy-card"><div class="meta-row"><h4>Generic</h4>${statusPill('ready')}</div><form method="post" action="/app/content/actions/distribution/package/save"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="destinationId" value="generic"><input type="hidden" name="returnTo" value="${escapeHtml(returnTo)}"><label>Short copy<textarea id="${shortId}" name="shortCopy" rows="4">${escapeHtml(generic.shortCopy || '')}</textarea></label><label>Long copy<textarea id="${longId}" name="longCopy" rows="8">${escapeHtml(generic.longCopy || '')}</textarea></label><div class="mini-actions"><button class="ghost" type="button" data-copy-target="${shortId}">Copy short</button><button class="ghost" type="button" data-copy-target="${longId}">Copy long</button><button class="ghost" type="submit">Save</button>${distributionPackageAction('Regenerate', 'generate', runId, 'generic', csrf, returnTo)}</div></form></article>`;
+}
+
+function distributionPackageAction(label, action, runId, destinationId, csrf, returnTo, status = '') {
+  const path = action === 'generate' ? '/app/content/actions/distribution/package/generate' : '/app/content/actions/distribution/package/status';
+  const hiddenDestination = action === 'generate' ? '' : `<input type="hidden" name="destinationId" value="${escapeHtml(destinationId)}">`;
+  return `<button class="ghost" type="submit" formaction="${path}" name="${action === 'generate' ? 'destinationId' : 'status'}" value="${escapeHtml(action === 'generate' ? destinationId : status)}" formmethod="post">${escapeHtml(label)}</button>${hiddenDestination}`;
+}
+
+function distributionPackageStatus(pkg = {}) {
+  const statuses = ['linkedin', 'x', 'facebook', 'instagram'].map((id) => pkg?.[id]?.status || 'not_generated');
+  if (statuses.every((status) => status === 'sent')) return 'distributed';
+  if (statuses.some((status) => status === 'sent')) return 'partially-distributed';
+  if (statuses.some((status) => ['ready', 'copied', 'failed'].includes(status))) return 'distribution-ready';
+  return 'not_generated';
 }
 
 function destinationChip(destination, csrf, canManage) {
@@ -1088,9 +1138,8 @@ function distributionArticleRow(run, detail, destinations, defaults, csrf, canMa
   const publishedCount = Object.values(state).filter((item) => item?.status === 'published').length;
   const choices = destinations.map((destination) => destinationCheckbox(destination, destination.id === 'certifyd' ? ['certifyd'] : defaults, state[destination.id])).join('');
   const statusRows = destinations.map((destination) => destinationStatusRow(destination, state[destination.id])).join('');
-  const disabled = canManage ? '' : 'disabled';
   const actions = canManage ? `<div class="actions"><button class="primary" type="submit">Publish to selected destinations now</button><button class="ghost" type="submit" formaction="/app/content/actions/distribution/retry">Retry failed destinations</button></div>` : '<p class="notice">This role can view distribution, but cannot publish destinations.</p>';
-  return `<article class="distribution-row"><div><h3>${escapeHtml(run.title || 'Untitled article')}</h3><p>${statusPill(run.status)} <span class="muted">${escapeHtml(String(publishedCount))} destination${publishedCount === 1 ? '' : 's'} published · ${escapeHtml(run.canonicalUrl || 'No canonical URL')}</span></p></div><details ${open ? 'open' : ''}><summary class="primary">Distribute</summary><form method="post" action="/app/content/actions/distribution/publish"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="runId" value="${escapeHtml(run.runId)}"><input type="hidden" name="version" value="${escapeHtml(run.version || 'v1')}"><h4>Distribute article</h4><p class="muted">Certifyd Blog is canonical. Social destinations require founder approval here before posting.</p><div class="destination-choice-grid">${choices}</div>${actions}</form><div class="distribution-status-list">${statusRows}</div></details></article>`;
+  return `<article class="distribution-row"><div><h3>${escapeHtml(run.title || 'Untitled article')}</h3><p>${statusPill(run.status)} <span class="muted">${escapeHtml(String(publishedCount))} destination${publishedCount === 1 ? '' : 's'} published · ${escapeHtml(run.canonicalUrl || 'No canonical URL')}</span></p></div><details ${open ? 'open' : ''}><summary class="primary">Distribute</summary>${distributionPackagePanel(detail?.distribution?.package, run, csrf, canManage, `/app/content/distribution?runId=${encodeURIComponent(run.runId)}`)}<form method="post" action="/app/content/actions/distribution/publish"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="runId" value="${escapeHtml(run.runId)}"><input type="hidden" name="version" value="${escapeHtml(run.version || 'v1')}"><h4>Connector publishing</h4><p class="muted">Certifyd Blog is canonical. Connected destinations require founder approval here before posting.</p><div class="destination-choice-grid">${choices}</div>${actions}</form><div class="distribution-status-list">${statusRows}</div></details></article>`;
 }
 
 function destinationCheckbox(destination, selected = [], state = {}) {

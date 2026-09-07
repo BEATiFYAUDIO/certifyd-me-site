@@ -16,3 +16,16 @@ document.addEventListener('submit', (event) => {
   if (!form.matches('[data-generating-form]')) return;
   markGenerating(form);
 });
+
+document.addEventListener('click', async (event) => {
+  const button = event.target;
+  if (!(button instanceof HTMLButtonElement)) return;
+  const targetId = button.dataset.copyTarget;
+  if (!targetId) return;
+  const target = document.getElementById(targetId);
+  if (!(target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement)) return;
+  await navigator.clipboard.writeText(target.value);
+  const original = button.textContent || 'Copy';
+  button.textContent = 'Copied';
+  setTimeout(() => { button.textContent = original; }, 1200);
+});

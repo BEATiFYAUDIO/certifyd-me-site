@@ -10,8 +10,10 @@ import {
   DEFAULT_SOURCE_REGISTRY,
   dedupeSourceItems,
   dismissTrendOpportunity,
+  eventClusterDecision,
   filterTrendingOpportunities,
   getTrendingOpportunities,
+  isGenericCertifydRelevance,
   parseFeedItems,
   readTrendSourceDetail,
   retainSourceStories,
@@ -20,6 +22,7 @@ import {
   selectRecommendedOpportunities,
   SEEDED_OPPORTUNITIES,
   startTrendDailyScheduler,
+  storyFingerprint,
 } from '../scripts/content-dashboard/trends.js';
 import { getDashboardConfig } from '../scripts/content-dashboard/config.js';
 
@@ -74,6 +77,31 @@ function atomFeed() {
 
 function response(body, { status = 200, contentType = 'application/rss+xml' } = {}) {
   return new Response(body, { status, headers: { 'content-type': contentType } });
+}
+
+function sourceStory(title, summary, overrides = {}) {
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
+  return {
+    id: `src-${slug}`,
+    provider: 'rss',
+    publisher: overrides.publisher || 'Example News',
+    sourceName: overrides.publisher || 'Example News',
+    articleUrl: overrides.articleUrl || `https://example.test/${slug}`,
+    sourceUrl: overrides.articleUrl || `https://example.test/${slug}`,
+    sourceTitle: title,
+    feedUrl: 'https://example.test/feed.xml',
+    title,
+    summary,
+    publishedAt: overrides.publishedAt || new Date().toISOString(),
+    retrievedAt: new Date().toISOString(),
+    categories: overrides.categories || ['AI', 'Music'],
+    keywords: overrides.keywords || [],
+    sourcePriority: overrides.sourcePriority ?? 80,
+    sourceType: 'rss',
+    certifydRelevanceScore: overrides.certifydRelevanceScore ?? 12,
+    certifydRelevanceReasons: overrides.certifydRelevanceReasons || ['rights, permissions or licensing pressure'],
+    certifydRelevanceMatched: overrides.certifydRelevanceMatched ?? true,
+  };
 }
 
 test('trend opportunities default to clearly labeled seeded examples only when seeded is configured', async () => {
@@ -281,6 +309,178 @@ test('Atom parsing, dedupe and clustering keep source summaries compact', () => 
   const clusters = clusterSourceItems(deduped);
   assert.equal(clusters.length, 1);
   assert.equal(clusters[0].category, 'AI');
+});
+
+test('same lawsuit coverage clusters as one event', () => {
+  const items = [
+    sourceStory('SOCAN sues Suno over copyrighted songs', 'Canadian collecting society SOCAN files a copyright lawsuit against Suno over music training and output.'),
+    sourceStory("Canada's SOCAN files lawsuit against Suno", 'SOCAN filed suit against Suno alleging infringement of copyrighted compositions and recordings.'),
+  ];
+  const clusters = clusterSourceItems(items);
+
+  assert.equal(clusters.length, 1);
+  assert.equal(clusters[0].items.length, 2);
+  assert.equal(clusters[0].clusterDecisions[0].decision, 'same-event');
+  assert.match(clusters[0].title, /SOCAN.*Suno/i);
+});
+
+test('different Suno lawsuits remain separate stories', () => {
+  const socan = sourceStory('SOCAN sues Suno over copyrighted songs', 'SOCAN filed a copyright lawsuit against Suno in Canada.');
+  const gerencia = sourceStory('Gerencia 360 sues Suno over Latin music catalog', 'Gerencia 360 filed a separate copyright lawsuit against Suno over alleged infringement.');
+  const clusters = clusterSourceItems([socan, gerencia]);
+  const decision = eventClusterDecision(socan, gerencia);
+
+  assert.equal(clusters.length, 2);
+  assert.equal(decision.decision, 'separate-events');
+  assert.deepEqual(decision.overlappingEntities, ['suno']);
+});
+
+test('same company with different event does not cluster', () => {
+  const lawsuit = sourceStory('SOCAN sues Suno over copyrighted songs', 'SOCAN filed a copyright lawsuit against Suno.');
+  const controversy = sourceStory('Suno pulls Mary J. Blige ad after representative controversy', 'Suno removed a campaign after someone falsely represented themselves as Mary J. Blige representative.');
+  const clusters = clusterSourceItems([lawsuit, controversy]);
+
+  assert.equal(clusters.length, 2);
+});
+
+test('broad AI similarity is not event identity', () => {
+  const policy = sourceStory('DOJ sides with OpenAI in New York Times fair use case', 'The U.S. Department of Justice argued about AI training and fair use in the New York Times litigation against OpenAI.');
+  const acquisition = sourceStory('Nvidia buys Hugging Face in AI infrastructure deal', 'Nvidia agreed to acquire Hugging Face in a major AI infrastructure acquisition.');
+  const clusters = clusterSourceItems([policy, acquisition]);
+  const decision = eventClusterDecision(policy, acquisition);
+
+  assert.equal(clusters.length, 2);
+  assert.equal(decision.decision, 'separate-events');
+  assert.equal(decision.sameEventType, false);
+});
+
+test('broad creator economy similarity is not enough to cluster', () => {
+  const pricing = sourceStory('Spotify changes creator subscription pricing', 'Spotify updated pricing terms for creator subscriptions and direct fan products.', { categories: ['Creator Economy'] });
+  const appointment = sourceStory('Spotify names new podcast chief', 'Spotify appointed a new executive to lead its podcast creator business.', { categories: ['Creator Economy'] });
+  const clusters = clusterSourceItems([pricing, appointment]);
+
+  assert.equal(clusters.length, 2);
+});
+
+test('same acquisition coverage clusters as one event', () => {
+  const items = [
+    sourceStory('Nvidia buys Hugging Face for $13B', 'Nvidia acquired Hugging Face for $13B in an AI infrastructure transaction.'),
+    sourceStory('Hugging Face acquired by Nvidia in $13 billion deal', 'Nvidia completed a $13 billion acquisition of Hugging Face.'),
+  ];
+  const clusters = clusterSourceItems(items);
+
+  assert.equal(clusters.length, 1);
+  assert.equal(clusters[0].items.length, 2);
+  assert.equal(clusters[0].storyFingerprint.eventType, 'acquisition');
+});
+
+test('same SOCAN and Suno legal event corroborates despite headline wording', () => {
+  const items = [
+    sourceStory(
+      'When It Rains, It Pours: SOCAN Sues Suno for Allegedly ‘Engaging in Rampant Copyright Infringement on a Massive Scale’',
+      'SOCAN sues Suno in Canada for alleged copyright infringement.',
+      { publisher: 'Digital Music News' },
+    ),
+    sourceStory(
+      "Canada's Socan files latest music-industry lawsuit against Suno",
+      "Canada's SOCAN filed the latest music-industry lawsuit against Suno over alleged copyright infringement.",
+      { publisher: 'Music Ally' },
+    ),
+  ];
+  const clusters = clusterSourceItems(items);
+  const decision = eventClusterDecision(items[0], items[1]);
+
+  assert.equal(clusters.length, 1);
+  assert.equal(clusters[0].items.length, 2);
+  assert.equal(decision.decision, 'same-event');
+  assert.equal(decision.corroboratedSameEvent, true);
+});
+
+test('same Wilson Pickett and Primary Wave rights deal corroborates across deal wording', () => {
+  const items = [
+    sourceStory(
+      'Wilson Pickett estate strikes deal with Primary Wave covering publishing catalog and name, image & likeness rights',
+      'The Wilson Pickett estate struck a deal with Primary Wave covering publishing catalog and name, image and likeness rights.',
+      { publisher: 'Music Business Worldwide' },
+    ),
+    sourceStory(
+      'Primary Wave Music Partners With the Estate of Wilson Pickett',
+      'Primary Wave Music partners with the estate of Wilson Pickett on publishing catalog and name, image and likeness rights.',
+      { publisher: 'Digital Music News' },
+    ),
+  ];
+  const clusters = clusterSourceItems(items);
+  const decision = eventClusterDecision(items[0], items[1]);
+
+  assert.equal(clusters.length, 1);
+  assert.equal(clusters[0].items.length, 2);
+  assert.equal(decision.decision, 'same-event');
+  assert.equal(decision.corroboratedSameEvent, true);
+});
+
+test('known Frankenstein trend pairs remain separate after corroboration path', () => {
+  const pairs = [
+    [
+      sourceStory('Mateusz Smółka named Managing Director of Warner Music Eastern Europe', 'Warner Music appointed Mateusz Smółka as Managing Director of Warner Music Eastern Europe.'),
+      sourceStory('German company becomes first in Europe to launch fully commercial orbital rocket', 'A German aerospace company launched a fully commercial orbital rocket in Europe.'),
+    ],
+    [
+      sourceStory('Mateusz Smółka named Managing Director of Warner Music Eastern Europe', 'Warner Music appointed Mateusz Smółka as Managing Director of Warner Music Eastern Europe.'),
+      sourceStory('Ye announces Chicago concert dates', 'Ye announced new Chicago concert activity and ticketing plans.'),
+    ],
+    [
+      sourceStory('SOCAN sues Suno over copyrighted songs', 'SOCAN filed a copyright lawsuit against Suno in Canada.'),
+      sourceStory('ABC sues FCC over broadcast ownership ruling', 'ABC filed a lawsuit against the FCC over a broadcast ownership policy ruling.'),
+    ],
+    [
+      sourceStory('SOCAN sues Suno over copyrighted songs', 'SOCAN filed a copyright lawsuit against Suno in Canada.'),
+      sourceStory('Enes Kanter files lawsuit over sports dispute', 'Enes Kanter filed a lawsuit related to a sports dispute.'),
+    ],
+    [
+      sourceStory('AM Radio for Every Vehicle Act advances in Congress', 'The AM Radio for Every Vehicle Act advanced as a policy proposal.'),
+      sourceStory('CD sales are booming among music fans', 'CD sales are rising again as physical music formats regain fans.'),
+    ],
+    [
+      sourceStory('Wilson Pickett estate strikes deal with Primary Wave covering publishing catalog and name, image & likeness rights', 'The Wilson Pickett estate struck a rights deal with Primary Wave.'),
+      sourceStory('Jazz singer Cassandra Wilson death reports corrected', 'Reports discussed Cassandra Wilson and online death misinformation.'),
+    ],
+    [
+      sourceStory('Wilson Pickett estate strikes deal with Primary Wave covering publishing catalog and name, image & likeness rights', 'The Wilson Pickett estate struck a rights deal with Primary Wave.'),
+      sourceStory('HarbourView acquires David Kershenbaum catalog including Tracy Chapman royalties', 'HarbourView acquired producer David Kershenbaum catalog interests, including royalties tied to Tracy Chapman and Supertramp.'),
+    ],
+  ];
+
+  for (const [one, two] of pairs) {
+    const decision = eventClusterDecision(one, two);
+    assert.equal(decision.decision, 'separate-events', `${one.title} should not merge with ${two.title}`);
+    assert.equal(clusterSourceItems([one, two]).length, 2);
+  }
+});
+
+test('strong single-source story can become a top opportunity', async () => {
+  const agentRoot = await tempAgentRoot();
+  const feed = rssFeed([
+    {
+      title: 'Suno pulls Mary J. Blige ad after false representative controversy',
+      description: 'Suno says it contracted with someone who falsely represented themselves as Mary J. Blige representative. The controversy raises creator authorization, identity, impersonation and rights concerns.',
+      link: 'https://example.test/suno-mary-j-blige',
+    },
+  ]);
+  const scan = await scanTrendOpportunities(config(agentRoot), { fetchImpl: async () => response(feed) });
+
+  assert.equal(scan.items.length, 1);
+  assert.equal(scan.items[0].sourceCount, 1);
+  assert.equal(scan.items[0].evidenceLabel, 'Recent source');
+  assert.ok(scan.items[0].certifydRelevanceScore >= 8);
+});
+
+test('generic Certifyd relevance copy does not pass as a specific high-confidence angle', () => {
+  assert.equal(isGenericCertifydRelevance('This connects to Certifyd as infrastructure for identity, publishing, discovery and commerce.'), true);
+  assert.equal(isGenericCertifydRelevance('This connects to SOCAN v Suno copyright litigation and creator permission records.'), false);
+  const fingerprint = storyFingerprint(sourceStory('Gerencia 360 sues Suno', 'Gerencia 360 filed a copyright lawsuit against Suno.'));
+  assert.equal(fingerprint.eventType, 'lawsuit');
+  assert.ok(fingerprint.primaryEntities.includes('Gerencia 360'));
+  assert.ok(fingerprint.primaryEntities.includes('Suno'));
 });
 
 test('RSS retention keeps at least half of legally retainable unique source stories', async () => {

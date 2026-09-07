@@ -121,6 +121,7 @@ export class ContentRunRepository {
     return {
       plan: await this.readJson(base, 'distribution/distribution-plan.json', {}),
       destinations: await this.readJson(base, 'distribution/destinations.json', {}),
+      package: await this.readJson(base, 'distribution/package.json', {}),
       assets,
     };
   }

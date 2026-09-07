@@ -19,6 +19,13 @@ import {
   writeDistributionDefaults,
   writeDistributionState,
 } from './distribution-adapters.js';
+import {
+  applyDistributionPackageEdit,
+  generateDistributionPackage,
+  markDistributionPackageStatus,
+  readDistributionPackage,
+  writeDistributionPackage,
+} from './distribution-package.js';
 
 const execFileAsync = promisify(execFile);
 const RESULT_LIMIT = 12000;
@@ -651,6 +658,50 @@ export class ContentDashboardActions {
     await writeDistributionDefaults(this.config, { destinations: selected, updatedBy: actor.email, updatedAt: new Date().toISOString() });
     await this.audit.append({ action: 'distribution_defaults_save', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, result: 'SUCCESS', note: selected.join(',') });
     return { ok: true, output: `Saved default destinations: ${selected.length ? selected.join(', ') : 'none'}.` };
+  }
+
+  async generateDistributionCopy({ actor, runId, destinationId = '' }) {
+    validateRunId(runId);
+    const run = await this.runs.readRun(runId);
+    if (!isDistributionEligible(run.summary)) throw Object.assign(new Error('Only approved, ready, publishing or published articles can have distribution copy generated.'), { statusCode: 409 });
+    const previous = await readDistributionPackage(this.runs, runId);
+    const pkg = {
+      ...generateDistributionPackage(run, previous, cleanString(destinationId, 40)),
+      updatedBy: actor.email,
+    };
+    await writeDistributionPackage(this.runs, runId, pkg);
+    await this.audit.append({ action: 'distribution_copy_generate', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: 'SUCCESS', note: destinationId ? `destination:${destinationId}` : 'all' });
+    return { ok: true, output: destinationId ? `Regenerated ${destinationId} distribution copy.` : 'Generated distribution package.' };
+  }
+
+  async saveDistributionCopy({ actor, runId, destinationId, fields = {} }) {
+    validateRunId(runId);
+    const run = await this.runs.readRun(runId);
+    if (!isDistributionEligible(run.summary)) throw Object.assign(new Error('Only approved, ready, publishing or published articles can have distribution copy saved.'), { statusCode: 409 });
+    const previous = await readDistributionPackage(this.runs, runId);
+    const fallback = Object.keys(previous).length ? previous : generateDistributionPackage(run);
+    const pkg = {
+      ...applyDistributionPackageEdit(fallback, destinationId, fields),
+      updatedBy: actor.email,
+    };
+    await writeDistributionPackage(this.runs, runId, pkg);
+    await this.audit.append({ action: 'distribution_copy_save', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: 'SUCCESS', note: cleanString(destinationId, 40) });
+    return { ok: true, output: `Saved ${destinationId} distribution copy.` };
+  }
+
+  async markDistributionCopyStatus({ actor, runId, destinationId, status }) {
+    validateRunId(runId);
+    const run = await this.runs.readRun(runId);
+    if (!isDistributionEligible(run.summary)) throw Object.assign(new Error('Only approved, ready, publishing or published articles can update distribution status.'), { statusCode: 409 });
+    const previous = await readDistributionPackage(this.runs, runId);
+    const fallback = Object.keys(previous).length ? previous : generateDistributionPackage(run);
+    const pkg = {
+      ...markDistributionPackageStatus(fallback, destinationId, status),
+      updatedBy: actor.email,
+    };
+    await writeDistributionPackage(this.runs, runId, pkg);
+    await this.audit.append({ action: 'distribution_copy_status', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: 'SUCCESS', note: `${cleanString(destinationId, 40)}:${cleanString(status, 40)}` });
+    return { ok: true, output: `Marked ${destinationId} ${status}.` };
   }
 
   async distributeArticle({ actor, runId, version, destinations = [], retryFailed = false }) {
