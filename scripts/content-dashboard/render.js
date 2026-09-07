@@ -102,7 +102,22 @@ export function styles() {
 .distribution-copy-card form,.distribution-copy-card label{display:grid;gap:10px}
 .distribution-copy-card textarea{min-height:120px;resize:vertical}
 .distribution-copy-card .mini-actions{justify-content:flex-start}
+.instagram-copy-card{grid-column:span 2}
+.instagram-asset-preview{display:grid;grid-template-columns:minmax(150px,220px) minmax(150px,220px);gap:12px;align-items:start}
+.instagram-asset-preview strong{display:block;margin-bottom:6px;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.instagram-asset-preview .muted{grid-column:1/-1;margin:0;font-size:.9rem}
+.instagram-preview-post,.instagram-grid-preview{position:relative;overflow:hidden;border:1px solid var(--border);border-radius:14px;background:linear-gradient(135deg,rgba(255,255,255,.08),rgba(255,159,26,.08))}
+.instagram-preview-post{aspect-ratio:4/5}
+.instagram-grid-preview{aspect-ratio:1}
+.instagram-preview-post img,.instagram-grid-canvas img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform-origin:center}
+.instagram-grid-canvas{position:absolute;left:0;top:-12.5%;width:100%;height:125%}
+.instagram-safe-zone{position:absolute;display:grid;place-items:center;border:1px dashed rgba(255,159,26,.92);background:rgba(255,159,26,.08);color:#ffd89a;font-size:.68rem;font-weight:900;text-align:center;text-transform:uppercase;letter-spacing:.06em;pointer-events:none}
+.instagram-preview-empty{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-weight:900;text-align:center;padding:14px}
+.instagram-position-controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.instagram-position-controls label{display:grid;gap:6px;color:var(--muted);font-weight:900;font-size:.78rem;text-transform:uppercase;letter-spacing:.06em}
+.instagram-position-controls input{padding:9px 10px}
 @media(max-width:780px){.upload-row{grid-template-columns:1fr}}
+@media(max-width:780px){.instagram-copy-card{grid-column:auto}.instagram-asset-preview{grid-template-columns:1fr 1fr}.instagram-position-controls{grid-template-columns:1fr}}
 @media(max-width:780px){.action-panel{grid-template-columns:1fr}.action-row>*{width:100%}.confirm-action{grid-template-columns:1fr}.article-workspace-head h1{font-size:clamp(2rem,12vw,3.8rem)}}
 </style>`;
 }

@@ -748,6 +748,7 @@ test('20ad distribution package generation, edits and statuses persist without c
     slug: 'jason-isbell-suno-ai-artist-identity',
     status: 'PUBLISHED',
     publishability: 'PUBLISHED',
+    coverImage: '/images/blog/jason-isbell-suno-ai-artist-identity-1788708178378.png',
     excerpt: 'Existing legal rights and identity rights are one layer, while digital systems still need machine-readable identity, provenance, authority and permission.',
     markdown: '# Jason Isbell, Suno and Artist Identity\n\nExisting legal rights and identity rights are one layer, while digital systems still need machine-readable identity, provenance, authority and permission.\n\nFor creators, the practical consequence is not just whether AI threatens artists. It is whether identity, provenance and permission can travel with work when platforms and automated systems touch it.\n\nThe Certifyd angle is narrow: creator infrastructure needs public context that can distinguish official identity, authority and permission without replacing the legal rights layer.',
   });
@@ -764,17 +765,50 @@ test('20ad distribution package generation, edits and statuses persist without c
   assert.match(pkg.linkedin.text, /machine-readable identity, provenance, authority and permission/);
   assert.ok(pkg.x.characterCount <= 280);
   assert.equal(pkg.linkedin.status, 'ready');
+  assert.equal(pkg.coverImage, '/images/blog/jason-isbell-suno-ai-artist-identity-1788708178378.png');
+  assert.equal(pkg.instagram.asset.width, 1080);
+  assert.equal(pkg.instagram.asset.height, 1350);
+  assert.equal(pkg.instagram.asset.aspectRatio, '4:5');
+  assert.deepEqual(pkg.instagram.asset.safeZone.profileGridCrop, { x: 0, y: 135, width: 1080, height: 1080 });
+  assert.deepEqual(pkg.instagram.asset.safeZone.criticalContent, { x: 120, y: 255, width: 840, height: 840, padding: 120 });
+  assert.equal(pkg.instagram.asset.sourceImage, pkg.coverImage);
+  assert.equal(pkg.instagram.asset.outputImage, '');
+  assert.equal(pkg.channelAssets.canonicalBlog.outputImage, pkg.coverImage);
+  assert.equal(pkg.channelAssets.instagram.sourceImage, pkg.coverImage);
+  assert.equal(pkg.channelAssets.facebook.aspectRatio, '1.91:1');
+  assert.equal(pkg.channelAssets.x.aspectRatio, '16:9');
   const originalX = pkg.x.text;
+  const originalInstagramCaption = pkg.instagram.caption;
 
   await actions.saveDistributionCopy({ actor, runId, destinationId: 'linkedin', fields: { text: 'Edited LinkedIn copy.' } });
   pkg = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'distribution', 'package.json'), 'utf8'));
   assert.equal(pkg.linkedin.text, 'Edited LinkedIn copy.');
   assert.equal(pkg.x.text, originalX);
+  assert.equal(pkg.instagram.caption, originalInstagramCaption);
+
+  await actions.saveDistributionCopy({ actor, runId, destinationId: 'instagram', fields: { caption: 'Edited Instagram caption.', assetFocusX: '42', assetFocusY: '38', assetScale: '1.15' } });
+  pkg = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'distribution', 'package.json'), 'utf8'));
+  assert.equal(pkg.instagram.caption, 'Edited Instagram caption.');
+  assert.equal(pkg.instagram.asset.position.focusX, 42);
+  assert.equal(pkg.instagram.asset.position.focusY, 38);
+  assert.equal(pkg.instagram.asset.position.scale, 1.15);
+  assert.deepEqual(pkg.channelAssets.instagram, pkg.instagram.asset);
+  const reloadedRun = await actions.runs.readRun(runId);
+  assert.equal(reloadedRun.distribution.package.instagram.asset.width, 1080);
+  assert.equal(reloadedRun.blogPackage.coverImage, '/images/blog/jason-isbell-suno-ai-artist-identity-1788708178378.png');
 
   await actions.generateDistributionCopy({ actor, runId, destinationId: 'linkedin' });
   pkg = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'distribution', 'package.json'), 'utf8'));
   assert.notEqual(pkg.linkedin.text, 'Edited LinkedIn copy.');
   assert.equal(pkg.x.text, originalX);
+  assert.equal(pkg.instagram.caption, 'Edited Instagram caption.');
+  assert.equal(pkg.instagram.asset.position.focusX, 42);
+
+  await actions.generateDistributionCopy({ actor, runId, destinationId: 'instagram' });
+  pkg = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'distribution', 'package.json'), 'utf8'));
+  assert.notEqual(pkg.instagram.caption, 'Edited Instagram caption.');
+  assert.equal(pkg.x.text, originalX);
+  assert.equal(pkg.channelAssets.canonicalBlog.outputImage, '/images/blog/jason-isbell-suno-ai-artist-identity-1788708178378.png');
 
   await actions.markDistributionCopyStatus({ actor, runId, destinationId: 'x', status: 'sent' });
   pkg = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'distribution', 'package.json'), 'utf8'));
@@ -2090,6 +2124,7 @@ async function createMinimalRun(runDir, options = {}) {
     excerpt,
     description: excerpt,
     seoDescription: options.seoDescription || excerpt,
+    coverImage: options.coverImage || '',
   }));
   await fs.writeFile(path.join(runDir, 'final', 'article.md'), options.markdown || `# ${title}\n\nBody.`);
   await fs.writeFile(path.join(runDir, 'claim-ledger.json'), JSON.stringify({ claims: [{ text: 'Safe claim', status: 'APPROVED' }] }));

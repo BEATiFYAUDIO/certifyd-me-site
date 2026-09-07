@@ -167,7 +167,7 @@ async function handleAction(req, res, url, ctx) {
   else if (action.endsWith('/publishing/unpublish')) { needs('content.article.publish.prepare'); result = await ctx.actions.unpublishFromCertifyd({ actor: ctx.user, runId: form.get('runId'), confirmUnpublish: form.get('confirmUnpublish') }); }
   else if (action.endsWith('/publishing/verify-unpublished')) { needs('content.article.publish.prepare'); result = await ctx.actions.verifyUnpublishedPublication({ actor: ctx.user, runId: form.get('runId') }); }
   else if (action.endsWith('/distribution/package/generate')) { needs('content.distribution.manage'); result = await ctx.actions.generateDistributionCopy({ actor: ctx.user, runId: form.get('runId'), destinationId: form.get('destinationId') }); }
-  else if (action.endsWith('/distribution/package/save')) { needs('content.distribution.manage'); result = await ctx.actions.saveDistributionCopy({ actor: ctx.user, runId: form.get('runId'), destinationId: form.get('destinationId'), fields: { text: form.get('text'), caption: form.get('caption'), shortCopy: form.get('shortCopy'), longCopy: form.get('longCopy'), status: form.get('status') } }); }
+  else if (action.endsWith('/distribution/package/save')) { needs('content.distribution.manage'); result = await ctx.actions.saveDistributionCopy({ actor: ctx.user, runId: form.get('runId'), destinationId: form.get('destinationId'), fields: { text: form.get('text'), caption: form.get('caption'), shortCopy: form.get('shortCopy'), longCopy: form.get('longCopy'), status: form.get('status'), assetFocusX: form.get('assetFocusX'), assetFocusY: form.get('assetFocusY'), assetScale: form.get('assetScale') } }); }
   else if (action.endsWith('/distribution/package/status')) { needs('content.distribution.manage'); result = await ctx.actions.markDistributionCopyStatus({ actor: ctx.user, runId: form.get('runId'), destinationId: form.get('destinationId'), status: form.get('status') }); }
   else if (action.endsWith('/distribution/publish')) { needs('content.distribution.manage'); result = await ctx.actions.distributeArticle({ actor: ctx.user, runId: form.get('runId'), version: form.get('version'), destinations: form.getAll('destinations') }); }
   else if (action.endsWith('/distribution/retry')) { needs('content.distribution.manage'); result = await ctx.actions.distributeArticle({ actor: ctx.user, runId: form.get('runId'), version: form.get('version'), destinations: form.getAll('destinations'), retryFailed: true }); }
@@ -1096,13 +1096,52 @@ function distributionPackagePanel(pkg = {}, run = {}, csrf = '', canManage = fal
     return `<section class="distribution-package"><div class="section-head"><div><h3>Distribution Package</h3><p class="muted">Generate platform copy from the final article after approval. This does not publish anywhere.</p></div><span>${statusPill(overall)}</span></div><p class="muted">Canonical: ${escapeHtml(canonicalUrl || 'Not set')}</p>${generate}</section>`;
   }
   const meta = `<div class="distribution-package-meta"><p><strong>Canonical</strong><br>${canonicalUrl ? `<a href="${escapeHtml(canonicalUrl)}" rel="noreferrer" target="_blank">${escapeHtml(canonicalUrl)}</a>` : 'Not set'}</p><p><strong>Slug</strong><br>${escapeHtml(slug || 'Not set')}</p>${coverImage ? `<p><strong>Cover</strong><br><code>${escapeHtml(coverImage)}</code></p>` : ''}</div>`;
-  return `<section class="distribution-package"><div class="section-head"><div><h3>Distribution Package</h3><p class="muted">Manual/social copy generated from the final article.</p></div><div class="mini-actions"><span>${statusPill(overall)}</span>${generate}</div></div>${meta}<div class="distribution-copy-grid">${distributionCopyCard('linkedin', 'LinkedIn', pkg.linkedin?.text || '', pkg.linkedin?.status, csrf, run.runId, returnTo)}${distributionCopyCard('x', 'X', pkg.x?.text || '', pkg.x?.status, csrf, run.runId, returnTo, pkg.x?.characterCount)}${distributionCopyCard('facebook', 'Facebook', pkg.facebook?.text || '', pkg.facebook?.status, csrf, run.runId, returnTo)}${distributionCopyCard('instagram', 'Instagram', pkg.instagram?.caption || '', pkg.instagram?.status, csrf, run.runId, returnTo, null, 'caption')}${genericCopyCard(pkg.generic || {}, csrf, run.runId, returnTo)}</div></section>`;
+  return `<section class="distribution-package"><div class="section-head"><div><h3>Distribution Package</h3><p class="muted">Manual/social copy generated from the final article.</p></div><div class="mini-actions"><span>${statusPill(overall)}</span>${generate}</div></div>${meta}<div class="distribution-copy-grid">${distributionCopyCard('linkedin', 'LinkedIn', pkg.linkedin?.text || '', pkg.linkedin?.status, csrf, run.runId, returnTo)}${distributionCopyCard('x', 'X', pkg.x?.text || '', pkg.x?.status, csrf, run.runId, returnTo, pkg.x?.characterCount)}${distributionCopyCard('facebook', 'Facebook', pkg.facebook?.text || '', pkg.facebook?.status, csrf, run.runId, returnTo)}${instagramCopyCard(pkg.instagram || {}, csrf, run.runId, returnTo)}${genericCopyCard(pkg.generic || {}, csrf, run.runId, returnTo)}</div></section>`;
 }
 
 function distributionCopyCard(id, label, text, status = 'ready', csrf = '', runId = '', returnTo = '', characterCount = null, fieldName = 'text') {
   const target = `distribution-copy-${escapeHtml(runId)}-${escapeHtml(id)}`;
   const count = id === 'x' ? `<span class="pill ${Number(characterCount || 0) <= 280 ? 'good' : 'bad'}">${escapeHtml(String(characterCount || 0))}/280</span>` : '';
   return `<article class="distribution-copy-card"><div class="meta-row"><h4>${escapeHtml(label)}</h4>${statusPill(status || 'ready')}${count}</div><form method="post" action="/app/content/actions/distribution/package/save"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="destinationId" value="${escapeHtml(id)}"><input type="hidden" name="returnTo" value="${escapeHtml(returnTo)}"><textarea id="${target}" name="${escapeHtml(fieldName)}" rows="7">${escapeHtml(text)}</textarea><div class="mini-actions"><button class="ghost" type="button" data-copy-target="${target}">Copy</button><button class="ghost" type="submit">Save</button>${distributionPackageAction('Regenerate', 'generate', runId, id, csrf, returnTo)}${distributionPackageAction('Mark copied', 'status', runId, id, csrf, returnTo, 'copied')}${distributionPackageAction('Mark sent', 'status', runId, id, csrf, returnTo, 'sent')}</div></form></article>`;
+}
+
+function instagramCopyCard(instagram = {}, csrf = '', runId = '', returnTo = '') {
+  const target = `distribution-copy-${escapeHtml(runId)}-instagram`;
+  const asset = instagram.asset || {};
+  const position = asset.position || {};
+  return `<article class="distribution-copy-card instagram-copy-card"><div class="meta-row"><h4>Instagram</h4>${statusPill(instagram.status || 'ready')}<span class="pill good">1080x1350 · 4:5</span></div><form method="post" action="/app/content/actions/distribution/package/save"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="destinationId" value="instagram"><input type="hidden" name="returnTo" value="${escapeHtml(returnTo)}"><textarea id="${target}" name="caption" rows="7">${escapeHtml(instagram.caption || '')}</textarea>${instagramAssetPreview(asset)}<div class="instagram-position-controls"><label>Focus X<input name="assetFocusX" type="number" min="0" max="100" step="1" value="${escapeHtml(String(position.focusX ?? 50))}"></label><label>Focus Y<input name="assetFocusY" type="number" min="0" max="100" step="1" value="${escapeHtml(String(position.focusY ?? 50))}"></label><label>Scale<input name="assetScale" type="number" min="1" max="2" step="0.05" value="${escapeHtml(String(position.scale ?? 1))}"></label></div><div class="mini-actions"><button class="ghost" type="button" data-copy-target="${target}">Copy</button><button class="ghost" type="submit">Save</button>${distributionPackageAction('Regenerate', 'generate', runId, 'instagram', csrf, returnTo)}${distributionPackageAction('Mark copied', 'status', runId, 'instagram', csrf, returnTo, 'copied')}${distributionPackageAction('Mark sent', 'status', runId, 'instagram', csrf, returnTo, 'sent')}</div></form></article>`;
+}
+
+function instagramAssetPreview(asset = {}) {
+  const image = asset.outputImage || asset.sourceImage || '';
+  const safe = asset.safeZone?.criticalContent || {};
+  const width = Number(asset.width || 1080);
+  const height = Number(asset.height || 1350);
+  const left = percent(safe.x, width);
+  const top = percent(safe.y, height);
+  const safeWidth = percent(safe.width, width);
+  const safeHeight = percent(safe.height, height);
+  const position = asset.position || {};
+  const focusX = clamp(position.focusX, 0, 100, 50);
+  const focusY = clamp(position.focusY, 0, 100, 50);
+  const scale = clamp(position.scale, 1, 2, 1);
+  const img = image
+    ? `<img src="${escapeHtml(image)}" alt="" loading="lazy" decoding="async" style="object-position:${focusX}% ${focusY}%;transform:scale(${scale});">`
+    : '<span class="instagram-preview-empty">No Instagram asset yet</span>';
+  const overlay = `<span class="instagram-safe-zone" style="left:${left}%;top:${top}%;width:${safeWidth}%;height:${safeHeight}%;">Critical safe zone</span>`;
+  return `<div class="instagram-asset-preview"><div><strong>Full post</strong><div class="instagram-preview-post">${img}${overlay}</div></div><div><strong>Profile grid preview</strong><div class="instagram-grid-preview"><div class="instagram-grid-canvas">${img}${overlay}</div></div></div><p class="muted">Keep logo, headline, names and essential subhead inside the safe zone. Full-bleed art can extend to the edges.</p></div>`;
+}
+
+function percent(value, basis) {
+  const number = Number(value);
+  const divisor = Number(basis) || 1;
+  return Math.max(0, Math.min(100, (Number.isFinite(number) ? number : 0) / divisor * 100)).toFixed(2);
+}
+
+function clamp(value, min, max, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, number));
 }
 
 function genericCopyCard(generic = {}, csrf = '', runId = '', returnTo = '') {

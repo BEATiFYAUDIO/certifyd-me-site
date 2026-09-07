@@ -4,6 +4,30 @@ import { validateRunId } from './security.js';
 
 export const DISTRIBUTION_COPY_STATUSES = ['not_generated', 'ready', 'copied', 'sent', 'failed'];
 export const DISTRIBUTION_COPY_DESTINATIONS = ['linkedin', 'x', 'facebook', 'instagram', 'generic'];
+export const INSTAGRAM_FEED_ASSET_SPEC = {
+  width: 1080,
+  height: 1350,
+  aspectRatio: '4:5',
+  safeZone: {
+    units: 'px',
+    profileGridCrop: { x: 0, y: 135, width: 1080, height: 1080 },
+    criticalContent: { x: 120, y: 255, width: 840, height: 840, padding: 120 },
+    note: 'Keep logo, headline, names and essential subhead inside criticalContent. Full-bleed art may extend to the full canvas.',
+  },
+  position: { focusX: 50, focusY: 50, scale: 1 },
+};
+export const INSTAGRAM_GENERATION_GUIDANCE = [
+  'Create a 1080x1350 Instagram editorial image.',
+  'Background photography, textures and decorative elements may extend to all edges.',
+  'ALL critical text, including the exact Certifyd logo/wordmark, headline, names and essential subhead, must remain inside the centered profile-grid-safe region with generous padding.',
+  'The image must remain understandable when viewed as the profile-grid thumbnail.',
+  'Do not place headline text against the left or right edge.',
+  'Do not solve this by making all typography tiny.',
+  'Use strong editorial hierarchy inside the safe region and let photography/art provide the full-bleed composition.',
+  'Preserve Certifyd editorial visual language: music/content/lifestyle, tactile or analog elements when appropriate, bold typography, photography/collage, imperfect physicality and story-specific imagery.',
+  'Avoid generic AI-tech slop, floating dashboards or network globes unless actually relevant.',
+  'Use the exact Certifyd logo asset; never regenerate or approximate the logo.',
+].join(' ');
 
 export async function readDistributionPackage(runRepo, runId) {
   const base = runRepo.runPath(validateRunId(runId));
@@ -25,6 +49,7 @@ export function generateDistributionPackage(run = {}, previous = {}, destination
     excerpt: article.excerpt,
     coverImage: article.coverImage,
     publishedAt: article.publishedAt,
+    channelAssets: channelAssets(article, previous.channelAssets || {}),
     updatedAt: new Date().toISOString(),
   };
   const generated = {
@@ -32,9 +57,10 @@ export function generateDistributionPackage(run = {}, previous = {}, destination
     linkedin: linkedinCopy(article),
     x: xCopy(article),
     facebook: facebookCopy(article),
-    instagram: instagramCopy(article),
+    instagram: instagramCopy(article, previous.instagram?.asset),
     generic: genericCopy(article),
   };
+  generated.channelAssets.instagram = generated.instagram.asset;
   if (!destinationId) return { ...previous, ...generated };
   const destination = normalizeDestination(destinationId);
   if (!destination) return { ...previous, ...base };
@@ -46,7 +72,10 @@ export function applyDistributionPackageEdit(pkg = {}, destinationId = '', field
   if (!destination) throw Object.assign(new Error('Unknown distribution package destination.'), { statusCode: 404 });
   const current = pkg[destination] || {};
   const next = { ...current };
-  if (destination === 'instagram') next.caption = cleanCopy(fields.caption ?? fields.text ?? current.caption);
+  if (destination === 'instagram') {
+    next.caption = cleanCopy(fields.caption ?? fields.text ?? current.caption);
+    next.asset = instagramAssetFromFields(current.asset, fields);
+  }
   else if (destination === 'generic') {
     next.shortCopy = cleanCopy(fields.shortCopy ?? current.shortCopy);
     next.longCopy = cleanCopy(fields.longCopy ?? current.longCopy);
@@ -125,13 +154,14 @@ function facebookCopy(article) {
   };
 }
 
-function instagramCopy(article) {
+function instagramCopy(article, previousAsset = {}) {
   return {
     caption: [
       article.hook || article.title,
       article.implications[0] || article.excerpt,
     ].filter(Boolean).join('\n\n'),
     status: 'ready',
+    asset: instagramAsset(article, previousAsset),
   };
 }
 
@@ -144,6 +174,64 @@ function genericCopy(article) {
     article.canonicalUrl,
   ].filter(Boolean).join('\n\n');
   return { shortCopy, longCopy };
+}
+
+function channelAssets(article, previous = {}) {
+  return {
+    ...previous,
+    canonicalBlog: {
+      kind: 'canonical-blog-hero',
+      sourceImage: article.coverImage,
+      outputImage: article.coverImage,
+      aspectRatio: 'site-article-hero',
+    },
+    instagram: instagramAsset(article, previous.instagram),
+    facebook: {
+      ...(previous.facebook || {}),
+      kind: 'social-landscape',
+      aspectRatio: previous.facebook?.aspectRatio || '1.91:1',
+      sourceImage: article.coverImage,
+      outputImage: previous.facebook?.outputImage || '',
+    },
+    x: {
+      ...(previous.x || {}),
+      kind: 'social-landscape',
+      aspectRatio: previous.x?.aspectRatio || '16:9',
+      sourceImage: article.coverImage,
+      outputImage: previous.x?.outputImage || '',
+    },
+  };
+}
+
+function instagramAsset(article = {}, previous = {}) {
+  return {
+    ...INSTAGRAM_FEED_ASSET_SPEC,
+    safeZone: {
+      ...INSTAGRAM_FEED_ASSET_SPEC.safeZone,
+      ...(previous.safeZone || {}),
+      profileGridCrop: { ...INSTAGRAM_FEED_ASSET_SPEC.safeZone.profileGridCrop, ...(previous.safeZone?.profileGridCrop || {}) },
+      criticalContent: { ...INSTAGRAM_FEED_ASSET_SPEC.safeZone.criticalContent, ...(previous.safeZone?.criticalContent || {}) },
+    },
+    sourceImage: article.coverImage || previous.sourceImage || '',
+    outputImage: previous.outputImage || '',
+    position: {
+      ...INSTAGRAM_FEED_ASSET_SPEC.position,
+      ...(previous.position || {}),
+    },
+    generationGuidance: previous.generationGuidance || INSTAGRAM_GENERATION_GUIDANCE,
+  };
+}
+
+function instagramAssetFromFields(current = {}, fields = {}) {
+  const asset = instagramAsset({ coverImage: current.sourceImage || '' }, current);
+  return {
+    ...asset,
+    position: {
+      focusX: clampNumber(fields.assetFocusX ?? asset.position.focusX, 0, 100, 50),
+      focusY: clampNumber(fields.assetFocusY ?? asset.position.focusY, 0, 100, 50),
+      scale: clampNumber(fields.assetScale ?? asset.position.scale, 1, 2, 1),
+    },
+  };
 }
 
 function strongestHook(markdown = '', fallback = '') {
@@ -225,6 +313,12 @@ function normalizeDestination(value = '') {
 function normalizeCopyStatus(value = '') {
   const status = String(value || '').trim().toLowerCase().replace(/-/g, '_');
   return DISTRIBUTION_COPY_STATUSES.includes(status) ? status : 'ready';
+}
+
+function clampNumber(value, min, max, fallback) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
 }
 
 function stripFrontmatter(markdown = '') {

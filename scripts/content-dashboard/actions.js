@@ -684,6 +684,9 @@ export class ContentDashboardActions {
       ...applyDistributionPackageEdit(fallback, destinationId, fields),
       updatedBy: actor.email,
     };
+    if (cleanString(destinationId, 40).toLowerCase() === 'instagram' && pkg.instagram?.asset) {
+      pkg.channelAssets = { ...(pkg.channelAssets || {}), instagram: pkg.instagram.asset };
+    }
     await writeDistributionPackage(this.runs, runId, pkg);
     await this.audit.append({ action: 'distribution_copy_save', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: 'SUCCESS', note: cleanString(destinationId, 40) });
     return { ok: true, output: `Saved ${destinationId} distribution copy.` };
