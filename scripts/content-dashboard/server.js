@@ -168,6 +168,7 @@ async function handleAction(req, res, url, ctx) {
   else if (action.endsWith('/publishing/verify-unpublished')) { needs('content.article.publish.prepare'); result = await ctx.actions.verifyUnpublishedPublication({ actor: ctx.user, runId: form.get('runId') }); }
   else if (action.endsWith('/distribution/package/generate')) { needs('content.distribution.manage'); result = await ctx.actions.generateDistributionCopy({ actor: ctx.user, runId: form.get('runId'), destinationId: form.get('destinationId') }); }
   else if (action.endsWith('/distribution/package/save')) { needs('content.distribution.manage'); result = await ctx.actions.saveDistributionCopy({ actor: ctx.user, runId: form.get('runId'), destinationId: form.get('destinationId'), fields: { text: form.get('text'), caption: form.get('caption'), shortCopy: form.get('shortCopy'), longCopy: form.get('longCopy'), status: form.get('status'), assetFocusX: form.get('assetFocusX'), assetFocusY: form.get('assetFocusY'), assetScale: form.get('assetScale') } }); }
+  else if (action.endsWith('/distribution/package/preflight')) { needs('content.distribution.manage'); result = await ctx.actions.preflightDistributionCopy({ actor: ctx.user, runId: form.get('runId'), destinationId: form.get('destinationId') }); }
   else if (action.endsWith('/distribution/package/status')) { needs('content.distribution.manage'); result = await ctx.actions.markDistributionCopyStatus({ actor: ctx.user, runId: form.get('runId'), destinationId: form.get('destinationId'), status: form.get('status') }); }
   else if (action.endsWith('/distribution/publish')) { needs('content.distribution.manage'); result = await ctx.actions.distributeArticle({ actor: ctx.user, runId: form.get('runId'), version: form.get('version'), destinations: form.getAll('destinations') }); }
   else if (action.endsWith('/distribution/retry')) { needs('content.distribution.manage'); result = await ctx.actions.distributeArticle({ actor: ctx.user, runId: form.get('runId'), version: form.get('version'), destinations: form.getAll('destinations'), retryFailed: true }); }
@@ -1102,14 +1103,15 @@ function distributionPackagePanel(pkg = {}, run = {}, csrf = '', canManage = fal
 function distributionCopyCard(id, label, text, status = 'ready', csrf = '', runId = '', returnTo = '', characterCount = null, fieldName = 'text') {
   const target = `distribution-copy-${escapeHtml(runId)}-${escapeHtml(id)}`;
   const count = id === 'x' ? `<span class="pill ${Number(characterCount || 0) <= 280 ? 'good' : 'bad'}">${escapeHtml(String(characterCount || 0))}/280</span>` : '';
-  return `<article class="distribution-copy-card"><div class="meta-row"><h4>${escapeHtml(label)}</h4>${statusPill(status || 'ready')}${count}</div><form method="post" action="/app/content/actions/distribution/package/save"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="destinationId" value="${escapeHtml(id)}"><input type="hidden" name="returnTo" value="${escapeHtml(returnTo)}"><textarea id="${target}" name="${escapeHtml(fieldName)}" rows="7">${escapeHtml(text)}</textarea><div class="mini-actions"><button class="ghost" type="button" data-copy-target="${target}">Copy</button><button class="ghost" type="submit">Save</button>${distributionPackageAction('Regenerate', 'generate', runId, id, csrf, returnTo)}${distributionPackageAction('Mark copied', 'status', runId, id, csrf, returnTo, 'copied')}${distributionPackageAction('Mark sent', 'status', runId, id, csrf, returnTo, 'sent')}</div></form></article>`;
+  const warning = ['linkedin', 'x', 'facebook'].includes(id) ? '<p class="notice">Limited edit/repost capability. Preflight and approve the exact final payload before sending.</p>' : '';
+  return `<article class="distribution-copy-card"><div class="meta-row"><h4>${escapeHtml(label)}</h4>${statusPill(status || 'draft')}${count}</div><form method="post" action="/app/content/actions/distribution/package/save"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="destinationId" value="${escapeHtml(id)}"><input type="hidden" name="returnTo" value="${escapeHtml(returnTo)}"><textarea id="${target}" name="${escapeHtml(fieldName)}" rows="7">${escapeHtml(text)}</textarea>${warning}<div class="mini-actions"><button class="ghost" type="button" data-copy-target="${target}">Copy</button><button class="ghost" type="submit">Save</button>${distributionPackageAction('Regenerate', 'generate', runId, id, csrf, returnTo)}${distributionPackageAction('Preflight', 'preflight', runId, id, csrf, returnTo)}${distributionPackageAction('Approve', 'status', runId, id, csrf, returnTo, 'approved')}${distributionPackageAction('Mark sent', 'status', runId, id, csrf, returnTo, 'sent')}</div></form></article>`;
 }
 
 function instagramCopyCard(instagram = {}, csrf = '', runId = '', returnTo = '') {
   const target = `distribution-copy-${escapeHtml(runId)}-instagram`;
   const asset = instagram.asset || {};
   const position = asset.position || {};
-  return `<article class="distribution-copy-card instagram-copy-card"><div class="meta-row"><h4>Instagram</h4>${statusPill(instagram.status || 'ready')}<span class="pill good">1080x1350 · 4:5</span></div><form method="post" action="/app/content/actions/distribution/package/save"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="destinationId" value="instagram"><input type="hidden" name="returnTo" value="${escapeHtml(returnTo)}"><textarea id="${target}" name="caption" rows="7">${escapeHtml(instagram.caption || '')}</textarea>${instagramAssetPreview(asset)}<div class="instagram-position-controls"><label>Focus X<input name="assetFocusX" type="number" min="0" max="100" step="1" value="${escapeHtml(String(position.focusX ?? 50))}"></label><label>Focus Y<input name="assetFocusY" type="number" min="0" max="100" step="1" value="${escapeHtml(String(position.focusY ?? 50))}"></label><label>Scale<input name="assetScale" type="number" min="1" max="2" step="0.05" value="${escapeHtml(String(position.scale ?? 1))}"></label></div><div class="mini-actions"><button class="ghost" type="button" data-copy-target="${target}">Copy</button><button class="ghost" type="submit">Save</button>${distributionPackageAction('Regenerate', 'generate', runId, 'instagram', csrf, returnTo)}${distributionPackageAction('Mark copied', 'status', runId, 'instagram', csrf, returnTo, 'copied')}${distributionPackageAction('Mark sent', 'status', runId, 'instagram', csrf, returnTo, 'sent')}</div></form></article>`;
+  return `<article class="distribution-copy-card instagram-copy-card"><div class="meta-row"><h4>Instagram</h4>${statusPill(instagram.status || 'draft')}<span class="pill good">1080x1350 · 4:5</span></div><form method="post" action="/app/content/actions/distribution/package/save"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="destinationId" value="instagram"><input type="hidden" name="returnTo" value="${escapeHtml(returnTo)}"><textarea id="${target}" name="caption" rows="7">${escapeHtml(instagram.caption || '')}</textarea>${instagramAssetPreview(asset)}${distributionPreflightNotice(instagram.preflight)}<div class="instagram-position-controls"><label>Focus X<input name="assetFocusX" type="number" min="0" max="100" step="1" value="${escapeHtml(String(position.focusX ?? 50))}"></label><label>Focus Y<input name="assetFocusY" type="number" min="0" max="100" step="1" value="${escapeHtml(String(position.focusY ?? 50))}"></label><label>Scale<input name="assetScale" type="number" min="1" max="2" step="0.05" value="${escapeHtml(String(position.scale ?? 1))}"></label></div><div class="mini-actions"><button class="ghost" type="button" data-copy-target="${target}">Copy</button><button class="ghost" type="submit">Save</button>${distributionPackageAction('Regenerate', 'generate', runId, 'instagram', csrf, returnTo)}${distributionPackageAction('Preflight', 'preflight', runId, 'instagram', csrf, returnTo)}${distributionPackageAction('Approve', 'status', runId, 'instagram', csrf, returnTo, 'approved')}${distributionPackageAction('Mark sent', 'status', runId, 'instagram', csrf, returnTo, 'sent')}</div></form></article>`;
 }
 
 function instagramAssetPreview(asset = {}) {
@@ -1151,17 +1153,27 @@ function genericCopyCard(generic = {}, csrf = '', runId = '', returnTo = '') {
 }
 
 function distributionPackageAction(label, action, runId, destinationId, csrf, returnTo, status = '') {
-  const path = action === 'generate' ? '/app/content/actions/distribution/package/generate' : '/app/content/actions/distribution/package/status';
-  const hiddenDestination = action === 'generate' ? '' : `<input type="hidden" name="destinationId" value="${escapeHtml(destinationId)}">`;
-  return `<button class="ghost" type="submit" formaction="${path}" name="${action === 'generate' ? 'destinationId' : 'status'}" value="${escapeHtml(action === 'generate' ? destinationId : status)}" formmethod="post">${escapeHtml(label)}</button>${hiddenDestination}`;
+  const path = action === 'generate' ? '/app/content/actions/distribution/package/generate' : action === 'preflight' ? '/app/content/actions/distribution/package/preflight' : '/app/content/actions/distribution/package/status';
+  const name = action === 'generate' || action === 'preflight' ? 'destinationId' : 'status';
+  const value = action === 'generate' || action === 'preflight' ? destinationId : status;
+  const hiddenDestination = action === 'status' ? `<input type="hidden" name="destinationId" value="${escapeHtml(destinationId)}">` : '';
+  return `<button class="ghost" type="submit" formaction="${path}" name="${name}" value="${escapeHtml(value)}" formmethod="post">${escapeHtml(label)}</button>${hiddenDestination}`;
+}
+
+function distributionPreflightNotice(preflight = {}) {
+  if (!preflight?.errors?.length && !preflight?.warnings?.length) return '';
+  const errors = (preflight.errors || []).map((item) => `<li>${escapeHtml(item)}</li>`).join('');
+  const warnings = (preflight.warnings || []).map((item) => `<li>${escapeHtml(item)}</li>`).join('');
+  return `<div class="notice ${errors ? 'danger' : ''}"><strong>Preflight ${preflight.ok ? 'passed with warnings' : 'failed'}</strong><ul>${errors}${warnings}</ul></div>`;
 }
 
 function distributionPackageStatus(pkg = {}) {
-  const statuses = ['linkedin', 'x', 'facebook', 'instagram'].map((id) => pkg?.[id]?.status || 'not_generated');
+  const statuses = ['linkedin', 'x', 'facebook', 'instagram'].map((id) => pkg?.[id]?.status || 'draft');
   if (statuses.every((status) => status === 'sent')) return 'distributed';
-  if (statuses.some((status) => status === 'sent')) return 'partially-distributed';
-  if (statuses.some((status) => ['ready', 'copied', 'failed'].includes(status))) return 'distribution-ready';
-  return 'not_generated';
+  if (statuses.some((status) => ['sent', 'sending'].includes(status))) return 'partially-distributed';
+  if (statuses.some((status) => ['ready_for_review', 'approved'].includes(status))) return 'distribution-ready';
+  if (statuses.some((status) => status === 'failed')) return 'needs-attention';
+  return 'draft';
 }
 
 function destinationChip(destination, csrf, canManage) {
@@ -1174,10 +1186,10 @@ function destinationChip(destination, csrf, canManage) {
 
 function distributionArticleRow(run, detail, destinations, defaults, csrf, canManage, open) {
   const state = detail?.distribution?.destinations?.destinations || {};
-  const publishedCount = Object.values(state).filter((item) => item?.status === 'published').length;
+  const publishedCount = Object.values(state).filter((item) => ['published', 'sent'].includes(item?.status)).length;
   const choices = destinations.map((destination) => destinationCheckbox(destination, destination.id === 'certifyd' ? ['certifyd'] : defaults, state[destination.id])).join('');
   const statusRows = destinations.map((destination) => destinationStatusRow(destination, state[destination.id])).join('');
-  const actions = canManage ? `<div class="actions"><button class="primary" type="submit">Publish to selected destinations now</button><button class="ghost" type="submit" formaction="/app/content/actions/distribution/retry">Retry failed destinations</button></div>` : '<p class="notice">This role can view distribution, but cannot publish destinations.</p>';
+  const actions = canManage ? `<p class="notice">API destinations run preflight before sending. If a platform may have accepted a failed request, retry is blocked until you check that platform manually.</p><div class="actions"><button class="primary" type="submit">Publish to selected destinations now</button><button class="ghost" type="submit" formaction="/app/content/actions/distribution/retry">Retry failed destinations</button></div>` : '<p class="notice">This role can view distribution, but cannot publish destinations.</p>';
   return `<article class="distribution-row"><div><h3>${escapeHtml(run.title || 'Untitled article')}</h3><p>${statusPill(run.status)} <span class="muted">${escapeHtml(String(publishedCount))} destination${publishedCount === 1 ? '' : 's'} published · ${escapeHtml(run.canonicalUrl || 'No canonical URL')}</span></p></div><details ${open ? 'open' : ''}><summary class="primary">Distribute</summary>${distributionPackagePanel(detail?.distribution?.package, run, csrf, canManage, `/app/content/distribution?runId=${encodeURIComponent(run.runId)}`)}<form method="post" action="/app/content/actions/distribution/publish"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="runId" value="${escapeHtml(run.runId)}"><input type="hidden" name="version" value="${escapeHtml(run.version || 'v1')}"><h4>Connector publishing</h4><p class="muted">Certifyd Blog is canonical. Connected destinations require founder approval here before posting.</p><div class="destination-choice-grid">${choices}</div>${actions}</form><div class="distribution-status-list">${statusRows}</div></details></article>`;
 }
 

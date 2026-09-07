@@ -5,6 +5,8 @@ import { validateRunId } from './security.js';
 export const DESTINATION_STATES = {
   NOT_SELECTED: 'not_selected',
   QUEUED: 'queued',
+  SENDING: 'sending',
+  SENT: 'sent',
   PUBLISHING: 'publishing',
   PUBLISHED: 'published',
   FAILED: 'failed',

@@ -739,6 +739,53 @@ test('20ac disconnected destination fails without blocking manual export distrib
   assert.equal(state.destinations.markdown.status, 'manual_export_ready');
 });
 
+test('20aca API-backed distribution preflights payload and blocks uncertain retry', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-distribution-preflight-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const runId = 'distribution-api-preflight-001';
+  await createMinimalRun(path.join(outputDir, runId), {
+    title: 'API Preflight Article',
+    slug: 'api-preflight-article',
+    status: 'PUBLISHED',
+    publishability: 'PUBLISHED',
+    markdown: '# API Preflight Article\n\nCreator commerce publishing body.',
+  });
+  const previousFetch = globalThis.fetch;
+  let postCalls = 0;
+  globalThis.fetch = async () => {
+    postCalls += 1;
+    return new Response('maybe accepted before timeout', { status: 524, headers: { 'content-type': 'text/plain' } });
+  };
+  try {
+    const actions = new ContentDashboardActions(getDashboardConfig({
+      ...env,
+      CONTENT_AGENT_ROOT: tmpRoot,
+      CONTENT_AGENT_OUTPUT_DIR: outputDir,
+      CONTENT_DASHBOARD_DB_PATH: ':memory:',
+      CONTENT_DISTRIBUTION_DEVTO_API_KEY: 'devto-test-key',
+    }));
+    const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+
+    const first = await actions.distributeArticle({ actor, runId, version: 'v1', destinations: ['devto'] });
+    assert.equal(first.results[0].status, 'failed');
+    let state = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'distribution', 'destinations.json'), 'utf8'));
+    assert.equal(state.destinations.devto.status, 'failed');
+    assert.equal(state.destinations.devto.uncertainAcceptance, true);
+    assert.equal(state.destinations.devto.approvedPayload.destination, 'devto');
+    assert.equal(state.destinations.devto.approvedPayload.canonicalUrl, 'https://certifyd.me/blog/api-preflight-article/');
+    assert.equal(postCalls, 1);
+
+    const retry = await actions.distributeArticle({ actor, runId, version: 'v1', destinations: ['devto'], retryFailed: true });
+    assert.equal(retry.results[0].status, 'failed');
+    assert.match(retry.results[0].error, /Check the platform manually before retrying/);
+    state = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'distribution', 'destinations.json'), 'utf8'));
+    assert.equal(state.destinations.devto.uncertainAcceptance, true);
+    assert.equal(postCalls, 1);
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
 test('20ad distribution package generation, edits and statuses persist without changing other destinations', async () => {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-distribution-package-'));
   const outputDir = path.join(tmpRoot, 'engine', 'outputs');
@@ -764,7 +811,7 @@ test('20ad distribution package generation, edits and statuses persist without c
   let pkg = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'distribution', 'package.json'), 'utf8'));
   assert.match(pkg.linkedin.text, /machine-readable identity, provenance, authority and permission/);
   assert.ok(pkg.x.characterCount <= 280);
-  assert.equal(pkg.linkedin.status, 'ready');
+  assert.equal(pkg.linkedin.status, 'draft');
   assert.equal(pkg.coverImage, '/images/blog/jason-isbell-suno-ai-artist-identity-1788708178378.png');
   assert.equal(pkg.instagram.asset.width, 1080);
   assert.equal(pkg.instagram.asset.height, 1350);
@@ -785,6 +832,20 @@ test('20ad distribution package generation, edits and statuses persist without c
   assert.equal(pkg.linkedin.text, 'Edited LinkedIn copy.');
   assert.equal(pkg.x.text, originalX);
   assert.equal(pkg.instagram.caption, originalInstagramCaption);
+
+  await assert.rejects(
+    actions.markDistributionCopyStatus({ actor, runId, destinationId: 'linkedin', status: 'sent' }),
+    /Run preflight and approve before sending/,
+  );
+  await actions.preflightDistributionCopy({ actor, runId, destinationId: 'linkedin' });
+  pkg = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'distribution', 'package.json'), 'utf8'));
+  assert.equal(pkg.linkedin.status, 'ready_for_review');
+  assert.equal(pkg.linkedin.preflight.ok, true);
+  assert.match(pkg.linkedin.preflight.warnings.join(' '), /limited edit\/repost/i);
+  await actions.markDistributionCopyStatus({ actor, runId, destinationId: 'linkedin', status: 'approved' });
+  pkg = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'distribution', 'package.json'), 'utf8'));
+  assert.equal(pkg.linkedin.status, 'approved');
+  assert.equal(pkg.linkedin.approvedPayload.text, 'Edited LinkedIn copy.');
 
   await actions.saveDistributionCopy({ actor, runId, destinationId: 'instagram', fields: { caption: 'Edited Instagram caption.', assetFocusX: '42', assetFocusY: '38', assetScale: '1.15' } });
   pkg = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'distribution', 'package.json'), 'utf8'));
@@ -810,9 +871,12 @@ test('20ad distribution package generation, edits and statuses persist without c
   assert.equal(pkg.x.text, originalX);
   assert.equal(pkg.channelAssets.canonicalBlog.outputImage, '/images/blog/jason-isbell-suno-ai-artist-identity-1788708178378.png');
 
+  await actions.preflightDistributionCopy({ actor, runId, destinationId: 'x' });
+  await actions.markDistributionCopyStatus({ actor, runId, destinationId: 'x', status: 'approved' });
   await actions.markDistributionCopyStatus({ actor, runId, destinationId: 'x', status: 'sent' });
   pkg = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'distribution', 'package.json'), 'utf8'));
   assert.equal(pkg.x.status, 'sent');
+  assert.equal(pkg.x.sentPayload.text, originalX);
   assert.equal(distributionPackageOverallStatus(pkg), 'partially-distributed');
 });
 

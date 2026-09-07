@@ -2,8 +2,10 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { validateRunId } from './security.js';
 
-export const DISTRIBUTION_COPY_STATUSES = ['not_generated', 'ready', 'copied', 'sent', 'failed'];
+export const DISTRIBUTION_COPY_STATUSES = ['draft', 'ready_for_review', 'approved', 'sending', 'sent', 'failed'];
 export const DISTRIBUTION_COPY_DESTINATIONS = ['linkedin', 'x', 'facebook', 'instagram', 'generic'];
+const DESTINATION_LIMITS = { linkedin: 3000, x: 280, facebook: 63206, instagram: 2200 };
+const LIMITED_EDIT_DESTINATIONS = new Set(['x', 'instagram', 'facebook', 'linkedin', 'hashnode']);
 export const INSTAGRAM_FEED_ASSET_SPEC = {
   width: 1080,
   height: 1350,
@@ -80,34 +82,124 @@ export function applyDistributionPackageEdit(pkg = {}, destinationId = '', field
     next.shortCopy = cleanCopy(fields.shortCopy ?? current.shortCopy);
     next.longCopy = cleanCopy(fields.longCopy ?? current.longCopy);
   } else next.text = cleanCopy(fields.text ?? current.text);
-  next.status = normalizeCopyStatus(fields.status || current.status || 'ready');
+  const explicitStatus = Object.prototype.hasOwnProperty.call(fields, 'status') && fields.status;
+  next.status = normalizeCopyStatus(explicitStatus ? fields.status : 'draft');
+  if (!explicitStatus) {
+    delete next.preflight;
+    delete next.approvedAt;
+    delete next.approvedPayload;
+    delete next.sentAt;
+    delete next.sentPayload;
+  }
   if (destination === 'x') next.characterCount = countXCharacters(next.text);
   return { ...pkg, [destination]: next, updatedAt: new Date().toISOString() };
 }
 
-export function markDistributionPackageStatus(pkg = {}, destinationId = '', status = 'ready') {
+export function markDistributionPackageStatus(pkg = {}, destinationId = '', status = 'draft') {
   const destination = normalizeDestination(destinationId);
   if (!destination) throw Object.assign(new Error('Unknown distribution package destination.'), { statusCode: 404 });
   const current = pkg[destination] || {};
   const normalized = normalizeCopyStatus(status);
+  assertStatusTransition(current.status || 'draft', normalized);
+  if (normalized === 'approved' && current.preflight?.ok !== true) {
+    throw Object.assign(new Error('Run a successful distribution preflight before approval.'), { statusCode: 409 });
+  }
+  if (normalized === 'sent' && !current.approvedPayload) {
+    throw Object.assign(new Error('Approve the exact final payload before marking sent.'), { statusCode: 409 });
+  }
+  const next = {
+    ...current,
+    status: normalized,
+    ...(normalized === 'sent' ? { sentAt: new Date().toISOString(), sentPayload: current.approvedPayload || finalPayloadForDestination(pkg, destination) } : {}),
+    ...(normalized === 'approved' ? { approvedAt: new Date().toISOString(), approvedPayload: finalPayloadForDestination(pkg, destination) } : {}),
+  };
+  return {
+    ...pkg,
+    [destination]: next,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export function preflightDistributionDestination(pkg = {}, destinationId = '', previousState = {}, adapter = {}) {
+  const destination = normalizeDestination(destinationId);
+  if (!destination) throw Object.assign(new Error('Unknown distribution package destination.'), { statusCode: 404 });
+  const item = pkg[destination] || {};
+  const payload = finalPayloadForDestination(pkg, destination);
+  const errors = [];
+  const warnings = [];
+  const copy = destination === 'instagram' ? item.caption : item.text;
+  if (!cleanCopy(copy)) errors.push('Copy is empty.');
+  if (/https?:\/\/\s|[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(copy || '')) errors.push('Copy appears malformed.');
+  const limit = DESTINATION_LIMITS[destination];
+  if (limit && payload.characterCount > limit) errors.push(`${destinationLabel(destination)} copy exceeds ${limit} characters.`);
+  if (destination !== 'instagram' && !validHttpUrl(pkg.canonicalUrl)) errors.push('Canonical URL is required.');
+  if (destination === 'instagram') {
+    const asset = item.asset || {};
+    if (!asset.sourceImage && !asset.outputImage) errors.push('Instagram media is required.');
+    if (asset.width !== 1080 || asset.height !== 1350 || asset.aspectRatio !== '4:5') errors.push('Instagram asset must be 1080x1350 / 4:5.');
+    if (!safeZoneLooksValid(asset.safeZone, asset.width, asset.height)) errors.push('Instagram critical safe zone is missing or outside the profile-grid crop.');
+  }
+  if (previousState?.status === 'published' || previousState?.status === 'sent' || previousState?.externalPostId || item.status === 'sent') {
+    errors.push('Duplicate posting risk: this destination already appears sent or published.');
+  }
+  if (LIMITED_EDIT_DESTINATIONS.has(destination) || adapter.supportsUpdate === false) {
+    warnings.push(`${destinationLabel(destination)} has limited edit/repost capability. Review the exact final payload before sending.`);
+  }
+  return {
+    ok: errors.length === 0,
+    status: errors.length ? 'failed' : 'ready_for_review',
+    errors,
+    warnings,
+    payload,
+    checkedAt: new Date().toISOString(),
+  };
+}
+
+export function applyDistributionPreflight(pkg = {}, destinationId = '', preflight = {}) {
+  const destination = normalizeDestination(destinationId);
+  const current = pkg[destination] || {};
   return {
     ...pkg,
     [destination]: {
       ...current,
-      status: normalized,
-      ...(normalized === 'sent' ? { sentAt: new Date().toISOString() } : {}),
-      ...(normalized === 'copied' ? { copiedAt: new Date().toISOString() } : {}),
+      status: preflight.ok ? 'ready_for_review' : 'failed',
+      preflight: {
+        ok: Boolean(preflight.ok),
+        errors: preflight.errors || [],
+        warnings: preflight.warnings || [],
+        checkedAt: preflight.checkedAt || new Date().toISOString(),
+        payload: preflight.payload || finalPayloadForDestination(pkg, destination),
+      },
     },
     updatedAt: new Date().toISOString(),
   };
 }
 
+export function finalPayloadForDestination(pkg = {}, destinationId = '') {
+  const destination = normalizeDestination(destinationId);
+  const item = pkg[destination] || {};
+  const base = {
+    destination,
+    articleSlug: pkg.articleSlug || '',
+    articleTitle: pkg.articleTitle || '',
+    canonicalUrl: pkg.canonicalUrl || '',
+    coverImage: pkg.coverImage || '',
+  };
+  if (destination === 'instagram') {
+    const caption = cleanCopy(item.caption || '');
+    return { ...base, caption, asset: item.asset || null, characterCount: caption.length };
+  }
+  const text = cleanCopy(item.text || '');
+  return { ...base, text, characterCount: destination === 'x' ? countXCharacters(text) : text.length };
+}
+
 export function distributionPackageOverallStatus(pkg = {}) {
-  const statuses = ['linkedin', 'x', 'facebook', 'instagram'].map((id) => pkg[id]?.status || 'not_generated');
+  const statuses = ['linkedin', 'x', 'facebook', 'instagram'].map((id) => pkg[id]?.status || 'draft');
   if (statuses.every((status) => status === 'sent')) return 'distributed';
-  if (statuses.some((status) => status === 'sent')) return 'partially-distributed';
-  if (statuses.some((status) => ['ready', 'copied', 'failed'].includes(status))) return 'distribution-ready';
-  return 'not_generated';
+  if (statuses.some((status) => ['sent', 'sending'].includes(status))) return 'partially-distributed';
+  if (statuses.some((status) => ['ready_for_review', 'approved'].includes(status))) return 'distribution-ready';
+  if (statuses.some((status) => status === 'failed')) return 'needs-attention';
+  return 'draft';
 }
 
 function articleForDistribution(run = {}) {
@@ -134,13 +226,13 @@ function linkedinCopy(article) {
     article.implications.slice(0, 2).join(' '),
     `Read the full article: ${article.canonicalUrl}`,
   ].filter(Boolean);
-  return { text: paragraphs.join('\n\n'), status: 'ready' };
+  return { text: paragraphs.join('\n\n'), status: 'draft' };
 }
 
 function xCopy(article) {
   const base = `${article.hook || article.title} ${article.canonicalUrl}`.replace(/\s+/g, ' ').trim();
   const text = fitForX(base, article.canonicalUrl);
-  return { text, characterCount: countXCharacters(text), status: 'ready' };
+  return { text, characterCount: countXCharacters(text), status: 'draft' };
 }
 
 function facebookCopy(article) {
@@ -150,7 +242,7 @@ function facebookCopy(article) {
       article.implications[0] || article.excerpt,
       article.canonicalUrl,
     ].filter(Boolean).join('\n\n'),
-    status: 'ready',
+    status: 'draft',
   };
 }
 
@@ -160,7 +252,7 @@ function instagramCopy(article, previousAsset = {}) {
       article.hook || article.title,
       article.implications[0] || article.excerpt,
     ].filter(Boolean).join('\n\n'),
-    status: 'ready',
+    status: 'draft',
     asset: instagramAsset(article, previousAsset),
   };
 }
@@ -312,7 +404,54 @@ function normalizeDestination(value = '') {
 
 function normalizeCopyStatus(value = '') {
   const status = String(value || '').trim().toLowerCase().replace(/-/g, '_');
-  return DISTRIBUTION_COPY_STATUSES.includes(status) ? status : 'ready';
+  if (status === 'ready') return 'ready_for_review';
+  if (status === 'copied') return 'ready_for_review';
+  return DISTRIBUTION_COPY_STATUSES.includes(status) ? status : 'draft';
+}
+
+function assertStatusTransition(from, to) {
+  const current = normalizeCopyStatus(from || 'draft');
+  const next = normalizeCopyStatus(to || 'draft');
+  const allowed = {
+    draft: new Set(['draft', 'ready_for_review', 'failed']),
+    ready_for_review: new Set(['draft', 'ready_for_review', 'approved', 'failed']),
+    approved: new Set(['ready_for_review', 'approved', 'sending', 'sent', 'failed']),
+    sending: new Set(['sent', 'failed']),
+    sent: new Set(['sent', 'failed']),
+    failed: new Set(['draft', 'ready_for_review', 'approved', 'failed']),
+  };
+  if (!allowed[current]?.has(next)) {
+    throw Object.assign(new Error(`Invalid distribution status transition: ${current} to ${next}. Run preflight and approve before sending.`), { statusCode: 409 });
+  }
+}
+
+function safeZoneLooksValid(safeZone = {}, width = 0, height = 0) {
+  const crop = safeZone.profileGridCrop || {};
+  const critical = safeZone.criticalContent || {};
+  if (!positiveBox(crop) || !positiveBox(critical)) return false;
+  if (crop.x < 0 || crop.y < 0 || crop.x + crop.width > width || crop.y + crop.height > height) return false;
+  return critical.x >= crop.x
+    && critical.y >= crop.y
+    && critical.x + critical.width <= crop.x + crop.width
+    && critical.y + critical.height <= crop.y + crop.height
+    && Number(critical.padding || 0) >= 80;
+}
+
+function positiveBox(box = {}) {
+  return [box.x, box.y, box.width, box.height].every((value) => Number.isFinite(Number(value))) && Number(box.width) > 0 && Number(box.height) > 0;
+}
+
+function validHttpUrl(value = '') {
+  try {
+    const url = new URL(String(value || ''));
+    return url.protocol === 'https:' || url.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
+function destinationLabel(destination = '') {
+  return ({ linkedin: 'LinkedIn', x: 'X', facebook: 'Facebook', instagram: 'Instagram', generic: 'Generic' })[destination] || destination;
 }
 
 function clampNumber(value, min, max, fallback) {

@@ -35,7 +35,8 @@ function escapeDangerousHtml(markdown) {
 
 export function statusPill(value) {
   const text = escapeHtml(humanizeLabel(value || 'UNKNOWN'));
-  const tone = String(value || '').includes('BLOCK') ? 'bad' : String(value || '').includes('APPROVED') || String(value || '').includes('READY') ? 'good' : 'warn';
+  const key = String(value || '').toUpperCase();
+  const tone = key.includes('BLOCK') || key.includes('FAILED') ? 'bad' : key.includes('APPROVED') || key.includes('READY') || key.includes('SENT') || key === 'DISTRIBUTED' ? 'good' : 'warn';
   return `<span class="pill ${tone}">${text}</span>`;
 }
 
