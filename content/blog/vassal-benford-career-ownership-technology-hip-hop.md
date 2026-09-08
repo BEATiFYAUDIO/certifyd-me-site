@@ -12,8 +12,8 @@ coverImageCreditUrl: ""
 coverImageProvider: "upload"
 tags: ["Certifyd", "creator ownership"]
 status: "published"
-seoTitle: "Vassal Benford: A Career Built for More Than One Generation | Certifyd"
-seoDescription: "Introduction Vassal Benford, a renowned hip hop artist and entrepreneur, has built his career on ownership technology. His journey is a testament to the power of sma"
+seoTitle: "Vassal Benford: Music, Ownership and Technology"
+seoDescription: "Vassal Benford's career spans music, film, legacy work and Certifyd, connecting creative ownership with technology."
 ---
 
 # Vassal Benford: A Career Built for More Than One Generation
@@ -99,4 +99,3 @@ The tools have changed. Distribution has changed. The speed of the industry has 
 But the underlying principle hasn't:
 
 **Creators make the value. The infrastructure surrounding them should help them own it.**
-

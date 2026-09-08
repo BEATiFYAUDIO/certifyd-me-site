@@ -11,6 +11,7 @@ const STATIC_PAGES = [
   { file: 'index.html', canonical: `${BASE_URL}/` },
   { file: 'profile/index.html', canonical: `${BASE_URL}/profile/` },
   { file: 'join/index.html', canonical: `${BASE_URL}/join/` },
+  { file: 'network.html', canonical: `${BASE_URL}/network.html` },
   { file: 'retail-partners/index.html', canonical: `${BASE_URL}/retail-partners/` },
   { file: 'media-promotion/index.html', canonical: `${BASE_URL}/media-promotion/` },
   { file: 'services/index.html', canonical: `${BASE_URL}/services/` },
@@ -99,6 +100,8 @@ async function validateGeneratedArticles(published) {
     if (canonical !== expectedCanonical) fail(`${file}: canonical mismatch: ${canonical}`);
     if (ogUrl !== canonical) fail(`${file}: og:url does not match canonical.`);
     if (!/^https:\/\/certifyd\.me\/blog\/[a-z0-9-]+\/$/.test(canonical)) fail(`${file}: canonical is not a valid absolute trailing-slash URL.`);
+    const h1Count = extractAll(html, /<h1\b[^>]*>/gi).length;
+    if (h1Count !== 1) fail(`${file}: expected exactly one h1, found ${h1Count}.`);
     if (titles.has(title)) fail(`${file}: duplicate title with ${titles.get(title)}.`);
     if (descriptions.has(description)) fail(`${file}: duplicate description with ${descriptions.get(description)}.`);
     titles.set(title, file);
@@ -123,6 +126,7 @@ async function validateStaticPages() {
     if (!description) fail(`${file}: missing meta description.`);
     if (!canonical) fail(`${file}: missing canonical.`);
     if (canonical && canonical !== page.canonical) fail(`${file}: canonical mismatch: ${canonical}`);
+    if (!ogUrl) fail(`${file}: missing og:url.`);
     if (ogUrl && ogUrl !== canonical) fail(`${file}: og:url does not match canonical.`);
   }
 }
@@ -159,6 +163,7 @@ function validateInternalArticleLinks(file, html, published) {
 function validateSitemap(locs, published, excluded) {
   const seen = new Set();
   for (const loc of locs) {
+    if (!loc.startsWith(`${BASE_URL}/`)) fail(`sitemap.xml URL is not HTTPS canonical URL: ${loc}`);
     if (!/^https:\/\/certifyd\.me\/.+/.test(loc) && loc !== `${BASE_URL}/`) fail(`sitemap.xml has malformed absolute URL: ${loc}`);
     if (isPrivateSitemapUrl(loc)) fail(`sitemap.xml includes private/preview URL: ${loc}`);
     if (seen.has(loc)) fail(`sitemap.xml has duplicate URL: ${loc}`);

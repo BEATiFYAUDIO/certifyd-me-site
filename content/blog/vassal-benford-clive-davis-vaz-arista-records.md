@@ -12,8 +12,8 @@ coverImageCreditUrl: ""
 coverImageProvider: "upload"
 tags: ["Certifyd"]
 status: "published"
-seoTitle: "The Business Relevance of Awards | Certifyd"
-seoDescription: "The Business Relevance of Awards In today’s creative economy, recognition and validation are crucial for creators to thrive. The Certifyd platform offers a unique so"
+seoTitle: "Vassal Benford, Clive Davis and VAZ/Arista"
+seoDescription: "Vassal Benford's Clive Davis and VAZ/Arista years show how producers can become institution builders in music."
 ---
 
 # From Producer to Institution Builder: Vassal Benford Reflects on the Clive Davis and VAZ/Arista Years
@@ -183,4 +183,3 @@ And increasingly, that institution may belong to the creator.
 ---
 
 *Certifyd covers developments in music, intellectual property and creator commerce and examines what they mean for the infrastructure creators use to publish, own and build around their work.*
-

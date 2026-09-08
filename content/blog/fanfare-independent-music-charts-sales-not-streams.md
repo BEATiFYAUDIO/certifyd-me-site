@@ -106,7 +106,7 @@ That's one of the advantages of treating the network as infrastructure rather th
 
 ## Fanfare Is Part of a Bigger Shift Away From Stream Counts
 
-Fanfare's launch is useful because it makes an emerging change in independent music unusually visible. The industry has spent more than a decade perfecting its ability to count consumption, while the renewed interest in direct-to-fan commerce is forcing it to pay more attention to transactions and relationships.
+Fanfare's launch is useful because it makes an emerging change in independent music unusually visible. The industry has spent more than a decade perfecting its ability to count consumption, while the renewed interest in [direct-to-fan commerce](/blog/soundcloud-paid-downloads-artists-keep-100-one-platform-problem/) is forcing it to pay more attention to transactions and relationships.
 
 Physical music and merchandise are obvious places to start because a purchase is easy to understand. Someone chose an artist, chose a product and spent money. That represents a level of intent that a passive stream cannot necessarily demonstrate.
 
@@ -135,4 +135,3 @@ At Certifyd, that's the more interesting destination: not simply building a diff
 The chart is useful.
 
 **The activity underneath it is what really matters.**
-

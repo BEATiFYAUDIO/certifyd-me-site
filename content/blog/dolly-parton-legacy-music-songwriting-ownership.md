@@ -12,8 +12,8 @@ coverImageCreditUrl: ""
 coverImageProvider: "upload"
 tags: ["Certifyd"]
 status: "published"
-seoTitle: "Tribute to Dolly Parton: The Impact of Her Legacy | Certifyd"
-seoDescription: "Tribute to Dolly Parton: The Impact of Her Legacy In a world where every superlative you could apply to her would be accurate, Dolly Parton continues to inspire and "
+seoTitle: "Does Dolly Parton Own Her Music? Lessons in Control"
+seoDescription: "Dolly Parton's songwriting, publishing choices and business legacy show why music ownership can matter more than exposure."
 ---
 
 # Dolly Parton's Legacy Was Bigger Than Music. She Built Something She Owned.
@@ -239,4 +239,3 @@ But Dolly Parton leaves behind a much older lesson.
 **Create something valuable. Know what you own. And don't give it away just because someone powerful offers you the spotlight.**
 
 That's a legacy worth remembering.
-

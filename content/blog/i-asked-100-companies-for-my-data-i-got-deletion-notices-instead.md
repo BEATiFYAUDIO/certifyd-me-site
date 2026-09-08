@@ -12,8 +12,8 @@ coverImageCreditUrl: ""
 coverImageProvider: "upload"
 tags: ["Certifyd"]
 status: "published"
-seoTitle: "I Asked 100 Companies for My Data. I Got Deletion Notices Instead | Ce"
-seoDescription: "The News Story In a recent incident that has left many California residents scratching their heads, a group of tech journalists decided to ask over 100 companies for"
+seoTitle: "I Asked 100 Companies for My Data | Certifyd"
+seoDescription: "A WIRED data-access test shows why privacy rights are not the same as control, and what that means for creators building digital infrastructure."
 ---
 
 # I Asked 100 Companies for My Data. I Got Deletion Notices Instead
@@ -76,7 +76,7 @@ Using platforms isn't the problem. Allowing the platforms to become the only aut
 
 Certifyd Core approaches the problem from the opposite direction.
 
-Rather than beginning with an account inside a centralized creator platform, Core is designed around creator-controlled infrastructure for establishing identity, works, provenance, permissions, release records, commerce and creator-fan relationships.
+Rather than beginning with an account inside a centralized creator platform, Core is designed around [creator-controlled infrastructure](/blog/what-if-your-next-creator-platform-was-a-computer-you-owned/) for establishing identity, works, provenance, permissions, release records, commerce and creator-fan relationships.
 
 That doesn't mean creators should stop using platforms. Distribution services, social networks, marketplaces and streaming platforms can all remain valuable parts of a creator's business.
 
@@ -91,4 +91,3 @@ There is a difference between being granted rights to something stored inside so
 The internet has spent decades making the first model normal.
 
 Creators should be building toward the second.
-

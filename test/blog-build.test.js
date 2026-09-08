@@ -17,8 +17,8 @@ async function makeFixture(files) {
   await fs.mkdir(path.join(root, 'images'), { recursive: true });
   await fs.copyFile(path.join(TEMPLATE_DIR, 'blog-index.html'), path.join(root, 'templates', 'blog-index.html'));
   await fs.copyFile(path.join(TEMPLATE_DIR, 'blog-article.html'), path.join(root, 'templates', 'blog-article.html'));
-  await fs.writeFile(path.join(root, 'index.html'), '<html><head><title>Certifyd</title><meta name="description" content="Certifyd test homepage."><link rel="canonical" href="https://certifyd.me/"><style></style></head><body><main>Home</main><!-- Lightboxes --></body></html>');
-  await fs.writeFile(path.join(root, 'network.html'), '<html>Network</html>');
+  await fs.writeFile(path.join(root, 'index.html'), '<html><head><title>Certifyd</title><meta name="description" content="Certifyd test homepage."><link rel="canonical" href="https://certifyd.me/"><meta property="og:url" content="https://certifyd.me/"><style></style></head><body><main>Home</main><!-- Lightboxes --></body></html>');
+  await fs.writeFile(path.join(root, 'network.html'), '<html><head><title>Network</title><meta name="description" content="Register sovereign infrastructure."><link rel="canonical" href="https://certifyd.me/network.html"><meta property="og:url" content="https://certifyd.me/network.html"></head><body>Network</body></html>');
   await fs.writeFile(path.join(root, 'images', 'fallback.png'), 'x');
   for (const [name, body] of Object.entries(files)) {
     await fs.writeFile(path.join(root, 'content', 'blog', name), body);
@@ -60,9 +60,15 @@ test('build renders blog index, article pages, homepage section and metadata', a
   assert.match(articleHtml, /"@type":"BlogPosting"/);
   assert.match(articleHtml, /"@type":"Organization"/);
   assert.match(articleHtml, /"@type":"BreadcrumbList"/);
+  assert.equal((articleHtml.match(/<h1\b/gi) || []).length, 1);
+  assert.doesNotMatch(articleHtml, /<article[^>]*>[\s\S]*<h1>Newer Article<\/h1>[\s\S]*Body\./);
   const jsonLd = [...articleHtml.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((match) => JSON.parse(match[1]));
   assert.equal(jsonLd.find((item) => item['@type'] === 'BlogPosting').mainEntityOfPage['@id'], 'https://certifyd.me/blog/newer-article/');
   assert.equal(jsonLd.find((item) => item['@type'] === 'BreadcrumbList').itemListElement[1].item, 'https://certifyd.me/blog/');
+
+  const ansolasRedirect = await fs.readFile(path.join(root, 'blog', 'meet-ansolas-musician-building-his-own-tools', 'index.html'), 'utf8');
+  assert.match(ansolasRedirect, /<link rel="canonical" href="https:\/\/certifyd\.me\/blog\/ansolas-building-what-he-wishes-existed\/"/);
+  assert.match(ansolasRedirect, /http-equiv="refresh" content="0; url=https:\/\/certifyd\.me\/blog\/ansolas-building-what-he-wishes-existed\/"/);
 
   const home = await fs.readFile(path.join(root, 'index.html'), 'utf8');
   assert.match(home, /Ideas for the Creator-Owned Economy/);
@@ -73,6 +79,7 @@ test('build renders blog index, article pages, homepage section and metadata', a
   assert.match(sitemap, /https:\/\/certifyd\.me\/blog\//);
   assert.match(sitemap, /https:\/\/certifyd\.me\/blog\/newer-article\//);
   assert.doesNotMatch(sitemap, /draft-article|noindex-article/);
+  assert.doesNotMatch(sitemap, /meet-ansolas-musician-building-his-own-tools/);
   for (const loc of [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]).filter((loc) => loc.includes('/blog/'))) {
     assert.match(loc, /\/$/);
   }
@@ -111,6 +118,19 @@ test('build writes safe Google and IndexNow verification files from environment'
   assert.match(articleHtml, /name="google-site-verification" content="google_meta_token"/);
   assert.match(await fs.readFile(path.join(root, 'googleabc123.html'), 'utf8'), /google-site-verification/);
   assert.equal((await fs.readFile(path.join(root, 'indexnow_test_key.txt'), 'utf8')).trim(), 'indexnow_test_key');
+});
+
+test('build demotes body h1 headings while preserving section text', async () => {
+  const root = await makeFixture({
+    'section-h1.md': `---\ntitle: "Template Owns Article Heading"\nslug: "template-owns-article-heading"\ndate: "2026-07-26"\nupdated: "2026-07-26"\nauthor: "Certifyd"\nexcerpt: "A fixture article with a body h1 section."\ncoverImage: "/images/fallback.png"\ntags:\n  - sample\nstatus: "published"\n---\n\n# Body Section Heading\n\nBody.\n`,
+  });
+  const result = runBuild(root);
+  assert.equal(result.status, 0, result.stderr);
+
+  const articleHtml = await fs.readFile(path.join(root, 'blog', 'template-owns-article-heading', 'index.html'), 'utf8');
+  assert.equal((articleHtml.match(/<h1\b/gi) || []).length, 1);
+  assert.match(articleHtml, /<h1>Template Owns Article Heading<\/h1>/);
+  assert.match(articleHtml, /<h2>Body Section Heading<\/h2>/);
 });
 
 test('published article missing required fields fails with useful error', async () => {

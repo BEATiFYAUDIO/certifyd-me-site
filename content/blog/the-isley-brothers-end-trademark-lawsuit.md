@@ -12,8 +12,8 @@ coverImageCreditUrl: ""
 coverImageProvider: "upload"
 tags: ["Certifyd", "trust"]
 status: "published"
-seoTitle: "The Isley Brothers, Both Alive and Dead, Have Finally Stopped Beefing"
-seoDescription: "The Isley Brothers, Both Alive and Dead, Have Finally Stopped Beefing About Their Trademark The Isley Brothers, a legendary American R&B group known for their soulfu"
+seoTitle: "Isley Brothers Trademark Lawsuit and Band Rights"
+seoDescription: "The Isley Brothers trademark dispute shows why bands need durable records of ownership, partnerships and creative identity."
 ---
 
 # The Isley Brothers, Both Alive and Dead, Have Finally Stopped Beefing About Their Trademark
@@ -187,4 +187,3 @@ The infrastructure question it exposes isn't:
 ---
 
 *Certifyd covers developments in music, intellectual property and creator commerce and examines what they mean for the infrastructure creators use to publish, own and build around their work.*
-

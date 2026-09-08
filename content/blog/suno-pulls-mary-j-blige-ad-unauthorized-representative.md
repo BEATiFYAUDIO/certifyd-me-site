@@ -12,8 +12,8 @@ coverImageCreditUrl: ""
 coverImageProvider: "upload"
 tags: ["Mary J. Blige", "Suno", "AI music", "digital identity", "creator rights", "authorization", "Certifyd"]
 status: "published"
-seoTitle: "Suno Pulls Mary J. Blige Ad After Deal With Unauthorized Representative | Certifyd"
-seoDescription: "Suno says it pulled a Mary J. Blige campaign after learning that the person who arranged the deal was not authorized to represent her. The incident exposes a bigger problem for digital music: proving who actually has authority to act for a creator."
+seoTitle: "Suno, Mary J. Blige and Artist Authority | Certifyd"
+seoDescription: "Suno pulled a Mary J. Blige ad after an unauthorized representative deal, exposing why artist identity needs verifiable authority."
 ---
 
 For all the debate about artificial intelligence and music, sometimes the most revealing problem is considerably more ordinary.
@@ -36,7 +36,7 @@ It is a story about **authority**.
 
 ## Knowing Who Someone Is Isn't Enough
 
-Digital identity is usually discussed as a problem of authentication.
+[Digital identity](/blog/jason-isbell-suno-ai-artist-identity/) is usually discussed as a problem of authentication.
 
 Is this really Mary J. Blige?
 
@@ -152,7 +152,7 @@ But it would have something stronger to evaluate than the representative's own a
 
 ## Certifyd Core Can Go Beyond the Profile
 
-Certifyd Core is being built around creator-controlled identity, works, publishing records, provenance, relationships and commerce.
+Certifyd Core is being built around creator-controlled identity, works, publishing records, [provenance](/blog/copyrighted-music-ai-models-provenance-infrastructure/), relationships and commerce.
 
 That means the useful unit isn't just the creator profile.
 
@@ -215,4 +215,3 @@ Those aren't administrative details.
 They are infrastructure.
 
 And if creators are going to have meaningful control over their digital businesses, the chain of authority should begin with them.
-

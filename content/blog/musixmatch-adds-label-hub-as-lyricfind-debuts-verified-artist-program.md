@@ -12,8 +12,8 @@ coverImageCreditUrl: ""
 coverImageProvider: "upload"
 tags: ["music", "digital identity", "artist verification", "music metadata", "creator ownership", "Certifyd"]
 status: "published"
-seoTitle: "Musixmatch Adds Label Hub as LyricFind Debuts Verified Artist Program | Certifyd"
-seoDescription: "Musixmatch and LyricFind are giving labels and artists more control over the information attached to their music. LyricFind's Verified Artist Program points toward an even bigger question: what if verified artist identity and catalogue records originated with "
+seoTitle: "LyricFind Verified Artist Program and Music Data"
+seoDescription: "Musixmatch and LyricFind are giving artists more control over lyrics and music data, raising bigger questions about verified identity."
 ---
 
 # Musixmatch Adds Label Hub as LyricFind Debuts Verified Artist Program
@@ -121,4 +121,3 @@ That distinction matters because the music industry is going to keep creating ne
 **Your identity. Your work. Their application.**
 
 Not the other way around.
-

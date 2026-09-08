@@ -12,8 +12,8 @@ coverImageCreditUrl: ""
 coverImageProvider: "upload"
 tags: ["Certifyd", "music", "AI", "creator ownership"]
 status: "published"
-seoTitle: "The Music Industry Is Trying to Guess the AI Recipe After Dinner Was S"
-seoDescription: "The Music Industry Is Trying to Guess the AI Recipe After Dinner Was Served In a world where technology is rapidly reshaping every industry, the music industry has b"
+seoTitle: "AI Music Needs Provenance, Not Just Detection"
+seoDescription: "As AI music moves into commercial use, the harder problem is infrastructure for provenance, credits, permissions and compensation."
 ---
 
 # The Music Industry Is Trying to Guess the AI Recipe After Dinner Was Served
@@ -118,4 +118,3 @@ The companies that create lasting value won't simply build better AI tools.
 They'll build the trusted infrastructure that allows creators, collaborators, distributors and platforms to work together with confidence.
 
 That's the future Certifyd is building.
-

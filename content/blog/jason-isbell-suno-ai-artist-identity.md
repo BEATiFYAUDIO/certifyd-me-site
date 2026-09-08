@@ -50,7 +50,7 @@ At that point, knowing **who the artist is** isn't enough. The system also needs
 
 ## Permission Needs Structure
 
-We've already seen another version of this problem in the Mary J. Blige/Suno advertising controversy. There, the central question wasn't whether Mary J. Blige existed or whether the company knew who she was. It was whether the person arranging a commercial relationship actually had authority to act for her.
+We've already seen another version of this problem in the [Mary J. Blige/Suno advertising controversy](/blog/suno-pulls-mary-j-blige-ad-unauthorized-representative/). There, the central question wasn't whether Mary J. Blige existed or whether the company knew who she was. It was whether the person arranging a commercial relationship actually had authority to act for her.
 
 The Isbell lawsuit approaches the same infrastructure problem from another direction. A useful digital identity system for creators therefore needs to express more than identity. It needs relationships and permissions.
 
@@ -85,4 +85,3 @@ The Isbell case is particularly interesting because it separates the creator fro
 It doesn't completely answer who controls **Jason Isbell**.
 
 That requires another layer. And as AI makes identity itself increasingly programmable, that layer may become just as important as the rights infrastructure the music industry spent the last century building.
-

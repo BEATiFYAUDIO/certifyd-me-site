@@ -26,6 +26,13 @@ const IMPORTANT_PUBLIC_PAGES = [
   { path: '/services/', file: 'services/index.html', priority: '0.8' },
   { path: '/blog/', file: 'blog/index.html', priority: '0.8' },
 ];
+const STATIC_COMPAT_REDIRECTS = [
+  {
+    fromPath: '/blog/meet-ansolas-musician-building-his-own-tools/',
+    toPath: '/blog/ansolas-building-what-he-wishes-existed/',
+    title: 'Ansolas and the Independent Creator Mindset',
+  },
+];
 const HOME_FILE = path.join(ROOT, 'index.html');
 const HOME_CSS_START = '/* BLOG_STYLES_START */';
 const HOME_CSS_END = '/* BLOG_STYLES_END */';
@@ -95,6 +102,32 @@ function validateImagePath(value, file) {
     throw new Error(`${file}: coverImage contains an unsafe path`);
   }
   return raw;
+}
+
+function normalizeHeadingText(value) {
+  return String(value || '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&[#a-z0-9]+;/gi, ' ')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function stripDuplicatedInitialH1(markdown, title) {
+  const lines = String(markdown || '').split(/\r?\n/);
+  let index = 0;
+  while (index < lines.length && !lines[index].trim()) index += 1;
+  const first = lines[index] || '';
+  const match = first.match(/^#\s+(.+?)\s*#*\s*$/);
+  if (!match) return markdown || '';
+  if (normalizeHeadingText(match[1]) !== normalizeHeadingText(title)) return markdown || '';
+  lines.splice(index, 1);
+  while (index < lines.length && !lines[index].trim()) lines.splice(index, 1);
+  return lines.join('\n').trimStart();
+}
+
+function prepareArticleMarkdown(markdown, title) {
+  return stripDuplicatedInitialH1(markdown, title).replace(/^#(?!#)\s+/gm, '## ');
 }
 
 function isNoindex(value) {
@@ -191,7 +224,7 @@ async function readArticles() {
     const coverImageProvider = String(data.coverImageProvider || '').trim();
     const author = String(data.author || 'Certifyd').trim() || 'Certifyd';
     const tags = asArray(data.tags || data.keywords);
-    const body = marked.parse(parsed.content || '');
+    const body = marked.parse(prepareArticleMarkdown(parsed.content || '', title));
 
     articles.push({
       file,
@@ -522,6 +555,37 @@ ${url.lastmod ? `    <lastmod>${escapeXml(url.lastmod)}</lastmod>\n` : ''}    <p
   await fs.writeFile(path.join(ROOT, 'sitemap.xml'), xml);
 }
 
+async function writeStaticRedirects() {
+  await Promise.all(STATIC_COMPAT_REDIRECTS.map(async (redirect) => {
+    const outDir = path.join(ROOT, redirect.fromPath.replace(/^\/+|\/+$/g, ''));
+    const targetUrl = canonicalUrlForPath(redirect.toPath);
+    const title = `${redirect.title} | Certifyd`;
+    await fs.mkdir(outDir, { recursive: true });
+    await fs.writeFile(path.join(outDir, 'index.html'), `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>${escapeHtml(title)}</title>
+  <meta name="description" content="This Certifyd article has moved to its canonical URL." />
+  <link rel="canonical" href="${escapeHtml(targetUrl)}" />
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="${escapeHtml(title)}" />
+  <meta property="og:url" content="${escapeHtml(targetUrl)}" />
+  <meta http-equiv="refresh" content="0; url=${escapeHtml(targetUrl)}" />
+  <script>location.replace(${JSON.stringify(targetUrl)});</script>
+</head>
+<body>
+  <main>
+    <h1>${escapeHtml(redirect.title)}</h1>
+    <p>This Certifyd article has moved to <a href="${escapeHtml(targetUrl)}">${escapeHtml(targetUrl)}</a>.</p>
+  </main>
+</body>
+</html>
+`);
+  }));
+}
+
 async function writeRobots() {
   await fs.writeFile(path.join(ROOT, 'robots.txt'), `User-agent: *
 Allow: /
@@ -588,6 +652,7 @@ export async function buildBlog() {
   await ensureEmptyDir(OUT_DIR);
   await writeBlogIndex(articles, indexTemplate);
   await Promise.all(articles.map((article) => writeArticle(article, articleTemplate)));
+  await writeStaticRedirects();
   await updateHomepage(articles);
   await writeSitemap(articles);
   await writeRobots();
