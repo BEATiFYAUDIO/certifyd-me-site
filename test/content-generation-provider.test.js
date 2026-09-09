@@ -10,6 +10,7 @@ import {
   GenerationConfigurationError,
   GenerationValidationError,
   OllamaQwenGenerationProvider,
+  OpenAIGenerationProvider,
   parseJsonContent,
   persistGeneratedArticleRun,
   resetGenerationState,
@@ -39,6 +40,17 @@ async function makeConfig(overrides = {}) {
     siteRoot,
     agentRoot,
     outputDir: path.join(siteRoot, 'content-agent/engine/outputs'),
+    modelProvider: 'openai',
+    openai: {
+      apiKey: 'test-openai-key',
+      model: 'gpt-5.6-terra',
+      timeoutMs: 1000,
+      healthTimeoutMs: 1000,
+      maxOutputTokens: 5000,
+      maxContextChars: 24000,
+      maxConcurrentGenerations: 1,
+      ...overrides.openai,
+    },
     ollama: {
       enabled: true,
       baseUrl: 'http://127.0.0.1:11434',
@@ -102,6 +114,9 @@ function validArticle(sourceId, overrides = {}) {
     tags: ['Certifyd', 'creator ownership'],
     seoTitle: 'What Certifyd Core Is | Certifyd',
     seoDescription: 'A grounded draft explaining Certifyd Core.',
+    focusKeyword: 'Certifyd Core',
+    secondaryKeywords: ['creator identity', 'creator commerce'],
+    category: 'Creator Infrastructure',
     bodyMarkdown,
     claims: [{ text: 'Certifyd Core supports identity, publishing and direct commerce.', sourceIds: [sourceId], confidence: 'supported' }],
     warnings: [],
@@ -133,6 +148,46 @@ function makeOllamaFetch(article, calls = []) {
       eval_count: 200,
     });
     throw new Error(`Unexpected URL: ${url}`);
+  };
+}
+
+function validReasoning(overrides = {}) {
+  return {
+    verifiedFacts: ['A source story reports a concrete business event.'],
+    tension: 'The source facts create a specific creator-business tension.',
+    whatChanged: 'Before the source event, the issue was easier to miss. Now the business consequence is visible.',
+    creatorConsequence: 'Creators need to understand how this event changes control, trust or commerce.',
+    thesis: 'This source story creates a specific creator-business argument.',
+    certifydConcepts: [{
+      concept: 'Creator-controlled identity',
+      relevance: 'Relevant because the story turns on who can prove authority and context.',
+      sourceConnection: 'The source facts create an identity and authority question.',
+    }],
+    avoidAngles: ['generic decentralization claims'],
+    articleProgression: ['Open with the source facts.', 'Explain what changed.', 'Show the creator consequence.', 'Connect only narrow Certifyd relevance.'],
+    ...overrides,
+  };
+}
+
+function mockOpenAIClient({ reasoning = validReasoning(), article, failAt = '', calls = [] } = {}) {
+  return {
+    responses: {
+      create: async (payload) => {
+        calls.push(payload);
+        const stage = payload.text?.format?.name || '';
+        if (failAt && stage.includes(failAt)) {
+          const error = new Error('mock OpenAI failure');
+          error.status = 500;
+          throw error;
+        }
+        const body = stage.includes('reasoning') ? reasoning : (article || validArticle('brain:facts/approved-public-claims'));
+        return {
+          id: `resp_${calls.length}`,
+          output_text: JSON.stringify(body),
+          usage: { input_tokens: 100 + calls.length, output_tokens: 50 + calls.length, total_tokens: 150 + calls.length * 2 },
+        };
+      },
+    },
   };
 }
 
@@ -178,6 +233,179 @@ test('deterministic source-backed fallback creates a real article from source fa
   assert.doesNotMatch(article.bodyMarkdown, /Source Scope|Approved Certifyd Knowledge|Business Relevance|Core Knowledge Themes|Certifyd Relevance/);
   assert.doesNotMatch(article.bodyMarkdown, /integrating Certifyd|through Certifyd|using Certifyd/i);
   assert.match(article.warnings.join('\n'), /Qwen timed out/);
+});
+
+test('missing OpenAI API key reports configured=false', async () => {
+  const config = await makeConfig({ openai: { apiKey: '', model: 'gpt-5.6-terra', timeoutMs: 1000, healthTimeoutMs: 1000, maxOutputTokens: 5000, maxContextChars: 24000, maxConcurrentGenerations: 1 } });
+  const provider = new OpenAIGenerationProvider(config, { openaiClient: mockOpenAIClient() });
+  const health = await provider.healthCheck();
+  assert.equal(health.configured, false);
+  assert.equal(health.available, false);
+  assert.equal(health.model, 'gpt-5.6-terra');
+});
+
+test('OpenAI provider uses default model and env override config', async () => {
+  const defaultConfig = await makeConfig({ openai: { apiKey: 'test-openai-key' } });
+  const overrideConfig = await makeConfig({ openai: { apiKey: 'test-openai-key', model: 'gpt-5.6-sol' } });
+  assert.equal(new OpenAIGenerationProvider(defaultConfig, { openaiClient: mockOpenAIClient() }).modelName, 'gpt-5.6-terra');
+  assert.equal(new OpenAIGenerationProvider(overrideConfig, { openaiClient: mockOpenAIClient() }).modelName, 'gpt-5.6-sol');
+});
+
+test('normal generation uses OpenAI Responses with separate reasoning and writing calls', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({ calls, article: validArticle(sourceId) }),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
+  assert.equal(article.status, 'draft');
+  assert.equal(provider.providerName, 'openai');
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].text.format.name, 'certifyd_editorial_reasoning');
+  assert.equal(calls[1].text.format.name, 'certifyd_article');
+  assert.equal(calls[0].model, 'gpt-5.6-terra');
+  assert.equal(calls[1].model, 'gpt-5.6-terra');
+});
+
+test('source facts are passed to OpenAI reasoning', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'source-ai-rights',
+      publisher: 'Billboard',
+      publishedAt: '2026-08-12T09:00:00.000Z',
+      title: 'BMG and Suno Reach Licensing Deal for AI Music Model',
+      summary: 'BMG and Suno reached a licensing agreement covering creator opt-in and compensation.',
+      articleUrl: 'https://www.billboard.com/pro/bmg-suno-licensing-deal-ai-music-model/',
+      categories: ['Music', 'AI'],
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'BMG and Suno Reach Licensing Deal for AI Music Model',
+    trendSourceItemIds: 'source-ai-rights',
+  });
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({ calls, article: validArticle(context.sourceRecords[0].id) }),
+  });
+  await provider.generateArticle({
+    actorEmail: 'writer@example.test',
+    topic: 'BMG and Suno Reach Licensing Deal for AI Music Model',
+    audience: 'Creators',
+    objective: 'Explain the source facts.',
+    trendSourceItemIds: 'source-ai-rights',
+  }, context);
+  assert.match(calls[0].input, /SOURCE FACTS/);
+  assert.match(calls[0].input, /Billboard/);
+  assert.match(calls[0].input, /BMG and Suno Reach Licensing Deal/);
+  assert.match(calls[0].input, /creator opt-in and compensation/);
+});
+
+test('only selected Brain concepts reach OpenAI final writing', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  const records = [
+    ['content-agent/knowledge/capabilities/profiles.md', '# Profiles\n\nAPPROVED\n\nCertifyd profiles describe creator-controlled identity and account context.'],
+    ['content-agent/knowledge/capabilities/payouts.md', '# Payouts\n\nAPPROVED\n\nA payout is the movement of allocated earnings to creators or participants.'],
+    ['content-agent/knowledge/capabilities/provenance.md', '# Provenance\n\nAPPROVED\n\nCertifyd provenance records help connect work, attribution, permissions and publication context.'],
+  ];
+  for (const [relative, text] of records) {
+    const file = path.join(config.siteRoot, relative);
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(file, text);
+  }
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      calls,
+      reasoning: validReasoning({ certifydConcepts: [{ concept: 'Creator-controlled identity', relevance: 'Relevant to account authority.', sourceConnection: 'The source facts turn on identity.' }] }),
+      article: validArticle(sourceId),
+    }),
+  });
+  await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
+  assert.match(calls[1].input, /SELECTED CERTIFYD BRAIN FOR FINAL WRITING/);
+  assert.match(calls[1].input, /identity|Profiles|Approved Public Claims/i);
+  assert.doesNotMatch(calls[1].input, /A payout is the movement of allocated earnings/i);
+});
+
+test('OpenAI final validation still rejects unsafe generated article state', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({ article: validArticle(context.sourceRecords[0].id, { status: 'published' }) }),
+  });
+  await assert.rejects(
+    () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context),
+    GenerationValidationError,
+  );
+});
+
+test('malformed OpenAI model output fails safely', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: {
+      responses: {
+        create: async (payload) => {
+          calls.push(payload);
+          return { id: `resp_${calls.length}`, output_text: calls.length === 1 ? JSON.stringify(validReasoning()) : '{bad json', usage: {} };
+        },
+      },
+    },
+  });
+  await assert.rejects(
+    () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context),
+    /AI returned malformed JSON/,
+  );
+});
+
+test('OpenAI API failure creates no bogus draft', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({ failAt: 'reasoning' }),
+  });
+  await assert.rejects(
+    () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context),
+    /AI request failed|OpenAI/,
+  );
+  await assert.rejects(() => fs.access(config.outputDir));
+});
+
+test('OpenAI SEO and frontmatter persist in generated draft run', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      article: validArticle(sourceId, {
+        title: 'Creator Identity and Certifyd Core',
+        suggestedSlug: 'creator-identity-certifyd-core',
+        seoTitle: 'Creator Identity and Certifyd Core | Certifyd',
+        seoDescription: 'How creator identity connects to Certifyd Core.',
+        focusKeyword: 'creator identity',
+        secondaryKeywords: ['Certifyd Core', 'creator-owned infrastructure'],
+        category: 'Creator Infrastructure',
+      }),
+    }),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Creator identity', audience: 'Creators', objective: 'Explain Core.' }, context);
+  const result = await persistGeneratedArticleRun(config, article, { topic: 'Creator identity', audience: 'Creators', objective: 'Explain Core.' }, context, provider);
+  const markdown = await fs.readFile(path.join(config.outputDir, result.runId, 'final/article.md'), 'utf8');
+  const manifest = JSON.parse(await fs.readFile(path.join(config.outputDir, result.runId, 'publication-manifest.json'), 'utf8'));
+  assert.match(markdown, /seoTitle: "Creator Identity and Certifyd Core \\| Certifyd"/);
+  assert.match(markdown, /seoDescription: "How creator identity connects to Certifyd Core\."/);
+  assert.match(markdown, /focusKeyword: "creator identity"/);
+  assert.match(markdown, /secondaryKeywords: \["Certifyd Core","creator-owned infrastructure"\]/);
+  assert.match(markdown, /category: "Creator Infrastructure"/);
+  assert.equal(manifest.modelProvider, 'openai');
+  assert.equal(manifest.modelMode, 'OpenAI');
 });
 
 test('Ollama health reports missing model without auto-download', async () => {

@@ -204,7 +204,7 @@ async function handlePage(req, res, url, ctx) {
   if (pathName === '/app/content/trends.json') { allow('content.article.view'); return sendJson(res, await getTrendingOpportunities(ctx.config)); }
   const trendSourcesMatch = pathName.match(/^\/app\/content\/trends\/([^/]+)\/sources$/);
   if (trendSourcesMatch) { allow('content.article.view'); return sendHtml(res, await renderTrendSources(ctx, trendSourcesMatch[1])); }
-  if (pathName === '/app/content/model-health') { allow('content.article.create'); return sendJson(res, await ctx.actions.generationHealth({ provider: 'ollama' })); }
+  if (pathName === '/app/content/model-health') { allow('content.article.create'); return sendJson(res, await ctx.actions.generationHealth({ provider: 'openai', live: url.searchParams.get('live') === '1' })); }
   const generationMatch = pathName.match(/^\/app\/content\/generation\/([^/]+)$/);
   if (generationMatch) { allow('content.article.create'); return sendHtml(res, renderGenerationStatus(ctx, generationMatch[1])); }
   if (pathName === '/app/content/brain') { allow('brain.read'); return sendHtml(res, await renderBrain(ctx, url)); }
@@ -235,7 +235,7 @@ async function renderOverview(ctx, csrf) {
     .slice()
     .sort((a, b) => String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || '')))
     .slice(0, 5);
-  const statusText = ctx.config.ollama.enabled ? `Qwen ready: ${ctx.config.ollama.model}` : 'Qwen not configured';
+  const statusText = ctx.config.openai?.apiKey ? `OpenAI configured: ${ctx.config.openai.model}` : 'OpenAI not configured';
   const body = `<section class="mission-head">
     <p class="eyebrow">Dashboard</p>
     <h1>What needs attention?</h1>
@@ -271,18 +271,18 @@ function compactRunRow(run) {
 }
 
 function qwenPromptForm({ csrf, compact = false, advanced = false } = {}) {
-  const promptId = compact ? 'blog-qwen-topic-compact' : 'blog-qwen-topic';
+  const promptId = compact ? 'blog-ai-topic-compact' : 'blog-ai-topic';
   const body = `<form class="prompt-form ${compact ? 'prompt-form-compact' : ''}" method="post" action="/app/content/actions/generate" data-generating-form data-primary-generation-form>
     <input type="hidden" name="_csrf" value="${escapeHtml(csrf)}">
-    <input type="hidden" name="provider" value="ollama">
+    <input type="hidden" name="provider" value="openai">
     ${advanced ? '' : '<input type="hidden" name="contentType" value="article">'}
     <input type="hidden" name="audience" value="Creators, partners and investors">
     <input type="hidden" name="objective" value="Create a grounded Certifyd article using approved Brain context. Keep current capabilities distinct from planned capabilities.">
     <label class="sr-only" for="${promptId}">Article prompt</label>
-    <textarea id="${promptId}" class="prompt-input" name="topic" required maxlength="300" placeholder="Tell Qwen what to write. Paste a topic, angle, document notes or article response request."></textarea>
+    <textarea id="${promptId}" class="prompt-input" name="topic" required maxlength="300" placeholder="Describe the article topic, angle, source notes or response request."></textarea>
     ${advanced ? `<details><summary>Advanced options</summary><label>Working title<input name="workingTitle" maxlength="160"></label><label>Article type<select name="contentType"><option value="article">Article</option><option value="brief">Brief</option><option value="explainer">Explainer</option></select></label><label>Style<input name="writingStyle" maxlength="240" value="Plain, factual, investor-safe Certifyd editorial"></label><label>Source restrictions<textarea name="sourceRestrictions" maxlength="800">Use Certifyd Brain and approved public claims only. Distinguish live features from planned capabilities.</textarea></label><label><input type="checkbox" name="externalResearchAllowed" value="true"> Approved external research allowed when configured</label></details>` : ''}
-    <div class="generation-progress" role="status" aria-live="polite" hidden><span>Qwen is generating. This can take about one to two minutes.</span><i></i></div>
-    <div class="actions"><button class="primary" type="submit">Ask Qwen</button><a class="ghost" href="/app/content/model-health">Check Qwen</a></div>
+    <div class="generation-progress" role="status" aria-live="polite" hidden><span>AI is generating. This can take about one to two minutes.</span><i></i></div>
+    <div class="actions"><button class="primary" type="submit">Generate Article</button><a class="ghost" href="/app/content/model-health">Check AI</a></div>
   </form>`;
   return compact ? `${body}<div class="example-chips" aria-label="Prompt examples">${['Compare Certifyd to Spotify', 'Explain creator ownership', 'Respond to this article', 'Write about local AI', 'Turn this document into a blog article'].map((example) => quickGenerateForm({ csrf, label: example, topic: example })).join('')}</div>` : body;
 }
@@ -292,7 +292,7 @@ function manualPasteForm({ csrf } = {}) {
     <summary class="ghost">Paste article manually</summary>
     <form class="article-editor-form" method="post" action="/app/content/actions/manual-paste">
       <input type="hidden" name="_csrf" value="${escapeHtml(csrf)}">
-      <p class="muted">Paste finished Markdown with optional frontmatter. This creates a normal draft for founder review without calling Qwen.</p>
+      <p class="muted">Paste finished Markdown with optional frontmatter. This creates a normal draft for founder review without calling AI generation.</p>
       <label>Title override<input name="title" maxlength="180" placeholder="Optional; otherwise first # heading or frontmatter title is used"></label>
       <label>Excerpt override<input name="excerpt" maxlength="260" placeholder="Optional; otherwise generated from the article body"></label>
       <label>Tags<input name="tags" maxlength="240" placeholder="music, creator ownership, commerce"></label>
@@ -362,7 +362,7 @@ function quickGenerateForm({ csrf, label, topic, className = 'example-chip', ext
   const hidden = Object.entries(extraFields || {}).map(([name, value]) => `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`).join('');
   return `<form method="post" action="/app/content/actions/generate" data-generating-form>
     <input type="hidden" name="_csrf" value="${escapeHtml(csrf)}">
-    <input type="hidden" name="provider" value="ollama">
+    <input type="hidden" name="provider" value="openai">
     <input type="hidden" name="contentType" value="article">
     <input type="hidden" name="topic" value="${escapeHtml(topic)}">
     <input type="hidden" name="audience" value="Creators, partners and investors">
@@ -687,7 +687,7 @@ function generationDiagnosticsHtml(diagnostics = {}) {
     sent.length ? `<details><summary class="ghost">Brain records actually sent</summary><ul class="source-list">${sent.map((record) => `<li><strong>${escapeHtml(record.title || record.id)}</strong><br><code>${escapeHtml(record.id || '')}</code><br><span class="muted">${escapeHtml(record.path || '')}</span></li>`).join('')}</ul></details>` : '',
     claims.length ? `<details><summary class="ghost">Relevant approved claims</summary><ul class="source-list">${claims.map((claim) => `<li><strong>${escapeHtml(claim.title || claim.id)}</strong><br><code>${escapeHtml(claim.id || '')}</code><br>${escapeHtml(claim.excerpt || '')}</li>`).join('')}</ul></details>` : '',
     external.length ? `<details><summary class="ghost">External article sources used</summary><ul class="source-list">${external.map((source) => `<li><strong>${escapeHtml(source.publisher || 'Source')}</strong>${source.publishedAt ? ` · ${escapeHtml(source.publishedAt)}` : ''}<br>${escapeHtml(source.title || '')}${source.articleUrl ? `<br><a href="${escapeHtml(source.articleUrl)}" rel="noreferrer" target="_blank">${escapeHtml(source.articleUrl)}</a>` : ''}</li>`).join('')}</ul></details>` : '',
-    exact.approvedKnowledge?.length ? `<details><summary class="ghost">Exact Brain context sent to Qwen</summary><ul class="source-list">${exact.approvedKnowledge.map((item) => `<li><strong>${escapeHtml(item.theme || 'Approved knowledge')}</strong><br><code>${escapeHtml(item.id || '')}</code><br>${escapeHtml(item.excerpt || '')}</li>`).join('')}</ul></details>` : '',
+    exact.approvedKnowledge?.length ? `<details><summary class="ghost">Exact Brain context sent to AI</summary><ul class="source-list">${exact.approvedKnowledge.map((item) => `<li><strong>${escapeHtml(item.theme || 'Approved knowledge')}</strong><br><code>${escapeHtml(item.id || '')}</code><br>${escapeHtml(item.excerpt || '')}</li>`).join('')}</ul></details>` : '',
   ].filter(Boolean).join('');
 }
 
@@ -760,14 +760,14 @@ async function renderBrain(ctx, url = new URL('http://localhost/app/content/brai
   let content = '';
   if (view === 'suggestions') {
     const suggestions = await listPendingKnowledgeSuggestions(ctx.config);
-    content = `<section class="panel"><div class="section-head"><div><p class="eyebrow">Knowledge Suggestions</p><h2>Founder-reviewed Brain updates.</h2></div></div><p>Qwen can suggest Brain changes, but approved knowledge is never updated automatically.</p><div class="review-list">${suggestions.length ? suggestions.map((suggestion) => knowledgeSuggestionRow(suggestion, canWriteBrain, csrf)).join('') : '<p class="empty">No pending Brain suggestions.</p>'}</div></section>`;
+    content = `<section class="panel"><div class="section-head"><div><p class="eyebrow">Knowledge Suggestions</p><h2>Founder-reviewed Brain updates.</h2></div></div><p>AI generation can suggest Brain changes, but approved knowledge is never updated automatically.</p><div class="review-list">${suggestions.length ? suggestions.map((suggestion) => knowledgeSuggestionRow(suggestion, canWriteBrain, csrf)).join('') : '<p class="empty">No pending Brain suggestions.</p>'}</div></section>`;
   } else if (view === 'stale') {
     content = `<section class="panel"><p class="empty">No stale Brain records are queued in this pass.</p></section>`;
   } else if (view === 'conflicts') {
     content = `<section class="panel"><p class="empty">No Brain conflicts are queued in this pass.</p></section>`;
   } else {
     const rows = files.map((file) => `<tr class="${file.id === changed ? 'highlight-row' : ''}"><td>${escapeHtml(file.name)}${file.id === changed ? ' <span class="pill good">Updated</span>' : ''}</td><td>${escapeHtml(humanizeLabel(file.classification))}</td><td>${escapeHtml(file.lastUpdated)}</td><td>${escapeHtml(file.evidenceUsageCount)}</td><td>${escapeHtml(humanizeLabel(file.staleStatus))}</td></tr>`).join('');
-    const notice = changed ? `<p class="notice">Brain record updated: <code>${escapeHtml(changed)}</code>. Future Qwen generations can use this approved knowledge.</p>` : '';
+    const notice = changed ? `<p class="notice">Brain record updated: <code>${escapeHtml(changed)}</code>. Future AI generations can use this approved knowledge.</p>` : '';
     content = `${notice}<section class="panel"><form class="search-row"><label>Filter Brain records<input placeholder="Search by file, status or topic" disabled></label><button class="ghost" disabled>Search</button></form></section><section class="panel"><table class="table"><thead><tr><th>File</th><th>Classification</th><th>Updated</th><th>Usage</th><th>Review state</th></tr></thead><tbody>${rows || '<tr><td colspan="5">No Brain records found.</td></tr>'}</tbody></table></section>`;
   }
   return layout({ title: 'Brain', user: ctx.user, permissions: ctx.permissions, active: 'Brain', body: `<p class="eyebrow">Brain</p><h1>Knowledge system</h1>${tabHtml}${content}` });
@@ -825,9 +825,9 @@ async function renderSettings(ctx) {
   const trendSources = buildSourceRegistry(ctx.config);
   const distribution = await ctx.actions.distributionOverview();
   const csrf = createCsrfToken(ctx.config.sessionSecret, ctx.user.sid);
-  const safe = { dashboardEnabled: ctx.config.enabled, authMode: ctx.config.authMode, publicAdminUrl: ctx.config.publicAdminUrl, database: ctx.config.databasePath === ':memory:' ? 'memory' : 'sqlite configured', userCount: ctx.userRepo.listUsers().length, localAi: { enabled: ctx.config.ollama.enabled, model: ctx.config.ollama.model, baseUrl: ctx.config.ollama.baseUrl ? 'configured' : 'not configured' }, trendResearch: ctx.config.trendResearchProvider || ctx.config.trendResearch?.provider || 'manual only', trendSourceCount: trendSources.filter((source) => source.enabled !== false).length, trendSources: trendSources.map((source) => ({ id: source.id, publisher: source.publisher, categories: source.categories || [], feedUrl: source.feedUrl, enabled: source.enabled !== false, reliability: source.reliability || '' })), trendScan: { maxItemsPerSource: ctx.config.trendResearch?.maxItemsPerSource, maxItemAgeDays: ctx.config.trendResearch?.maxItemAgeDays, timeoutMs: ctx.config.trendResearch?.timeoutMs, maxConcurrentFetches: ctx.config.trendResearch?.maxConcurrentFetches, dailyScanEnabled: ctx.config.trendResearch?.dailyScanEnabled, scanHour: ctx.config.trendResearch?.scanHour, manualCommand: 'npm run trends:scan' }, externalResearch: ctx.config.externalResearchProvider || 'not configured', brain: 'content-agent/knowledge', githubPublishing: publishingStatusLabel(ctx.config.githubPublishing), githubRepositoryConfigured: Boolean(ctx.config.githubPublishing.owner && ctx.config.githubPublishing.repo), githubMirrors: Array.isArray(ctx.config.githubPublishing.mirrors) ? ctx.config.githubPublishing.mirrors.map((mirror) => `${mirror.owner}/${mirror.repo}`).join(', ') : '', coverImages: ctx.config.coverImages?.provider === 'pexels' && ctx.config.coverImages?.pexelsApiKey ? 'Pexels configured' : 'local rule-based fallback', distributionAccounts: 'none connected', cloudflareAccessConfigured: Boolean(ctx.config.cloudflareAccess.teamDomain && ctx.config.cloudflareAccess.audience), environment: ctx.config.environmentName };
+  const safe = { dashboardEnabled: ctx.config.enabled, authMode: ctx.config.authMode, publicAdminUrl: ctx.config.publicAdminUrl, database: ctx.config.databasePath === ':memory:' ? 'memory' : 'sqlite configured', userCount: ctx.userRepo.listUsers().length, aiGeneration: { provider: ctx.config.modelProvider, configured: Boolean(ctx.config.openai?.apiKey), model: ctx.config.openai?.model || '', legacyLocalAiEnabled: Boolean(ctx.config.ollama?.enabled) }, trendResearch: ctx.config.trendResearchProvider || ctx.config.trendResearch?.provider || 'manual only', trendSourceCount: trendSources.filter((source) => source.enabled !== false).length, trendSources: trendSources.map((source) => ({ id: source.id, publisher: source.publisher, categories: source.categories || [], feedUrl: source.feedUrl, enabled: source.enabled !== false, reliability: source.reliability || '' })), trendScan: { maxItemsPerSource: ctx.config.trendResearch?.maxItemsPerSource, maxItemAgeDays: ctx.config.trendResearch?.maxItemAgeDays, timeoutMs: ctx.config.trendResearch?.timeoutMs, maxConcurrentFetches: ctx.config.trendResearch?.maxConcurrentFetches, dailyScanEnabled: ctx.config.trendResearch?.dailyScanEnabled, scanHour: ctx.config.trendResearch?.scanHour, manualCommand: 'npm run trends:scan' }, externalResearch: ctx.config.externalResearchProvider || 'not configured', brain: 'content-agent/knowledge', githubPublishing: publishingStatusLabel(ctx.config.githubPublishing), githubRepositoryConfigured: Boolean(ctx.config.githubPublishing.owner && ctx.config.githubPublishing.repo), githubMirrors: Array.isArray(ctx.config.githubPublishing.mirrors) ? ctx.config.githubPublishing.mirrors.map((mirror) => `${mirror.owner}/${mirror.repo}`).join(', ') : '', coverImages: ctx.config.coverImages?.provider === 'pexels' && ctx.config.coverImages?.pexelsApiKey ? 'Pexels configured' : 'local rule-based fallback', distributionAccounts: 'none connected', cloudflareAccessConfigured: Boolean(ctx.config.cloudflareAccess.teamDomain && ctx.config.cloudflareAccess.audience), environment: ctx.config.environmentName };
   const distributionAccounts = `<section class="panel"><h2>Distribution Accounts</h2><p>Use environment configuration until OAuth is implemented. Secrets are stored server-side only and never rendered.</p><div class="destination-chip-grid">${distribution.destinations.map((destination) => destinationChip(destination, csrf, true)).join('')}</div></section>`;
-  return layout({ title: 'Settings', user: ctx.user, permissions: ctx.permissions, active: 'Settings', body: `<p class="eyebrow">Settings</p><h1>Configuration</h1><p>Secrets, tokens and raw session data are never displayed.</p><div class="grid">${['Local AI','Trend research','External research','Brain','GitHub publishing','Cover images','Distribution accounts','Access','Advanced diagnostics'].map((name) => card(name, `<p>${escapeHtml(settingsSummary(name, safe))}</p>`)).join('')}</div>${distributionAccounts}<section class="panel"><h2>Trend sources</h2><p>Trend scanning uses approved RSS/Atom sources. Search and social providers are placeholders until official integrations are configured.</p><div class="review-list">${safe.trendSources.map((source) => `<article class="review-item compact-row"><div><h3>${escapeHtml(source.publisher)}</h3><p>${escapeHtml((source.categories || []).join(', '))} · ${escapeHtml(source.feedUrl)}</p><p class="muted">${escapeHtml(source.reliability)}</p></div><span class="pill ${source.enabled ? 'good' : 'bad'}">${source.enabled ? 'Approved' : 'Disabled'}</span></article>`).join('') || '<p>No approved trend feeds configured.</p>'}</div></section><section id="advanced-diagnostics" class="panel"><h2>Advanced diagnostics</h2><pre>${escapeHtml(JSON.stringify(safe, null, 2))}</pre></section>` });
+  return layout({ title: 'Settings', user: ctx.user, permissions: ctx.permissions, active: 'Settings', body: `<p class="eyebrow">Settings</p><h1>Configuration</h1><p>Secrets, tokens and raw session data are never displayed.</p><div class="grid">${['AI generation','Trend research','External research','Brain','GitHub publishing','Cover images','Distribution accounts','Access','Advanced diagnostics'].map((name) => card(name, `<p>${escapeHtml(settingsSummary(name, safe))}</p>`)).join('')}</div>${distributionAccounts}<section class="panel"><h2>Trend sources</h2><p>Trend scanning uses approved RSS/Atom sources. Search and social providers are placeholders until official integrations are configured.</p><div class="review-list">${safe.trendSources.map((source) => `<article class="review-item compact-row"><div><h3>${escapeHtml(source.publisher)}</h3><p>${escapeHtml((source.categories || []).join(', '))} · ${escapeHtml(source.feedUrl)}</p><p class="muted">${escapeHtml(source.reliability)}</p></div><span class="pill ${source.enabled ? 'good' : 'bad'}">${source.enabled ? 'Approved' : 'Disabled'}</span></article>`).join('') || '<p>No approved trend feeds configured.</p>'}</div></section><section id="advanced-diagnostics" class="panel"><h2>Advanced diagnostics</h2><pre>${escapeHtml(JSON.stringify(safe, null, 2))}</pre></section>` });
 }
 
 function articleMatchesView(run, view) {
@@ -934,7 +934,7 @@ function renderGenerationStatus(ctx, id) {
     title: 'Generating Draft',
     user: ctx.user,
     permissions: ctx.permissions,
-    body: `<meta http-equiv="refresh" content="8"><p class="eyebrow">Generation</p><h1>Generating draft.</h1><section class="panel"><div class="generation-progress" role="status" aria-live="polite"><span>Qwen is generating in the background. This page will refresh automatically; you can leave it open without hitting the Cloudflare timeout.</span><i></i></div><p class="muted">Started ${escapeHtml(formatDashboardDateTime(job.createdAt))}. Last updated ${escapeHtml(formatDashboardDateTime(job.updatedAt))}.</p></section><p><a class="ghost" href="/app/content/articles?view=drafts">View Drafts</a></p>`,
+    body: `<meta http-equiv="refresh" content="8"><p class="eyebrow">Generation</p><h1>Generating draft.</h1><section class="panel"><div class="generation-progress" role="status" aria-live="polite"><span>AI generation is running in the background. This page will refresh automatically; you can leave it open without hitting the Cloudflare timeout.</span><i></i></div><p class="muted">Started ${escapeHtml(formatDashboardDateTime(job.createdAt))}. Last updated ${escapeHtml(formatDashboardDateTime(job.updatedAt))}.</p></section><p><a class="ghost" href="/app/content/articles?view=drafts">View Drafts</a></p>`,
   });
 }
 
@@ -947,7 +947,7 @@ function pruneGenerationJobs() {
 
 function settingsSummary(name, safe) {
   const summaries = {
-    'Local AI': safe.localAi.enabled ? `Qwen configured (${safe.localAi.model}).` : 'Qwen is unavailable until Ollama is configured.',
+    'AI generation': safe.aiGeneration.configured ? `OpenAI configured (${safe.aiGeneration.model}).` : 'OpenAI not configured. Set OPENAI_API_KEY to enable AI generation.',
     'Trend research': ['seeded','fixture'].includes(safe.trendResearch) ? 'Seeded examples only. Use RSS or composite for source-backed scans.' : `${safe.trendResearch} configured with ${safe.trendSourceCount} approved source${safe.trendSourceCount === 1 ? '' : 's'}.`,
     'External research': safe.externalResearch === 'fixture' ? 'No live external research provider is connected.' : `${safe.externalResearch} configured.`,
     Brain: 'Approved Certifyd knowledge powers grounded drafts.',
@@ -1321,7 +1321,7 @@ function validateIntake(form) {
   const contentType = String(form.get('contentType') || '');
   const provider = String(form.get('provider') || '');
   if (!['article', 'brief', 'explainer'].includes(contentType)) throw Object.assign(new Error('Invalid content type.'), { statusCode: 400 });
-  if (!['deterministic', 'ollama'].includes(provider)) throw Object.assign(new Error('Invalid generation provider.'), { statusCode: 400 });
+  if (!['deterministic', 'ollama', 'openai'].includes(provider)) throw Object.assign(new Error('Invalid generation provider.'), { statusCode: 400 });
 }
 
 async function serveStatic(req, res, url, siteRoot) {

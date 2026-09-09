@@ -25,8 +25,14 @@ export CONTENT_DASHBOARD_AUTH_MODE="${CONTENT_DASHBOARD_AUTH_MODE:-local}"
 export ALLOW_TEMPORARY_TUNNEL_TESTING="${ALLOW_TEMPORARY_TUNNEL_TESTING:-false}"
 export CONTENT_DASHBOARD_PUBLIC_URL="${CONTENT_DASHBOARD_PUBLIC_URL:-http://127.0.0.1:8000}"
 
-export CONTENT_MODEL_PROVIDER="${CONTENT_MODEL_PROVIDER:-ollama}"
-export OLLAMA_ENABLED="${OLLAMA_ENABLED:-true}"
+export CONTENT_MODEL_PROVIDER="${CONTENT_MODEL_PROVIDER:-openai}"
+export BLOG_GENERATION_MODEL="${BLOG_GENERATION_MODEL:-gpt-5.6-terra}"
+export OPENAI_REQUEST_TIMEOUT_MS="${OPENAI_REQUEST_TIMEOUT_MS:-240000}"
+export OPENAI_MAX_OUTPUT_TOKENS="${OPENAI_MAX_OUTPUT_TOKENS:-1200}"
+export OPENAI_CONTEXT_LIMIT="${OPENAI_CONTEXT_LIMIT:-18000}"
+export OPENAI_MAX_CONCURRENT_GENERATIONS="${OPENAI_MAX_CONCURRENT_GENERATIONS:-1}"
+
+export OLLAMA_ENABLED="${OLLAMA_ENABLED:-false}"
 export OLLAMA_BASE_URL="${OLLAMA_BASE_URL:-http://127.0.0.1:11434}"
 export OLLAMA_CONTENT_MODEL="${OLLAMA_CONTENT_MODEL:-qwen2.5:1.5b}"
 export OLLAMA_CONTEXT_LIMIT="${OLLAMA_CONTEXT_LIMIT:-16000}"
@@ -54,7 +60,7 @@ if [[ "$CONTENT_MODEL_PROVIDER" == "ollama" && "$OLLAMA_ENABLED" == "true" ]]; t
   fi
 
   if ! curl -fsS --max-time 5 "$OLLAMA_HEALTH_URL" >/dev/null 2>&1; then
-    echo "WARNING: Ollama is still unavailable at ${OLLAMA_BASE_URL}. Qwen generation will fail until Ollama is running." >&2
+    echo "WARNING: Ollama is still unavailable at ${OLLAMA_BASE_URL}. Legacy local AI generation will fail until Ollama is running." >&2
   fi
 fi
 
@@ -95,7 +101,11 @@ echo "Starting Certifyd Blog Engine at http://${HOST}:${PORT}"
 echo "Dashboard enabled: ${CONTENT_DASHBOARD_ENABLED}"
 echo "Auth mode: ${CONTENT_DASHBOARD_AUTH_MODE}"
 echo "Model provider: ${CONTENT_MODEL_PROVIDER}"
-echo "Ollama model: ${OLLAMA_CONTENT_MODEL}"
+if [[ "$CONTENT_MODEL_PROVIDER" == "openai" ]]; then
+  echo "OpenAI model: ${BLOG_GENERATION_MODEL}"
+else
+  echo "Legacy local model: ${OLLAMA_CONTENT_MODEL}"
+fi
 echo "GitHub publishing: ${CONTENT_DASHBOARD_GITHUB_PUBLISHING_ENABLED}"
 echo "GitHub publish mode: ${CONTENT_DASHBOARD_GITHUB_PUBLISH_MODE}"
 echo "GitHub mirror: ${CONTENT_DASHBOARD_GITHUB_MIRROR_ENABLED} ${CONTENT_DASHBOARD_GITHUB_MIRROR_OWNER}/${CONTENT_DASHBOARD_GITHUB_MIRROR_REPO}"

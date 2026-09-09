@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getDefaultOllamaConfig, normalizeProviderName } from './generation-provider.js';
+import { getDefaultOllamaConfig, getDefaultOpenAIConfig, normalizeProviderName } from './generation-provider.js';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const defaultAgentRoot = path.resolve(siteRoot, 'content-agent');
@@ -72,8 +72,9 @@ export const CONTENT_PERMISSIONS = {
 
 export function getDashboardConfig(env = process.env) {
   const roles = parseRoleConfig(env.CONTENT_DASHBOARD_ALLOWED_ROLES || '');
-  const modelProvider = normalizeProviderName(env.CONTENT_MODEL_PROVIDER || env.CONTENT_DASHBOARD_GENERATION_PROVIDER || 'deterministic');
+  const modelProvider = normalizeProviderName(env.CONTENT_MODEL_PROVIDER || env.CONTENT_DASHBOARD_GENERATION_PROVIDER || 'openai');
   const ollama = getDefaultOllamaConfig(env);
+  const openai = getDefaultOpenAIConfig(env);
   return {
     env,
     siteRoot,
@@ -113,7 +114,8 @@ export function getDashboardConfig(env = process.env) {
     agentRoot: path.resolve(env.CONTENT_AGENT_ROOT || defaultAgentRoot),
     outputDir: path.resolve(env.CONTENT_AGENT_OUTPUT_DIR || path.join(env.CONTENT_AGENT_ROOT || defaultAgentRoot, 'engine/outputs')),
     modelProvider,
-    modelConfigured: modelProvider === 'deterministic' || (modelProvider === 'ollama' && ollama.enabled),
+    modelConfigured: modelProvider === 'deterministic' || (modelProvider === 'ollama' && ollama.enabled) || (modelProvider === 'openai' && Boolean(openai.apiKey)),
+    openai,
     ollama,
     externalResearchProvider: env.CONTENT_RESEARCH_PROVIDER || 'fixture',
     trendResearch: {

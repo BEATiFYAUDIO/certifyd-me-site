@@ -1,18 +1,22 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import OpenAI from 'openai';
 import { DEFAULT_BLOG_COVER_IMAGE, cleanArticlePromptText, isSafeImagePath, normalizeArticleTitle, selectArticleCoverImage, titleFromPrompt } from './article-utils.js';
 import { brainRecordId, brainReviewState } from './brain-utils.js';
 import { readTrendState } from './trends.js';
 
 const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
 const DEFAULT_OLLAMA_MODEL = 'qwen2.5:1.5b';
+const DEFAULT_OPENAI_MODEL = 'gpt-5.6-terra';
 const SAFE_SOURCE_LIMIT = 20;
 const SOURCE_BACKED_BRAIN_LIMIT = 3;
 const EXPLAINER_BRAIN_LIMIT = 8;
 const MAX_INTERACTIVE_OUTPUT_TOKENS = 6000;
 const MAX_ARTICLE_GENERATION_TOKENS = 1200;
 const DEFAULT_OLLAMA_HEALTH_TIMEOUT_MS = 5000;
+const DEFAULT_OPENAI_TIMEOUT_MS = 240000;
+const DEFAULT_OPENAI_HEALTH_TIMEOUT_MS = 12000;
 const SECRET_PATTERN = /(?:api[_-]?key|secret|token|password|private[_-]?key|session|credential|jwt|bearer|cloudflare|github_app_private_key)/i;
 const activeUsers = new Set();
 let activeGlobalGenerations = 0;
@@ -92,7 +96,7 @@ class ResponseReadTimeoutError extends Error {
 export const ARTICLE_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['title', 'suggestedSlug', 'excerpt', 'bodyMarkdown'],
+  required: ['title', 'suggestedSlug', 'excerpt', 'author', 'tags', 'seoTitle', 'seoDescription', 'focusKeyword', 'secondaryKeywords', 'category', 'coverImage', 'bodyMarkdown', 'claims', 'warnings'],
   properties: {
     title: { type: 'string' },
     suggestedSlug: { type: 'string' },
@@ -101,6 +105,9 @@ export const ARTICLE_SCHEMA = {
     tags: { type: 'array', items: { type: 'string' } },
     seoTitle: { type: 'string' },
     seoDescription: { type: 'string' },
+    focusKeyword: { type: 'string' },
+    secondaryKeywords: { type: 'array', items: { type: 'string' } },
+    category: { type: 'string' },
     coverImage: { type: 'string' },
     bodyMarkdown: { type: 'string' },
     claims: {
@@ -120,14 +127,44 @@ export const ARTICLE_SCHEMA = {
   },
 };
 
+export const EDITORIAL_REASONING_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['verifiedFacts', 'tension', 'whatChanged', 'creatorConsequence', 'thesis', 'certifydConcepts', 'avoidAngles', 'articleProgression'],
+  properties: {
+    verifiedFacts: { type: 'array', items: { type: 'string' } },
+    tension: { type: 'string' },
+    whatChanged: { type: 'string' },
+    creatorConsequence: { type: 'string' },
+    thesis: { type: 'string' },
+    certifydConcepts: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['concept', 'relevance', 'sourceConnection'],
+        properties: {
+          concept: { type: 'string' },
+          relevance: { type: 'string' },
+          sourceConnection: { type: 'string' },
+        },
+      },
+    },
+    avoidAngles: { type: 'array', items: { type: 'string' } },
+    articleProgression: { type: 'array', items: { type: 'string' } },
+  },
+};
+
 export function createGenerationProvider(config, options = {}) {
   const provider = normalizeProviderName(options.provider || config.modelProvider || 'deterministic');
+  if (provider === 'openai') return new OpenAIGenerationProvider(config, options);
   if (provider === 'ollama') return new OllamaQwenGenerationProvider(config, options);
   return new DeterministicGenerationProvider(config, options);
 }
 
 export function normalizeProviderName(value) {
   const provider = String(value || 'deterministic').trim().toLowerCase();
+  if (['openai', 'open-ai', 'gpt', 'responses'].includes(provider)) return 'openai';
   if (['ollama', 'qwen', 'qwen3', 'local-ai', 'local'].includes(provider)) return 'ollama';
   return 'deterministic';
 }
@@ -205,6 +242,147 @@ export async function createDeterministicFallbackArticle(input, groundedContext,
       ...(value.warnings || []),
     ].filter(Boolean),
   };
+}
+
+export class OpenAIGenerationProvider {
+  constructor(config, options = {}) {
+    this.config = config;
+    this.id = 'openai';
+    this.displayName = 'OpenAI';
+    this.providerName = 'openai';
+    this.modelName = options.modelName || config.openai?.model || DEFAULT_OPENAI_MODEL;
+    this.supportsLiveGeneration = true;
+    this.lastRequest = { durationMs: 0, tokenUsage: null, stages: [] };
+    this.client = options.openaiClient || new OpenAI({
+      apiKey: config.openai?.apiKey || process.env.OPENAI_API_KEY,
+      timeout: positiveNumber(config.openai?.timeoutMs, DEFAULT_OPENAI_TIMEOUT_MS),
+    });
+  }
+
+  async isAvailable() {
+    const health = await this.healthCheck().catch(() => ({ configured: false, available: false }));
+    return Boolean(health.configured && health.available);
+  }
+
+  async healthCheck() {
+    if (!this.config.openai?.apiKey) {
+      return { configured: false, available: false, provider: 'openai', model: this.modelName, reason: 'OPENAI_API_KEY is not configured.' };
+    }
+    return { configured: true, available: true, provider: 'openai', model: this.modelName };
+  }
+
+  async checkModel() {
+    if (!this.config.openai?.apiKey) {
+      return { configured: false, available: false, provider: 'openai', model: this.modelName, reason: 'OPENAI_API_KEY is not configured.' };
+    }
+    try {
+      const response = await this.client.responses.create({
+        model: this.modelName,
+        input: 'Return only: OK',
+        max_output_tokens: 8,
+        store: false,
+      }, { timeout: positiveNumber(this.config.openai?.healthTimeoutMs, DEFAULT_OPENAI_HEALTH_TIMEOUT_MS) });
+      const output = extractOpenAIResponseText(response).trim();
+      return { configured: true, available: Boolean(output), provider: 'openai', model: this.modelName };
+    } catch (error) {
+      throw normalizeOpenAIError(error, this.modelName);
+    }
+  }
+
+  async generateArticle(input, groundedContext, abortSignal) {
+    assertGroundedContextReady(groundedContext);
+    if (!this.config.openai?.apiKey) {
+      throw new GenerationConfigurationError('OpenAI is not configured. Set OPENAI_API_KEY before using AI generation.');
+    }
+    const userKey = input.actorUserId || input.actorEmail || 'local-user';
+    enterGenerationSlot(this.config, userKey);
+    const started = Date.now();
+    const stages = [];
+    try {
+      const reasoningSystemInstruction = buildReasoningSystemInstruction();
+      const reasoningPrompt = buildReasoningPrompt(input, groundedContext);
+      const reasoningResponse = await this.createStructuredResponse({
+        stage: 'editorial-reasoning',
+        schemaName: 'certifyd_editorial_reasoning',
+        schema: EDITORIAL_REASONING_SCHEMA,
+        systemInstruction: reasoningSystemInstruction,
+        userPrompt: reasoningPrompt,
+        maxOutputTokens: Math.min(this.config.openai.maxOutputTokens, 1800),
+        abortSignal,
+      });
+      const reasoning = normalizeOpenAIReasoning(parseJsonContent(reasoningResponse.text), groundedContext);
+      assertOpenAIReasoningReady(reasoning, groundedContext);
+      const writingContext = buildOpenAIWritingContext(groundedContext, reasoning);
+      const articleSystemInstruction = buildArticleSystemInstruction();
+      const articlePrompt = buildArticlePrompt(input, groundedContext, reasoning, writingContext);
+      recordGenerationPromptDiagnostics(input, groundedContext, {
+        provider: this.providerName,
+        model: this.modelName,
+        reasoningSystemInstruction,
+        reasoningPrompt,
+        articleSystemInstruction,
+        articlePrompt,
+        reasoning,
+        writingContext,
+      });
+      const articleResponse = await this.createStructuredResponse({
+        stage: 'article-writing',
+        schemaName: 'certifyd_article',
+        schema: ARTICLE_SCHEMA,
+        systemInstruction: articleSystemInstruction,
+        userPrompt: articlePrompt,
+        maxOutputTokens: Math.min(this.config.openai.maxOutputTokens, MAX_ARTICLE_GENERATION_TOKENS),
+        abortSignal,
+      });
+      stages.push(reasoningResponse.stageMeta, articleResponse.stageMeta);
+      const article = completeGeneratedArticleFields(parseJsonContent(articleResponse.text), input);
+      this.lastRequest = {
+        durationMs: Date.now() - started,
+        tokenUsage: mergeOpenAITokenUsage(stages.map((stage) => stage.tokenUsage)),
+        stages,
+      };
+      return validateGeneratedArticle(article, groundedContext);
+    } catch (error) {
+      if (error instanceof GenerationConfigurationError || error instanceof GenerationValidationError || error instanceof GenerationRateLimitError) throw error;
+      throw normalizeOpenAIError(error, this.modelName);
+    } finally {
+      leaveGenerationSlot(userKey);
+    }
+  }
+
+  async createStructuredResponse({ stage, schemaName, schema, systemInstruction, userPrompt, maxOutputTokens, abortSignal }) {
+    try {
+      const response = await this.client.responses.create({
+        model: this.modelName,
+        instructions: systemInstruction,
+        input: userPrompt,
+        text: {
+          format: {
+            type: 'json_schema',
+            name: schemaName,
+            strict: true,
+            schema,
+          },
+        },
+        max_output_tokens: maxOutputTokens,
+        store: false,
+      }, { signal: abortSignal, timeout: positiveNumber(this.config.openai?.timeoutMs, DEFAULT_OPENAI_TIMEOUT_MS) });
+      const text = extractOpenAIResponseText(response);
+      if (!text.trim()) throw new GenerationValidationError(`OpenAI returned no ${stage} content.`);
+      return {
+        text,
+        stageMeta: {
+          stage,
+          responseId: response.id,
+          model: this.modelName,
+          tokenUsage: normalizeOpenAIUsage(response.usage),
+        },
+      };
+    } catch (error) {
+      if (error instanceof GenerationValidationError) throw error;
+      throw normalizeOpenAIError(error, this.modelName);
+    }
+  }
 }
 
 export class OllamaQwenGenerationProvider {
@@ -423,7 +601,7 @@ export async function buildGroundedContext(config, input) {
       requestedBrainRecordIds: parseBrainIdList(input.trendBrainRecordIds, 40),
     },
   };
-  return trimGroundedContext(context, config.ollama.maxContextChars);
+  return trimGroundedContext(context, maxContextChars(config));
 }
 
 export function validateGeneratedArticle(value, groundedContext) {
@@ -447,6 +625,9 @@ export function validateGeneratedArticle(value, groundedContext) {
   }
   if (value.seoTitle && typeof value.seoTitle !== 'string') throw new GenerationValidationError('Generated seoTitle is malformed.');
   if (value.seoDescription && typeof value.seoDescription !== 'string') throw new GenerationValidationError('Generated seoDescription is malformed.');
+  if (value.focusKeyword && typeof value.focusKeyword !== 'string') throw new GenerationValidationError('Generated focusKeyword is malformed.');
+  if (value.secondaryKeywords && !Array.isArray(value.secondaryKeywords)) throw new GenerationValidationError('Generated secondaryKeywords are malformed.');
+  if (value.category && typeof value.category !== 'string') throw new GenerationValidationError('Generated category is malformed.');
   if (value.coverImage && typeof value.coverImage !== 'string') throw new GenerationValidationError('Generated coverImage is malformed.');
   if (value.bodyMarkdown.length > 18000) throw new GenerationValidationError('Generated article is too long.');
   value.bodyMarkdown = repairInternalContextHeadings(value.bodyMarkdown);
@@ -505,6 +686,7 @@ export function validateGeneratedArticle(value, groundedContext) {
     }
   }
   const tags = (value.tags || ['Certifyd']).map(String).map((tag) => tag.trim()).filter(Boolean).slice(0, 8);
+  const secondaryKeywords = (value.secondaryKeywords || []).map(String).map((keyword) => keyword.trim()).filter(Boolean).slice(0, 8);
   return {
     title: clampText(title, 160),
     slug,
@@ -513,6 +695,9 @@ export function validateGeneratedArticle(value, groundedContext) {
     tags,
     seoTitle: clampText(value.seoTitle ? normalizeArticleTitle(value.seoTitle) : `${title} | Certifyd`, 70),
     seoDescription: clampText(value.seoDescription || value.excerpt, 165),
+    focusKeyword: clampText(value.focusKeyword || title, 80),
+    secondaryKeywords,
+    category: clampText(value.category || inferArticleCategory(tags), 80),
     coverImage: normalizeBlogCoverImage(value.coverImage, { title, tags, excerpt: value.excerpt, body: value.bodyMarkdown }),
     bodyMarkdown: cleanArticleBodyMarkdown(value.bodyMarkdown, title),
     claims: normalizedClaims,
@@ -547,6 +732,9 @@ export async function persistGeneratedArticleRun(config, article, input, grounde
     'status: "draft"',
     `seoTitle: ${JSON.stringify(article.seoTitle)}`,
     `seoDescription: ${JSON.stringify(article.seoDescription)}`,
+    `focusKeyword: ${JSON.stringify(article.focusKeyword || '')}`,
+    `secondaryKeywords: ${JSON.stringify(article.secondaryKeywords || [])}`,
+    `category: ${JSON.stringify(article.category || '')}`,
     '---',
     '',
   ].join('\n');
@@ -576,7 +764,7 @@ export async function persistGeneratedArticleRun(config, article, input, grounde
     topic: titleFromPrompt(input.topic || input.workingTitle, ''),
     contentType: input.contentType || 'article',
     modelProvider: provider.providerName,
-    modelMode: provider.supportsLiveGeneration ? 'Local AI' : 'Deterministic fallback',
+    modelMode: provider.supportsLiveGeneration ? provider.displayName || 'AI' : 'Deterministic fallback',
     trendProvenance,
     unresolvedIssueCount,
     lastUpdated: timestamp,
@@ -590,8 +778,9 @@ export async function persistGeneratedArticleRun(config, article, input, grounde
   await fs.writeFile(path.join(dir, 'claim-ledger.json'), JSON.stringify(claimLedger, null, 2));
   await fs.writeFile(path.join(dir, 'claim-ledgers', 'v1.json'), JSON.stringify(claimLedger, null, 2));
   await fs.writeFile(path.join(dir, 'research-record.json'), JSON.stringify({ selectedEvidence: groundedContext.sourceRecords, claimsThatMustNotBeMade: groundedContext.prohibitedClaims, externalSourceFacts: groundedContext.externalSourceFacts, generationDiagnostics: groundedContext.generationDiagnostics || {}, trendProvenance }, null, 2));
-  await fs.writeFile(path.join(dir, 'seo-package.json'), JSON.stringify({ seoTitle: article.seoTitle, metaDescription: article.seoDescription, suggestedSlug: article.slug }, null, 2));
-  await fs.writeFile(path.join(dir, 'seo', 'seo-package.json'), JSON.stringify({ seoTitle: article.seoTitle, metaDescription: article.seoDescription, suggestedSlug: article.slug }, null, 2));
+  const seoPackage = { seoTitle: article.seoTitle, metaDescription: article.seoDescription, suggestedSlug: article.slug, focusKeyword: article.focusKeyword || '', secondaryKeywords: article.secondaryKeywords || [], category: article.category || '' };
+  await fs.writeFile(path.join(dir, 'seo-package.json'), JSON.stringify(seoPackage, null, 2));
+  await fs.writeFile(path.join(dir, 'seo', 'seo-package.json'), JSON.stringify(seoPackage, null, 2));
   await fs.writeFile(path.join(dir, 'publication-manifest.json'), JSON.stringify({ ...summary, currentStatus: 'PENDING_FOUNDER_REVIEW', publishability: 'BLOCKED_PENDING_APPROVAL', updatedAt: timestamp }, null, 2));
   await fs.writeFile(path.join(dir, 'lifecycle.json'), JSON.stringify({ createdAt: timestamp, updatedAt: timestamp, status: 'PENDING_FOUNDER_REVIEW' }, null, 2));
   await fs.writeFile(path.join(dir, 'reviews', 'founder-review.json'), JSON.stringify({ reviewStatus: 'PENDING_FOUNDER_REVIEW', articleVersion: 'v1', timestamp }, null, 2));
@@ -601,25 +790,38 @@ export async function persistGeneratedArticleRun(config, article, input, grounde
     provider: provider.providerName,
     model: provider.modelName,
     stage: 'article-generation',
-    promptTemplateVersion: 'dashboard-ollama-qwen-v2',
+    promptTemplateVersion: provider.providerName === 'openai' ? 'dashboard-openai-responses-v1' : 'dashboard-ollama-qwen-v2',
     inputHashes: { input: hashJson(redactInput(input)), groundedContext: hashJson(groundedContext) },
     knowledgeEvidenceIds: groundedContext.sourceRecords.map((source) => source.id),
     trendProvenance,
     timestamp,
-    timeoutMs: config.ollama.timeoutMs,
+    timeoutMs: provider.providerName === 'openai' ? config.openai?.timeoutMs : config.ollama?.timeoutMs,
     responseStatus: 'SUCCESS',
     tokenUsage: provider.lastRequest?.tokenUsage || undefined,
     durationMs: provider.lastRequest?.durationMs || undefined,
+    stages: provider.lastRequest?.stages || undefined,
     deterministicFallbackUsed: !provider.supportsLiveGeneration,
   }, null, 2));
   return {
     runId,
     output: [
-      `Generated ${provider.supportsLiveGeneration ? 'Qwen local-AI' : 'template-generated'} draft: ${article.title}`,
+      `Generated ${provider.supportsLiveGeneration ? `${provider.displayName || provider.providerName} AI` : 'template-generated'} draft: ${article.title}`,
       `Run: ${runId}`,
       'Status: draft / pending founder review',
       `Expected public URL after approval: ${summary.canonicalUrl}`,
     ].join('\n'),
+  };
+}
+
+export function getDefaultOpenAIConfig(env = process.env) {
+  return {
+    apiKey: env.OPENAI_API_KEY || '',
+    model: env.BLOG_GENERATION_MODEL || DEFAULT_OPENAI_MODEL,
+    timeoutMs: positiveNumber(env.OPENAI_REQUEST_TIMEOUT_MS || env.BLOG_GENERATION_TIMEOUT_MS, DEFAULT_OPENAI_TIMEOUT_MS),
+    healthTimeoutMs: positiveNumber(env.OPENAI_HEALTH_TIMEOUT_MS || env.BLOG_GENERATION_HEALTH_TIMEOUT_MS, DEFAULT_OPENAI_HEALTH_TIMEOUT_MS),
+    maxOutputTokens: boundedNumber(env.OPENAI_MAX_OUTPUT_TOKENS || env.BLOG_GENERATION_MAX_OUTPUT_TOKENS, MAX_ARTICLE_GENERATION_TOKENS, 192, MAX_INTERACTIVE_OUTPUT_TOKENS),
+    maxContextChars: boundedNumber(env.OPENAI_CONTEXT_LIMIT || env.BLOG_GENERATION_CONTEXT_LIMIT, 18000, 4000, 36000),
+    maxConcurrentGenerations: positiveNumber(env.OPENAI_MAX_CONCURRENT_GENERATIONS || env.BLOG_GENERATION_MAX_CONCURRENT_GENERATIONS, 1),
   };
 }
 
@@ -636,6 +838,94 @@ export function getDefaultOllamaConfig(env = process.env) {
     think: env.OLLAMA_THINK === 'true',
     maxConcurrentGenerations: positiveNumber(env.OLLAMA_MAX_CONCURRENT_GENERATIONS, 1),
   };
+}
+
+function buildReasoningSystemInstruction() {
+  return [
+    'You are the private editorial reasoning stage for Certifyd Blog.',
+    'Return only JSON matching the requested schema.',
+    'Use SOURCE FACTS as the only source of claims about external people, companies, events, dates, deals, lawsuits, reports, products or policies.',
+    'Identify the concrete event before choosing any Certifyd concept.',
+    'Do not write the article.',
+    'Do not invent facts, quotes, partnerships, adoption, legal conclusions or Certifyd relationships.',
+    'Choose at most 3 Certifyd concepts, and every selected concept must include a concrete sourceConnection.',
+    'The thesis must be story-specific, not reusable generic creator-ownership boilerplate.',
+  ].join('\n');
+}
+
+function buildReasoningPrompt(input, groundedContext) {
+  const context = compactGroundedContextForModel(groundedContext);
+  const externalSources = context.externalSourceFacts.map((item) => `- [${item.id || 'source'}] ${item.publisher}${item.publishedAt ? ` (${item.publishedAt})` : ''}: ${item.title}. ${item.summary}${item.articleUrl ? ` Source: ${item.articleUrl}` : ''}`).join('\n') || '- No external source summaries attached.';
+  const approvedKnowledge = context.approvedKnowledge.slice(0, 10).map(formatBrainKnowledgeForPrompt).join('\n') || '- No approved Certifyd knowledge selected.';
+  return [
+    `Topic: ${input.topic || input.workingTitle || 'Certifyd article'}`,
+    `Audience: ${input.audience || input.targetAudience || 'Certifyd readers'}`,
+    `Objective: ${input.objective || input.businessObjective || 'Create a grounded Certifyd article.'}`,
+    '',
+    'SOURCE FACTS:',
+    externalSources,
+    '',
+    'APPROVED CERTIFYD BRAIN CANDIDATES:',
+    approvedKnowledge,
+    '',
+    'EXISTING DETERMINISTIC BRIEF:',
+    formatEditorialBriefForPrompt(context.editorialBrief),
+    '',
+    'PRIVATE TASK:',
+    '- Extract verifiedFacts from SOURCE FACTS.',
+    '- Identify tension, whatChanged, creatorConsequence and thesis.',
+    '- Select no more than 3 Certifyd concepts only when SOURCE FACTS create a concrete connection.',
+    '- Put tempting but unsupported Certifyd angles in avoidAngles.',
+    '- articleProgression must contain at least 4 specific steps for the final article.',
+  ].join('\n');
+}
+
+function buildArticleSystemInstruction() {
+  return [
+    buildSystemInstruction(),
+    '',
+    'Return only JSON matching the requested schema.',
+    'The private reasoning object is already approved for this draft. Do not rediscover or replace the thesis while writing.',
+    'Use only the selected Certifyd Brain records supplied in the writing prompt.',
+    'Generate title, suggestedSlug, excerpt, seoTitle, seoDescription, focusKeyword, secondaryKeywords, category, tags, bodyMarkdown, claims and warnings.',
+  ].join('\n');
+}
+
+function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
+  const context = compactGroundedContextForModel({ ...groundedContext, approvedKnowledge: writingContext.approvedKnowledge });
+  const guardrails = buildTopicGuardrails(input).map((item) => `- ${item}`).join('\n');
+  const selectedBrainFacts = writingContext.approvedKnowledge.map(formatSelectedBrainFactsForPrompt).filter(Boolean).join('\n') || '- No selected Brain facts supplied.';
+  const approvedKnowledge = writingContext.approvedKnowledge.map(formatBrainKnowledgeForPrompt).join('\n') || '- No Certifyd Brain records selected for final writing.';
+  const externalSources = context.externalSourceFacts.map((item) => `- [${item.id || 'source'}] ${item.publisher}${item.publishedAt ? ` (${item.publishedAt})` : ''}: ${item.title}. ${item.summary}${item.articleUrl ? ` Source: ${item.articleUrl}` : ''}`).join('\n') || '- No external source summaries attached.';
+  const prohibited = context.prohibitedClaims.map((item) => `- ${item}`).join('\n') || '- Avoid unsupported claims.';
+  return [
+    `Topic: ${input.topic || input.workingTitle || 'Certifyd article'}`,
+    `Audience: ${input.audience || input.targetAudience || 'Certifyd readers'}`,
+    `Objective: ${input.objective || input.businessObjective || 'Create a grounded Certifyd article.'}`,
+    '',
+    'SOURCE FACTS:',
+    externalSources,
+    '',
+    'APPROVED EDITORIAL REASONING:',
+    JSON.stringify(reasoning, null, 2),
+    '',
+    'SELECTED CERTIFYD BRAIN FOR FINAL WRITING:',
+    selectedBrainFacts,
+    approvedKnowledge,
+    '',
+    'DO NOT CLAIM:',
+    prohibited,
+    '',
+    'WRITING GUARDRAILS:',
+    guardrails,
+    '- Open by immediately identifying the actual story and primary search entity.',
+    '- Use the approved thesis and articleProgression. Do not substitute a generic Certifyd angle.',
+    '- Put important named entities early in title, seoTitle, excerpt and opening paragraph when accurate.',
+    '- Use conventional 3 to 5 sentence paragraphs. One-sentence paragraphs should be rare and deliberate.',
+    '- Use headings only for real subject changes.',
+    '- Do not use a generic “Why This Matters to Certifyd” section.',
+    '- Do not mention source IDs, this prompt, the reasoning process, or internal Brain labels.',
+  ].join('\n');
 }
 
 function buildSystemInstruction() {
@@ -787,7 +1077,29 @@ function formatBrainKnowledgeForPrompt(item) {
   return lines.join('\n');
 }
 
+function formatSelectedBrainFactsForPrompt(item) {
+  const facts = [
+    ...(item.supportedClaims || []),
+    ...(item.qualifiedClaims || []),
+    ...(item.safeWording || []),
+  ].map((claim) => String(claim || '').trim()).filter(Boolean).slice(0, 6);
+  if (!facts.length && item.excerpt) facts.push(String(item.excerpt).slice(0, 420));
+  if (!facts.length) return '';
+  return [`- [${item.id}] ${item.theme || item.title || 'Selected Brain record'}`, ...facts.map((fact) => `  ${fact}`)].join('\n');
+}
+
+function inferArticleCategory(tags = []) {
+  const normalized = tags.map((tag) => String(tag || '').toLowerCase());
+  if (normalized.some((tag) => /ai|identity|provenance|rights/.test(tag))) return 'Creator Infrastructure';
+  if (normalized.some((tag) => /commerce|payment|direct/.test(tag))) return 'Creator Commerce';
+  if (normalized.some((tag) => /music|artist|song|label/.test(tag))) return 'Music';
+  return 'Certifyd';
+}
+
 function recordGenerationPromptDiagnostics(input, groundedContext, systemInstruction, userPrompt) {
+  if (typeof systemInstruction === 'object' && systemInstruction) {
+    return recordOpenAIGenerationPromptDiagnostics(input, groundedContext, systemInstruction);
+  }
   const compact = compactGroundedContextForModel(groundedContext);
   groundedContext.generationDiagnostics = {
     ...(groundedContext.generationDiagnostics || {}),
@@ -825,6 +1137,65 @@ function recordGenerationPromptDiagnostics(input, groundedContext, systemInstruc
       systemPromptChars: systemInstruction.length,
       userPromptChars: userPrompt.length,
       totalPromptChars: systemInstruction.length + userPrompt.length,
+      truncated: Boolean(groundedContext.contextSizing?.truncated),
+      removedRecords: groundedContext.contextSizing?.removedRecords || [],
+      removedContextItems: groundedContext.contextSizing?.removedContextItems || [],
+    },
+  };
+}
+
+function recordOpenAIGenerationPromptDiagnostics(input, groundedContext, details) {
+  const selectedKnowledge = details.writingContext?.approvedKnowledge || [];
+  const compact = compactGroundedContextForModel({ ...groundedContext, approvedKnowledge: selectedKnowledge, sourceRecords: selectedKnowledge });
+  const reasoning = details.reasoning || {};
+  const selectedBrainFacts = selectedKnowledge.map(formatSelectedBrainFactsForPrompt).filter(Boolean);
+  groundedContext.generationDiagnostics = {
+    ...(groundedContext.generationDiagnostics || {}),
+    promptTemplateVersion: 'dashboard-openai-responses-v1',
+    modelProvider: details.provider,
+    model: details.model,
+    finalPromptStructure: [
+      'stage A: editorial reasoning from source facts',
+      'stage A: story-specific thesis and selected Certifyd concepts',
+      'stage B: article writing from approved reasoning object',
+      'stage B: selected Certifyd Brain only',
+      'stage B: structured article JSON',
+    ],
+    generationStages: [
+      { stage: 'editorial-reasoning', model: details.model },
+      { stage: 'article-writing', model: details.model },
+    ],
+    brainRecordsSentToModel: compact.sources,
+    exactBrainContextSentToModel: {
+      approvedClaims: selectedBrainFacts,
+      approvedKnowledge: compact.approvedKnowledge,
+      productFacts: [],
+      terminology: compact.terminology,
+      prohibitedClaims: compact.prohibitedClaims,
+    },
+    externalArticleSourcesSentToModel: compact.externalSourceFacts,
+    editorialBriefSentToModel: compactEditorialBrief({
+      ...(groundedContext.editorialBrief || {}),
+      verifiedFacts: reasoning.verifiedFacts || [],
+      editorialTension: reasoning.tension || '',
+      whatChanged: reasoning.whatChanged || '',
+      creatorConsequence: reasoning.creatorConsequence || '',
+      possibleThesis: reasoning.thesis || '',
+      selectedCertifydConcepts: reasoning.certifydConcepts || [],
+      avoidAngles: reasoning.avoidAngles || [],
+      articleProgression: reasoning.articleProgression || [],
+    }),
+    openAIReasoning: reasoning,
+    externalSourcesSentToModelCount: compact.externalSourceFacts.length,
+    externalSourceIdsSentToModel: compact.externalSourceFacts.map((source) => source.id).filter(Boolean),
+    externalSourceTitlesSentToModel: compact.externalSourceFacts.map((source) => source.title).filter(Boolean),
+    contextSize: {
+      maxContextChars: groundedContext.contextSizing?.maxContextChars || 0,
+      fullContextChars: groundedContext.contextSizing?.fullContextChars || 0,
+      finalContextChars: JSON.stringify(groundedContext).length,
+      systemPromptChars: (details.reasoningSystemInstruction?.length || 0) + (details.articleSystemInstruction?.length || 0),
+      userPromptChars: (details.reasoningPrompt?.length || 0) + (details.articlePrompt?.length || 0),
+      totalPromptChars: (details.reasoningSystemInstruction?.length || 0) + (details.articleSystemInstruction?.length || 0) + (details.reasoningPrompt?.length || 0) + (details.articlePrompt?.length || 0),
       truncated: Boolean(groundedContext.contextSizing?.truncated),
       removedRecords: groundedContext.contextSizing?.removedRecords || [],
       removedContextItems: groundedContext.contextSizing?.removedContextItems || [],
@@ -1366,6 +1737,81 @@ function assertEditorialGateReady(groundedContext = {}) {
   }
 }
 
+function normalizeOpenAIReasoning(value, groundedContext = {}) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new GenerationValidationError('OpenAI returned malformed editorial reasoning.');
+  }
+  return {
+    verifiedFacts: (value.verifiedFacts || []).map((item) => clampText(item, 260)).filter(Boolean).slice(0, 8),
+    tension: clampText(value.tension, 420),
+    whatChanged: clampText(value.whatChanged, 420),
+    creatorConsequence: clampText(value.creatorConsequence, 420),
+    thesis: clampText(value.thesis, 420),
+    certifydConcepts: (value.certifydConcepts || []).map((item) => ({
+      concept: clampText(item?.concept, 100),
+      relevance: clampText(item?.relevance, 260),
+      sourceConnection: clampText(item?.sourceConnection, 260),
+    })).filter((item) => item.concept || item.relevance || item.sourceConnection).slice(0, 3),
+    avoidAngles: (value.avoidAngles || []).map((item) => clampText(item, 160)).filter(Boolean).slice(0, 10),
+    articleProgression: (value.articleProgression || []).map((item) => clampText(item, 260)).filter(Boolean).slice(0, 8),
+    sourceIds: (groundedContext.externalSourceFacts || []).map((source) => source.id).filter(Boolean),
+  };
+}
+
+function assertOpenAIReasoningReady(reasoning = {}, groundedContext = {}) {
+  const failures = [];
+  if (!reasoning.verifiedFacts?.length) failures.push('CORE FACTS is empty');
+  if (!reasoning.tension) failures.push('EDITORIAL TENSION is empty');
+  if (!reasoning.creatorConsequence) failures.push('CREATOR CONSEQUENCE is empty');
+  if (!reasoning.thesis) failures.push('EDITORIAL THESIS is empty');
+  if (!Array.isArray(reasoning.articleProgression) || reasoning.articleProgression.filter((step) => step.length >= 16).length < 4) failures.push('ARTICLE ARGUMENT has fewer than 4 steps');
+  for (const concept of reasoning.certifydConcepts || []) {
+    if (!concept.sourceConnection) {
+      failures.push('a selected Certifyd concept has no Source connection');
+      break;
+    }
+  }
+  const briefLike = {
+    verifiedFacts: reasoning.verifiedFacts,
+    editorialTension: reasoning.tension,
+    whatChanged: reasoning.whatChanged,
+    creatorConsequence: reasoning.creatorConsequence,
+    possibleThesis: reasoning.thesis,
+    articleProgression: reasoning.articleProgression,
+    selectedCertifydConcepts: reasoning.certifydConcepts,
+  };
+  for (const unsupported of detectUnsupportedBriefConcepts(briefLike, groundedContext.externalSourceFacts || [])) {
+    failures.push(`EDITORIAL BRIEF contains source-unsupported concept: ${unsupported}`);
+  }
+  if (failures.length) {
+    throw new GenerationConfigurationError(`Article generation blocked by editorial gate: ${failures.join('; ')}.`);
+  }
+}
+
+function buildOpenAIWritingContext(groundedContext = {}, reasoning = {}) {
+  const concepts = (reasoning.certifydConcepts || []).map((item) => `${item.concept} ${item.relevance} ${item.sourceConnection}`.toLowerCase());
+  const knowledge = Array.isArray(groundedContext.approvedKnowledge) ? groundedContext.approvedKnowledge : [];
+  const scored = knowledge.map((item, index) => {
+    const haystack = `${item.title || ''} ${item.theme || ''} ${item.path || ''} ${item.excerpt || ''} ${(item.supportedClaims || []).join(' ')} ${(item.qualifiedClaims || []).join(' ')}`.toLowerCase();
+    const conceptScore = concepts.reduce((score, concept) => score + termOverlapScore(concept, haystack), 0);
+    const existingScore = Number(item.selectionScore || 0) / 100;
+    return { item, index, score: conceptScore + existingScore };
+  });
+  const selected = scored
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .slice(0, Math.min(3, Math.max(1, reasoning.certifydConcepts?.length || 1)))
+    .map(({ item }) => item);
+  return { approvedKnowledge: selected };
+}
+
+function termOverlapScore(a = '', b = '') {
+  const stop = new Set(['the', 'and', 'for', 'with', 'that', 'this', 'from', 'into', 'only', 'because', 'source', 'facts', 'creator', 'creators', 'certifyd', 'relevant']);
+  const terms = new Set(String(a).match(/\b[a-z][a-z0-9-]{3,}\b/g)?.filter((term) => !stop.has(term)) || []);
+  let score = 0;
+  for (const term of terms) if (String(b).includes(term)) score += 1;
+  return score;
+}
+
 function assertAllowedOllamaBaseUrl(value) {
   let url;
   try {
@@ -1417,7 +1863,7 @@ async function readJsonWithTimeout(response, timeoutMs, label) {
 function enterGenerationSlot(config, userKey) {
   const key = String(userKey || 'local-user').toLowerCase();
   if (activeUsers.has(key)) throw new GenerationRateLimitError('This user already has an active generation.');
-  if (activeGlobalGenerations >= config.ollama.maxConcurrentGenerations) throw new GenerationRateLimitError('Local AI generation is busy. Try again when the current draft finishes.');
+  if (activeGlobalGenerations >= maxConcurrentGenerations(config)) throw new GenerationRateLimitError('AI generation is busy. Try again when the current draft finishes.');
   activeUsers.add(key);
   activeGlobalGenerations += 1;
 }
@@ -1439,7 +1885,7 @@ export function parseJsonContent(content) {
   try {
     return JSON.parse(clean);
   } catch {
-    throw new GenerationValidationError('Qwen returned malformed JSON.');
+    throw new GenerationValidationError('AI returned malformed JSON.');
   }
 }
 
@@ -2347,6 +2793,68 @@ function normalizeOllamaUsage(body) {
     completionTokens: body.eval_count,
     totalTokens: Number(body.prompt_eval_count || 0) + Number(body.eval_count || 0),
   };
+}
+
+function extractOpenAIResponseText(response = {}) {
+  if (typeof response.output_text === 'string') return response.output_text;
+  const chunks = [];
+  for (const item of response.output || []) {
+    for (const content of item.content || []) {
+      if (typeof content.text === 'string') chunks.push(content.text);
+      if (typeof content.value === 'string') chunks.push(content.value);
+    }
+  }
+  return chunks.join('\n').trim();
+}
+
+function normalizeOpenAIUsage(usage = {}) {
+  const promptTokens = usage.input_tokens ?? usage.prompt_tokens;
+  const completionTokens = usage.output_tokens ?? usage.completion_tokens;
+  const totalTokens = usage.total_tokens ?? Number(promptTokens || 0) + Number(completionTokens || 0);
+  return {
+    promptTokens,
+    completionTokens,
+    totalTokens,
+  };
+}
+
+function mergeOpenAITokenUsage(usages = []) {
+  const valid = usages.filter(Boolean);
+  if (!valid.length) return null;
+  return valid.reduce((total, usage) => ({
+    promptTokens: Number(total.promptTokens || 0) + Number(usage.promptTokens || 0),
+    completionTokens: Number(total.completionTokens || 0) + Number(usage.completionTokens || 0),
+    totalTokens: Number(total.totalTokens || 0) + Number(usage.totalTokens || 0),
+  }), { promptTokens: 0, completionTokens: 0, totalTokens: 0 });
+}
+
+function normalizeOpenAIError(error, modelName) {
+  const status = Number(error?.status || error?.statusCode || 0);
+  const code = String(error?.code || error?.type || '');
+  const message = sanitizeLogMessage(error?.message || 'AI request failed.');
+  if (status === 401 || status === 403 || /auth|api[_ -]?key|permission/i.test(`${code} ${message}`)) {
+    return Object.assign(new GenerationConfigurationError('OpenAI authentication failed. Check OPENAI_API_KEY.'), { cause: error });
+  }
+  if (status === 404 || /model.*not.*found|model.*unavailable|unsupported.*model/i.test(message)) {
+    return Object.assign(new GenerationConfigurationError(`OpenAI model is unavailable: ${modelName}. Check BLOG_GENERATION_MODEL.`), { cause: error });
+  }
+  if (status === 429 || /rate.?limit|quota/i.test(message)) {
+    return Object.assign(new GenerationRateLimitError('OpenAI rate limit or quota was reached. Try again later.'), { cause: error });
+  }
+  if (error?.name === 'AbortError' || /timeout|timed out|aborted/i.test(message)) {
+    return Object.assign(new Error('AI request timed out. Try again or reduce the requested draft size.'), { statusCode: 408, cause: error });
+  }
+  return Object.assign(new Error(`AI request failed: ${message}`), { statusCode: status >= 400 ? status : 502, cause: error });
+}
+
+function maxConcurrentGenerations(config = {}) {
+  if (config.modelProvider === 'openai') return positiveNumber(config.openai?.maxConcurrentGenerations, 1);
+  return positiveNumber(config.ollama?.maxConcurrentGenerations, 1);
+}
+
+function maxContextChars(config = {}) {
+  if (config.modelProvider === 'openai') return positiveNumber(config.openai?.maxContextChars, 18000);
+  return positiveNumber(config.ollama?.maxContextChars, 16000);
 }
 
 function titleFromMarkdown(relative, text) {

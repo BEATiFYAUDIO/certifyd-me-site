@@ -85,7 +85,7 @@ test('4 founder can view dashboard', async () => withServer(async (base) => {
   assert.doesNotMatch(html, /Review Queue/);
 }));
 
-test('4b article workspace owns full Qwen generation and trending opportunities', async () => withServer(async (base) => {
+test('4b article workspace owns AI generation and trending opportunities', async () => withServer(async (base) => {
   const cookie = await login(base, 'founder@example.test');
   const response = await fetch(`${base}/app/content/articles?view=ideas`, { headers: { cookie } });
   assert.equal(response.status, 200);
@@ -93,7 +93,7 @@ test('4b article workspace owns full Qwen generation and trending opportunities'
   assert.match(html, /Blog Engine/);
   assert.match(html, /Article workspace/);
   assert.match(html, /What should Certifyd write about\?/);
-  assert.match(html, /Ask Qwen/);
+  assert.match(html, /Generate Article/);
   assert.match(html, /Trending Opportunities/);
   assert.match(html, /Recent Source Stories/);
   assert.match(html, /No live trend scan has been saved yet/);
@@ -267,7 +267,7 @@ test('4bab retained source stories show existing draft instead of duplicate gene
     assert.match(html, /Existing source draft story[\s\S]*Draft exists[\s\S]*Open draft/);
     assert.match(html, /Existing source draft story[\s\S]*Generate Article[\s\S]*Draft exists/);
     assert.match(html, /New retained source story[\s\S]*Low Certifyd relevance[\s\S]*Generate Article/);
-    assert.equal((html.match(/Generate Article/g) || []).length, 2);
+    assert.equal((html.match(/class="source-story-actions"[\s\S]*?Generate Article/g) || []).length, 2);
   }, { CONTENT_AGENT_ROOT: tmpRoot });
 });
 
@@ -378,7 +378,7 @@ test('4bc article workspace shows generation Brain diagnostics', async () => {
     assert.match(html, /Generation diagnostics/);
     assert.match(html, /Brain records selected/);
     assert.match(html, /Brain records actually sent/);
-    assert.match(html, /Exact Brain context sent to Qwen/);
+    assert.match(html, /Exact Brain context sent to AI/);
     assert.match(html, /Music Business Worldwide/);
     assert.match(html, /https:\/\/example\.test\/musi-story/);
   }, {
@@ -544,7 +544,7 @@ test('9 writer can access create draft action page path but cannot approve', asy
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /What should Certifyd write about\?/);
-  assert.match(html, /Check Qwen/);
+  assert.match(html, /Check AI/);
   assert.doesNotMatch(html, /<button class="primary" type="submit">Approve<\/button>/);
 }));
 
@@ -614,10 +614,10 @@ test('17 unsafe HTML is not executable in preview rendering', async () => withSe
   assert.doesNotMatch(await response.text(), /<script>/i);
 }));
 
-test('18 deterministic fallback is labelled accurately', async () => withServer(async (base) => {
+test('18 generation provider status is labelled accurately', async () => withServer(async (base) => {
   const cookie = await login(base, 'founder@example.test');
   const response = await fetch(`${base}/app/content`, { headers: { cookie } });
-  assert.match(await response.text(), /Qwen|Deterministic Fallback|Unavailable/);
+  assert.match(await response.text(), /OpenAI configured|OpenAI not configured|Deterministic Fallback|Unavailable/);
 }));
 
 test('19 Blog package preparation remains visibly blocked before approval', async () => withServer(async (base) => {

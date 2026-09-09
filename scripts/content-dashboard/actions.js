@@ -103,14 +103,14 @@ export class ContentDashboardActions {
       return result;
     } catch (error) {
       await this.audit.append({ action: 'article_generation', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, result: 'FAILED', note: `${provider.providerName}:${safeError(error)}` });
-      if (provider.supportsLiveGeneration && shouldCreateDeterministicGenerationFallback(error)) {
+      if (provider.providerName !== 'openai' && provider.supportsLiveGeneration && shouldCreateDeterministicGenerationFallback(error)) {
         const fallbackProvider = createGenerationProvider(this.config, { provider: 'deterministic' });
         const article = await createDeterministicFallbackArticle(input, groundedContext, safeError(error));
         const result = await persistGeneratedArticleRun(this.config, article, input, groundedContext, fallbackProvider);
         await this.audit.append({ action: 'article_generation_fallback', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId: result.runId, result: 'SUCCESS', note: `deterministic:${safeError(error)}` });
         return {
           ...result,
-          output: `${result.output}\nQwen did not return a usable article, so Blog Engine created a source-backed review draft instead.`,
+          output: `${result.output}\nThe legacy local AI provider did not return a usable article, so Blog Engine created a source-backed review draft instead.`,
         };
       }
       throw error;
@@ -289,17 +289,20 @@ export class ContentDashboardActions {
     return this.runEngine(actor, 'article_generation_legacy', ['content:generate:model', '--', '--input', inputPath, '--deterministic-fallback']);
   }
 
-  async generationHealth({ provider = 'ollama' } = {}) {
+  async generationHealth({ provider = 'openai', live = false } = {}) {
     const providerName = normalizeProviderName(provider);
     const generator = createGenerationProvider(this.config, { provider: providerName });
     try {
+      if (live && typeof generator.checkModel === 'function') return await generator.checkModel();
       return await generator.healthCheck();
     } catch {
       return {
-        enabled: providerName === 'deterministic' || Boolean(this.config.ollama?.enabled),
+        enabled: providerName === 'deterministic' || Boolean(this.config.openai?.apiKey) || Boolean(this.config.ollama?.enabled),
         reachable: false,
         model: generator.modelName || providerName,
         modelInstalled: false,
+        configured: false,
+        available: false,
       };
     }
   }
