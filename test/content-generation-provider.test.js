@@ -367,6 +367,17 @@ test('OpenAI final writing instructions discourage validator-facing defensive pr
   assert.match(finalInstructionText, /Do not force Certifyd into the article/i);
   assert.match(finalInstructionText, /Never manufacture a Certifyd connection from generic payouts, provenance, identity, ownership, records, transparency or creator-control language/i);
   assert.match(finalInstructionText, /Prefer confident, conventional editorial prose over defensive phrases/i);
+  assert.match(finalInstructionText, /Default to no Certifyd product mention/i);
+  assert.match(finalInstructionText, /Absence of a Certifyd reference is a successful outcome/i);
+  assert.match(finalInstructionText, /If certifydConcepts is empty, the article must contain zero Certifyd product references/i);
+  assert.match(finalInstructionText, /If certifydConcepts is non-empty, it is permission to consider that concept, not a requirement to mention it/i);
+  assert.match(finalInstructionText, /Use only the Certifyd connection explicitly approved in the reasoning object/i);
+  assert.match(finalInstructionText, /legal dispute → documentation → provenance → Certifyd/i);
+  assert.match(finalInstructionText, /AI → identity → Certifyd/i);
+  assert.match(finalInstructionText, /payments → payouts → Certifyd/i);
+  assert.match(finalInstructionText, /rights → ownership → Certifyd/i);
+  assert.match(finalInstructionText, /creator story → creator control → Certifyd/i);
+  assert.match(finalInstructionText, /Remove unnecessary defensive product disclaimers/i);
 });
 
 test('OpenAI reasoning cannot introduce royalty frame without source support', async () => {
