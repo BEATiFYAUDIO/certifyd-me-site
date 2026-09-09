@@ -307,7 +307,7 @@ export class OpenAIGenerationProvider {
         maxOutputTokens: Math.min(this.config.openai.maxOutputTokens, 1800),
         abortSignal,
       });
-      const reasoning = normalizeOpenAIReasoning(parseJsonContent(reasoningResponse.text), groundedContext);
+      const reasoning = sanitizeOpenAIReasoningUnsupportedConcepts(normalizeOpenAIReasoning(parseJsonContent(reasoningResponse.text), groundedContext), groundedContext);
       assertOpenAIReasoningReady(reasoning, groundedContext);
       const writingContext = buildOpenAIWritingContext(groundedContext, reasoning);
       const articleSystemInstruction = buildArticleSystemInstruction();
@@ -1871,6 +1871,29 @@ function normalizeOpenAIReasoning(value, groundedContext = {}) {
     avoidAngles: (value.avoidAngles || []).map((item) => clampText(item, 160)).filter(Boolean).slice(0, 10),
     articleProgression: (value.articleProgression || []).map((item) => clampText(item, 260)).filter(Boolean).slice(0, 8),
     sourceIds: (groundedContext.externalSourceFacts || []).map((source) => source.id).filter(Boolean),
+  };
+}
+
+function sanitizeOpenAIReasoningUnsupportedConcepts(reasoning = {}, groundedContext = {}) {
+  const support = conceptSupportFromSourceFacts(groundedContext.externalSourceFacts || []);
+  const brief = sanitizeEditorialBriefUnsupportedConcepts({
+    editorialTension: reasoning.tension,
+    whatChanged: reasoning.whatChanged,
+    creatorConsequence: reasoning.creatorConsequence,
+    possibleThesis: reasoning.thesis,
+    selectedCertifydConcepts: reasoning.certifydConcepts,
+    avoidAngles: reasoning.avoidAngles,
+    articleProgression: reasoning.articleProgression,
+  }, support);
+  return {
+    ...reasoning,
+    tension: brief.editorialTension,
+    whatChanged: brief.whatChanged,
+    creatorConsequence: brief.creatorConsequence,
+    thesis: brief.possibleThesis,
+    certifydConcepts: brief.selectedCertifydConcepts,
+    avoidAngles: brief.avoidAngles,
+    articleProgression: brief.articleProgression,
   };
 }
 

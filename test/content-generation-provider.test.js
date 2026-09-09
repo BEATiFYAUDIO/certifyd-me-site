@@ -344,6 +344,45 @@ test('only selected Brain concepts reach OpenAI final writing', async () => {
   assert.doesNotMatch(calls[1].input, /A payout is the movement of allocated earnings/i);
 });
 
+test('OpenAI reasoning cannot introduce royalty frame without source support', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'source-discovery-visibility',
+      publisher: 'Music Business Worldwide',
+      publishedAt: '2026-09-09T09:00:00.000Z',
+      title: 'Creator platform changes independent music infrastructure',
+      summary: 'A source story reports a platform infrastructure change for artists and labels. It discusses visibility, audience reach and creator-operated distribution.',
+      articleUrl: 'https://example.test/source-discovery-visibility',
+      categories: ['Music', 'Discovery'],
+      certifydRelevanceScore: 8,
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Creator platform changes independent music infrastructure',
+    trendSourceItemIds: 'source-discovery-visibility',
+  });
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      calls,
+      reasoning: validReasoning({
+        tension: 'The tension is whether royalty flows become visible to creators.',
+        whatChanged: 'Now royalty terms are part of the operational story.',
+        creatorConsequence: 'Creators need royalty transparency.',
+        thesis: 'This story shows why royalty context matters.',
+        certifydConcepts: [{ concept: 'Royalty context', relevance: 'Relevant to royalty transparency.', sourceConnection: 'The source facts create a royalty question.' }],
+      }),
+      article: validArticle(sourceId),
+    }),
+  });
+  await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Creator platform changes independent music infrastructure', audience: 'Creators', objective: 'Explain discovery.' }, context);
+  assert.doesNotMatch(calls[1].input, /\broyalt(?:y|ies)\b/i);
+});
+
 test('OpenAI final validation still rejects unsafe generated article state', async () => {
   const config = await makeConfig();
   const context = await makeContext(config);
