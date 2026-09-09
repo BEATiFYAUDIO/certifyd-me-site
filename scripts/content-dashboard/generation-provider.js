@@ -253,10 +253,7 @@ export class OpenAIGenerationProvider {
     this.modelName = options.modelName || config.openai?.model || DEFAULT_OPENAI_MODEL;
     this.supportsLiveGeneration = true;
     this.lastRequest = { durationMs: 0, tokenUsage: null, stages: [] };
-    this.client = options.openaiClient || new OpenAI({
-      apiKey: config.openai?.apiKey || process.env.OPENAI_API_KEY,
-      timeout: positiveNumber(config.openai?.timeoutMs, DEFAULT_OPENAI_TIMEOUT_MS),
-    });
+    this.client = options.openaiClient || null;
   }
 
   async isAvailable() {
@@ -276,7 +273,7 @@ export class OpenAIGenerationProvider {
       return { configured: false, available: false, provider: 'openai', model: this.modelName, reason: 'OPENAI_API_KEY is not configured.' };
     }
     try {
-      const response = await this.client.responses.create({
+      const response = await this.openAIClient().responses.create({
         model: this.modelName,
         input: 'Return only: OK',
         max_output_tokens: 8,
@@ -352,7 +349,7 @@ export class OpenAIGenerationProvider {
 
   async createStructuredResponse({ stage, schemaName, schema, systemInstruction, userPrompt, maxOutputTokens, abortSignal }) {
     try {
-      const response = await this.client.responses.create({
+      const response = await this.openAIClient().responses.create({
         model: this.modelName,
         instructions: systemInstruction,
         input: userPrompt,
@@ -382,6 +379,18 @@ export class OpenAIGenerationProvider {
       if (error instanceof GenerationValidationError) throw error;
       throw normalizeOpenAIError(error, this.modelName);
     }
+  }
+
+  openAIClient() {
+    if (!this.client) {
+      const apiKey = this.config.openai?.apiKey || process.env.OPENAI_API_KEY;
+      if (!apiKey) throw new GenerationConfigurationError('OpenAI is not configured. Set OPENAI_API_KEY before using AI generation.');
+      this.client = new OpenAI({
+        apiKey,
+        timeout: positiveNumber(this.config.openai?.timeoutMs, DEFAULT_OPENAI_TIMEOUT_MS),
+      });
+    }
+    return this.client;
   }
 }
 
