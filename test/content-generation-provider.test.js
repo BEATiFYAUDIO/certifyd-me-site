@@ -477,6 +477,158 @@ test('OpenAI retries once when article prose copies generic Certifyd glossary de
   assert.doesNotMatch(article.bodyMarkdown, /Provenance is evidence about/i);
 });
 
+test('isolated royalty vocabulary in general explanatory prose does not fail article validation', async () => {
+  const config = await makeConfig();
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'source-platform-policy',
+      publisher: 'Music Ally',
+      publishedAt: '2026-09-09T09:00:00.000Z',
+      title: 'Platform changes creator rights policy for catalog visibility',
+      summary: 'A source story reports that a platform changed creator rights policy for catalog visibility, distribution and audience reach.',
+      articleUrl: 'https://example.test/source-platform-policy',
+      categories: ['Music', 'Policy'],
+      certifydRelevanceScore: 10,
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Platform changes creator rights policy for catalog visibility',
+    trendSourceItemIds: 'source-platform-policy',
+  });
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      article: validArticle(sourceId, {
+        bodyMarkdown: `${validArticle(sourceId).bodyMarkdown}\n\nMusic agreements can involve royalties, licensing terms, performer rights and other obligations, but this source story is narrower than those general categories.`,
+      }),
+    }),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Platform changes creator rights policy for catalog visibility', audience: 'Creators', objective: 'Explain rights policy.' }, context);
+  assert.match(article.bodyMarkdown, /Music agreements can involve royalties/i);
+});
+
+test('unsupported factual royalty claim triggers one repair call and preserves article metadata', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'source-platform-policy-repair',
+      publisher: 'Music Ally',
+      publishedAt: '2026-09-09T09:00:00.000Z',
+      title: 'Platform changes creator rights policy for catalog visibility',
+      summary: 'A source story reports that a platform changed creator rights policy for catalog visibility, distribution and audience reach.',
+      articleUrl: 'https://example.test/source-platform-policy-repair',
+      categories: ['Music', 'Policy'],
+      certifydRelevanceScore: 10,
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Platform changes creator rights policy for catalog visibility',
+    trendSourceItemIds: 'source-platform-policy-repair',
+  });
+  const sourceId = context.sourceRecords[0].id;
+  const base = validArticle(sourceId, {
+    title: 'Platform Policy and Catalog Visibility',
+    suggestedSlug: 'platform-policy-catalog-visibility',
+    seoTitle: 'Platform Policy and Catalog Visibility | Certifyd',
+  });
+  const badArticle = {
+    ...base,
+    bodyMarkdown: `${base.bodyMarkdown}\n\nThe policy created a new royalty obligation for performers.`,
+  };
+  const goodArticle = {
+    ...base,
+    bodyMarkdown: `${base.bodyMarkdown}\n\nThe policy changed how catalog visibility and creator business context need to be explained.`,
+  };
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({ calls, article: [badArticle, goodArticle] }),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Platform changes creator rights policy for catalog visibility', audience: 'Creators', objective: 'Explain rights policy.' }, context);
+  assert.equal(calls.length, 3);
+  assert.match(calls[2].input, /new royalty obligation/i);
+  assert.equal(article.title, base.title);
+  assert.equal(article.seoTitle, base.seoTitle);
+  assert.doesNotMatch(article.bodyMarkdown, /new royalty obligation/i);
+});
+
+test('unsupported royalty thesis triggers repair without retrying reasoning or writing stages', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'source-policy-thesis-repair',
+      publisher: 'Music Ally',
+      publishedAt: '2026-09-09T09:00:00.000Z',
+      title: 'Platform changes creator rights policy for catalog visibility',
+      summary: 'A source story reports that a platform changed creator rights policy for catalog visibility, distribution and audience reach.',
+      articleUrl: 'https://example.test/source-policy-thesis-repair',
+      categories: ['Music', 'Policy'],
+      certifydRelevanceScore: 10,
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Platform changes creator rights policy for catalog visibility',
+    trendSourceItemIds: 'source-policy-thesis-repair',
+  });
+  const sourceId = context.sourceRecords[0].id;
+  const base = validArticle(sourceId);
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      calls,
+      article: [
+        { ...base, bodyMarkdown: `${base.bodyMarkdown}\n\nThis story proves creators are entitled to royalties from platform catalog policy changes.` },
+        { ...base, bodyMarkdown: `${base.bodyMarkdown}\n\nThis story shows why platform catalog policy changes need clearer creator-business context.` },
+      ],
+    }),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Platform changes creator rights policy for catalog visibility', audience: 'Creators', objective: 'Explain rights policy.' }, context);
+  assert.deepEqual(calls.map((call) => call.text.format.name), ['certifyd_editorial_reasoning', 'certifyd_article', 'certifyd_article']);
+  assert.doesNotMatch(article.bodyMarkdown, /entitled to royalties/i);
+});
+
+test('unsupported source-attributed royalty claim remains fatal and creates no draft', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'source-fatal-attribution',
+      publisher: 'Billboard',
+      publishedAt: '2026-09-09T09:00:00.000Z',
+      title: 'Platform changes creator rights policy for catalog visibility',
+      summary: 'A source story reports that a platform changed creator rights policy for catalog visibility, distribution and audience reach.',
+      articleUrl: 'https://example.test/source-fatal-attribution',
+      categories: ['Music', 'Policy'],
+      certifydRelevanceScore: 10,
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Platform changes creator rights policy for catalog visibility',
+    trendSourceItemIds: 'source-fatal-attribution',
+  });
+  const sourceId = context.sourceRecords[0].id;
+  const base = validArticle(sourceId);
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      calls,
+      article: { ...base, bodyMarkdown: `${base.bodyMarkdown}\n\nBillboard reports that the policy created a new royalty obligation for performers.` },
+    }),
+  });
+  await assert.rejects(
+    () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Platform changes creator rights policy for catalog visibility', audience: 'Creators', objective: 'Explain rights policy.' }, context),
+    /Generation blocked: unsupported factual claim/,
+  );
+  assert.equal(calls.length, 2);
+  await assert.rejects(() => fs.access(config.outputDir));
+});
+
 test('OpenAI final validation still rejects unsafe generated article state', async () => {
   const config = await makeConfig();
   const context = await makeContext(config);

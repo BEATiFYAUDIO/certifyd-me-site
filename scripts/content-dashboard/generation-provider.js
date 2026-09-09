@@ -341,8 +341,8 @@ export class OpenAIGenerationProvider {
       try {
         return validateGeneratedArticle(article, groundedContext);
       } catch (error) {
-        if (!(error instanceof GenerationValidationError) || !isGenericDefinitionLeakError(error)) throw error;
-        const revisionPrompt = buildArticleRevisionPrompt(articlePrompt, article, error.warnings);
+        if (!(error instanceof GenerationValidationError) || !isRepairablePostGenerationError(error)) throw error;
+        const revisionPrompt = buildArticleRevisionPrompt(articlePrompt, article, error.warnings, error.validationFindings);
         const revisionResponse = await this.createStructuredResponse({
           stage: 'article-revision',
           schemaName: 'certifyd_article',
@@ -359,7 +359,9 @@ export class OpenAIGenerationProvider {
           tokenUsage: mergeOpenAITokenUsage(stages.map((stage) => stage.tokenUsage)),
           stages,
         };
-        return validateGeneratedArticle(revisedArticle, groundedContext);
+        const validated = validateGeneratedArticle(revisedArticle, groundedContext);
+        logPostGenerationValidationFindings(error.validationFindings, true);
+        return validated;
       }
     } catch (error) {
       if (error instanceof GenerationConfigurationError || error instanceof GenerationValidationError || error instanceof GenerationRateLimitError) throw error;
@@ -668,6 +670,7 @@ export function validateGeneratedArticle(value, groundedContext) {
   if (detectInternalContextLeak(value.bodyMarkdown).length) {
     throw new GenerationValidationError('Generation failed validation — internal context leaked into article.');
   }
+  const warnings = [...(value.warnings || []).map(String).map((warning) => warning.trim()).filter(Boolean)];
   const hasExternalSources = Array.isArray(groundedContext.externalSourceFacts) && groundedContext.externalSourceFacts.length > 0;
   if (hasExternalSources) {
     const genericHeadingHits = detectGenericEditorialHeadings(value.bodyMarkdown);
@@ -678,13 +681,22 @@ export function validateGeneratedArticle(value, groundedContext) {
     if (genericDefinitionHits.length) {
       throw new GenerationValidationError('Generation failed validation — generic Certifyd glossary copy leaked into article.', genericDefinitionHits);
     }
-    const unsupportedConceptHits = detectUnsupportedEditorialConcepts(value.bodyMarkdown, groundedContext);
-    if (unsupportedConceptHits.length) {
-      throw new GenerationValidationError('Generation failed validation — article introduced source-unsupported editorial concepts.', unsupportedConceptHits);
+    const unsupportedFindings = classifyUnsupportedEditorialConcepts(value.bodyMarkdown, groundedContext);
+    if (unsupportedFindings.fatal.length) {
+      logPostGenerationValidationFindings(unsupportedFindings, false);
+      const error = new GenerationValidationError('Generation blocked: unsupported factual claim.', unsupportedFindings.fatal.map(formatValidationFinding));
+      error.validationFindings = unsupportedFindings;
+      throw error;
     }
+    if (unsupportedFindings.repairable.length) {
+      logPostGenerationValidationFindings(unsupportedFindings, false);
+      const error = new GenerationValidationError('Generation needs editorial repair: unsupported source-story framing.', unsupportedFindings.repairable.map(formatValidationFinding));
+      error.validationFindings = unsupportedFindings;
+      throw error;
+    }
+    warnings.push(...unsupportedFindings.warnings.map(formatValidationFinding));
   }
   const sourceIds = new Set(groundedContext.sourceRecords.map((source) => source.id));
-  const warnings = [...(value.warnings || []).map(String).map((warning) => warning.trim()).filter(Boolean)];
   const normalizedClaims = [];
   for (const claim of value.claims || []) {
     if (!claim || typeof claim.text !== 'string' || !Array.isArray(claim.sourceIds) || !['supported', 'needs-review'].includes(claim.confidence)) {
@@ -1140,21 +1152,35 @@ function isGenericDefinitionLeakError(error) {
   return /generic Certifyd glossary copy leaked into article/i.test(error?.message || '');
 }
 
-function buildArticleRevisionPrompt(originalPrompt, article, genericDefinitionHits = []) {
+function isRepairablePostGenerationError(error) {
+  if (isGenericDefinitionLeakError(error)) return true;
+  return /Generation needs editorial repair/i.test(error?.message || '');
+}
+
+function buildArticleRevisionPrompt(originalPrompt, article, genericDefinitionHits = [], validationFindings = null) {
   const hits = genericDefinitionHits.length
     ? genericDefinitionHits.map((hit) => `- ${hit}`).join('\n')
     : '- Generic Certifyd glossary definition copy.';
+  const findings = validationFindings
+    ? [
+      ...(validationFindings.repairable || []),
+      ...(validationFindings.warnings || []),
+    ].map((finding) => `- ${formatValidationFinding(finding)}`).join('\n')
+    : '';
   return [
     originalPrompt,
     '',
     'REVISION REQUIRED:',
-    'The draft below failed validation because generic Certifyd glossary copy appeared in article prose.',
-    'Rewrite the article JSON to preserve the same source-backed thesis, facts, claims and overall structure while removing the glossary-style definition copy.',
+    'The draft below failed post-generation validation because a small number of sentences need editorial repair.',
+    'Rewrite the article JSON to preserve the same source-backed thesis, facts, claims, SEO/frontmatter and overall structure while changing only the flagged sentences or paragraphs.',
     'Do not add new facts, new Certifyd capabilities, new source claims, or new Brain concepts.',
+    'Remove or qualify unsupported claims. Preserve general explanatory context only when it is clearly not a factual claim about the source event.',
     'Do not use sentences beginning “A payout is”, “A record is”, “A receipt is”, “A profile is”, “A release record is”, or “Provenance is evidence about”.',
     '',
     'BLOCKED PHRASES:',
     hits,
+    findings ? '\nVALIDATION FINDINGS:' : '',
+    findings,
     '',
     'FAILED ARTICLE JSON:',
     JSON.stringify(article, null, 2),
@@ -1820,9 +1846,14 @@ function detectShallowEditorialDraft(bodyMarkdown) {
 }
 
 function detectUnsupportedEditorialConcepts(markdown, groundedContext = {}) {
+  const findings = classifyUnsupportedEditorialConcepts(markdown, groundedContext);
+  return [...findings.fatal, ...findings.repairable].map((finding) => finding.concept);
+}
+
+function classifyUnsupportedEditorialConcepts(markdown, groundedContext = {}) {
   const sourceText = editorialSourceText(groundedContext.externalSourceFacts || []);
   const text = String(markdown || '').replace(/\s+/g, ' ');
-  const hits = [];
+  const findings = { fatal: [], repairable: [], warnings: [] };
   const unsupported = [
     ['licensing', /\blicens(?:e|es|ed|ing)|licensing deal\b/i, /\blicens(?:e|es|ed|ing)|permission|rights?|copyright|clearance|settlement|opt[-\s]?in/i],
     ['payout', /\bpayouts?\b/i, /\bpayouts?\b/i],
@@ -1834,9 +1865,83 @@ function detectUnsupportedEditorialConcepts(markdown, groundedContext = {}) {
     ['successful breach', /\bsuccessful breaches?\b|\baccounts? (?:were|was) breached\b/i, /\bsuccessful breaches?|evidence of successful breaches?|no evidence of successful breaches?/i],
   ];
   for (const [label, articlePattern, sourcePattern] of unsupported) {
-    if (articlePattern.test(text) && !sourcePattern.test(sourceText)) hits.push(label);
+    if (sourcePattern.test(sourceText)) continue;
+    for (const sentence of articleSentencesWithPattern(text, articlePattern)) {
+      const severity = unsupportedConceptSeverity(sentence, label, groundedContext);
+      findings[severity].push({
+        concept: label,
+        severity,
+        sentence,
+        reason: unsupportedConceptReason(sentence, label, severity),
+      });
+    }
   }
-  return [...new Set(hits)];
+  return {
+    fatal: dedupeFindings(findings.fatal),
+    repairable: dedupeFindings(findings.repairable),
+    warnings: dedupeFindings(findings.warnings),
+  };
+}
+
+function articleSentencesWithPattern(text, pattern) {
+  const sentences = String(text || '')
+    .replace(/^#{1,6}\s+/gm, '')
+    .split(/(?<=[.!?])\s+|\n{2,}/)
+    .map((sentence) => sentence.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  return sentences.filter((sentence) => {
+    pattern.lastIndex = 0;
+    return pattern.test(sentence);
+  });
+}
+
+function unsupportedConceptSeverity(sentence, concept, groundedContext = {}) {
+  const text = String(sentence || '').toLowerCase();
+  const sourceNames = (groundedContext.externalSourceFacts || [])
+    .flatMap((source) => [source.publisher, source.title])
+    .filter(Boolean)
+    .map((value) => String(value).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim())
+    .filter((value) => value.length >= 4);
+  const normalizedSentence = text.replace(/[^a-z0-9]+/g, ' ');
+  const namesSource = sourceNames.some((name) => normalizedSentence.includes(name.slice(0, Math.min(name.length, 42))));
+  const attributesToSource = namesSource || /\b(source|article|report|reports|reported|says|said|according to|coverage)\b/.test(text);
+  const materialClaim = /\b(created|creates|required|requires|established|establishes|proved|proves|showed|shows|means|meant|entitled|owed|owes|must|will|would|did|does|became|becomes|received|receives|paid|pays|launched|announced|signed|agreed|deal|obligation|lawsuit|settlement)\b/.test(text);
+  const thesisClaim = /\b(this (?:deal|case|story|dispute|lawsuit|report)|the (?:deal|case|story|dispute|lawsuit|report))\b[^.]{0,160}\b(shows|proves|means|creates|requires|establishes)\b/.test(text)
+    || /\bcreators? (?:are|were|should be|must be|need to be|become|became)\b[^.]{0,120}\b(entitled|owed|paid|compensated|credited|verified)\b/.test(text);
+  const generalContext = /\b(can|may|might|often|commonly|generally|in general|can involve|may involve|not every|does not always|alone may not|may not describe)\b/.test(text);
+  if (attributesToSource && materialClaim) return 'fatal';
+  if (thesisClaim || materialClaim) return 'repairable';
+  if (generalContext) return 'warnings';
+  if (concept === 'successful breach') return 'repairable';
+  return 'warnings';
+}
+
+function unsupportedConceptReason(sentence, concept, severity) {
+  if (severity === 'fatal') return `${concept} appears in an unsupported source-attributed factual claim.`;
+  if (severity === 'repairable') return `${concept} appears in unsupported source-story framing that can be narrowed.`;
+  return `${concept} appears as general vocabulary; not fatal without a material source-story claim.`;
+}
+
+function dedupeFindings(findings = []) {
+  const seen = new Set();
+  return findings.filter((finding) => {
+    const key = `${finding.severity}:${finding.concept}:${finding.sentence}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function formatValidationFinding(finding) {
+  if (typeof finding === 'string') return finding;
+  return `[${finding.severity}] ${finding.concept}: ${finding.reason} Sentence: ${finding.sentence}`;
+}
+
+function logPostGenerationValidationFindings(findings = {}, repaired = false) {
+  const entries = [...(findings.fatal || []), ...(findings.repairable || []), ...(findings.warnings || [])];
+  if (!entries.length) return;
+  const summary = entries.map((finding) => `${finding.severity}:${finding.concept}:${finding.sentence}`).join(' | ');
+  console.warn(`[blog-generation-validation] repaired=${repaired ? 'yes' : 'no'} ${summary}`);
 }
 
 function detectUnsupportedBriefConcepts(brief = {}, externalSourceFacts = []) {
