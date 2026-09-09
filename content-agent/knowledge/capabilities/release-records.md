@@ -10,7 +10,7 @@ Release records exist so works can carry clearer context into profiles, discover
 
 ## Architectural Role
 
-Release records are included in the approved Core definition, but current evidence does not confirm their complete schema, permanence, or legal authority.
+Release records are part of Certifyd Core's approved capability set. Current evidence does not confirm their complete schema, permanence, or legal authority.
 
 ## Product Surfaces
 
@@ -49,12 +49,12 @@ Records are implied by public and investor knowledge, but specific release-recor
 
 ## Supported Current Claims
 
-- No capability-specific public claim is currently approved.
+- Certifyd Core supports release records.
+- Release records preserve work, release, and attribution context for creator workflows.
 
 ## Qualified Claims
 
-- Certifyd Core is architecturally intended to support release records.
-- Release records may provide work and attribution context where implemented.
+- Release-record schema, permanence, edit/correction behavior, and legal authority remain unverified.
 
 ## Prohibited Claims
 

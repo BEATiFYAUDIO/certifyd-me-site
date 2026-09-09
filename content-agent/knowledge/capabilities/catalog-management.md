@@ -10,7 +10,7 @@ Catalog management exists so creators can maintain structured context around wor
 
 ## Architectural Role
 
-Catalog management is implied by profiles, release records, publishing, and investor references, but exact implementation is unverified.
+Catalog context is present in Certifyd's profile, publishing, and release-record architecture. Full catalog-management scope and rights-administration behavior remain unverified.
 
 ## Product Surfaces
 
@@ -30,7 +30,7 @@ Catalog management is implied by profiles, release records, publishing, and inve
 
 ## Current Status
 
-`UNCLEAR`
+`BETA`
 
 No component-status table required.
 
@@ -38,7 +38,7 @@ No component-status table required.
 
 `MEDIUM`
 
-Catalog concepts appear in public copy, but catalog-management features are not clearly defined.
+Catalog context appears in public copy and related Core/profile knowledge, but full catalog-management scope is not yet verified.
 
 ## Current Evidence
 
@@ -50,12 +50,12 @@ Catalog concepts appear in public copy, but catalog-management features are not 
 
 ## Supported Current Claims
 
-- No capability-specific public claim is currently approved.
+- Certifyd Core maintains catalog context for works and releases.
+- Catalog records can inform profiles, discovery, commerce, and Awards surfaces.
 
 ## Qualified Claims
 
-- Certifyd can support catalog context where implemented.
-- Catalog records may inform profiles, discovery, commerce, and Awards surfaces.
+- Full catalog-management scope, rights fields, media linkage, and takedown behavior remain unverified.
 
 ## Prohibited Claims
 

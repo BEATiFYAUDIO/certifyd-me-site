@@ -50,7 +50,8 @@ Payouts are described conceptually, but there is no verified payout mechanism, t
 
 ## Qualified Claims
 
-- Certifyd may support payout context where implemented.
+- Certifyd payout support is not verified as a current live capability.
+- Payout records should be described only as planned, conceptual, or implementation-specific unless a selected Brain record verifies a live payout mechanism.
 
 ## Prohibited Claims
 

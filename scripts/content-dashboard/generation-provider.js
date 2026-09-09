@@ -15,6 +15,10 @@ const EXPLAINER_BRAIN_LIMIT = 8;
 const MAX_INTERACTIVE_OUTPUT_TOKENS = 6000;
 const MAX_ARTICLE_GENERATION_TOKENS = 1200;
 const MAX_OPENAI_ARTICLE_GENERATION_TOKENS = 5000;
+const HYDRATED_SOURCE_TEXT_LIMIT = 3600;
+const HYDRATED_SOURCE_PROMPT_LIMIT = 2600;
+const HYDRATED_SOURCE_MIN_TEXT_LENGTH = 450;
+const DEFAULT_SOURCE_HYDRATION_TIMEOUT_MS = 8000;
 const DEFAULT_OLLAMA_HEALTH_TIMEOUT_MS = 5000;
 const DEFAULT_OPENAI_TIMEOUT_MS = 240000;
 const DEFAULT_OPENAI_HEALTH_TIMEOUT_MS = 12000;
@@ -643,7 +647,8 @@ export async function buildGroundedContext(config, input) {
         title: source.title,
         publisher: source.publisher,
         articleUrl: source.articleUrl,
-        retrievalStatus: source.summary ? 'rss-summary-with-original-url' : 'url-only',
+        retrievalStatus: source.hydrationStatus === 'hydrated' ? 'hydrated-article' : 'rss-summary-with-original-url',
+        hydrationError: source.hydrationError || '',
       })),
       supplementalSourcesRetrieved: [],
       verifiedFactsExtracted: editorialBrief.verifiedFacts,
@@ -918,8 +923,15 @@ function buildReasoningSystemInstruction() {
     'Certifyd Brain content, capabilities, product descriptions, generic Certifyd themes and product relevance are not available in this stage.',
     'Do not ask what lesson Certifyd can draw from the story.',
     'First answer: what genuinely interesting idea does this event support if Certifyd did not exist?',
+    'The primary thesis should normally answer what is different after this event than before it.',
+    'Look for the structural implication of the source event: what changed in the industry, product, business model, workflow, rights relationship, distribution model, creator relationship or market?',
+    'Ask whether the event moves something upstream, downstream, closer to infrastructure, or into operational workflow.',
+    'Ask what assumption the event weakens or replaces, and what larger transition this concrete event reveals.',
+    'A source-only inference can be publishable when the event reveals a concrete structural shift, even if later Certifyd analysis would extend that shift with selected Brain context.',
+    'Reasonable structural inference is allowed when it is grounded in verified source facts; do not turn that inference into a claim about Certifyd or any unsupported external fact.',
+    'Do not make missing information, undisclosed terms, uncertainty, unanswered questions, or lack of detail the central thesis unless the absence itself is genuinely the news.',
     'Set worthPublishing=false when the available facts support reporting but not a distinctive source-backed editorial idea.',
-    'Set worthPublishing=false when the thesis needs Certifyd concepts, records, documentation, provenance, catalog context or other generic operational advice to become interesting.',
+    'Do not set worthPublishing=false merely because the source facts do not contain the later Certifyd extension.',
     'Every material component of editorialIdea and thesis must be listed in editorialIdeaSupport with source fact IDs that make the inference possible.',
     'Do not write the article.',
     'Do not invent facts, quotes, partnerships, adoption, legal conclusions or Certifyd relationships.',
@@ -930,7 +942,7 @@ function buildReasoningSystemInstruction() {
 
 function buildReasoningPrompt(input, groundedContext) {
   const context = compactGroundedContextForModel(groundedContext);
-  const externalSources = context.externalSourceFacts.map((item) => `- [${item.id || 'source'}] ${item.publisher}${item.publishedAt ? ` (${item.publishedAt})` : ''}: ${item.title}. ${item.summary}${item.articleUrl ? ` Source: ${item.articleUrl}` : ''}`).join('\n') || '- No external source summaries attached.';
+  const externalSources = context.externalSourceFacts.map(formatExternalSourceForPrompt).join('\n') || '- No external source material attached.';
   return [
     `Topic: ${input.topic || input.workingTitle || 'Certifyd article'}`,
     `Audience: ${input.audience || input.targetAudience || 'Certifyd readers'}`,
@@ -945,9 +957,18 @@ function buildReasoningPrompt(input, groundedContext) {
     'PRIVATE TASK:',
     '- Extract verifiedFacts from SOURCE FACTS.',
     '- Identify eventSummary, obviousTake, editorialTension, hiddenQuestion, whatThisReveals, editorialIdea, creatorConsequence and thesis using SOURCE FACTS only.',
+    '- obviousTake is the headline-level interpretation; it should not be the final thesis unless no deeper structural idea exists.',
+    '- editorialTension is the meaningful structural tension created by the event, not merely that details are missing.',
+    '- hiddenQuestion is the deeper strategic or infrastructure question created by the structural change.',
+    '- whatThisReveals explains where the industry, market, workflow or rights relationship is moving.',
+    '- editorialIdea is the non-obvious structural idea worth building the article around.',
+    '- thesis is a clear argument about what changed and why it matters.',
+    '- creatorConsequence explains how the structural change affects creators, partners, rights holders, operators or investors.',
     '- Decide worthPublishing before any Certifyd context exists.',
     '- If removing Certifyd leaves no meaningful editorial argument, set worthPublishing=false.',
-    '- Set worthPublishing=false for thin procedural updates, generic operational advice, or a thesis that is merely “this remains unresolved.”',
+    '- worthPublishing asks whether there is a meaningful structural idea, not whether every implementation detail is known.',
+    '- Set worthPublishing=false for thin procedural updates, generic operational advice, or a thesis that is merely “this remains unresolved,” “the terms remain unclear,” “the reporting does not explain,” “the central unanswered question is,” “creators still need to know,” or “more details are needed.”',
+    '- Missing details can be supporting caveats when factually necessary, but they should not dominate the editorial idea.',
     '- Map every material editorialIdea/thesis component to source fact IDs in editorialIdeaSupport.',
     '- Return certifydConcepts as [] and do not introduce records, documentation, provenance, release context, catalog context or Certifyd.',
     '- articleProgression must contain at least 4 source-only steps only when worthPublishing=true.',
@@ -972,8 +993,9 @@ function buildArticleSystemInstruction() {
     buildSystemInstruction(),
     '',
     'Return only JSON matching the requested schema.',
-    'Use the verified source facts, editorial direction and selected Certifyd Brain together as the writing context.',
-    'The private reasoning object is assignment guidance, not a rigid outline or article structure.',
+    'Use the verified source facts, advisory editorial notes and selected Certifyd Brain together as the writing context.',
+    'The private reasoning object is advisory analysis, not a required thesis, rigid outline or article structure.',
+    'You own the final thesis. Use the source-only reasoning when it is strong; challenge it, deepen it, combine it or replace its proposed thesis when the hydrated source material and selected Certifyd Brain support a stronger structural argument.',
     'Write like an informed technology/music-business publication, not a compliance memo.',
     'Use direct declarative prose. Do not write around internal safety rules or validation checks.',
     'Do not mention the validation system, source-support restrictions, uncertainty machinery, prompt rules, or internal editorial rules in article prose.',
@@ -982,6 +1004,7 @@ function buildArticleSystemInstruction() {
     'When selected Certifyd Brain is supplied, use it to develop a meaningful Certifyd perspective where it materially deepens the source-backed argument.',
     'When no selected Certifyd Brain is supplied, do not manufacture a Certifyd product connection.',
     'Selected Certifyd Brain can support claims about Certifyd architecture, principles and capabilities. It is not evidence for facts about the external source event.',
+    'Verified Brain facts about Certifyd may be stated directly and confidently. Do not weaken verified Certifyd capabilities with “may support,” “intended to support,” “where implemented,” “potentially supports,” or “is designed to potentially” unless the selected Brain record itself contains that uncertainty.',
     'Use only the selected Certifyd Brain records supplied in the writing prompt.',
     'For claims[].sourceIds, use only sourceId values from ALLOWED_BRAIN_SOURCE_IDS, exactly as provided.',
     'Never use SOURCE FACTS IDs, article URLs, publisher names, titles, shortened IDs, or newly created IDs in claims[].sourceIds.',
@@ -997,12 +1020,12 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
   const selectedBrainFacts = writingContext.approvedKnowledge.map(formatSelectedBrainFactsForPrompt).filter(Boolean).join('\n') || '- No selected Brain facts supplied.';
   const approvedKnowledge = writingContext.approvedKnowledge.map(formatBrainKnowledgeForPrompt).join('\n') || '- No Certifyd Brain records selected for final writing.';
   const brainSources = writingContext.approvedKnowledge.map(formatBrainSourceForPrompt);
-  const externalSources = context.externalSourceFacts.map((item) => `- [${item.id || 'source'}] ${item.publisher}${item.publishedAt ? ` (${item.publishedAt})` : ''}: ${item.title}. ${item.summary}${item.articleUrl ? ` Source: ${item.articleUrl}` : ''}`).join('\n') || '- No external source summaries attached.';
+  const externalSources = context.externalSourceFacts.map(formatExternalSourceForPrompt).join('\n') || '- No external source material attached.';
   const prohibited = context.prohibitedClaims.map((item) => `- ${scrubGenericDefinitionForPrompt(item)}`).join('\n') || '- Avoid unsupported claims.';
   const hasSelectedBrain = writingContext.approvedKnowledge.length > 0;
   const hasMultipleSources = context.externalSourceFacts.length > 1;
   const depthGuidance = hasMultipleSources
-    ? '- For a substantial multi-source recommended opportunity, aim for roughly 900 to 1,300 words when the material supports it. This is editorial guidance, not a validation gate; do not pad thin reporting.'
+    ? '- For a substantial multi-source recommended opportunity with sufficient hydrated material, develop the argument fully, normally around 900 to 1,300 words. Do not prematurely stop after summarizing the event and making one structural observation; develop the implications, industry context and relevant Certifyd architectural extension when the evidence supports them. This is editorial guidance, not a validation gate; do not pad thin reporting.'
     : '- Let article length follow the amount of reporting and argument available; do not pad a thin update.';
   return [
     `Topic: ${input.topic || input.workingTitle || 'Certifyd article'}`,
@@ -1012,7 +1035,7 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
     'VERIFIED SOURCE PACKAGE:',
     externalSources,
     '',
-    'EDITORIAL DIRECTION:',
+    'ADVISORY SOURCE OBSERVATIONS:',
     formatEditorialDirectionForWriter(reasoning),
     '',
     'ALLOWED_BRAIN_SOURCE_IDS:',
@@ -1030,11 +1053,18 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
     '',
     'EDITORIAL ASSIGNMENT:',
     '- Open by immediately identifying the actual story and primary search entity.',
-    '- Treat the editorial direction as assignment guidance, not a rigid outline; write normal article prose rather than enumerating the reasoning fields.',
+    '- Identify the strongest idea behind the news from the complete package: hydrated source material, advisory notes and selected Certifyd Brain.',
+    '- Distinguish the obvious take from the deeper structural change.',
+    '- After the first reasonable structural interpretation, ask one more conceptual “so what?” internally. If the answer merely restates the source workflow or announcement, go one conceptual level deeper.',
+    '- Prefer an argument about what is changing over an article about what remains unknown.',
+    '- Follow the source-backed industry development as far as the evidence supports it; include Certifyd architecture only when the selected Brain materially clarifies that argument.',
+    '- Treat the advisory editorial notes as optional analysis, not a required thesis, argument or structure; write normal article prose rather than enumerating the reasoning fields.',
+    '- The final article is not required to reproduce these observations or any prior reasoning structure.',
     hasSelectedBrain
-      ? '- Because relevant Certifyd Brain was selected, develop a real Certifyd perspective where it materially advances the article; avoid generic product pitching.'
+      ? '- Because relevant Certifyd Brain was selected, develop a real Certifyd perspective only where it materially advances the article; select only the Certifyd concepts needed to extend the thesis and avoid generic product pitching or feature dumps.'
       : '- Because no meaningful Certifyd Brain was selected, do not manufacture a Certifyd product connection.',
     '- Selected Brain may support Certifyd architecture, principles and capabilities only. It must never be used as evidence for the external event, the source company, legal outcomes, deals, dates, numbers or quotes.',
+    '- State verified Certifyd Brain capabilities directly when the selected Brain record supports them, for example “Certifyd Core records...” or “Certifyd Core supports...”; do not add legalistic hedges unless the Brain record itself is uncertain.',
     '- Do not claim the news subject uses, leverages, partners with, integrates with, is powered by, or receives benefits from Certifyd.',
     depthGuidance,
     '- Prefer confident, conventional editorial prose over defensive phrases like “this is not a claim that”, “does not determine legal rights”, “does not create automatic payment obligations”, or “does not establish a direct change”.',
@@ -1052,18 +1082,14 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
 
 function formatEditorialDirectionForWriter(reasoning = {}) {
   const facts = Array.isArray(reasoning.verifiedFacts) ? reasoning.verifiedFacts : [];
-  const progression = Array.isArray(reasoning.articleProgression) ? reasoning.articleProgression : [];
-  const concepts = Array.isArray(reasoning.certifydConcepts) ? reasoning.certifydConcepts : [];
   return [
     `- Event summary: ${reasoning.eventSummary || 'Use the source facts to identify the event.'}`,
+    `- Obvious take: ${reasoning.obviousTake || 'No obvious take supplied.'}`,
     `- Editorial tension: ${reasoning.editorialTension || reasoning.tension || 'No separate tension supplied.'}`,
     `- Hidden question: ${reasoning.hiddenQuestion || 'No separate hidden question supplied.'}`,
     `- What this reveals: ${reasoning.whatThisReveals || reasoning.whatChanged || 'No separate reveal supplied.'}`,
-    `- Thesis: ${reasoning.thesis || reasoning.editorialIdea || 'Use the source-backed editorial idea.'}`,
     `- Creator consequence: ${reasoning.creatorConsequence || 'No separate creator consequence supplied.'}`,
     `- Source-verified facts:\n${facts.map((fact) => `  - ${fact}`).join('\n') || '  - Use the verified source package above.'}`,
-    `- Useful progression, if it helps:\n${progression.map((step) => `  - ${step}`).join('\n') || '  - Let the article structure follow the story.'}`,
-    `- Approved Certifyd concepts:\n${concepts.map((item) => `  - ${item.concept}: ${item.relevance} ${item.sourceConnection}`).join('\n') || '  - None selected.'}`,
   ].join('\n');
 }
 
@@ -1072,7 +1098,7 @@ function buildSystemInstruction() {
     'Write a concise Certifyd blog draft in Markdown only.',
     'Use only the supplied Certifyd context for company facts.',
     'The external story is the factual foundation of the article. Include only as much Certifyd analysis as is necessary to explain the underlying industry problem and why it is relevant to Certifyd.',
-    'Use external source summaries only for facts about the news subject; do not invent facts beyond those summaries.',
+    'Use the supplied verified source material only for facts about the news subject; do not invent facts beyond that material.',
     'Do not invent customers, partnerships, revenue, adoption, launch dates, technical capabilities or legal claims.',
     'Never say the external company, article subject, rights holder, investor, label, distributor or platform uses, leverages, integrates with, partners with, is powered by, or benefits from Certifyd unless that exact relationship appears in the supplied context.',
     'CERTIFYD CONNECTION RULE: never state or imply that a source-story company uses, integrates with, partners with, relies on, or will use Certifyd unless SOURCE FACTS explicitly establish that relationship.',
@@ -1102,7 +1128,7 @@ function buildUserPrompt(input, groundedContext) {
   const claims = context.approvedClaims.map((item) => `- ${item}`).join('\n') || '- No approved claims selected.';
   const productFacts = context.productFacts.map((item) => `- ${item}`).join('\n') || '- No product facts selected.';
   const approvedKnowledge = context.approvedKnowledge.map(formatBrainKnowledgeForPrompt).join('\n') || '- No additional approved Certifyd knowledge selected.';
-  const externalSources = context.externalSourceFacts.map((item) => `- [${item.id || 'source'}] ${item.publisher}${item.publishedAt ? ` (${item.publishedAt})` : ''}: ${item.title}. ${item.summary}${item.articleUrl ? ` Source: ${item.articleUrl}` : ''}`).join('\n') || '- No external source summaries attached.';
+  const externalSources = context.externalSourceFacts.map(formatExternalSourceForPrompt).join('\n') || '- No external source material attached.';
   const editorialBrief = formatEditorialBriefForPrompt(context.editorialBrief);
   const prohibited = context.prohibitedClaims.map((item) => `- ${item}`).join('\n') || '- Avoid unsupported claims.';
   const hasExternalSources = context.externalSourceFacts.length > 0;
@@ -1188,6 +1214,11 @@ function compactGroundedContextForModel(groundedContext) {
       publishedAt: clampText(source.publishedAt, 16),
       title: clampText(source.title, 160),
       summary: clampText(source.summary, 700),
+      rssSummary: clampText(source.rssSummary || source.summary, 700),
+      sourceText: clampText(source.sourceText || source.summary, HYDRATED_SOURCE_PROMPT_LIMIT),
+      hydratedArticleText: source.hydrationStatus === 'hydrated' ? clampText(source.hydratedArticleText, HYDRATED_SOURCE_PROMPT_LIMIT) : '',
+      hydrationStatus: source.hydrationStatus || 'rss-summary-fallback',
+      hydrationError: clampText(source.hydrationError, 140),
       articleUrl: clampText(source.articleUrl, 240),
       categories: Array.isArray(source.categories) ? source.categories.slice(0, 5) : [],
       certifydRelevanceScore: Number(source.certifydRelevanceScore || 0),
@@ -1201,6 +1232,13 @@ function compactGroundedContextForModel(groundedContext) {
       confidence: source.confidence || '',
     })),
   };
+}
+
+function formatExternalSourceForPrompt(item = {}) {
+  const status = item.hydrationStatus || 'rss-summary-fallback';
+  const sourceText = item.sourceText || item.hydratedArticleText || item.summary || '';
+  const fallback = item.rssSummary && item.rssSummary !== sourceText ? `\n  RSS summary: ${item.rssSummary}` : '';
+  return `- [${item.id || 'source'}] ${item.publisher}${item.publishedAt ? ` (${item.publishedAt})` : ''}: ${item.title}.${item.articleUrl ? ` Source: ${item.articleUrl}` : ''}\n  Retrieval: ${status}\n  Source text: ${sourceText}${fallback}`;
 }
 
 function formatBrainKnowledgeForPrompt(item) {
@@ -1336,7 +1374,8 @@ function buildArticleRevisionPrompt(originalPrompt, article, genericDefinitionHi
     '',
     'REVISION REQUIRED:',
     'The draft below failed post-generation validation because a small number of sentences need editorial repair.',
-    'Rewrite the article JSON to preserve the same source-backed thesis, facts, claims, SEO/frontmatter and overall structure while changing only the flagged sentences or paragraphs.',
+    'Rewrite the article JSON to preserve the final article’s defensible editorial argument, supported facts, valid Certifyd claims and SEO/frontmatter while changing only the flagged sentences or paragraphs.',
+    'Do not restore an earlier weaker Stage A1 thesis or structure while repairing the factual issue.',
     'Do not add new facts, new Certifyd capabilities, new source claims, or new Brain concepts.',
     'Remove or qualify unsupported claims. Preserve general explanatory context only when it is clearly not a factual claim about the source event.',
     'Do not use sentences beginning “A payout is”, “A record is”, “A receipt is”, “A profile is”, “A release record is”, or “Provenance is evidence about”.',
@@ -1420,7 +1459,7 @@ function recordOpenAIGenerationPromptDiagnostics(input, groundedContext, details
     finalPromptStructure: [
       'stage A: editorial reasoning from source facts',
       'stage A: story-specific thesis and selected Certifyd concepts',
-      'stage B: article writing from approved reasoning object',
+      'stage B: article writing from verified source package, advisory source observations and selected Certifyd Brain',
       'stage B: selected Certifyd Brain only',
       'stage B: structured article JSON',
     ],
@@ -1494,7 +1533,7 @@ function looksLikeExternalNewsArticle(input = {}) {
 
 function buildEditorialBrief(input = {}, externalSourceFacts = []) {
   const primary = externalSourceFacts.find((source) => source.title && source.summary) || null;
-  const sourceText = externalSourceFacts.map((source) => `${source.title || ''}. ${source.summary || ''}`).join(' ');
+  const sourceText = externalSourceFacts.map((source) => `${source.title || ''}. ${sourceTextForEditorial(source)}`).join(' ');
   const themes = inferStoryThemes(sourceText || `${input.topic || ''} ${input.objective || ''}`);
   const verifiedFacts = extractVerifiedFacts(externalSourceFacts);
   const sourceSupport = conceptSupportFromSourceFacts(externalSourceFacts);
@@ -1503,7 +1542,7 @@ function buildEditorialBrief(input = {}, externalSourceFacts = []) {
   const conceptSupport = sourceSupport;
   const thesisTest = thesisTestResult(possibleThesis, themes, externalSourceFacts);
   return {
-    primaryEvent: primary ? cleanSentence(`${primary.publisher || 'A source'} reports: ${primary.title}. ${primary.summary}`) : cleanSentence(input.topic || input.workingTitle || ''),
+    primaryEvent: primary ? cleanSentence(`${primary.publisher || 'A source'} reports: ${primary.title}. ${sourceTextForEditorial(primary)}`) : cleanSentence(input.topic || input.workingTitle || ''),
     verifiedFacts,
     relevantContext: summarizeRelevantContext(externalSourceFacts),
     editorialTension,
@@ -1542,16 +1581,17 @@ function extractVerifiedFacts(externalSourceFacts = []) {
   return externalSourceFacts
     .filter((source) => source.title && source.summary)
     .flatMap((source) => {
+      const text = sourceTextForEditorial(source);
       const facts = [
         `${source.publisher || 'Source'} published "${source.title}"${source.publishedAt ? ` on ${source.publishedAt}` : ''}.`,
-        ...splitFactSentences(source.summary).slice(0, 4),
+        ...splitFactSentences(text).slice(0, source.hydrationStatus === 'hydrated' ? 6 : 4),
       ];
       if (source.articleUrl) facts.push(`Original article URL: ${source.articleUrl}`);
       return facts;
     })
     .map((fact) => cleanSentence(fact))
     .filter(Boolean)
-    .slice(0, 8);
+    .slice(0, 12);
 }
 
 function splitFactSentences(text) {
@@ -1604,7 +1644,7 @@ function buildPossibleThesis(themes, primary, support = {}) {
 
 function thesisTestResult(thesis = '', themes = new Set(), externalSourceFacts = []) {
   const text = String(thesis || '').trim();
-  const sourceText = externalSourceFacts.map((source) => `${source.title || ''} ${source.summary || ''}`).join(' ').toLowerCase();
+  const sourceText = externalSourceFacts.map((source) => `${source.title || ''} ${sourceTextForEditorial(source)}`).join(' ').toLowerCase();
   const hasStorySpecificSubject = externalSourceFacts.some((source) => source.title && text.toLowerCase().includes(source.title.toLowerCase().slice(0, 24)));
   const genericDefaultOnly = /\bcreator ownership|provenance|attribution|compensation|permissions|transparency|direct commerce|decentralization|creator identity\b/i.test(text)
     && !/(licens|settlement|opt-?in|derivative|payment|revenue|acqui|stake|platform|account|fan|customer|rights|ip|ai|stream|commerce)/i.test(sourceText);
@@ -1872,7 +1912,7 @@ async function loadAttachedExternalSourceSummaries(config, input) {
     for (const id of opportunity?.sourceItemIds || []) requestedIds.add(cleanId(id));
   }
   if (!requestedIds.size) return [];
-  return (state.sourceItems || [])
+  const sources = (state.sourceItems || [])
     .filter((item) => requestedIds.has(cleanId(item.id)))
     .map((item) => ({
       id: cleanId(item.id),
@@ -1880,11 +1920,128 @@ async function loadAttachedExternalSourceSummaries(config, input) {
       publishedAt: clampText(String(item.publishedAt || '').slice(0, 10), 16),
       title: clampText(cleanText(item.title || '').replace(/\n+/g, ' '), 160),
       summary: clampText(cleanText(item.summary || '').replace(/\n+/g, ' '), 520),
+      rssSummary: clampText(cleanText(item.summary || '').replace(/\n+/g, ' '), 520),
       articleUrl: safePublicUrl(item.articleUrl),
       certifydRelevanceScore: Number(item.certifydRelevanceScore || 0),
       categories: Array.isArray(item.categories) ? item.categories.slice(0, 5) : [],
     }))
     .filter((item) => item.title && item.summary);
+  return hydrateExternalSources(config, sources);
+}
+
+async function hydrateExternalSources(config = {}, sources = []) {
+  const fetchImpl = config.sourceHydration?.fetchImpl || config.sourceFetchImpl || globalThis.fetch;
+  if (typeof fetchImpl !== 'function') {
+    return sources.map((source) => sourceWithHydrationFallback(source, 'fetch-unavailable'));
+  }
+  const timeoutMs = positiveNumber(config.sourceHydration?.timeoutMs, DEFAULT_SOURCE_HYDRATION_TIMEOUT_MS);
+  const hydrated = [];
+  for (const source of sources) hydrated.push(await hydrateExternalSource(source, fetchImpl, timeoutMs));
+  return hydrated;
+}
+
+async function hydrateExternalSource(source, fetchImpl, timeoutMs) {
+  if (!source.articleUrl) return sourceWithHydrationFallback(source, 'missing-url');
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetchImpl(source.articleUrl, {
+      method: 'GET',
+      redirect: 'follow',
+      headers: {
+        accept: 'text/html,application/xhtml+xml,text/plain;q=0.8,*/*;q=0.5',
+        'user-agent': 'CertifydBlogEngine/1.0 (+https://certifyd.me)',
+      },
+      signal: controller.signal,
+    });
+    if (!response?.ok) return sourceWithHydrationFallback(source, `http-${response?.status || 'error'}`);
+    const contentType = typeof response.headers?.get === 'function' ? response.headers.get('content-type') || '' : '';
+    if (contentType && !/text\/html|application\/xhtml\+xml|text\/plain/i.test(contentType)) {
+      return sourceWithHydrationFallback(source, 'unsupported-content-type');
+    }
+    const raw = await response.text();
+    const readable = extractReadableArticleText(raw);
+    if (readable.length < HYDRATED_SOURCE_MIN_TEXT_LENGTH) return sourceWithHydrationFallback(source, 'insufficient-readable-text');
+    return {
+      ...source,
+      sourceText: clampText(readable, HYDRATED_SOURCE_TEXT_LIMIT),
+      hydratedArticleText: clampText(readable, HYDRATED_SOURCE_TEXT_LIMIT),
+      hydrationStatus: 'hydrated',
+      hydrationError: '',
+    };
+  } catch (error) {
+    return sourceWithHydrationFallback(source, error?.name === 'AbortError' ? 'timeout' : 'fetch-failed');
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function sourceWithHydrationFallback(source, reason = 'rss-summary-fallback') {
+  return {
+    ...source,
+    sourceText: source.summary || '',
+    hydratedArticleText: '',
+    hydrationStatus: 'rss-summary-fallback',
+    hydrationError: reason,
+  };
+}
+
+function extractReadableArticleText(value = '') {
+  let text = String(value || '');
+  if (!text.trim()) return '';
+  text = text
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ');
+  const articleMatches = [...text.matchAll(/<(article|main)\b[^>]*>([\s\S]*?)<\/\1>/gi)].map((match) => match[2]);
+  if (articleMatches.length) text = articleMatches.sort((a, b) => b.length - a.length)[0];
+  const paragraphText = [...text.matchAll(/<(?:p|h1|h2|h3|li)\b[^>]*>([\s\S]*?)<\/(?:p|h1|h2|h3|li)>/gi)]
+    .map((match) => htmlToPlainText(match[1]))
+    .filter((item) => item.length > 24)
+    .join('\n\n');
+  return cleanReadableSourceText(paragraphText || htmlToPlainText(text));
+}
+
+function htmlToPlainText(value = '') {
+  return String(value || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(?:p|div|section|article|main|li|h1|h2|h3)>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&rsquo;/gi, '’')
+    .replace(/&lsquo;/gi, '‘')
+    .replace(/&rdquo;/gi, '”')
+    .replace(/&ldquo;/gi, '“')
+    .replace(/&mdash;/gi, '—')
+    .replace(/&ndash;/gi, '–')
+    .replace(/&#(\d+);/g, (_, code) => {
+      const number = Number(code);
+      return Number.isFinite(number) ? String.fromCodePoint(number) : ' ';
+    })
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCodePoint(parseInt(code, 16)))
+    .replace(/&[a-z0-9#]+;/gi, ' ');
+}
+
+function cleanReadableSourceText(value = '') {
+  const seen = new Set();
+  return String(value || '')
+    .split(/\n{1,}|\s{3,}/)
+    .map((line) => cleanText(line).replace(/\s+/g, ' ').trim())
+    .filter((line) => line.length >= 30)
+    .filter((line) => !/^(subscribe|sign up|advertisement|related articles?|read more|cookie|privacy policy|terms of use|share this|follow us)\b/i.test(line))
+    .filter((line) => {
+      const key = line.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function hasUsableExternalSourceFacts(externalSourceFacts = []) {
@@ -1927,7 +2084,7 @@ function detectUnsupportedExternalAdoptionClaims(markdown, groundedContext = {})
 
 function sourceFactsEstablishCertifydRelationship(groundedContext = {}) {
   const sourceFacts = Array.isArray(groundedContext.externalSourceFacts) ? groundedContext.externalSourceFacts : [];
-  const sourceText = sourceFacts.map((source) => `${source.title || ''} ${source.summary || ''}`).join(' ').replace(/\s+/g, ' ');
+  const sourceText = sourceFacts.map((source) => `${source.title || ''} ${sourceTextForEditorial(source)}`).join(' ').replace(/\s+/g, ' ');
   if (!/\bCertifyd\b/i.test(sourceText)) return false;
   return /\b(?:uses?|using|leverages?|leveraging|adopts?|adopting|integrates?|integrating|partners?|partnering|relies? on|powered by|through|via|with)\b[^.]{0,160}\bCertifyd\b|\bCertifyd\b[^.]{0,160}\b(?:uses?|using|leverages?|leveraging|integrates?|integrating|partners?|partnering|powers?|facilitates?)\b/i.test(sourceText);
 }
@@ -2069,10 +2226,14 @@ function logPostGenerationValidationFindings(findings = {}, repaired = false) {
 
 function editorialSourceText(externalSourceFacts = []) {
   return externalSourceFacts
-    .map((source) => `${source.publisher || ''} ${source.title || ''} ${source.summary || ''} ${(source.categories || []).join(' ')}`)
+    .map((source) => `${source.publisher || ''} ${source.title || ''} ${sourceTextForEditorial(source)} ${(source.categories || []).join(' ')}`)
     .join(' ')
     .replace(/\s+/g, ' ')
     .toLowerCase();
+}
+
+function sourceTextForEditorial(source = {}) {
+  return source.sourceText || source.hydratedArticleText || source.summary || '';
 }
 
 function sentenceAround(text, index) {
@@ -2184,7 +2345,6 @@ function applyOpenAIReasoningWarnings(groundedContext = {}, reasoning = {}) {
 }
 
 function attachPostA1CertifydConcepts(reasoning = {}, groundedContext = {}) {
-  if (reasoning.worthPublishing !== true) return reasoning;
   const approved = Array.isArray(groundedContext.editorialBrief?.selectedCertifydConcepts)
     ? groundedContext.editorialBrief.selectedCertifydConcepts
     : [];
@@ -2362,7 +2522,7 @@ function sourceBackedDraft(input, groundedContext, sourceIds) {
   const tags = tagsFromTopic(`${input.topic || ''} ${title} ${(primary.categories || []).join(' ')}`);
   const progression = Array.isArray(brief.articleProgression) && brief.articleProgression.length >= 4
     ? brief.articleProgression
-    : articleProgressionFromThemes(inferStoryThemes(`${title} ${primary.summary} ${(primary.categories || []).join(' ')}`), primary);
+    : articleProgressionFromThemes(inferStoryThemes(`${title} ${sourceTextForEditorial(primary)} ${(primary.categories || []).join(' ')}`), primary);
   const conceptParagraph = selectedConceptsParagraph(brief);
   const sections = [
     `# ${title}`,
@@ -2440,13 +2600,13 @@ function selectedConceptsParagraph(brief = {}) {
 
 function sourceIntro(source) {
   const publisher = source.publisher ? `${source.publisher} reports that ` : '';
-  return `${publisher}${lowercaseFirst(cleanSentence(source.summary || source.title))}`;
+  return `${publisher}${lowercaseFirst(cleanSentence(sourceTextForEditorial(source) || source.title))}`;
 }
 
 function sourceFactParagraph(source) {
   const date = source.publishedAt ? ` Published ${source.publishedAt}.` : '';
   const url = source.articleUrl ? ` Original source: ${source.articleUrl}` : '';
-  return `${cleanSentence(source.summary || source.title)}${date}${url}`;
+  return `${cleanSentence(sourceTextForEditorial(source) || source.title)}${date}${url}`;
 }
 
 function supportingSourceParagraphs(sources) {
@@ -2761,7 +2921,7 @@ function normalizeBlogCoverImage(value, context = {}) {
 }
 
 function selectRelevantSources(sources, input, externalSourceFacts = [], editorialBrief = {}) {
-  const sourceQuery = externalSourceFacts.map((source) => `${source.title || ''} ${source.summary || ''} ${(source.categories || []).join(' ')}`).join(' ');
+  const sourceQuery = externalSourceFacts.map((source) => `${source.title || ''} ${sourceTextForEditorial(source)} ${(source.categories || []).join(' ')}`).join(' ');
   const thesisQuery = `${editorialBrief.possibleThesis || ''} ${editorialBrief.editorialTension || ''} ${editorialBrief.certifydRelevance || ''} ${editorialBrief.competitiveDistinction || ''}`;
   const query = `${input.topic || ''} ${input.objective || ''} ${input.angle || ''} ${sourceQuery} ${thesisQuery}`.toLowerCase();
   const requestedIds = new Set(parseBrainIdList(input.trendBrainRecordIds, 40));
@@ -3054,6 +3214,9 @@ function compactOversizedContext(context) {
   context.externalSourceFacts = (context.externalSourceFacts || []).slice(0, 4).map((source) => ({
     ...source,
     summary: clampText(source.summary, 320),
+    rssSummary: clampText(source.rssSummary || source.summary, 320),
+    sourceText: clampText(sourceTextForEditorial(source), HYDRATED_SOURCE_TEXT_LIMIT),
+    hydratedArticleText: source.hydrationStatus === 'hydrated' ? clampText(source.hydratedArticleText, HYDRATED_SOURCE_TEXT_LIMIT) : '',
   }));
 }
 

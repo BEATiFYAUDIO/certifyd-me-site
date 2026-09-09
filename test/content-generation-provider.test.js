@@ -64,6 +64,11 @@ async function makeConfig(overrides = {}) {
       maxConcurrentGenerations: 1,
       ...overrides.ollama,
     },
+    sourceHydration: {
+      fetchImpl: async () => { throw new Error('test source hydration disabled unless explicitly mocked'); },
+      timeoutMs: 1000,
+      ...overrides.sourceHydration,
+    },
     ...overrides,
   };
 }
@@ -231,6 +236,18 @@ function mockOpenAIClient({ reasoning = validReasoning(), article, failAt = '', 
   };
 }
 
+function htmlFetch(html, calls = []) {
+  return async (url) => {
+    calls.push(String(url));
+    return {
+      ok: true,
+      status: 200,
+      headers: { get: () => 'text/html; charset=utf-8' },
+      text: async () => html,
+    };
+  };
+}
+
 test('deterministic provider remains available offline', async () => {
   const config = await makeConfig({ ollama: { enabled: false } });
   const context = await makeContext(config);
@@ -296,6 +313,25 @@ test('certifyd editorial reasoning schema satisfies strict structured output req
   assert.ok(EDITORIAL_REASONING_SCHEMA.required.includes('verifiedFacts'));
 });
 
+test('canonical Brain capability wording is direct only for verified current capabilities', async () => {
+  const releaseRecords = await fs.readFile(new URL('../content-agent/knowledge/capabilities/release-records.md', import.meta.url), 'utf8');
+  const catalogManagement = await fs.readFile(new URL('../content-agent/knowledge/capabilities/catalog-management.md', import.meta.url), 'utf8');
+  const payouts = await fs.readFile(new URL('../content-agent/knowledge/capabilities/payouts.md', import.meta.url), 'utf8');
+
+  assert.match(releaseRecords, /- Certifyd Core supports release records\./);
+  assert.match(releaseRecords, /- Release records preserve work, release, and attribution context for creator workflows\./);
+  assert.doesNotMatch(releaseRecords, /architecturally intended to support release records/i);
+  assert.doesNotMatch(releaseRecords, /Release records may provide work and attribution context where implemented/i);
+
+  assert.match(catalogManagement, /- Certifyd Core maintains catalog context for works and releases\./);
+  assert.match(catalogManagement, /- Catalog records can inform profiles, discovery, commerce, and Awards surfaces\./);
+  assert.doesNotMatch(catalogManagement, /Certifyd can support catalog context where implemented/i);
+
+  assert.match(payouts, /Certifyd payout support is not verified as a current live capability/i);
+  assert.match(payouts, /planned, conceptual, or implementation-specific/i);
+  assert.doesNotMatch(payouts, /Certifyd may support payout context where implemented/i);
+});
+
 test('normal generation uses OpenAI Responses with separate reasoning and writing calls', async () => {
   const calls = [];
   const config = await makeConfig();
@@ -349,6 +385,231 @@ test('source facts are passed to OpenAI reasoning', async () => {
   assert.match(calls[0].input, /Billboard/);
   assert.match(calls[0].input, /BMG and Suno Reach Licensing Deal/);
   assert.match(calls[0].input, /creator opt-in and compensation/);
+});
+
+test('Stage A1 instructions prioritize structural change over missing-information framing', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({ calls, article: validArticle(context.sourceRecords[0].id) }),
+  });
+  await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
+  const reasoningInstructions = `${calls[0].instructions}\n${calls[0].input}`;
+  assert.match(reasoningInstructions, /what is different after this event than before it/i);
+  assert.match(reasoningInstructions, /what changed in the industry, product, business model, workflow, rights relationship, distribution model, creator relationship or market/i);
+  assert.match(reasoningInstructions, /moves something upstream, downstream, closer to infrastructure, or into operational workflow/i);
+  assert.match(reasoningInstructions, /what assumption the event weakens or replaces/i);
+  assert.match(reasoningInstructions, /larger transition this concrete event reveals/i);
+  assert.match(reasoningInstructions, /Reasonable structural inference is allowed when it is grounded in verified source facts/i);
+  assert.match(reasoningInstructions, /Do not make missing information, undisclosed terms, uncertainty, unanswered questions, or lack of detail the central thesis unless the absence itself is genuinely the news/i);
+  assert.match(reasoningInstructions, /editorialTension is the meaningful structural tension created by the event, not merely that details are missing/i);
+  assert.match(reasoningInstructions, /worthPublishing asks whether there is a meaningful structural idea, not whether every implementation detail is known/i);
+  assert.match(reasoningInstructions, /the terms remain unclear/i);
+  assert.match(reasoningInstructions, /Missing details can be supporting caveats/i);
+});
+
+test('original source URLs are hydrated before OpenAI reasoning when retrieval succeeds', async () => {
+  const calls = [];
+  const hydrationCalls = [];
+  const config = await makeConfig({
+    sourceHydration: {
+      fetchImpl: htmlFetch([
+        '<html><body><nav>Subscribe to our newsletter</nav><article>',
+        '<h1>Suno v6 launches with licensed rightsholder input</h1>',
+        '<p>Suno v6 was developed with music rightsholders including Warner Music, BMG and Believe, according to the source article.</p>',
+        '<p>The article says participating rightsholders are supplying licensed music for the new model rather than negotiating only after development.</p>',
+        '<p>It also describes opt-in artist experiences that depend on permission, authority and clear participation records for individual artists.</p>',
+        '<p>Those details make the product design question more concrete because authorization has to be represented before generated output moves through partner systems.</p>',
+        '<footer>Related articles and cookie notices</footer>',
+        '</article></body></html>',
+      ].join(''), hydrationCalls),
+    },
+  });
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [
+      {
+        id: 'source-suno-v6',
+        publisher: 'Digital Music News',
+        publishedAt: '2026-09-09T09:00:00.000Z',
+        title: 'Suno v6 launches with rightsholder-backed models',
+        summary: 'RSS blurb says Suno is rolling out Warner Music- and BMG-backed v6 models.',
+        articleUrl: 'https://example.test/suno-v6',
+        categories: ['AI', 'Music'],
+      },
+      {
+        id: 'source-believe',
+        publisher: 'Music Business Worldwide',
+        publishedAt: '2026-09-09T10:00:00.000Z',
+        title: 'Believe announces Suno partnership',
+        summary: 'RSS blurb says Believe reached a deal with Suno.',
+        articleUrl: 'https://example.test/believe-suno',
+        categories: ['Music'],
+      },
+    ],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Suno v6 rightsholder-backed models',
+    trendSourceItemIds: 'source-suno-v6,source-believe',
+  });
+  assert.deepEqual(hydrationCalls, ['https://example.test/suno-v6', 'https://example.test/believe-suno']);
+  assert.equal(context.externalSourceFacts[0].id, 'source-suno-v6');
+  assert.equal(context.externalSourceFacts[0].hydrationStatus, 'hydrated');
+  assert.match(context.externalSourceFacts[0].sourceText, /developed with music rightsholders including Warner Music, BMG and Believe/i);
+  assert.doesNotMatch(context.externalSourceFacts[0].sourceText, /Subscribe to our newsletter/i);
+  assert.equal(context.externalSourceFacts[1].id, 'source-believe');
+  assert.equal(context.externalSourceFacts[1].hydrationStatus, 'hydrated');
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({ calls, article: validArticle(context.sourceRecords[0].id) }),
+  });
+  await provider.generateArticle({
+    actorEmail: 'writer@example.test',
+    topic: 'Suno v6 rightsholder-backed models',
+    audience: 'Creators',
+    objective: 'Explain the source facts.',
+    trendSourceItemIds: 'source-suno-v6,source-believe',
+  }, context);
+  const reasoningPrompt = calls[0].input;
+  assert.match(reasoningPrompt, /\[source-suno-v6\][\s\S]*Retrieval: hydrated[\s\S]*Warner Music, BMG and Believe/i);
+  assert.match(reasoningPrompt, /\[source-believe\][\s\S]*Retrieval: hydrated/i);
+  assert.match(reasoningPrompt, /RSS summary: RSS blurb says Suno is rolling out/i);
+  const finalPrompt = calls[1].input;
+  assert.match(finalPrompt, /VERIFIED SOURCE PACKAGE/);
+  assert.match(finalPrompt, /\[source-suno-v6\][\s\S]*Retrieval: hydrated[\s\S]*Warner Music, BMG and Believe/i);
+  assert.match(finalPrompt, /\[source-believe\][\s\S]*Retrieval: hydrated/i);
+  assert.match(context.generationDiagnostics.verifiedFactsExtracted.join('\n'), /rightsholders are supplying licensed music/i);
+  assert.equal(context.generationDiagnostics.originalSourceArticlesRetrieved[0].retrievalStatus, 'hydrated-article');
+});
+
+test('original source hydration failure falls back to RSS summary without failing generation', async () => {
+  const calls = [];
+  const config = await makeConfig({
+    sourceHydration: {
+      fetchImpl: async () => ({
+        ok: false,
+        status: 403,
+        headers: { get: () => 'text/html' },
+        text: async () => '',
+      }),
+    },
+  });
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'source-fallback',
+      publisher: 'Digital Music News',
+      publishedAt: '2026-09-09T09:00:00.000Z',
+      title: 'Suno v6 launches with rightsholder-backed models',
+      summary: 'RSS fallback says Suno is rolling out rightsholder-backed v6 models.',
+      articleUrl: 'https://example.test/blocked-suno-v6',
+      categories: ['AI', 'Music'],
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Suno v6 rightsholder-backed models',
+    trendSourceItemIds: 'source-fallback',
+  });
+  assert.equal(context.externalSourceFacts[0].hydrationStatus, 'rss-summary-fallback');
+  assert.equal(context.externalSourceFacts[0].hydrationError, 'http-403');
+  assert.equal(context.externalSourceFacts[0].sourceText, context.externalSourceFacts[0].summary);
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({ calls, article: validArticle(context.sourceRecords[0].id) }),
+  });
+  const article = await provider.generateArticle({
+    actorEmail: 'writer@example.test',
+    topic: 'Suno v6 rightsholder-backed models',
+    audience: 'Creators',
+    objective: 'Explain the source facts.',
+    trendSourceItemIds: 'source-fallback',
+  }, context);
+  assert.equal(article.status, 'draft');
+  assert.match(calls[0].input, /Retrieval: rss-summary-fallback/);
+  assert.match(calls[0].input, /RSS fallback says Suno is rolling out rightsholder-backed v6 models/i);
+  assert.doesNotMatch(calls[0].input, /developed with music rightsholders including Warner/i);
+  assert.equal(context.generationDiagnostics.originalSourceArticlesRetrieved[0].retrievalStatus, 'rss-summary-with-original-url');
+  assert.equal(context.generationDiagnostics.originalSourceArticlesRetrieved[0].hydrationError, 'http-403');
+});
+
+test('Stage A1 Suno fixture favors upstream permission structure over unclear-terms thesis', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [
+      {
+        id: 'suno-believe-partners',
+        publisher: 'Music Business Worldwide',
+        publishedAt: '2026-09-09T09:00:00.000Z',
+        title: 'Suno develops industry-partner AI models with Believe',
+        summary: 'A source story reports that Suno is working with Believe and other music rightsholders on forthcoming industry-partner models with opt-in participation and contemplated compensation.',
+        articleUrl: 'https://example.test/suno-believe-partners',
+        categories: ['AI', 'Music'],
+      },
+      {
+        id: 'suno-tunecore-distribution',
+        publisher: 'Billboard',
+        publishedAt: '2026-09-09T10:00:00.000Z',
+        title: 'Suno tracks can move through Believe and TuneCore channels',
+        summary: 'A source story reports that resulting music from the partner model may be distributed through Believe and TuneCore channels.',
+        articleUrl: 'https://example.test/suno-tunecore-distribution',
+        categories: ['AI', 'Music'],
+      },
+    ],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Suno industry-partner models',
+    trendSourceItemIds: 'suno-believe-partners,suno-tunecore-distribution',
+  });
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      calls,
+      reasoning: validReasoning({
+        eventSummary: 'Suno is working with Believe and other rightsholders on industry-partner AI models with opt-in participation, contemplated compensation and distribution through Believe or TuneCore channels.',
+        obviousTake: 'AI companies are making licensing deals with music partners.',
+        editorialTension: 'The structural tension is that permission is becoming part of how AI music products are designed and operated, rather than only a later licensing negotiation.',
+        hiddenQuestion: 'What changes when permission has to be represented before an AI music model is launched and distributed?',
+        whatThisReveals: 'Licensing and participation are moving upstream into AI music product design and workflow operations.',
+        editorialIdea: 'Suno’s partner-model plan shows permission becoming a product-design layer in AI music.',
+        editorialIdeaSupport: [
+          { idea: 'The partner models involve rightsholders, opt-in participation and contemplated compensation.', factIds: ['suno-believe-partners'] },
+          { idea: 'Resulting tracks may move through Believe and TuneCore distribution channels.', factIds: ['suno-tunecore-distribution'] },
+        ],
+        creatorConsequence: 'Creators, rightsholders and distributors have to evaluate participation before generated music enters partner distribution workflows.',
+        thesis: 'Suno’s partner-model plan suggests permission is moving upstream into the design and operation of AI music products.',
+        worthPublishing: true,
+        certifydConcepts: [],
+        articleProgression: [
+          'Open with the partner-model arrangement.',
+          'Explain opt-in participation and contemplated compensation.',
+          'Show how distribution through partner channels makes this operational.',
+          'Argue that permission is moving upstream into product design.',
+        ],
+      }),
+      article: validArticle(context.sourceRecords[0].id, { claims: [] }),
+    }),
+  });
+  const article = await provider.generateArticle({
+    actorEmail: 'writer@example.test',
+    topic: 'Suno industry-partner models',
+    audience: 'Creators',
+    objective: 'Explain the source facts.',
+    trendSourceItemIds: 'suno-believe-partners,suno-tunecore-distribution',
+  }, context);
+  assert.equal(article.status, 'draft');
+  assert.match(calls[0].input, /opt-in participation and contemplated compensation/i);
+  assert.match(calls[0].input, /distributed through Believe and TuneCore channels/i);
+  assert.match(calls[0].instructions, /Do not make missing information.*central thesis/i);
+  assert.match(calls[0].input, /the terms remain unclear/i);
+  assert.match(calls[1].input, /ADVISORY SOURCE OBSERVATIONS/);
+  assert.match(calls[1].input, /Licensing and participation are moving upstream into AI music product design/i);
+  assert.doesNotMatch(calls[1].input, /permission is moving upstream into the design and operation of AI music products/i);
+  assert.doesNotMatch(calls[1].input, /^- Thesis:/m);
+  assert.doesNotMatch(calls[1].input, /Argue that permission is moving upstream into product design/i);
+  assert.doesNotMatch(calls[1].input, /central unanswered question is/i);
 });
 
 test('OpenAI thesis reasoning receives source facts but no Certifyd Brain candidates', async () => {
@@ -548,14 +809,15 @@ test('OpenAI final writing receives source facts editorial direction and relevan
         editorialTension: 'The story turns on whether AI music products move permission upstream into product design.',
         hiddenQuestion: 'What changes when permission is treated as part of the product surface instead of a later licensing dispute?',
         whatThisReveals: 'Permission is becoming product architecture in music AI rather than only legal cleanup after launch.',
-        editorialIdea: 'Suno v6 shows why permissioned source material is becoming part of AI music product design.',
+        editorialIdea: 'STAGE_A1_EDITORIAL_IDEA_SHOULD_NOT_REACH_FINAL_WRITER',
         editorialIdeaSupport: [
           { idea: 'Suno v6 was presented around opt-in licensed music.', factIds: ['suno-v6-billboard'] },
           { idea: 'The launch emphasized permissioned source material.', factIds: ['suno-v6-mbw'] },
         ],
         creatorConsequence: 'Creators and rightsholders need systems that make permission context visible before music is generated or distributed.',
-        thesis: 'Suno v6 turns permission from a back-end rights question into part of the product architecture of AI music.',
+        thesis: 'STAGE_A1_THESIS_SHOULD_NOT_REACH_FINAL_WRITER',
         certifydConcepts: [],
+        articleProgression: ['STAGE_A1_PROGRESSION_SHOULD_NOT_REACH_FINAL_WRITER', 'Explain the source facts.', 'Show the creator consequence.', 'Close with the implication.'],
       }),
       article: validArticle(context.sourceRecords[0].id, { claims: [] }),
     }),
@@ -570,14 +832,119 @@ test('OpenAI final writing receives source facts editorial direction and relevan
   const finalPrompt = calls[1].input;
   assert.match(finalPrompt, /VERIFIED SOURCE PACKAGE/);
   assert.match(finalPrompt, /Suno v6 includes opt-in licensed music/i);
-  assert.match(finalPrompt, /EDITORIAL DIRECTION/);
-  assert.match(finalPrompt, /permission from a back-end rights question into part of the product architecture/i);
+  assert.match(finalPrompt, /ADVISORY SOURCE OBSERVATIONS/);
+  assert.match(finalPrompt, /The immediate news is a concrete business update/i);
+  assert.match(finalPrompt, /Suno v6 was presented around opt-in licensed music/i);
+  assert.match(finalPrompt, /whether AI music products move permission upstream into product design/i);
+  assert.match(finalPrompt, /What changes when permission is treated as part of the product surface/i);
+  assert.match(finalPrompt, /Permission is becoming product architecture/i);
+  assert.match(finalPrompt, /Creators and rightsholders need systems/i);
+  assert.doesNotMatch(finalPrompt, /STAGE_A1_THESIS_SHOULD_NOT_REACH_FINAL_WRITER/);
+  assert.doesNotMatch(finalPrompt, /STAGE_A1_EDITORIAL_IDEA_SHOULD_NOT_REACH_FINAL_WRITER/);
+  assert.doesNotMatch(finalPrompt, /STAGE_A1_PROGRESSION_SHOULD_NOT_REACH_FINAL_WRITER/);
+  assert.doesNotMatch(finalPrompt, /worthPublishing/i);
+  assert.doesNotMatch(finalPrompt, /rejectionReason/i);
+  assert.doesNotMatch(finalPrompt, /^- Thesis:/m);
+  assert.doesNotMatch(finalPrompt, /Useful progression/i);
+  assert.doesNotMatch(finalPrompt, /Approved Certifyd concepts/i);
+  assert.equal(context.generationDiagnostics.openAIReasoning.thesis, 'STAGE_A1_THESIS_SHOULD_NOT_REACH_FINAL_WRITER');
+  assert.equal(context.generationDiagnostics.openAIReasoning.editorialIdea, 'STAGE_A1_EDITORIAL_IDEA_SHOULD_NOT_REACH_FINAL_WRITER');
+  assert.equal(context.generationDiagnostics.openAIReasoning.articleProgression[0], 'STAGE_A1_PROGRESSION_SHOULD_NOT_REACH_FINAL_WRITER');
+  assert.equal(context.generationDiagnostics.openAIReasoning.worthPublishing, true);
   assert.match(finalPrompt, /RELEVANT CERTIFYD BRAIN/);
   assert.match(finalPrompt, /Certifyd can describe permission-aware publishing/i);
-  assert.match(finalPrompt, /Because relevant Certifyd Brain was selected, develop a real Certifyd perspective/i);
-  assert.match(finalPrompt, /roughly 900 to 1,300 words.*guidance, not a validation gate/i);
-  assert.match(finalPrompt, /assignment guidance, not a rigid outline/i);
+  assert.match(finalPrompt, /Because relevant Certifyd Brain was selected, develop a real Certifyd perspective only where it materially advances the article/i);
+  assert.match(finalPrompt, /normally around 900 to 1,300 words/i);
+  assert.match(finalPrompt, /Do not prematurely stop after summarizing the event and making one structural observation/i);
+  assert.match(finalPrompt, /advisory editorial notes as optional analysis, not a required thesis, argument or structure/i);
+  assert.match(finalPrompt, /final article is not required to reproduce these observations or any prior reasoning structure/i);
   assert.match(finalPrompt, /must never be used as evidence for the external event/i);
+});
+
+test('OpenAI worthPublishing=false does not erase independently relevant Brain', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  const records = [
+    ['content-agent/knowledge/capabilities/permissions.md', '# Permissions\n\nAPPROVED\n\nCertifyd can describe permission-aware publishing and access context for creator workflows.'],
+    ['content-agent/knowledge/capabilities/payments.md', '# Payments\n\nAPPROVED\n\nCertifyd payment context covers checkout and paid customer activity.'],
+  ];
+  for (const [relative, text] of records) {
+    const file = path.join(config.siteRoot, relative);
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(file, text);
+  }
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'suno-permission-story',
+      publisher: 'Digital Music News',
+      publishedAt: '2026-09-09T09:00:00.000Z',
+      title: 'Suno v6 arrives with rightsholder-backed licensing work',
+      summary: 'A source story reports that Suno v6 was developed with music rightsholders and built around opt-in permission experiences for individual artists.',
+      articleUrl: 'https://example.test/suno-permission-story',
+      categories: ['AI', 'Music'],
+      certifydRelevanceScore: 14,
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Suno v6 rightsholder-backed licensing work',
+    trendSourceItemIds: 'suno-permission-story',
+  });
+  completeEditorialGate(context, {
+    selectedCertifydConcepts: [
+      {
+        concept: 'Permission-aware publishing',
+        relevance: 'Relevant because the source-only thesis turns on opt-in permission experiences.',
+        sourceConnection: 'The source facts identify rightsholder-backed licensing work and opt-in permission experiences.',
+      },
+      {
+        concept: 'Checkout records',
+        relevance: 'Relevant to paid customer transactions.',
+        sourceConnection: 'The source facts do not discuss checkout, purchases or transactions.',
+      },
+    ],
+  });
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      calls,
+      reasoning: validReasoning({
+        eventSummary: 'Suno v6 was developed with music rightsholders and built around opt-in permission experiences.',
+        obviousTake: 'Suno is moving licensing closer to the product launch.',
+        editorialTension: 'The source facts show permission moving closer to model development, but the reporting does not disclose every operating term.',
+        hiddenQuestion: 'What changes when permission becomes part of the AI music product surface?',
+        whatThisReveals: 'Permission and licensing relationships are moving closer to product and model development rather than only after launch.',
+        editorialIdea: 'Suno v6 shows a structural shift toward permission becoming part of AI music product design.',
+        editorialIdeaSupport: [{ idea: 'The v6 model was developed with rightsholders and opt-in experiences.', factIds: ['suno-permission-story'] }],
+        creatorConsequence: 'Creators need permission context to remain visible as AI music products are designed and distributed.',
+        thesis: 'Suno v6 suggests permission is moving upstream into AI music product architecture.',
+        worthPublishing: false,
+        rejectionReason: 'The source-only stage wants founder review before treating the structural implication as a full thesis.',
+        certifydConcepts: [],
+        articleProgression: [],
+      }),
+      article: validArticle(context.sourceRecords[0].id, { claims: [] }),
+    }),
+  });
+  const article = await provider.generateArticle({
+    actorEmail: 'writer@example.test',
+    topic: 'Suno v6 rightsholder-backed licensing work',
+    audience: 'Creators',
+    objective: 'Explain the source facts.',
+    trendSourceItemIds: 'suno-permission-story',
+  }, context);
+  assert.equal(article.status, 'draft');
+  assert.match(calls[1].input, /RELEVANT CERTIFYD BRAIN/);
+  assert.match(calls[1].input, /Certifyd can describe permission-aware publishing/i);
+  assert.doesNotMatch(calls[1].input, /payment context covers checkout/i);
+  assert.doesNotMatch(calls[1].input, /worthPublishing=false/i);
+  assert.doesNotMatch(calls[1].input, /founder-review metadata/i);
+  assert.doesNotMatch(calls[1].input, /Stage A1 weakness/i);
+  assert.match(article.warnings.join('\n'), /weak editorial angle/i);
+  assert.equal(context.generationDiagnostics.openAIReasoning.thesis, 'Suno v6 suggests permission is moving upstream into AI music product architecture.');
+  assert.equal(context.generationDiagnostics.openAIReasoning.worthPublishing, false);
+  assert.deepEqual(context.allowedBrainSourceIds, ['brain:capabilities/permissions']);
+  assert.match(calls[1].input, /must never be used as evidence for the external event/i);
 });
 
 test('OpenAI worthPublishing=false returns founder-review draft with warning instead of failing generation', async () => {
@@ -728,11 +1095,24 @@ test('OpenAI final writing instructions discourage validator-facing defensive pr
   assert.match(finalInstructionText, /Do not mention the validation system, source-support restrictions, uncertainty machinery, prompt rules, or internal editorial rules in article prose/i);
   assert.match(finalInstructionText, /Do not add defensive disclaimers merely to show what the article is not claiming/i);
   assert.match(finalInstructionText, /Prefer confident, conventional editorial prose over defensive phrases/i);
-  assert.match(finalInstructionText, /Use the verified source facts, editorial direction and selected Certifyd Brain together/i);
-  assert.match(finalInstructionText, /assignment guidance, not a rigid outline/i);
+  assert.match(finalInstructionText, /Use the verified source facts, advisory editorial notes and selected Certifyd Brain together/i);
+  assert.match(finalInstructionText, /You own the final thesis/i);
+  assert.match(finalInstructionText, /challenge it, deepen it, combine it or replace its proposed thesis/i);
+  assert.match(finalInstructionText, /advisory analysis, not a required thesis, rigid outline or article structure/i);
+  assert.match(finalInstructionText, /After the first reasonable structural interpretation, ask one more conceptual “so what\?” internally/i);
+  assert.match(finalInstructionText, /go one conceptual level deeper/i);
   assert.match(finalInstructionText, /When selected Certifyd Brain is supplied, use it to develop a meaningful Certifyd perspective/i);
   assert.match(finalInstructionText, /When no selected Certifyd Brain is supplied, do not manufacture a Certifyd product connection/i);
   assert.match(finalInstructionText, /It is not evidence for facts about the external source event/i);
+  assert.match(finalInstructionText, /Verified Brain facts about Certifyd may be stated directly and confidently/i);
+  assert.match(finalInstructionText, /Do not weaken verified Certifyd capabilities with “may support,” “intended to support,” “where implemented,” “potentially supports,” or “is designed to potentially” unless the selected Brain record itself contains that uncertainty/i);
+  assert.match(finalInstructionText, /State verified Certifyd Brain capabilities directly when the selected Brain record supports them/i);
+  assert.match(finalInstructionText, /do not add legalistic hedges unless the Brain record itself is uncertain/i);
+  assert.match(finalInstructionText, /select only the Certifyd concepts needed to extend the thesis/i);
+  assert.doesNotMatch(finalInstructionText, /Stage A1 thesis/i);
+  assert.doesNotMatch(finalInstructionText, /articleProgression/i);
+  assert.doesNotMatch(finalInstructionText, /Use external source summaries only/i);
+  assert.match(finalInstructionText, /Use the supplied verified source material only for facts about the news subject/i);
   assert.match(finalInstructionText, /Do not enumerate source limitations as article prose/i);
   assert.match(finalInstructionText, /Let article length follow the amount of reporting and argument available/i);
   assert.doesNotMatch(finalInstructionText, /Default to no Certifyd product mention/i);
@@ -1033,6 +1413,9 @@ test('unsupported factual royalty claim triggers one repair call and preserves a
   const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Platform changes creator rights policy for catalog visibility', audience: 'Creators', objective: 'Explain rights policy.' }, context);
   assert.equal(calls.length, 3);
   assert.match(calls[2].input, /new royalty obligation/i);
+  assert.match(calls[2].input, /preserve the final article’s defensible editorial argument/i);
+  assert.match(calls[2].input, /Do not restore an earlier weaker Stage A1 thesis or structure/i);
+  assert.doesNotMatch(calls[2].input, /preserve the same source-backed thesis/i);
   assert.equal(article.title, base.title);
   assert.equal(article.seoTitle, base.seoTitle);
   assert.doesNotMatch(article.bodyMarkdown, /new royalty obligation/i);
@@ -1072,6 +1455,7 @@ test('unsupported royalty thesis triggers repair without retrying reasoning or w
   });
   const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Platform changes creator rights policy for catalog visibility', audience: 'Creators', objective: 'Explain rights policy.' }, context);
   assert.deepEqual(calls.map((call) => call.text.format.name), ['certifyd_editorial_reasoning', 'certifyd_article', 'certifyd_article']);
+  assert.equal(calls.length, 3);
   assert.doesNotMatch(article.bodyMarkdown, /entitled to royalties/i);
 });
 
