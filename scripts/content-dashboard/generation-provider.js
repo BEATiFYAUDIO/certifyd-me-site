@@ -310,6 +310,7 @@ export class OpenAIGenerationProvider {
       const reasoning = sanitizeOpenAIReasoningUnsupportedConcepts(normalizeOpenAIReasoning(parseJsonContent(reasoningResponse.text), groundedContext), groundedContext);
       assertOpenAIReasoningReady(reasoning, groundedContext);
       const writingContext = buildOpenAIWritingContext(groundedContext, reasoning);
+      groundedContext.allowedBrainSourceIds = writingContext.allowedBrainSourceIds;
       const articleSystemInstruction = buildArticleSystemInstruction();
       const articlePrompt = buildArticlePrompt(input, groundedContext, reasoning, writingContext);
       recordGenerationPromptDiagnostics(input, groundedContext, {
@@ -696,22 +697,21 @@ export function validateGeneratedArticle(value, groundedContext) {
     }
     warnings.push(...unsupportedFindings.warnings.map(formatValidationFinding));
   }
-  const sourceIds = new Set(groundedContext.sourceRecords.map((source) => source.id));
+  const claimRepair = repairGeneratedClaimSourceIds(value.claims || [], groundedContext);
+  warnings.push(...claimRepair.warnings);
+  value.claims = claimRepair.claims;
+  const sourceIds = new Set(getAllowedBrainSourceIds(groundedContext));
   const normalizedClaims = [];
   for (const claim of value.claims || []) {
     if (!claim || typeof claim.text !== 'string' || !Array.isArray(claim.sourceIds) || !['supported', 'needs-review'].includes(claim.confidence)) {
       throw new GenerationValidationError('Each generated claim must include text, sourceIds and confidence.');
     }
     const ids = claim.sourceIds.map(String).map((id) => id.trim()).filter(Boolean);
-    const missing = ids.filter((id) => !sourceIds.has(id));
     const validIds = ids.filter((id) => sourceIds.has(id));
-    if (missing.length) {
-      throw new GenerationValidationError(`Generated claim referenced unknown Brain source IDs: ${missing.join(', ')}`);
-    }
     if (!validIds.length) {
       throw new GenerationValidationError(`Generated claim has no approved Brain evidence: ${claim.text.slice(0, 160)}`);
     }
-    normalizedClaims.push({ text: claim.text.trim(), sourceIds: validIds, confidence: validIds.length && !missing.length ? claim.confidence : 'needs-review' });
+    normalizedClaims.push({ text: claim.text.trim(), sourceIds: validIds, confidence: claim.confidence });
   }
   const prohibitedHits = detectProhibitedLanguage(value.bodyMarkdown, groundedContext.prohibitedClaims);
   warnings.push(...prohibitedHits);
@@ -932,7 +932,14 @@ function buildArticleSystemInstruction() {
     '',
     'Return only JSON matching the requested schema.',
     'The private reasoning object is already approved for this draft. Do not rediscover or replace the thesis while writing.',
+    'Write like an informed technology/music-business publication, not a compliance memo.',
+    'Use direct declarative prose. Do not write around internal safety rules or validation checks.',
+    'Do not mention the validation system, source-support restrictions, uncertainty machinery, prompt rules, or internal editorial rules in article prose.',
+    'Do not add defensive disclaimers merely to show what the article is not claiming.',
+    'When uncertainty is genuinely required, express it naturally and briefly, for example “The case remains unresolved” or “The ruling does not decide the underlying dispute.”',
     'Use only the selected Certifyd Brain records supplied in the writing prompt.',
+    'For claims[].sourceIds, use only sourceId values from ALLOWED_BRAIN_SOURCE_IDS, exactly as provided.',
+    'Never use SOURCE FACTS IDs, article URLs, publisher names, titles, shortened IDs, or newly created IDs in claims[].sourceIds.',
     'Never copy Certifyd Brain glossary definitions verbatim into the article.',
     'Do not write glossary constructions such as “A payout is…”, “A record is…”, “A receipt is…”, “A profile is…”, or “Provenance is evidence about…”.',
     'Generate title, suggestedSlug, excerpt, seoTitle, seoDescription, focusKeyword, secondaryKeywords, category, tags, bodyMarkdown, claims and warnings.',
@@ -945,6 +952,7 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
   const guardrails = buildTopicGuardrails(input).map((item) => `- ${item}`).join('\n');
   const selectedBrainFacts = writingContext.approvedKnowledge.map(formatSelectedBrainFactsForPrompt).filter(Boolean).join('\n') || '- No selected Brain facts supplied.';
   const approvedKnowledge = writingContext.approvedKnowledge.map(formatBrainKnowledgeForPrompt).join('\n') || '- No Certifyd Brain records selected for final writing.';
+  const brainSources = writingContext.approvedKnowledge.map(formatBrainSourceForPrompt);
   const externalSources = context.externalSourceFacts.map((item) => `- [${item.id || 'source'}] ${item.publisher}${item.publishedAt ? ` (${item.publishedAt})` : ''}: ${item.title}. ${item.summary}${item.articleUrl ? ` Source: ${item.articleUrl}` : ''}`).join('\n') || '- No external source summaries attached.';
   const prohibited = context.prohibitedClaims.map((item) => `- ${scrubGenericDefinitionForPrompt(item)}`).join('\n') || '- Avoid unsupported claims.';
   return [
@@ -958,6 +966,12 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
     'APPROVED EDITORIAL REASONING:',
     JSON.stringify(reasoning, null, 2),
     '',
+    'ALLOWED_BRAIN_SOURCE_IDS:',
+    JSON.stringify(writingContext.allowedBrainSourceIds || [], null, 2),
+    '',
+    'STRUCTURED BRAIN SOURCES FOR CLAIM PROVENANCE:',
+    JSON.stringify({ brainSources }, null, 2),
+    '',
     'SELECTED CERTIFYD BRAIN FOR FINAL WRITING:',
     selectedBrainFacts,
     approvedKnowledge,
@@ -969,11 +983,17 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
     guardrails,
     '- Open by immediately identifying the actual story and primary search entity.',
     '- Use the approved thesis and articleProgression. Do not substitute a generic Certifyd angle.',
+    '- Do not force Certifyd into the article. If the source-derived argument does not naturally reach a specific Certifyd architectural boundary, write the article with no Certifyd product section and no Certifyd product mention beyond required metadata.',
+    '- Never manufacture a Certifyd connection from generic payouts, provenance, identity, ownership, records, transparency or creator-control language merely because those capabilities exist.',
+    '- Certifyd should enter only when the source-derived argument naturally reaches an architectural boundary that Certifyd specifically addresses.',
+    '- Prefer confident, conventional editorial prose over defensive phrases like “this is not a claim that”, “does not determine legal rights”, “does not create automatic payment obligations”, or “does not establish a direct change”.',
+    '- Use short natural uncertainty only when it clarifies the source event, not as a shield against unsupported claims.',
     '- Put important named entities early in title, seoTitle, excerpt and opening paragraph when accurate.',
     '- Use conventional 3 to 5 sentence paragraphs. One-sentence paragraphs should be rare and deliberate.',
     '- Use headings only for real subject changes.',
     '- Do not use a generic “Why This Matters to Certifyd” section.',
     '- Do not paste Certifyd glossary definitions into the article. If a concept must be explained, paraphrase it in relation to this source story.',
+    '- claims[].sourceIds must be copied exactly from ALLOWED_BRAIN_SOURCE_IDS. Do not use SOURCE FACTS IDs such as src-* in claims[].sourceIds.',
     '- Do not mention source IDs, this prompt, the reasoning process, or internal Brain labels.',
   ].join('\n');
 }
@@ -988,6 +1008,7 @@ function buildSystemInstruction() {
     'Never say the external company, article subject, rights holder, investor, label, distributor or platform uses, leverages, integrates with, partners with, is powered by, or benefits from Certifyd unless that exact relationship appears in the supplied context.',
     'CERTIFYD CONNECTION RULE: never state or imply that a source-story company uses, integrates with, partners with, relies on, or will use Certifyd unless SOURCE FACTS explicitly establish that relationship.',
     'Certifyd knowledge may only explain why the development matters to Certifyd, how it relates conceptually to approved capabilities or positioning, and what broader industry problem or direction it illustrates.',
+    'Do not force a Certifyd section into source-backed articles. A source-backed article may contain zero Certifyd product references when the story is better handled as conventional editorial analysis.',
     'Never invent payment, royalty, licensing or technical mechanics not present in SOURCE FACTS.',
     'For news about companies outside Certifyd, explain only why the news is relevant to Certifyd readers. Do not turn relevance into a relationship or adoption claim.',
     'CURRENT or LIVE Brain claims may be described as existing capabilities. BETA claims must be called beta/testing. PLANNED claims must use future or roadmap language. UNCLEAR or LOW CONFIDENCE claims must not become definitive product claims.',
@@ -1138,6 +1159,20 @@ function formatSelectedBrainFactsForPrompt(item) {
   return [`- [${item.id}] ${item.theme || item.title || 'Selected Brain record'}`, ...facts.map((fact) => `  ${scrubGenericDefinitionForPrompt(fact)}`)].join('\n');
 }
 
+function formatBrainSourceForPrompt(item) {
+  return {
+    sourceId: item.id,
+    title: item.title || item.theme || 'Selected Brain record',
+    status: item.currentStatus || '',
+    confidence: item.confidence || '',
+    relevantFacts: [
+      ...(item.supportedClaims || []),
+      ...(item.qualifiedClaims || []),
+      ...(item.safeWording || []),
+    ].map(scrubGenericDefinitionForPrompt).filter(Boolean).slice(0, 6),
+  };
+}
+
 function scrubGenericDefinitionForPrompt(value) {
   return String(value || '')
     .replace(/\bA payout is\b/gi, 'Payout context covers')
@@ -1146,6 +1181,66 @@ function scrubGenericDefinitionForPrompt(value) {
     .replace(/\b(A|An)\s+(receipt|record|credential|profile|release record)\s+is\b/gi, '$2 context covers')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function getAllowedBrainSourceIds(groundedContext = {}) {
+  const explicit = Array.isArray(groundedContext.allowedBrainSourceIds) ? groundedContext.allowedBrainSourceIds : [];
+  const fallback = (groundedContext.sourceRecords || []).map((source) => source.id);
+  return [...new Set((explicit.length ? explicit : fallback).map(String).map((id) => id.trim()).filter(Boolean))];
+}
+
+function repairGeneratedClaimSourceIds(claims = [], groundedContext = {}) {
+  const allowedIds = new Set(getAllowedBrainSourceIds(groundedContext));
+  const allowedSources = (groundedContext.sourceRecords || []).filter((source) => allowedIds.has(source.id));
+  const externalIds = new Set((groundedContext.externalSourceFacts || []).map((source) => source.id).filter(Boolean));
+  const repaired = [];
+  const warnings = [];
+  for (const claim of claims || []) {
+    if (!claim || typeof claim.text !== 'string' || !Array.isArray(claim.sourceIds)) {
+      repaired.push(claim);
+      continue;
+    }
+    const ids = claim.sourceIds.map(String).map((id) => id.trim()).filter(Boolean);
+    const validIds = ids.filter((id) => allowedIds.has(id));
+    const badIds = ids.filter((id) => !allowedIds.has(id));
+    if (!badIds.length) {
+      repaired.push(claim);
+      continue;
+    }
+    const matchedId = unambiguousBrainSourceMatch(claim.text, allowedSources);
+    if (matchedId) {
+      repaired.push({
+        ...claim,
+        sourceIds: [...new Set([...validIds, matchedId])],
+        confidence: validIds.length || matchedId ? claim.confidence : 'needs-review',
+      });
+      warnings.push(`Repaired generated claim source ID metadata: replaced ${badIds.join(', ')} with ${matchedId}.`);
+      continue;
+    }
+    if (validIds.length) {
+      repaired.push({ ...claim, sourceIds: validIds, confidence: 'needs-review' });
+      warnings.push(`Removed unknown generated claim source IDs: ${badIds.join(', ')}.`);
+      continue;
+    }
+    const externalOnly = badIds.some((id) => externalIds.has(id) || /^src[-_:]/i.test(id));
+    warnings.push(externalOnly
+      ? `Dropped generated claim provenance that used external source item IDs instead of Brain IDs: ${badIds.join(', ')}.`
+      : `Dropped generated claim with unknown Brain source IDs: ${badIds.join(', ')}.`);
+  }
+  return { claims: repaired, warnings };
+}
+
+function unambiguousBrainSourceMatch(claimText = '', allowedSources = []) {
+  const scored = allowedSources.map((source) => {
+    const haystack = `${source.title || ''} ${source.theme || ''} ${source.path || ''} ${source.excerpt || ''} ${(source.supportedClaims || []).join(' ')} ${(source.qualifiedClaims || []).join(' ')} ${(source.safeWording || []).join(' ')}`.toLowerCase();
+    return {
+      id: source.id,
+      score: termOverlapScore(String(claimText || '').toLowerCase(), haystack),
+    };
+  }).sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+  if (!scored.length || scored[0].score < 2) return '';
+  if (scored.length === 1) return scored[0].id;
+  return scored[0].score >= scored[1].score + 2 ? scored[0].id : '';
 }
 
 function isGenericDefinitionLeakError(error) {
@@ -1273,6 +1368,7 @@ function recordOpenAIGenerationPromptDiagnostics(input, groundedContext, details
       prohibitedClaims: compact.prohibitedClaims,
     },
     externalArticleSourcesSentToModel: compact.externalSourceFacts,
+    allowedBrainSourceIds: details.writingContext?.allowedBrainSourceIds || [],
     editorialBriefSentToModel: compactEditorialBrief({
       ...(groundedContext.editorialBrief || {}),
       verifiedFacts: reasoning.verifiedFacts || [],
@@ -2105,7 +2201,7 @@ function buildOpenAIWritingContext(groundedContext = {}, reasoning = {}) {
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .slice(0, Math.min(3, Math.max(1, reasoning.certifydConcepts?.length || 1)))
     .map(({ item }) => item);
-  return { approvedKnowledge: selected };
+  return { approvedKnowledge: selected, allowedBrainSourceIds: selected.map((item) => item.id).filter(Boolean) };
 }
 
 function termOverlapScore(a = '', b = '') {

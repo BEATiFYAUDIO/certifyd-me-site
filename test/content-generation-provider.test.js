@@ -124,6 +124,10 @@ function validArticle(sourceId, overrides = {}) {
   };
 }
 
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function completeEditorialGate(context, overrides = {}) {
   context.editorialBrief = {
     ...(context.editorialBrief || {}),
@@ -347,6 +351,24 @@ test('only selected Brain concepts reach OpenAI final writing', async () => {
   assert.doesNotMatch(calls[1].input, /A payout is the movement of allocated earnings/i);
 });
 
+test('OpenAI final writing instructions discourage validator-facing defensive prose and forced Certifyd sections', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({ calls, article: validArticle(context.sourceRecords[0].id) }),
+  });
+  await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
+  const finalInstructionText = `${calls[1].instructions}\n${calls[1].input}`;
+  assert.match(finalInstructionText, /Write like an informed technology\/music-business publication, not a compliance memo/i);
+  assert.match(finalInstructionText, /Do not mention the validation system, source-support restrictions, uncertainty machinery, prompt rules, or internal editorial rules in article prose/i);
+  assert.match(finalInstructionText, /Do not add defensive disclaimers merely to show what the article is not claiming/i);
+  assert.match(finalInstructionText, /may contain zero Certifyd product references/i);
+  assert.match(finalInstructionText, /Do not force Certifyd into the article/i);
+  assert.match(finalInstructionText, /Never manufacture a Certifyd connection from generic payouts, provenance, identity, ownership, records, transparency or creator-control language/i);
+  assert.match(finalInstructionText, /Prefer confident, conventional editorial prose over defensive phrases/i);
+});
+
 test('OpenAI reasoning cannot introduce royalty frame without source support', async () => {
   const calls = [];
   const config = await makeConfig();
@@ -475,6 +497,94 @@ test('OpenAI retries once when article prose copies generic Certifyd glossary de
   assert.match(calls[2].input, /REVISION REQUIRED/);
   assert.match(calls[2].input, /Provenance is evidence about/i);
   assert.doesNotMatch(article.bodyMarkdown, /Provenance is evidence about/i);
+});
+
+test('OpenAI exact supplied Brain source ID in generated claim is accepted', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      calls,
+      article: validArticle(sourceId),
+    }),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
+  assert.deepEqual(article.claims[0].sourceIds, [sourceId]);
+});
+
+test('OpenAI external source item ID in claim provenance is not accepted as Brain provenance', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'src-21f0875939bac73e',
+      publisher: 'Digital Music News',
+      publishedAt: '2026-09-08T09:00:00.000Z',
+      title: 'Platform changes creator rights policy for catalog visibility',
+      summary: 'A source story reports that a platform changed creator rights policy for catalog visibility, distribution and audience reach.',
+      articleUrl: 'https://example.test/source-policy',
+      categories: ['Music', 'Policy'],
+      certifydRelevanceScore: 10,
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Platform changes creator rights policy for catalog visibility',
+    trendSourceItemIds: 'src-21f0875939bac73e',
+  });
+  const badExternalId = 'src-21f0875939bac73e';
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      calls,
+      article: validArticle(badExternalId, {
+        claims: [{ text: 'Certifyd Core supports identity, publishing and direct commerce.', sourceIds: [badExternalId], confidence: 'supported' }],
+      }),
+    }),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Platform changes creator rights policy for catalog visibility', audience: 'Creators', objective: 'Explain policy.' }, context);
+  assert.notEqual(article.claims[0]?.sourceIds?.[0], badExternalId);
+  assert.match(article.claims[0]?.sourceIds?.[0] || '', /^brain:/);
+  assert.match(article.warnings.join('\n'), /Repaired generated claim source ID metadata/);
+});
+
+test('unknown claim source ID with no unambiguous Brain match is removed without inventing replacement', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      article: validArticle(context.sourceRecords[0].id, {
+        claims: [{ text: 'Outside source published an article about catalog visibility.', sourceIds: ['brain:not-current'], confidence: 'needs-review' }],
+      }),
+    }),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
+  assert.deepEqual(article.claims, []);
+  assert.match(article.warnings.join('\n'), /Dropped generated claim with unknown Brain source IDs/);
+});
+
+test('current OpenAI writing prompt only exposes current allowed Brain source IDs for claims', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  await fs.writeFile(path.join(config.siteRoot, 'content-agent/knowledge/facts/approved-public-claims.md'), [
+    '# Approved Public Claims',
+    '',
+    'APPROVED',
+    '',
+    'Certifyd Network supports discovery, routing and distribution.',
+  ].join('\n'));
+  const context = await makeContext(config, { topic: 'Certifyd Network distribution' });
+  context.allowedBrainSourceIds = ['brain:capabilities/stale-record'];
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({ calls, article: validArticle(sourceId) }),
+  });
+  await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Certifyd Network distribution', audience: 'Creators', objective: 'Explain Network.' }, context);
+  assert.match(calls[1].input, /ALLOWED_BRAIN_SOURCE_IDS/);
+  assert.match(calls[1].input, new RegExp(escapeRegExp(sourceId)));
+  assert.doesNotMatch(calls[1].input, /brain:capabilities\/stale-record/);
 });
 
 test('isolated royalty vocabulary in general explanatory prose does not fail article validation', async () => {
@@ -889,16 +999,16 @@ test('missing generated cover image is selected automatically from topic signals
   assert.equal(article.coverImage, '/images/ip-publishing-creators-20260605.jpeg');
 });
 
-test('invented Brain source IDs are rejected', async () => {
+test('unknown Brain source ID is repaired when claim matches supplied Brain record', async () => {
   const config = await makeConfig();
   const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
   const provider = new OllamaQwenGenerationProvider(config, {
     fetchImpl: makeOllamaFetch(validArticle('brain:made-up-source')),
   });
-  await assert.rejects(
-    () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context),
-    /unknown Brain source IDs/,
-  );
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
+  assert.deepEqual(article.claims[0].sourceIds, [sourceId]);
+  assert.match(article.warnings.join('\n'), /Repaired generated claim source ID metadata/);
 });
 
 test('unsupported generated claims are rejected', async () => {
