@@ -130,13 +130,31 @@ export const ARTICLE_SCHEMA = {
 export const EDITORIAL_REASONING_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['verifiedFacts', 'tension', 'whatChanged', 'creatorConsequence', 'thesis', 'certifydConcepts', 'avoidAngles', 'articleProgression'],
+  required: ['eventSummary', 'obviousTake', 'editorialTension', 'hiddenQuestion', 'whatThisReveals', 'editorialIdea', 'editorialIdeaSupport', 'thesis', 'creatorConsequence', 'worthPublishing', 'rejectionReason', 'certifydConcepts', 'avoidAngles', 'articleProgression'],
   properties: {
+    eventSummary: { type: 'string' },
+    obviousTake: { type: 'string' },
+    editorialTension: { type: 'string' },
+    hiddenQuestion: { type: 'string' },
+    whatThisReveals: { type: 'string' },
+    editorialIdea: { type: 'string' },
+    editorialIdeaSupport: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['idea', 'factIds'],
+        properties: {
+          idea: { type: 'string' },
+          factIds: { type: 'array', items: { type: 'string' } },
+        },
+      },
+    },
     verifiedFacts: { type: 'array', items: { type: 'string' } },
-    tension: { type: 'string' },
-    whatChanged: { type: 'string' },
     creatorConsequence: { type: 'string' },
     thesis: { type: 'string' },
+    worthPublishing: { type: 'boolean' },
+    rejectionReason: { type: 'string' },
     certifydConcepts: {
       type: 'array',
       items: {
@@ -891,10 +909,16 @@ function buildReasoningSystemInstruction() {
     'You are the private editorial reasoning stage for Certifyd Blog.',
     'Return only JSON matching the requested schema.',
     'Use SOURCE FACTS as the only source of claims about external people, companies, events, dates, deals, lawsuits, reports, products or policies.',
-    'Identify the concrete event before choosing any Certifyd concept.',
+    'This is Stage A1: source-only thesis evaluation.',
+    'Certifyd Brain content, capabilities, product descriptions, generic Certifyd themes and product relevance are not available in this stage.',
+    'Do not ask what lesson Certifyd can draw from the story.',
+    'First answer: what genuinely interesting idea does this event support if Certifyd did not exist?',
+    'Set worthPublishing=false when the available facts support reporting but not a distinctive source-backed editorial idea.',
+    'Set worthPublishing=false when the thesis needs Certifyd concepts, records, documentation, provenance, catalog context or other generic operational advice to become interesting.',
+    'Every material component of editorialIdea and thesis must be listed in editorialIdeaSupport with source fact IDs that make the inference possible.',
     'Do not write the article.',
     'Do not invent facts, quotes, partnerships, adoption, legal conclusions or Certifyd relationships.',
-    'Choose at most 3 Certifyd concepts, and every selected concept must include a concrete sourceConnection.',
+    'Return certifydConcepts as an empty array in Stage A1.',
     'The thesis must be story-specific, not reusable generic creator-ownership boilerplate.',
   ].join('\n');
 }
@@ -902,7 +926,6 @@ function buildReasoningSystemInstruction() {
 function buildReasoningPrompt(input, groundedContext) {
   const context = compactGroundedContextForModel(groundedContext);
   const externalSources = context.externalSourceFacts.map((item) => `- [${item.id || 'source'}] ${item.publisher}${item.publishedAt ? ` (${item.publishedAt})` : ''}: ${item.title}. ${item.summary}${item.articleUrl ? ` Source: ${item.articleUrl}` : ''}`).join('\n') || '- No external source summaries attached.';
-  const approvedKnowledge = context.approvedKnowledge.slice(0, 10).map(formatBrainKnowledgeForPrompt).join('\n') || '- No approved Certifyd knowledge selected.';
   return [
     `Topic: ${input.topic || input.workingTitle || 'Certifyd article'}`,
     `Audience: ${input.audience || input.targetAudience || 'Certifyd readers'}`,
@@ -911,18 +934,31 @@ function buildReasoningPrompt(input, groundedContext) {
     'SOURCE FACTS:',
     externalSources,
     '',
-    'APPROVED CERTIFYD BRAIN CANDIDATES:',
-    approvedKnowledge,
-    '',
-    'EXISTING DETERMINISTIC BRIEF:',
-    formatEditorialBriefForPrompt(context.editorialBrief),
+    'SOURCE-ONLY DETERMINISTIC BRIEF:',
+    formatSourceOnlyEditorialBriefForPrompt(context.editorialBrief),
     '',
     'PRIVATE TASK:',
     '- Extract verifiedFacts from SOURCE FACTS.',
-    '- Identify tension, whatChanged, creatorConsequence and thesis.',
-    '- Select no more than 3 Certifyd concepts only when SOURCE FACTS create a concrete connection.',
-    '- Put tempting but unsupported Certifyd angles in avoidAngles.',
-    '- articleProgression must contain at least 4 specific steps for the final article.',
+    '- Identify eventSummary, obviousTake, editorialTension, hiddenQuestion, whatThisReveals, editorialIdea, creatorConsequence and thesis using SOURCE FACTS only.',
+    '- Decide worthPublishing before any Certifyd context exists.',
+    '- If removing Certifyd leaves no meaningful editorial argument, set worthPublishing=false.',
+    '- Set worthPublishing=false for thin procedural updates, generic operational advice, or a thesis that is merely “this remains unresolved.”',
+    '- Map every material editorialIdea/thesis component to source fact IDs in editorialIdeaSupport.',
+    '- Return certifydConcepts as [] and do not introduce records, documentation, provenance, release context, catalog context or Certifyd.',
+    '- articleProgression must contain at least 4 source-only steps only when worthPublishing=true.',
+  ].join('\n');
+}
+
+function formatSourceOnlyEditorialBriefForPrompt(brief = {}) {
+  const compact = compactEditorialBrief(brief);
+  return [
+    `- Primary event: ${compact.primaryEvent || 'None established.'}`,
+    `- Verified facts:\n${(compact.verifiedFacts || []).map((fact, index) => `  fact-${index + 1}: ${fact}`).join('\n') || '  None established.'}`,
+    `- Editorial tension candidate: ${compact.editorialTension || 'None established.'}`,
+    `- What changed candidate: ${compact.whatChanged || 'None established.'}`,
+    `- Creator consequence candidate: ${compact.creatorConsequence || 'None established.'}`,
+    `- Thesis candidate: ${compact.possibleThesis || 'None established.'}`,
+    `- Thesis test: ${compact.thesisTest?.status || 'UNKNOWN'} — ${compact.thesisTest?.reason || 'No reason supplied.'}`,
   ].join('\n');
 }
 
@@ -2073,6 +2109,33 @@ function detectUnsupportedBriefConcepts(brief = {}, externalSourceFacts = []) {
   return [...new Set(hits)];
 }
 
+function detectUnsupportedSourceOnlyReasoningBridgeConcepts(reasoning = {}, externalSourceFacts = []) {
+  const sourceText = editorialSourceText(externalSourceFacts);
+  const reasoningText = [
+    reasoning.eventSummary,
+    reasoning.obviousTake,
+    reasoning.editorialTension,
+    reasoning.hiddenQuestion,
+    reasoning.whatThisReveals,
+    reasoning.editorialIdea,
+    reasoning.creatorConsequence,
+    reasoning.thesis,
+    ...(reasoning.articleProgression || []),
+    ...(reasoning.certifydConcepts || []).flatMap((concept) => [concept.concept, concept.relevance, concept.sourceConnection]),
+  ].join(' ').replace(/\s+/g, ' ');
+  const sourceSupportsOperationalRecords = /\b(recordkeeping|records?|documentation|documented|receipts?|release context|offering context|catalog(?:ue)? context|catalog(?:ue)? records?)\b/i.test(sourceText);
+  const checks = [
+    ['Certifyd', /\bcertifyd\b/i, /\bcertifyd\b/i.test(sourceText)],
+    ['provenance', /\bprovenance\b/i, /\b(provenance|source context|origin|authorship|credit|credits)\b/i.test(sourceText)],
+    ['records/documentation', /\b(clear records?|recordkeeping|documentation|documented records?|receipts?)\b/i, sourceSupportsOperationalRecords],
+    ['release/offering context', /\b(release context|offering context|context attached to a music offering|how music is released and offered)\b/i, /\b(release context|offering context|product packaging|offering is presented|how music is released|how music is offered)\b/i.test(sourceText)],
+    ['catalog context', /\bcatalog(?:ue)? context\b/i, /\bcatalog(?:ue)? context\b/i.test(sourceText)],
+  ];
+  return checks
+    .filter(([, pattern, supported]) => pattern.test(reasoningText) && !supported)
+    .map(([label]) => label);
+}
+
 function editorialSourceText(externalSourceFacts = []) {
   return externalSourceFacts
     .map((source) => `${source.publisher || ''} ${source.title || ''} ${source.summary || ''} ${(source.categories || []).join(' ')}`)
@@ -2127,17 +2190,27 @@ function normalizeOpenAIReasoning(value, groundedContext = {}) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new GenerationValidationError('OpenAI returned malformed editorial reasoning.');
   }
+  const editorialTension = clampText(value.editorialTension || value.tension, 420);
+  const whatThisReveals = clampText(value.whatThisReveals || value.whatChanged, 420);
   return {
+    eventSummary: clampText(value.eventSummary, 420),
+    obviousTake: clampText(value.obviousTake, 320),
+    editorialTension,
+    hiddenQuestion: clampText(value.hiddenQuestion, 320),
+    whatThisReveals,
+    editorialIdea: clampText(value.editorialIdea, 420),
+    editorialIdeaSupport: (value.editorialIdeaSupport || []).map((item) => ({
+      idea: clampText(item?.idea, 260),
+      factIds: (item?.factIds || []).map((factId) => clampText(factId, 80)).filter(Boolean).slice(0, 8),
+    })).filter((item) => item.idea || item.factIds.length).slice(0, 8),
     verifiedFacts: (value.verifiedFacts || []).map((item) => clampText(item, 260)).filter(Boolean).slice(0, 8),
-    tension: clampText(value.tension, 420),
-    whatChanged: clampText(value.whatChanged, 420),
+    tension: editorialTension,
+    whatChanged: whatThisReveals,
     creatorConsequence: clampText(value.creatorConsequence, 420),
     thesis: clampText(value.thesis, 420),
-    certifydConcepts: (value.certifydConcepts || []).map((item) => ({
-      concept: clampText(item?.concept, 100),
-      relevance: clampText(item?.relevance, 260),
-      sourceConnection: clampText(item?.sourceConnection, 260),
-    })).filter((item) => item.concept || item.relevance || item.sourceConnection).slice(0, 3),
+    worthPublishing: value.worthPublishing === true,
+    rejectionReason: clampText(value.rejectionReason, 360),
+    certifydConcepts: [],
     avoidAngles: (value.avoidAngles || []).map((item) => clampText(item, 160)).filter(Boolean).slice(0, 10),
     articleProgression: (value.articleProgression || []).map((item) => clampText(item, 260)).filter(Boolean).slice(0, 8),
     sourceIds: (groundedContext.externalSourceFacts || []).map((source) => source.id).filter(Boolean),
@@ -2157,6 +2230,8 @@ function sanitizeOpenAIReasoningUnsupportedConcepts(reasoning = {}, groundedCont
   }, support);
   return {
     ...reasoning,
+    editorialTension: brief.editorialTension,
+    whatThisReveals: brief.whatChanged,
     tension: brief.editorialTension,
     whatChanged: brief.whatChanged,
     creatorConsequence: brief.creatorConsequence,
@@ -2169,10 +2244,20 @@ function sanitizeOpenAIReasoningUnsupportedConcepts(reasoning = {}, groundedCont
 
 function assertOpenAIReasoningReady(reasoning = {}, groundedContext = {}) {
   const failures = [];
+  if (reasoning.worthPublishing !== true) failures.push(`SOURCE-ONLY WORTH PUBLISHING != true${reasoning.rejectionReason ? ` (${reasoning.rejectionReason})` : ''}`);
+  if (!reasoning.eventSummary) failures.push('EVENT SUMMARY is empty');
+  if (!reasoning.editorialIdea) failures.push('EDITORIAL IDEA is empty');
   if (!reasoning.verifiedFacts?.length) failures.push('CORE FACTS is empty');
   if (!reasoning.tension) failures.push('EDITORIAL TENSION is empty');
   if (!reasoning.creatorConsequence) failures.push('CREATOR CONSEQUENCE is empty');
   if (!reasoning.thesis) failures.push('EDITORIAL THESIS is empty');
+  if (!Array.isArray(reasoning.editorialIdeaSupport) || !reasoning.editorialIdeaSupport.length) failures.push('EDITORIAL IDEA SUPPORT is empty');
+  for (const item of reasoning.editorialIdeaSupport || []) {
+    if (!String(item.idea || '').trim() || !Array.isArray(item.factIds) || !item.factIds.length) {
+      failures.push('EDITORIAL IDEA SUPPORT has an unsupported material idea');
+      break;
+    }
+  }
   if (!Array.isArray(reasoning.articleProgression) || reasoning.articleProgression.filter((step) => step.length >= 16).length < 4) failures.push('ARTICLE ARGUMENT has fewer than 4 steps');
   for (const concept of reasoning.certifydConcepts || []) {
     if (!concept.sourceConnection) {
@@ -2192,6 +2277,9 @@ function assertOpenAIReasoningReady(reasoning = {}, groundedContext = {}) {
   for (const unsupported of detectUnsupportedBriefConcepts(briefLike, groundedContext.externalSourceFacts || [])) {
     failures.push(`EDITORIAL BRIEF contains source-unsupported concept: ${unsupported}`);
   }
+  for (const unsupported of detectUnsupportedSourceOnlyReasoningBridgeConcepts(reasoning, groundedContext.externalSourceFacts || [])) {
+    failures.push(`SOURCE-ONLY REASONING contains unsupported bridge concept: ${unsupported}`);
+  }
   if (failures.length) {
     throw new GenerationConfigurationError(`Article generation blocked by editorial gate: ${failures.join('; ')}.`);
   }
@@ -2199,6 +2287,7 @@ function assertOpenAIReasoningReady(reasoning = {}, groundedContext = {}) {
 
 function buildOpenAIWritingContext(groundedContext = {}, reasoning = {}) {
   const concepts = (reasoning.certifydConcepts || []).map((item) => `${item.concept} ${item.relevance} ${item.sourceConnection}`.toLowerCase());
+  if (!concepts.length) return { approvedKnowledge: [], allowedBrainSourceIds: [] };
   const knowledge = Array.isArray(groundedContext.approvedKnowledge) ? groundedContext.approvedKnowledge : [];
   const scored = knowledge.map((item, index) => {
     const haystack = `${item.title || ''} ${item.theme || ''} ${item.path || ''} ${item.excerpt || ''} ${(item.supportedClaims || []).join(' ')} ${(item.qualifiedClaims || []).join(' ')}`.toLowerCase();

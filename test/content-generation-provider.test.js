@@ -136,7 +136,7 @@ function completeEditorialGate(context, overrides = {}) {
     creatorConsequence: 'Creators need to understand the practical business consequence of the source facts.',
     possibleThesis: 'This source story creates a specific creator-business argument.',
     thesisTest: { status: 'PASS', reason: 'Fixture thesis is specific enough for this test.' },
-    articleProgression: ['Open with the source facts.', 'Explain what changed.', 'Show the creator consequence.', 'Connect only narrow Certifyd relevance.'],
+    articleProgression: ['Open with the source facts.', 'Explain what changed.', 'Show the creator consequence.', 'Close with the source-backed editorial implication.'],
     selectedCertifydConcepts: [{ concept: 'Narrow Certifyd relevance', relevance: 'Relevant to this source story.', sourceConnection: 'The source facts create this connection.' }],
     ...overrides,
   };
@@ -157,18 +157,23 @@ function makeOllamaFetch(article, calls = []) {
 
 function validReasoning(overrides = {}) {
   return {
+    eventSummary: 'A source story reports a concrete business event.',
+    obviousTake: 'The immediate news is a concrete business update.',
+    editorialTension: 'The source facts create a specific creator-business tension.',
+    hiddenQuestion: 'What changes for creators if this pattern continues?',
+    whatThisReveals: 'Before the source event, the issue was easier to miss. Now the business consequence is visible.',
+    editorialIdea: 'This source story creates a specific creator-business argument.',
+    editorialIdeaSupport: [{ idea: 'The event creates a specific creator-business argument.', factIds: ['fact-1'] }],
     verifiedFacts: ['A source story reports a concrete business event.'],
     tension: 'The source facts create a specific creator-business tension.',
     whatChanged: 'Before the source event, the issue was easier to miss. Now the business consequence is visible.',
     creatorConsequence: 'Creators need to understand how this event changes control, trust or commerce.',
     thesis: 'This source story creates a specific creator-business argument.',
-    certifydConcepts: [{
-      concept: 'Creator-controlled identity',
-      relevance: 'Relevant because the story turns on who can prove authority and context.',
-      sourceConnection: 'The source facts create an identity and authority question.',
-    }],
+    worthPublishing: true,
+    rejectionReason: '',
+    certifydConcepts: [],
     avoidAngles: ['generic decentralization claims'],
-    articleProgression: ['Open with the source facts.', 'Explain what changed.', 'Show the creator consequence.', 'Connect only narrow Certifyd relevance.'],
+    articleProgression: ['Open with the source facts.', 'Explain what changed.', 'Show the creator consequence.', 'Close with the source-backed editorial implication.'],
     ...overrides,
   };
 }
@@ -323,7 +328,46 @@ test('source facts are passed to OpenAI reasoning', async () => {
   assert.match(calls[0].input, /creator opt-in and compensation/);
 });
 
-test('only selected Brain concepts reach OpenAI final writing', async () => {
+test('OpenAI thesis reasoning receives source facts but no Certifyd Brain candidates', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'source-only-story',
+      publisher: 'Music Business Worldwide',
+      publishedAt: '2026-09-09T09:00:00.000Z',
+      title: 'Artist identity dispute raises profile verification question',
+      summary: 'A source story reports a dispute involving artist identity, representative authority and profile verification.',
+      articleUrl: 'https://example.test/source-only-story',
+      categories: ['Music', 'Identity'],
+      certifydRelevanceScore: 8,
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Artist identity dispute raises profile verification question',
+    trendSourceItemIds: 'source-only-story',
+  });
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({ calls, article: validArticle(context.sourceRecords[0].id) }),
+  });
+  await provider.generateArticle({
+    actorEmail: 'writer@example.test',
+    topic: 'Artist identity dispute raises profile verification question',
+    audience: 'Creators',
+    objective: 'Explain the source facts.',
+    trendSourceItemIds: 'source-only-story',
+  }, context);
+  assert.match(calls[0].input, /SOURCE FACTS/);
+  assert.match(calls[0].input, /Artist identity dispute raises profile verification question/);
+  assert.match(calls[0].input, /SOURCE-ONLY DETERMINISTIC BRIEF/);
+  assert.doesNotMatch(calls[0].input, /APPROVED CERTIFYD BRAIN CANDIDATES/i);
+  assert.doesNotMatch(calls[0].input, /Approved Certifyd context/i);
+  assert.doesNotMatch(calls[0].input, /Certifyd Core is the foundational engine/i);
+});
+
+test('OpenAI final writing receives no Brain context when source-only reasoning approves no Certifyd concept', async () => {
   const calls = [];
   const config = await makeConfig();
   const records = [
@@ -341,14 +385,152 @@ test('only selected Brain concepts reach OpenAI final writing', async () => {
   const provider = new OpenAIGenerationProvider(config, {
     openaiClient: mockOpenAIClient({
       calls,
-      reasoning: validReasoning({ certifydConcepts: [{ concept: 'Creator-controlled identity', relevance: 'Relevant to account authority.', sourceConnection: 'The source facts turn on identity.' }] }),
+      reasoning: validReasoning(),
       article: validArticle(sourceId),
     }),
   });
   await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
   assert.match(calls[1].input, /SELECTED CERTIFYD BRAIN FOR FINAL WRITING/);
-  assert.match(calls[1].input, /identity|Profiles|Approved Public Claims/i);
+  assert.match(calls[1].input, /No selected Brain facts supplied/i);
   assert.doesNotMatch(calls[1].input, /A payout is the movement of allocated earnings/i);
+  assert.doesNotMatch(calls[1].input, /Certifyd profiles describe creator-controlled identity/i);
+});
+
+test('OpenAI rejects thin Spotify MLC procedural update before Brain retrieval or writing', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'spotify-mlc-dmn',
+      publisher: 'Digital Music News',
+      publishedAt: '2026-09-08T09:00:00.000Z',
+      title: 'Federal Judge Rejects MLC’s Interlocutory Appeal Push in Spotify Bundling Battle — While Striking One of the DSP’s Defenses',
+      summary: 'Nearly 28 months after the bundling-focused Mechanical Licensing Collective v. Spotify legal battle kicked off, a federal judge has denied the MLC’s push for an interlocutory appeal. The headline says the judge also struck one Spotify defense.',
+      articleUrl: 'https://example.test/spotify-mlc',
+      categories: ['Music', 'Creator Commerce'],
+      certifydRelevanceScore: 11,
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Spotify bundling case MLC interlocutory appeal denied',
+    objective: 'Explain the source facts.',
+    trendSourceItemIds: 'spotify-mlc-dmn',
+  });
+  completeEditorialGate(context, {
+    verifiedFacts: ['Digital Music News reports that a federal judge denied the MLC’s interlocutory appeal request.'],
+    editorialTension: 'The source facts create a mixed procedural posture.',
+    creatorConsequence: 'Creators should not infer changed business terms from the supplied facts.',
+    possibleThesis: 'The supplied facts establish a mixed procedural update.',
+    thesisTest: { status: 'PASS', reason: 'Let the OpenAI source-only bridge guard evaluate this fixture.' },
+    articleProgression: ['Open with the procedural ruling.', 'Explain the mixed posture.', 'Name the missing details.', 'Conclude narrowly.'],
+    selectedCertifydConcepts: [],
+  });
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      calls,
+      reasoning: validReasoning({
+        eventSummary: 'A judge denied the MLC’s interlocutory appeal request while one Spotify defense was struck.',
+        obviousTake: 'The case remains unresolved.',
+        editorialTension: 'The result is mixed procedurally, but the supplied facts do not explain the ruling or the struck defense.',
+        hiddenQuestion: 'Is there enough detail to support an original editorial thesis?',
+        whatThisReveals: 'The supplied facts show procedural movement, not a deeper structural conclusion.',
+        editorialIdea: 'This is a mixed procedural update.',
+        editorialIdeaSupport: [{ idea: 'The update is mixed and procedural.', factIds: ['spotify-mlc-dmn'] }],
+        creatorConsequence: 'Creators should not infer changed rights, rates or business terms from the available facts.',
+        thesis: 'The available source facts establish a mixed procedural update, not a distinctive creator-business thesis.',
+        worthPublishing: false,
+        rejectionReason: 'Mixed procedural update, but the available source facts do not establish enough detail about the ruling or underlying issue to support a distinctive editorial thesis.',
+        certifydConcepts: [],
+        articleProgression: [],
+      }),
+      article: validArticle(context.sourceRecords[0].id),
+    }),
+  });
+  await assert.rejects(
+    () => provider.generateArticle({
+      actorEmail: 'writer@example.test',
+      topic: 'Spotify bundling case MLC interlocutory appeal denied',
+      audience: 'Creators',
+      objective: 'Explain the source facts.',
+      trendSourceItemIds: 'spotify-mlc-dmn',
+    }, context),
+    /SOURCE-ONLY WORTH PUBLISHING != true.*Mixed procedural update/,
+  );
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].text.format.name, 'certifyd_editorial_reasoning');
+  assert.doesNotMatch(calls[0].input, /APPROVED CERTIFYD BRAIN CANDIDATES/i);
+});
+
+test('OpenAI source-only reasoning cannot rescue Spotify MLC story with records provenance or catalog context', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'spotify-mlc-dmn',
+      publisher: 'Digital Music News',
+      publishedAt: '2026-09-08T09:00:00.000Z',
+      title: 'Federal Judge Rejects MLC’s Interlocutory Appeal Push in Spotify Bundling Battle',
+      summary: 'A federal judge denied the MLC’s push for an interlocutory appeal in a bundling-focused legal battle with Spotify. The supplied summary does not identify the defense that was struck or explain the court’s reasoning.',
+      articleUrl: 'https://example.test/spotify-mlc',
+      categories: ['Music'],
+      certifydRelevanceScore: 11,
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Spotify bundling case MLC interlocutory appeal denied',
+    objective: 'Explain the source facts.',
+    trendSourceItemIds: 'spotify-mlc-dmn',
+  });
+  completeEditorialGate(context, {
+    verifiedFacts: ['Digital Music News reports that a federal judge denied the MLC’s interlocutory appeal request.'],
+    editorialTension: 'The source facts create a mixed procedural posture.',
+    creatorConsequence: 'Creators should not infer changed business terms from the supplied facts.',
+    possibleThesis: 'The supplied facts establish a mixed procedural update.',
+    thesisTest: { status: 'PASS', reason: 'Let the OpenAI source-only bridge guard evaluate this fixture.' },
+    articleProgression: ['Open with the procedural ruling.', 'Explain the mixed posture.', 'Name the missing details.', 'Conclude narrowly.'],
+    selectedCertifydConcepts: [],
+  });
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      calls,
+      reasoning: validReasoning({
+        eventSummary: 'A judge denied the MLC’s interlocutory appeal request.',
+        obviousTake: 'The case remains unresolved.',
+        editorialTension: 'The procedural result is mixed.',
+        hiddenQuestion: 'What operational lesson should music businesses draw?',
+        whatThisReveals: 'Music businesses need clear records around the context in which releases and offerings are presented.',
+        editorialIdea: 'The ruling shows why documented release context and catalog context matter.',
+        editorialIdeaSupport: [{ idea: 'Release context and catalog context matter.', factIds: ['spotify-mlc-dmn'] }],
+        creatorConsequence: 'Creators need provenance and catalog context around music offerings.',
+        thesis: 'The ruling is a reminder that provenance, clear records and catalog context matter long after a music offering reaches market.',
+        worthPublishing: true,
+        rejectionReason: '',
+        certifydConcepts: [],
+        articleProgression: [
+          'Open with the procedural ruling.',
+          'Explain the mixed posture.',
+          'Discuss clear records around release context.',
+          'Connect catalog context to the continuing dispute.',
+        ],
+      }),
+      article: validArticle(context.sourceRecords[0].id),
+    }),
+  });
+  await assert.rejects(
+    () => provider.generateArticle({
+      actorEmail: 'writer@example.test',
+      topic: 'Spotify bundling case MLC interlocutory appeal denied',
+      audience: 'Creators',
+      objective: 'Explain the source facts.',
+      trendSourceItemIds: 'spotify-mlc-dmn',
+    }, context),
+    /SOURCE-ONLY REASONING contains unsupported bridge concept: records\/documentation.*release\/offering context.*catalog context/,
+  );
+  assert.equal(calls.length, 1);
 });
 
 test('OpenAI final writing instructions discourage validator-facing defensive prose and forced Certifyd sections', async () => {
