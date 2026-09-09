@@ -488,7 +488,7 @@ test('OpenAI Brain context can reach final writing only after source-only reason
   assert.deepEqual(context.allowedBrainSourceIds, ['brain:capabilities/profiles']);
 });
 
-test('OpenAI rejects thin Spotify MLC procedural update before Brain retrieval or writing', async () => {
+test('OpenAI worthPublishing=false returns founder-review draft with warning instead of failing generation', async () => {
   const calls = [];
   const config = await makeConfig();
   await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
@@ -537,25 +537,25 @@ test('OpenAI rejects thin Spotify MLC procedural update before Brain retrieval o
         certifydConcepts: [],
         articleProgression: [],
       }),
-      article: validArticle(context.sourceRecords[0].id),
+      article: validArticle(context.sourceRecords[0].id, { claims: [] }),
     }),
   });
-  await assert.rejects(
-    () => provider.generateArticle({
-      actorEmail: 'writer@example.test',
-      topic: 'Spotify bundling case MLC interlocutory appeal denied',
-      audience: 'Creators',
-      objective: 'Explain the source facts.',
-      trendSourceItemIds: 'spotify-mlc-dmn',
-    }, context),
-    /SOURCE-ONLY WORTH PUBLISHING != true.*Mixed procedural update/,
-  );
-  assert.equal(calls.length, 1);
+  const article = await provider.generateArticle({
+    actorEmail: 'writer@example.test',
+    topic: 'Spotify bundling case MLC interlocutory appeal denied',
+    audience: 'Creators',
+    objective: 'Explain the source facts.',
+    trendSourceItemIds: 'spotify-mlc-dmn',
+  }, context);
+  assert.equal(article.status, 'draft');
+  assert.match(article.warnings.join('\n'), /weak editorial angle.*Mixed procedural update/i);
+  assert.equal(calls.length, 2);
   assert.equal(calls[0].text.format.name, 'certifyd_editorial_reasoning');
+  assert.equal(calls[1].text.format.name, 'certifyd_article');
   assert.doesNotMatch(calls[0].input, /APPROVED CERTIFYD BRAIN CANDIDATES/i);
 });
 
-test('OpenAI source-only reasoning cannot rescue Spotify MLC story with records provenance or catalog context', async () => {
+test('OpenAI analytical vocabulary in reasoning is not a fatal pre-generation failure', async () => {
   const calls = [];
   const config = await makeConfig();
   await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
@@ -609,20 +609,18 @@ test('OpenAI source-only reasoning cannot rescue Spotify MLC story with records 
           'Connect catalog context to the continuing dispute.',
         ],
       }),
-      article: validArticle(context.sourceRecords[0].id),
+      article: validArticle(context.sourceRecords[0].id, { claims: [] }),
     }),
   });
-  await assert.rejects(
-    () => provider.generateArticle({
-      actorEmail: 'writer@example.test',
-      topic: 'Spotify bundling case MLC interlocutory appeal denied',
-      audience: 'Creators',
-      objective: 'Explain the source facts.',
-      trendSourceItemIds: 'spotify-mlc-dmn',
-    }, context),
-    /SOURCE-ONLY REASONING contains unsupported bridge concept: records\/documentation.*release\/offering context.*catalog context/,
-  );
-  assert.equal(calls.length, 1);
+  const article = await provider.generateArticle({
+    actorEmail: 'writer@example.test',
+    topic: 'Spotify bundling case MLC interlocutory appeal denied',
+    audience: 'Creators',
+    objective: 'Explain the source facts.',
+    trendSourceItemIds: 'spotify-mlc-dmn',
+  }, context);
+  assert.equal(article.status, 'draft');
+  assert.equal(calls.length, 2);
 });
 
 test('OpenAI final writing instructions discourage validator-facing defensive prose and forced Certifyd sections', async () => {
@@ -654,7 +652,7 @@ test('OpenAI final writing instructions discourage validator-facing defensive pr
   assert.match(finalInstructionText, /Remove unnecessary defensive product disclaimers/i);
 });
 
-test('OpenAI reasoning cannot introduce royalty frame without source support', async () => {
+test('OpenAI analytical vocabulary in reasoning is allowed without becoming Brain evidence', async () => {
   const calls = [];
   const config = await makeConfig();
   await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
@@ -690,7 +688,9 @@ test('OpenAI reasoning cannot introduce royalty frame without source support', a
     }),
   });
   await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Creator platform changes independent music infrastructure', audience: 'Creators', objective: 'Explain discovery.' }, context);
-  assert.doesNotMatch(calls[1].input, /\broyalt(?:y|ies)\b/i);
+  assert.match(calls[1].input, /\broyalt(?:y|ies)\b/i);
+  assert.match(calls[1].input, /ALLOWED_BRAIN_SOURCE_IDS:\n\[\]/);
+  assert.match(calls[1].input, /No selected Brain facts supplied/);
 });
 
 test('OpenAI final writing prompt does not send glossary definitions verbatim', async () => {
@@ -1760,7 +1760,7 @@ test('deterministic editorial brief allows royalty frame when source facts suppo
   assert.match(briefText, /\broyalt(?:y|ies)\b/);
 });
 
-test('unsupported-concept gate still blocks a bad deterministic brief', async () => {
+test('analytical vocabulary in deterministic brief does not hard-fail generation by lexical source matching', async () => {
   const config = await makeConfig();
   await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
   await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
@@ -1781,11 +1781,20 @@ test('unsupported-concept gate still blocks a bad deterministic brief', async ()
     trendSourceItemIds: 'discovery-source-for-bad-brief',
   });
   context.editorialBrief.possibleThesis = 'This story shows why royalty context needs to be clearer for creators.';
-  const provider = createGenerationProvider(config, { provider: 'deterministic' });
-  await assert.rejects(
-    () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Creator platform changes discovery tools' }, context),
-    /EDITORIAL BRIEF contains source-unsupported concept: royalty/,
-  );
+  completeEditorialGate(context, {
+    possibleThesis: 'This story shows why royalty context needs to be clearer for creators.',
+  });
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      reasoning: validReasoning({
+        thesis: 'This story shows why royalty context needs to be clearer for creators.',
+        creatorConsequence: 'Creators may need to understand royalty context as analysis, not as a source-attributed fact.',
+      }),
+      article: validArticle(context.sourceRecords[0].id, { claims: [] }),
+    }),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Creator platform changes discovery tools' }, context);
+  assert.equal(article.status, 'draft');
 });
 
 test('source story generation keeps BMG Suno article coherent without internal context leakage', async () => {
@@ -2072,7 +2081,7 @@ test('source-backed article generation is blocked by the editorial hard gate bef
       objective: 'Explain the source facts.',
       trendSourceItemIds: 'source-hard-gate',
     }, context),
-    /Article generation blocked by editorial gate: CORE FACTS is empty; EDITORIAL TENSION is empty; CREATOR CONSEQUENCE is empty; EDITORIAL THESIS is empty; THESIS TEST != PASS; ARTICLE ARGUMENT has fewer than 4 steps; a selected Certifyd concept has no Source connection/,
+    /Article generation blocked by editorial gate: CORE FACTS is empty; EDITORIAL TENSION is empty; CREATOR CONSEQUENCE is empty; EDITORIAL THESIS is empty; ARTICLE ARGUMENT has fewer than 4 steps; a selected Certifyd concept has no Source connection/,
   );
   assert.equal(qwenCalled, false);
 });

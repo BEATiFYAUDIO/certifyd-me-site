@@ -325,8 +325,9 @@ export class OpenAIGenerationProvider {
         maxOutputTokens: Math.min(this.config.openai.maxOutputTokens, 1800),
         abortSignal,
       });
-      const reasoning = sanitizeOpenAIReasoningUnsupportedConcepts(normalizeOpenAIReasoning(parseJsonContent(reasoningResponse.text), groundedContext), groundedContext);
+      const reasoning = normalizeOpenAIReasoning(parseJsonContent(reasoningResponse.text), groundedContext);
       assertOpenAIReasoningReady(reasoning, groundedContext);
+      applyOpenAIReasoningWarnings(groundedContext, reasoning);
       const postA1Reasoning = attachPostA1CertifydConcepts(reasoning, groundedContext);
       const writingContext = buildOpenAIWritingContext(groundedContext, postA1Reasoning);
       groundedContext.allowedBrainSourceIds = writingContext.allowedBrainSourceIds;
@@ -690,7 +691,10 @@ export function validateGeneratedArticle(value, groundedContext) {
   if (detectInternalContextLeak(value.bodyMarkdown).length) {
     throw new GenerationValidationError('Generation failed validation — internal context leaked into article.');
   }
-  const warnings = [...(value.warnings || []).map(String).map((warning) => warning.trim()).filter(Boolean)];
+  const warnings = [
+    ...(value.warnings || []).map(String).map((warning) => warning.trim()).filter(Boolean),
+    ...(groundedContext.editorialQualityWarnings || []).map(String).map((warning) => warning.trim()).filter(Boolean),
+  ];
   const hasExternalSources = Array.isArray(groundedContext.externalSourceFacts) && groundedContext.externalSourceFacts.length > 0;
   if (hasExternalSources) {
     const genericHeadingHits = detectGenericEditorialHeadings(value.bodyMarkdown);
@@ -1479,7 +1483,7 @@ function buildEditorialBrief(input = {}, externalSourceFacts = []) {
   const possibleThesis = buildPossibleThesis(themes, primary, sourceSupport);
   const conceptSupport = sourceSupport;
   const thesisTest = thesisTestResult(possibleThesis, themes, externalSourceFacts);
-  return sanitizeEditorialBriefUnsupportedConcepts({
+  return {
     primaryEvent: primary ? cleanSentence(`${primary.publisher || 'A source'} reports: ${primary.title}. ${primary.summary}`) : cleanSentence(input.topic || input.workingTitle || ''),
     verifiedFacts,
     relevantContext: summarizeRelevantContext(externalSourceFacts),
@@ -1494,7 +1498,7 @@ function buildEditorialBrief(input = {}, externalSourceFacts = []) {
     avoidAngles: avoidAnglesFromThemes(themes, conceptSupport),
     articleProgression: articleProgressionFromThemes(themes, primary, conceptSupport),
     themes: [...themes],
-  }, sourceSupport);
+  };
 }
 
 function conceptSupportFromSourceFacts(externalSourceFacts = []) {
@@ -1512,48 +1516,6 @@ function conceptSupportFromSourceFacts(externalSourceFacts = []) {
     derivative: /\b(derivative|derivatives|inputs?|outputs?|remix|sample|cover|adaptation)\b/.test(sourceText),
     commerce: /\b(commerce|customer|direct[-\s]?to[-\s]?fan|subscription|membership|revenue|monetization|monetisation|sales?)\b/.test(sourceText),
     infrastructure: /\b(infrastructure|platform|distribution|discovery|network|third[-\s]?party dependency|operated by third parties)\b/.test(sourceText),
-  };
-}
-
-function sanitizeEditorialBriefUnsupportedConcepts(brief, support = {}) {
-  const replacements = [
-    [!support.royalty, /\broyalt(?:y|ies)\b/gi, 'source-backed rights terms'],
-    [!support.payout, /\bpayouts?\b/gi, 'source-backed business terms'],
-    [!support.payment, /\bpayments?\b/gi, 'business terms'],
-    [!support.payment, /\bpaid\b/gi, 'handled'],
-    [!support.compensation, /\bcompensation\b/gi, 'source-backed terms'],
-    [!support.settlement, /\bsettlement\b/gi, 'source-backed resolution'],
-    [!support.provenance, /\bprovenance\b/gi, 'source-backed context'],
-    [!support.identity, /\bidentity\b/gi, 'creator context'],
-    [!support.licensing, /\blicens(?:e|es|ed|ing)\b/gi, 'rights context'],
-    [!support.ownership, /\bownership\b/gi, 'control'],
-    [!support.ownership, /\bowned\b/gi, 'controlled'],
-    [!support.derivative, /\bderivative works?\b/gi, 'new uses'],
-    [!support.derivative, /\bderivative activity\b/gi, 'new activity'],
-    [!support.derivative, /\bderivative\b/gi, 'new-use'],
-  ];
-  const sanitizeText = (value) => {
-    let text = String(value || '');
-    for (const [active, pattern, replacement] of replacements) {
-      if (active) text = text.replace(pattern, replacement);
-    }
-    return cleanSentence(text).replace(/\s+/g, ' ').trim();
-  };
-  return {
-    ...brief,
-    editorialTension: sanitizeText(brief.editorialTension),
-    whatChanged: sanitizeText(brief.whatChanged),
-    creatorConsequence: sanitizeText(brief.creatorConsequence),
-    possibleThesis: sanitizeText(brief.possibleThesis),
-    certifydRelevance: sanitizeText(brief.certifydRelevance),
-    competitiveDistinction: sanitizeText(brief.competitiveDistinction),
-    selectedCertifydConcepts: (brief.selectedCertifydConcepts || []).map((concept) => ({
-      concept: sanitizeText(concept.concept),
-      relevance: sanitizeText(concept.relevance),
-      sourceConnection: sanitizeText(concept.sourceConnection),
-    })),
-    avoidAngles: (brief.avoidAngles || []).map(sanitizeText),
-    articleProgression: (brief.articleProgression || []).map(sanitizeText),
   };
 }
 
@@ -2047,8 +2009,8 @@ function unsupportedConceptSeverity(sentence, concept, groundedContext = {}) {
   const normalizedSentence = text.replace(/[^a-z0-9]+/g, ' ');
   const namesSource = sourceNames.some((name) => normalizedSentence.includes(name.slice(0, Math.min(name.length, 42))));
   const attributesToSource = namesSource || /\b(source|article|report|reports|reported|says|said|according to|coverage)\b/.test(text);
-  const materialClaim = /\b(created|creates|required|requires|established|establishes|proved|proves|showed|shows|means|meant|entitled|owed|owes|must|will|would|did|does|became|becomes|received|receives|paid|pays|launched|announced|signed|agreed|deal|obligation|lawsuit|settlement)\b/.test(text);
-  const thesisClaim = /\b(this (?:deal|case|story|dispute|lawsuit|report)|the (?:deal|case|story|dispute|lawsuit|report))\b[^.]{0,160}\b(shows|proves|means|creates|requires|establishes)\b/.test(text)
+  const materialClaim = /\b(created|creates|required|requires|established|establishes|proved|proves|means|meant|entitled|owed|owes|must|will|would|did|does|became|becomes|received|receives|paid|pays|launched|announced|signed|agreed|deal|obligation|lawsuit|settlement)\b/.test(text);
+  const thesisClaim = /\b(this (?:deal|case|story|dispute|lawsuit|report)|the (?:deal|case|story|dispute|lawsuit|report))\b[^.]{0,160}\b(proves|means|creates|requires|establishes)\b/.test(text)
     || /\bcreators? (?:are|were|should be|must be|need to be|become|became)\b[^.]{0,120}\b(entitled|owed|paid|compensated|credited|verified)\b/.test(text);
   const generalContext = /\b(can|may|might|often|commonly|generally|in general|can involve|may involve|not every|does not always|alone may not|may not describe)\b/.test(text);
   if (attributesToSource && materialClaim) return 'fatal';
@@ -2086,57 +2048,6 @@ function logPostGenerationValidationFindings(findings = {}, repaired = false) {
   console.warn(`[blog-generation-validation] repaired=${repaired ? 'yes' : 'no'} ${summary}`);
 }
 
-function detectUnsupportedBriefConcepts(brief = {}, externalSourceFacts = []) {
-  const sourceText = editorialSourceText(externalSourceFacts);
-  const briefText = [
-    brief.editorialTension,
-    brief.whatChanged,
-    brief.creatorConsequence,
-    brief.possibleThesis,
-    ...(brief.articleProgression || []),
-  ].join(' ').replace(/\s+/g, ' ');
-  const hits = [];
-  const unsupported = [
-    ['licensing', /\blicens(?:e|es|ed|ing)|licensing deal\b/i, /\blicens(?:e|es|ed|ing)|permission|rights?|copyright|clearance|settlement|opt[-\s]?in/i],
-    ['payout', /\bpayouts?\b/i, /\bpayouts?\b/i],
-    ['royalty', /\broyalt(?:y|ies)\b/i, /\broyalt(?:y|ies)\b/i],
-    ['attribution', /\battribution\b/i, /\battribution|authorship|credit|credits/i],
-    ['provenance', /\bprovenance\b/i, /\bprovenance|source context|origin|authorship|credit|credits/i],
-    ['derivative works', /\bderivative works?\b|\bderivative activity\b/i, /\bderivative|inputs?|outputs?|remix|sample|cover|adaptation/i],
-  ];
-  for (const [label, briefPattern, sourcePattern] of unsupported) {
-    if (briefPattern.test(briefText) && !sourcePattern.test(sourceText)) hits.push(label);
-  }
-  return [...new Set(hits)];
-}
-
-function detectUnsupportedSourceOnlyReasoningBridgeConcepts(reasoning = {}, externalSourceFacts = []) {
-  const sourceText = editorialSourceText(externalSourceFacts);
-  const reasoningText = [
-    reasoning.eventSummary,
-    reasoning.obviousTake,
-    reasoning.editorialTension,
-    reasoning.hiddenQuestion,
-    reasoning.whatThisReveals,
-    reasoning.editorialIdea,
-    reasoning.creatorConsequence,
-    reasoning.thesis,
-    ...(reasoning.articleProgression || []),
-    ...(reasoning.certifydConcepts || []).flatMap((concept) => [concept.concept, concept.relevance, concept.sourceConnection]),
-  ].join(' ').replace(/\s+/g, ' ');
-  const sourceSupportsOperationalRecords = /\b(recordkeeping|records?|documentation|documented|receipts?|release context|offering context|catalog(?:ue)? context|catalog(?:ue)? records?)\b/i.test(sourceText);
-  const checks = [
-    ['Certifyd', /\bcertifyd\b/i, /\bcertifyd\b/i.test(sourceText)],
-    ['provenance', /\bprovenance\b/i, /\b(provenance|source context|origin|authorship|credit|credits)\b/i.test(sourceText)],
-    ['records/documentation', /\b(clear records?|recordkeeping|documentation|documented records?|receipts?)\b/i, sourceSupportsOperationalRecords],
-    ['release/offering context', /\b(release context|offering context|context attached to a music offering|how music is released and offered)\b/i, /\b(release context|offering context|product packaging|offering is presented|how music is released|how music is offered)\b/i.test(sourceText)],
-    ['catalog context', /\bcatalog(?:ue)? context\b/i, /\bcatalog(?:ue)? context\b/i.test(sourceText)],
-  ];
-  return checks
-    .filter(([, pattern, supported]) => pattern.test(reasoningText) && !supported)
-    .map(([label]) => label);
-}
-
 function editorialSourceText(externalSourceFacts = []) {
   return externalSourceFacts
     .map((source) => `${source.publisher || ''} ${source.title || ''} ${source.summary || ''} ${(source.categories || []).join(' ')}`)
@@ -2170,7 +2081,6 @@ function assertEditorialGateReady(groundedContext = {}) {
   if (!String(brief.editorialTension || '').trim()) failures.push('EDITORIAL TENSION is empty');
   if (!String(brief.creatorConsequence || '').trim()) failures.push('CREATOR CONSEQUENCE is empty');
   if (!String(brief.possibleThesis || '').trim()) failures.push('EDITORIAL THESIS is empty');
-  if (String(brief.thesisTest?.status || '').toUpperCase() !== 'PASS') failures.push('THESIS TEST != PASS');
   if (!Array.isArray(brief.articleProgression) || brief.articleProgression.filter((step) => String(step || '').trim().length >= 16).length < 4) failures.push('ARTICLE ARGUMENT has fewer than 4 steps');
   if ((brief.selectedCertifydConcepts || []).length > 3) failures.push('more than 3 Certifyd concepts selected');
   for (const concept of brief.selectedCertifydConcepts || []) {
@@ -2178,9 +2088,6 @@ function assertEditorialGateReady(groundedContext = {}) {
       failures.push('a selected Certifyd concept has no Source connection');
       break;
     }
-  }
-  for (const unsupported of detectUnsupportedBriefConcepts(brief, groundedContext.externalSourceFacts || [])) {
-    failures.push(`EDITORIAL BRIEF contains source-unsupported concept: ${unsupported}`);
   }
   if (failures.length) {
     throw new GenerationConfigurationError(`Article generation blocked by editorial gate: ${failures.join('; ')}.`);
@@ -2218,34 +2125,8 @@ function normalizeOpenAIReasoning(value, groundedContext = {}) {
   };
 }
 
-function sanitizeOpenAIReasoningUnsupportedConcepts(reasoning = {}, groundedContext = {}) {
-  const support = conceptSupportFromSourceFacts(groundedContext.externalSourceFacts || []);
-  const brief = sanitizeEditorialBriefUnsupportedConcepts({
-    editorialTension: reasoning.tension,
-    whatChanged: reasoning.whatChanged,
-    creatorConsequence: reasoning.creatorConsequence,
-    possibleThesis: reasoning.thesis,
-    selectedCertifydConcepts: reasoning.certifydConcepts,
-    avoidAngles: reasoning.avoidAngles,
-    articleProgression: reasoning.articleProgression,
-  }, support);
-  return {
-    ...reasoning,
-    editorialTension: brief.editorialTension,
-    whatThisReveals: brief.whatChanged,
-    tension: brief.editorialTension,
-    whatChanged: brief.whatChanged,
-    creatorConsequence: brief.creatorConsequence,
-    thesis: brief.possibleThesis,
-    certifydConcepts: brief.selectedCertifydConcepts,
-    avoidAngles: brief.avoidAngles,
-    articleProgression: brief.articleProgression,
-  };
-}
-
 function assertOpenAIReasoningReady(reasoning = {}, groundedContext = {}) {
   const failures = [];
-  if (reasoning.worthPublishing !== true) failures.push(`SOURCE-ONLY WORTH PUBLISHING != true${reasoning.rejectionReason ? ` (${reasoning.rejectionReason})` : ''}`);
   if (!reasoning.eventSummary) failures.push('EVENT SUMMARY is empty');
   if (!reasoning.editorialIdea) failures.push('EDITORIAL IDEA is empty');
   if (!reasoning.verifiedFacts?.length) failures.push('CORE FACTS is empty');
@@ -2259,31 +2140,28 @@ function assertOpenAIReasoningReady(reasoning = {}, groundedContext = {}) {
       break;
     }
   }
-  if (!Array.isArray(reasoning.articleProgression) || reasoning.articleProgression.filter((step) => step.length >= 16).length < 4) failures.push('ARTICLE ARGUMENT has fewer than 4 steps');
+  if (reasoning.worthPublishing === true && (!Array.isArray(reasoning.articleProgression) || reasoning.articleProgression.filter((step) => step.length >= 16).length < 4)) failures.push('ARTICLE ARGUMENT has fewer than 4 steps');
   for (const concept of reasoning.certifydConcepts || []) {
     if (!concept.sourceConnection) {
       failures.push('a selected Certifyd concept has no Source connection');
       break;
     }
   }
-  const briefLike = {
-    verifiedFacts: reasoning.verifiedFacts,
-    editorialTension: reasoning.tension,
-    whatChanged: reasoning.whatChanged,
-    creatorConsequence: reasoning.creatorConsequence,
-    possibleThesis: reasoning.thesis,
-    articleProgression: reasoning.articleProgression,
-    selectedCertifydConcepts: reasoning.certifydConcepts,
-  };
-  for (const unsupported of detectUnsupportedBriefConcepts(briefLike, groundedContext.externalSourceFacts || [])) {
-    failures.push(`EDITORIAL BRIEF contains source-unsupported concept: ${unsupported}`);
-  }
-  for (const unsupported of detectUnsupportedSourceOnlyReasoningBridgeConcepts(reasoning, groundedContext.externalSourceFacts || [])) {
-    failures.push(`SOURCE-ONLY REASONING contains unsupported bridge concept: ${unsupported}`);
-  }
   if (failures.length) {
     throw new GenerationConfigurationError(`Article generation blocked by editorial gate: ${failures.join('; ')}.`);
   }
+}
+
+function applyOpenAIReasoningWarnings(groundedContext = {}, reasoning = {}) {
+  const warnings = [];
+  if (reasoning.worthPublishing !== true) {
+    warnings.push(`OpenAI source-only reasoning marked this as a weak editorial angle${reasoning.rejectionReason ? `: ${reasoning.rejectionReason}` : '.'}`);
+  }
+  if (!Array.isArray(reasoning.articleProgression) || reasoning.articleProgression.filter((step) => step.length >= 16).length < 4) {
+    warnings.push('OpenAI source-only reasoning supplied a short article progression; founder review should verify the editorial shape.');
+  }
+  if (!warnings.length) return;
+  groundedContext.editorialQualityWarnings = [...new Set([...(groundedContext.editorialQualityWarnings || []), ...warnings])].slice(0, 20);
 }
 
 function attachPostA1CertifydConcepts(reasoning = {}, groundedContext = {}) {
