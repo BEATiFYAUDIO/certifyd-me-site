@@ -338,7 +338,29 @@ export class OpenAIGenerationProvider {
         tokenUsage: mergeOpenAITokenUsage(stages.map((stage) => stage.tokenUsage)),
         stages,
       };
-      return validateGeneratedArticle(article, groundedContext);
+      try {
+        return validateGeneratedArticle(article, groundedContext);
+      } catch (error) {
+        if (!(error instanceof GenerationValidationError) || !isGenericDefinitionLeakError(error)) throw error;
+        const revisionPrompt = buildArticleRevisionPrompt(articlePrompt, article, error.warnings);
+        const revisionResponse = await this.createStructuredResponse({
+          stage: 'article-revision',
+          schemaName: 'certifyd_article',
+          schema: ARTICLE_SCHEMA,
+          systemInstruction: articleSystemInstruction,
+          userPrompt: revisionPrompt,
+          maxOutputTokens: Math.min(this.config.openai.maxOutputTokens, MAX_OPENAI_ARTICLE_GENERATION_TOKENS),
+          abortSignal,
+        });
+        stages.push(revisionResponse.stageMeta);
+        const revisedArticle = completeGeneratedArticleFields(parseJsonContent(revisionResponse.text), input);
+        this.lastRequest = {
+          durationMs: Date.now() - started,
+          tokenUsage: mergeOpenAITokenUsage(stages.map((stage) => stage.tokenUsage)),
+          stages,
+        };
+        return validateGeneratedArticle(revisedArticle, groundedContext);
+      }
     } catch (error) {
       if (error instanceof GenerationConfigurationError || error instanceof GenerationValidationError || error instanceof GenerationRateLimitError) throw error;
       throw normalizeOpenAIError(error, this.modelName);
@@ -899,6 +921,8 @@ function buildArticleSystemInstruction() {
     'Return only JSON matching the requested schema.',
     'The private reasoning object is already approved for this draft. Do not rediscover or replace the thesis while writing.',
     'Use only the selected Certifyd Brain records supplied in the writing prompt.',
+    'Never copy Certifyd Brain glossary definitions verbatim into the article.',
+    'Do not write glossary constructions such as “A payout is…”, “A record is…”, “A receipt is…”, “A profile is…”, or “Provenance is evidence about…”.',
     'Generate title, suggestedSlug, excerpt, seoTitle, seoDescription, focusKeyword, secondaryKeywords, category, tags, bodyMarkdown, claims and warnings.',
     'Do not generate a byline or author field; the dashboard assigns the article author deterministically.',
   ].join('\n');
@@ -910,7 +934,7 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
   const selectedBrainFacts = writingContext.approvedKnowledge.map(formatSelectedBrainFactsForPrompt).filter(Boolean).join('\n') || '- No selected Brain facts supplied.';
   const approvedKnowledge = writingContext.approvedKnowledge.map(formatBrainKnowledgeForPrompt).join('\n') || '- No Certifyd Brain records selected for final writing.';
   const externalSources = context.externalSourceFacts.map((item) => `- [${item.id || 'source'}] ${item.publisher}${item.publishedAt ? ` (${item.publishedAt})` : ''}: ${item.title}. ${item.summary}${item.articleUrl ? ` Source: ${item.articleUrl}` : ''}`).join('\n') || '- No external source summaries attached.';
-  const prohibited = context.prohibitedClaims.map((item) => `- ${item}`).join('\n') || '- Avoid unsupported claims.';
+  const prohibited = context.prohibitedClaims.map((item) => `- ${scrubGenericDefinitionForPrompt(item)}`).join('\n') || '- Avoid unsupported claims.';
   return [
     `Topic: ${input.topic || input.workingTitle || 'Certifyd article'}`,
     `Audience: ${input.audience || input.targetAudience || 'Certifyd readers'}`,
@@ -937,6 +961,7 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
     '- Use conventional 3 to 5 sentence paragraphs. One-sentence paragraphs should be rare and deliberate.',
     '- Use headings only for real subject changes.',
     '- Do not use a generic “Why This Matters to Certifyd” section.',
+    '- Do not paste Certifyd glossary definitions into the article. If a concept must be explained, paraphrase it in relation to this source story.',
     '- Do not mention source IDs, this prompt, the reasoning process, or internal Brain labels.',
   ].join('\n');
 }
@@ -1080,12 +1105,12 @@ function formatBrainKnowledgeForPrompt(item) {
   const lines = [
     `- [${item.id}] ${item.theme}${item.currentStatus ? ` — status: ${item.currentStatus}` : ''}${item.confidence ? `; confidence: ${item.confidence}` : ''}`,
   ];
-  for (const claim of item.supportedClaims || []) lines.push(`  Supported: ${claim}`);
-  for (const claim of item.qualifiedClaims || []) lines.push(`  Qualified: ${claim}`);
-  for (const claim of item.safeWording || []) lines.push(`  Safe wording: ${claim}`);
-  for (const claim of item.prohibitedClaims || []) lines.push(`  Prohibited: ${claim}`);
+  for (const claim of item.supportedClaims || []) lines.push(`  Supported: ${scrubGenericDefinitionForPrompt(claim)}`);
+  for (const claim of item.qualifiedClaims || []) lines.push(`  Qualified: ${scrubGenericDefinitionForPrompt(claim)}`);
+  for (const claim of item.safeWording || []) lines.push(`  Safe wording: ${scrubGenericDefinitionForPrompt(claim)}`);
+  for (const claim of item.prohibitedClaims || []) lines.push(`  Prohibited: ${scrubGenericDefinitionForPrompt(claim)}`);
   if (!(item.supportedClaims || []).length && !(item.qualifiedClaims || []).length && !(item.safeWording || []).length) {
-    lines.push(`  Context: ${item.excerpt}`);
+    lines.push(`  Context: ${scrubGenericDefinitionForPrompt(item.excerpt)}`);
   }
   return lines.join('\n');
 }
@@ -1098,7 +1123,42 @@ function formatSelectedBrainFactsForPrompt(item) {
   ].map((claim) => String(claim || '').trim()).filter(Boolean).slice(0, 6);
   if (!facts.length && item.excerpt) facts.push(String(item.excerpt).slice(0, 420));
   if (!facts.length) return '';
-  return [`- [${item.id}] ${item.theme || item.title || 'Selected Brain record'}`, ...facts.map((fact) => `  ${fact}`)].join('\n');
+  return [`- [${item.id}] ${item.theme || item.title || 'Selected Brain record'}`, ...facts.map((fact) => `  ${scrubGenericDefinitionForPrompt(fact)}`)].join('\n');
+}
+
+function scrubGenericDefinitionForPrompt(value) {
+  return String(value || '')
+    .replace(/\bA payout is\b/gi, 'Payout context covers')
+    .replace(/\bCertifyd public copy describes\b/gi, 'Approved Certifyd public copy says')
+    .replace(/\bProvenance is evidence about\b/gi, 'Provenance context can include')
+    .replace(/\b(A|An)\s+(receipt|record|credential|profile|release record)\s+is\b/gi, '$2 context covers')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isGenericDefinitionLeakError(error) {
+  return /generic Certifyd glossary copy leaked into article/i.test(error?.message || '');
+}
+
+function buildArticleRevisionPrompt(originalPrompt, article, genericDefinitionHits = []) {
+  const hits = genericDefinitionHits.length
+    ? genericDefinitionHits.map((hit) => `- ${hit}`).join('\n')
+    : '- Generic Certifyd glossary definition copy.';
+  return [
+    originalPrompt,
+    '',
+    'REVISION REQUIRED:',
+    'The draft below failed validation because generic Certifyd glossary copy appeared in article prose.',
+    'Rewrite the article JSON to preserve the same source-backed thesis, facts, claims and overall structure while removing the glossary-style definition copy.',
+    'Do not add new facts, new Certifyd capabilities, new source claims, or new Brain concepts.',
+    'Do not use sentences beginning “A payout is”, “A record is”, “A receipt is”, “A profile is”, “A release record is”, or “Provenance is evidence about”.',
+    '',
+    'BLOCKED PHRASES:',
+    hits,
+    '',
+    'FAILED ARTICLE JSON:',
+    JSON.stringify(article, null, 2),
+  ].join('\n');
 }
 
 function inferArticleCategory(tags = []) {

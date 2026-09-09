@@ -170,6 +170,7 @@ function validReasoning(overrides = {}) {
 }
 
 function mockOpenAIClient({ reasoning = validReasoning(), article, failAt = '', incompleteAt = '', calls = [] } = {}) {
+  const articleQueue = Array.isArray(article) ? [...article] : null;
   return {
     responses: {
       create: async (payload) => {
@@ -189,7 +190,9 @@ function mockOpenAIClient({ reasoning = validReasoning(), article, failAt = '', 
             usage: { input_tokens: 100 + calls.length, output_tokens: 50 + calls.length, total_tokens: 150 + calls.length * 2 },
           };
         }
-        const body = stage.includes('reasoning') ? reasoning : (article || validArticle('brain:facts/approved-public-claims'));
+        const body = stage.includes('reasoning')
+          ? reasoning
+          : (articleQueue ? articleQueue.shift() : (article || validArticle('brain:facts/approved-public-claims')));
         return {
           id: `resp_${calls.length}`,
           status: 'completed',
@@ -381,6 +384,97 @@ test('OpenAI reasoning cannot introduce royalty frame without source support', a
   });
   await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Creator platform changes independent music infrastructure', audience: 'Creators', objective: 'Explain discovery.' }, context);
   assert.doesNotMatch(calls[1].input, /\broyalt(?:y|ies)\b/i);
+});
+
+test('OpenAI final writing prompt does not send glossary definitions verbatim', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  await fs.writeFile(path.join(config.siteRoot, 'content-agent/knowledge/facts/approved-public-claims.md'), [
+    '# Approved Public Claims',
+    '',
+    'APPROVED',
+    '',
+    '## Supported Current Claims',
+    '',
+    '- Certifyd Core is the foundational engine for identity, publishing and direct commerce.',
+    '- A payout is the movement of allocated earnings to creators or participants.',
+    '- Certifyd Network supports discovery, routing and distribution.',
+  ].join('\n'));
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'source-provenance-dispute',
+      publisher: 'Music Business Worldwide',
+      publishedAt: '2026-09-09T09:00:00.000Z',
+      title: 'Artist rights dispute centers provenance records',
+      summary: 'A source story reports that an artist rights dispute turned on provenance, source records, credits and publication context.',
+      articleUrl: 'https://example.test/source-provenance-dispute',
+      categories: ['Music', 'Provenance'],
+      certifydRelevanceScore: 12,
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Artist rights dispute centers provenance records',
+    trendSourceItemIds: 'source-provenance-dispute',
+  });
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      calls,
+      reasoning: validReasoning({
+        certifydConcepts: [{ concept: 'Provenance context', relevance: 'Relevant to source records.', sourceConnection: 'The source facts turn on provenance records.' }],
+      }),
+      article: validArticle(sourceId),
+    }),
+  });
+  await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Artist rights dispute centers provenance records', audience: 'Creators', objective: 'Explain provenance.' }, context);
+  assert.doesNotMatch(calls[1].input, /\bA payout is\b/i);
+  assert.match(calls[1].input, /Payout context covers/i);
+});
+
+test('OpenAI retries once when article prose copies generic Certifyd glossary definitions', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'source-provenance-records',
+      publisher: 'Billboard',
+      publishedAt: '2026-09-09T09:00:00.000Z',
+      title: 'Label changes rights provenance records for artist releases',
+      summary: 'A source story reports a label changed rights provenance records, source context, credits and publication context for artist releases.',
+      articleUrl: 'https://example.test/source-provenance-records',
+      categories: ['Music', 'Provenance'],
+      certifydRelevanceScore: 12,
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Label changes rights provenance records for artist releases',
+    trendSourceItemIds: 'source-provenance-records',
+  });
+  const sourceId = context.sourceRecords[0].id;
+  const baseBody = validArticle(sourceId).bodyMarkdown;
+  const badArticle = validArticle(sourceId, {
+    bodyMarkdown: `${baseBody}\n\nProvenance is evidence about the origin, source, publisher, timestamp, contribution context, release history, or record history of a work.`,
+  });
+  const goodArticle = validArticle(sourceId, {
+    title: 'Label Changes Provenance Records',
+    suggestedSlug: 'label-changes-provenance-records',
+    bodyMarkdown: baseBody,
+  });
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      calls,
+      article: [badArticle, goodArticle],
+    }),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Label changes rights provenance records for artist releases', audience: 'Creators', objective: 'Explain provenance.' }, context);
+  assert.equal(calls.length, 3);
+  assert.match(calls[2].input, /REVISION REQUIRED/);
+  assert.match(calls[2].input, /Provenance is evidence about/i);
+  assert.doesNotMatch(article.bodyMarkdown, /Provenance is evidence about/i);
 });
 
 test('OpenAI final validation still rejects unsafe generated article state', async () => {
