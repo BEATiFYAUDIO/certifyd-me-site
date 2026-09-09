@@ -345,6 +345,19 @@ test('OpenAI final validation still rejects unsafe generated article state', asy
   );
 });
 
+test('OpenAI article byline cannot override deterministic Certifyd author', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      article: validArticle(sourceId, { author: 'Outside Reporter' }),
+    }),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
+  assert.equal(article.author, 'Certifyd');
+});
+
 test('malformed OpenAI model output fails safely', async () => {
   const calls = [];
   const config = await makeConfig();
@@ -993,6 +1006,85 @@ test('Brain retrieval prioritizes rights and provenance over generic payments fo
   assert.ok(context.generationDiagnostics.brainRecordsSelected.every((record) => record.selectionReason));
 });
 
+test('deterministic editorial brief does not introduce royalty frame without source support', async () => {
+  const config = await makeConfig();
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'ai-rights-consent-source',
+      publisher: 'Music Business Worldwide',
+      publishedAt: '2026-09-09T09:00:00.000Z',
+      title: 'AI music policy debate raises copyright and permission questions',
+      summary: 'A report says music companies are debating copyright, creator permission and authorization for AI systems. The source focuses on consent and control.',
+      articleUrl: 'https://example.test/ai-rights-consent-source',
+      categories: ['Music', 'AI', 'Copyright'],
+      certifydRelevanceScore: 10,
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'AI music policy debate raises copyright and permission questions',
+    objective: 'Explain the source-backed copyright and permission issue without importing payment boilerplate.',
+    trendSourceItemIds: 'ai-rights-consent-source',
+  });
+  const briefText = JSON.stringify(context.editorialBrief).toLowerCase();
+  assert.equal(/\broyalt(?:y|ies)\b/.test(briefText), false);
+  assert.equal(/\bpayouts?\b/.test(briefText), false);
+});
+
+test('deterministic editorial brief allows royalty frame when source facts support it', async () => {
+  const config = await makeConfig();
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'royalty-source-supported',
+      publisher: 'Music Ally',
+      publishedAt: '2026-09-09T09:00:00.000Z',
+      title: 'Court ruling changes mechanical royalties dispute',
+      summary: 'A federal court ruling addresses mechanical royalties, royalty accounting and payment obligations in a music licensing dispute.',
+      articleUrl: 'https://example.test/royalty-source-supported',
+      categories: ['Music', 'Rights'],
+      certifydRelevanceScore: 12,
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Court ruling changes mechanical royalties dispute',
+    objective: 'Explain the source-backed royalty issue.',
+    trendSourceItemIds: 'royalty-source-supported',
+  });
+  const briefText = JSON.stringify(context.editorialBrief).toLowerCase();
+  assert.match(briefText, /\broyalt(?:y|ies)\b/);
+});
+
+test('unsupported-concept gate still blocks a bad deterministic brief', async () => {
+  const config = await makeConfig();
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'discovery-source-for-bad-brief',
+      publisher: 'Music Business Worldwide',
+      publishedAt: '2026-09-09T09:00:00.000Z',
+      title: 'Creator platform changes discovery tools',
+      summary: 'A source story reports a platform discovery change for artists and labels. It discusses visibility and audience reach.',
+      articleUrl: 'https://example.test/discovery-source-for-bad-brief',
+      categories: ['Music', 'Discovery'],
+      certifydRelevanceScore: 8,
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Creator platform changes discovery tools',
+    trendSourceItemIds: 'discovery-source-for-bad-brief',
+  });
+  context.editorialBrief.possibleThesis = 'This story shows why royalty context needs to be clearer for creators.';
+  const provider = createGenerationProvider(config, { provider: 'deterministic' });
+  await assert.rejects(
+    () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Creator platform changes discovery tools' }, context),
+    /EDITORIAL BRIEF contains source-unsupported concept: royalty/,
+  );
+});
+
 test('source story generation keeps BMG Suno article coherent without internal context leakage', async () => {
   const calls = [];
   const config = await makeConfig();
@@ -1146,7 +1238,7 @@ test('infrastructure erosion source story stays source-specific and rejects gene
   assert.ok(context.editorialBrief.articleProgression.length >= 4);
   assert.ok(context.editorialBrief.selectedCertifydConcepts.length <= 3);
   assert.match(context.editorialBrief.selectedCertifydConcepts.map((concept) => concept.concept).join(' '), /infrastructure|identity|publishing/i);
-  assert.match(context.editorialBrief.avoidAngles.join(' '), /licensing|payout|attribution|derivative/i);
+  assert.match(context.editorialBrief.avoidAngles.join(' '), /music-rights boilerplate|financial definitions|adjacent rights angles/i);
   const selectedIds = context.sourceRecords.map((source) => source.id);
   assert.ok(selectedIds.length <= 3);
   assert.equal(selectedIds.includes('brain:capabilities/payments'), false);
@@ -1224,7 +1316,7 @@ test('X Money source story selects account and commerce infrastructure without r
 
   assert.equal(context.editorialBrief.possibleThesis, 'When a social account also becomes a financial account, losing control of it means considerably more than losing the ability to post.');
   assert.match(context.editorialBrief.selectedCertifydConcepts.map((concept) => concept.concept).join(' '), /identity|commerce infrastructure/i);
-  assert.match(context.editorialBrief.avoidAngles.join(' '), /licensing|provenance|attribution|derivative works|payout/i);
+  assert.match(context.editorialBrief.avoidAngles.join(' '), /unrelated music-industry boilerplate|generic financial definitions|adjacent rights angles/i);
   const selectedIds = context.sourceRecords.map((source) => source.id);
   assert.ok(selectedIds.length <= 3);
   assert.ok(selectedIds.includes('brain:capabilities/profiles') || selectedIds.includes('brain:products/core'));

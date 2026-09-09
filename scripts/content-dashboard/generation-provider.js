@@ -96,12 +96,11 @@ class ResponseReadTimeoutError extends Error {
 export const ARTICLE_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['title', 'suggestedSlug', 'excerpt', 'author', 'tags', 'seoTitle', 'seoDescription', 'focusKeyword', 'secondaryKeywords', 'category', 'coverImage', 'bodyMarkdown', 'claims', 'warnings'],
+  required: ['title', 'suggestedSlug', 'excerpt', 'tags', 'seoTitle', 'seoDescription', 'focusKeyword', 'secondaryKeywords', 'category', 'coverImage', 'bodyMarkdown', 'claims', 'warnings'],
   properties: {
     title: { type: 'string' },
     suggestedSlug: { type: 'string' },
     excerpt: { type: 'string' },
-    author: { type: 'string' },
     tags: { type: 'array', items: { type: 'string' } },
     seoTitle: { type: 'string' },
     seoDescription: { type: 'string' },
@@ -897,6 +896,7 @@ function buildArticleSystemInstruction() {
     'The private reasoning object is already approved for this draft. Do not rediscover or replace the thesis while writing.',
     'Use only the selected Certifyd Brain records supplied in the writing prompt.',
     'Generate title, suggestedSlug, excerpt, seoTitle, seoDescription, focusKeyword, secondaryKeywords, category, tags, bodyMarkdown, claims and warnings.',
+    'Do not generate a byline or author field; the dashboard assigns the article author deterministically.',
   ].join('\n');
 }
 
@@ -1242,24 +1242,44 @@ function buildEditorialBrief(input = {}, externalSourceFacts = []) {
   const sourceText = externalSourceFacts.map((source) => `${source.title || ''}. ${source.summary || ''}`).join(' ');
   const themes = inferStoryThemes(sourceText || `${input.topic || ''} ${input.objective || ''}`);
   const verifiedFacts = extractVerifiedFacts(externalSourceFacts);
-  const editorialTension = editorialTensionFromThemes(themes, primary);
-  const possibleThesis = buildPossibleThesis(themes, primary);
+  const sourceSupport = conceptSupportFromSourceFacts(externalSourceFacts);
+  const editorialTension = editorialTensionFromThemes(themes, primary, sourceSupport);
+  const possibleThesis = buildPossibleThesis(themes, primary, sourceSupport);
+  const conceptSupport = conceptSupportFromSourceFacts(externalSourceFacts, possibleThesis);
   const thesisTest = thesisTestResult(possibleThesis, themes, externalSourceFacts);
   return {
     primaryEvent: primary ? cleanSentence(`${primary.publisher || 'A source'} reports: ${primary.title}. ${primary.summary}`) : cleanSentence(input.topic || input.workingTitle || ''),
     verifiedFacts,
     relevantContext: summarizeRelevantContext(externalSourceFacts),
     editorialTension,
-    whatChanged: whatChangedFromThemes(themes, primary),
-    creatorConsequence: creatorConsequenceFromThemes(themes, primary),
+    whatChanged: whatChangedFromThemes(themes, primary, conceptSupport),
+    creatorConsequence: creatorConsequenceFromThemes(themes, primary, conceptSupport),
     possibleThesis,
     thesisTest,
-    certifydRelevance: certifydRelevanceFromThemes(themes),
-    competitiveDistinction: competitiveDistinctionFromThemes(themes),
-    selectedCertifydConcepts: selectedCertifydConceptsFromThemes(themes, possibleThesis),
-    avoidAngles: avoidAnglesFromThemes(themes),
-    articleProgression: articleProgressionFromThemes(themes, primary),
+    certifydRelevance: certifydRelevanceFromThemes(themes, conceptSupport),
+    competitiveDistinction: competitiveDistinctionFromThemes(themes, conceptSupport),
+    selectedCertifydConcepts: selectedCertifydConceptsFromThemes(themes, possibleThesis, conceptSupport),
+    avoidAngles: avoidAnglesFromThemes(themes, conceptSupport),
+    articleProgression: articleProgressionFromThemes(themes, primary, conceptSupport),
     themes: [...themes],
+  };
+}
+
+function conceptSupportFromSourceFacts(externalSourceFacts = [], thesis = '') {
+  const sourceText = `${editorialSourceText(externalSourceFacts)} ${String(thesis || '').toLowerCase()}`;
+  return {
+    royalty: /\broyalt(?:y|ies)\b/.test(sourceText),
+    payout: /\bpayouts?\b/.test(sourceText),
+    payment: /\b(payment|payments|paid|pay|transaction|checkout)\b/.test(sourceText),
+    compensation: /\b(compensation|settlement|royalt(?:y|ies)|payment|payments)\b/.test(sourceText),
+    settlement: /\bsettlement\b/.test(sourceText),
+    provenance: /\b(provenance|source context|origin|authorship|credit|credits)\b/.test(sourceText),
+    identity: /\b(identity|profile|credential|authentication|account|verification|impersonation|authority|representative)\b/.test(sourceText),
+    licensing: /\b(licens(?:e|es|ed|ing)|permission|permissions|rights?|copyright|clearance|repertoire|opt[-\s]?in|authorization|authorisation)\b/.test(sourceText),
+    ownership: /\b(ownership|owns?|owned|intellectual property|ip|acqui(?:re|res|red|sition)|stake|catalog(?:ue)?|rights holder)\b/.test(sourceText),
+    derivative: /\b(derivative|derivatives|inputs?|outputs?|remix|sample|cover|adaptation)\b/.test(sourceText),
+    commerce: /\b(commerce|customer|direct[-\s]?to[-\s]?fan|subscription|membership|revenue|monetization|monetisation|sales?)\b/.test(sourceText),
+    infrastructure: /\b(infrastructure|platform|distribution|discovery|network|third[-\s]?party dependency|operated by third parties)\b/.test(sourceText),
   };
 }
 
@@ -1295,11 +1315,15 @@ function summarizeRelevantContext(externalSourceFacts = []) {
   ].filter(Boolean).join(' ') || 'No supplemental source context was attached.';
 }
 
-function editorialTensionFromThemes(themes, primary = null) {
+function editorialTensionFromThemes(themes, primary = null, support = {}) {
   const subject = primary?.title || 'this story';
   if (themes.has('accountFinance')) return 'The tension is whether a social account can safely become a financial account without concentrating too much creator-business value behind one outside login.';
   if (themes.has('infrastructure')) return 'AI is often discussed as a content problem, but this story reframes the deeper issue as infrastructure dependency.';
-  if (themes.has('rights') || themes.has('derivatives')) return 'The tension is whether new licensing and AI uses give creators clear consent, permission and compensation, or simply move rights into another opaque system.';
+  if (themes.has('rights') || themes.has('derivatives')) {
+    if (support.compensation) return 'The tension is whether new licensing and AI uses give creators clear consent, permission and compensation, or simply move rights into another opaque system.';
+    if (support.licensing) return 'The tension is whether new uses of creative work make creator permission and authorization clear, or simply move rights into another opaque system.';
+    return 'The tension is whether the source story changes how creator rights are controlled, understood or operationalized.';
+  }
   if (themes.has('ai')) return 'The tension is whether AI changes only the supply of content or also changes the systems creators depend on to operate.';
   if (themes.has('commerce')) return 'The tension is whether commerce creates durable creator-owned customer relationships or only another platform-controlled transaction layer.';
   if (themes.has('dependency')) return 'The tension is whether creators gain distribution while remaining dependent on channels they do not control.';
@@ -1307,11 +1331,15 @@ function editorialTensionFromThemes(themes, primary = null) {
   return `${subject} is only useful if the article can explain a concrete shift in creator control, verification or business infrastructure.`;
 }
 
-function buildPossibleThesis(themes, primary) {
+function buildPossibleThesis(themes, primary, support = {}) {
   const subject = primary?.title || 'this story';
   if (themes.has('accountFinance')) return 'When a social account also becomes a financial account, losing control of it means considerably more than losing the ability to post.';
   if (themes.has('infrastructure')) return 'Independent music does not just have an AI problem. It has an infrastructure problem.';
-  if (themes.has('rights') || themes.has('derivatives')) return `${subject} shows why creator permission and compensation need to be explicit before new value is created from existing work.`;
+  if (themes.has('rights') || themes.has('derivatives')) {
+    if (support.compensation) return `${subject} shows why creator permission and compensation need to be explicit before new value is created from existing work.`;
+    if (support.licensing) return `${subject} shows why creator permission and authorization need to be explicit before new value is created from existing work.`;
+    return `${subject} shows why creator rights context needs to be explicit when creative work moves through new systems.`;
+  }
   if (themes.has('ai')) return `${subject} shows that AI pressure matters most when it changes the infrastructure independent creators rely on to operate.`;
   if (themes.has('commerce')) return `${subject} points to the need for creator commerce that preserves the relationship between the creator business and the customer.`;
   if (themes.has('dependency')) return `${subject} shows why creators need distribution and discovery without losing control of identity, context and audience relationships.`;
@@ -1347,31 +1375,46 @@ function isReusableGenericThesis(thesis = '', sourceText = '', themes = new Set(
   return !supportedBySource;
 }
 
-function certifydRelevanceFromThemes(themes) {
+function certifydRelevanceFromThemes(themes, support = {}) {
   if (themes.has('accountFinance')) return 'Use only Certifyd Brain records about creator-controlled identity, commerce infrastructure and account/relationship control.';
-  if (themes.has('infrastructure')) return 'Use only Certifyd Brain records about creator-operated infrastructure, Core, identity, publishing context or network distribution.';
+  if (themes.has('infrastructure')) return support.identity
+    ? 'Use only Certifyd Brain records about creator-operated infrastructure, Core, identity, publishing context or network distribution.'
+    : 'Use only Certifyd Brain records about creator-operated infrastructure, Core, publishing context or network distribution.';
   if (themes.has('rights') || themes.has('derivatives')) return 'Use only Certifyd Brain records about permissions, publishing context, access or rights review.';
   if (themes.has('ai')) return 'Use Certifyd Brain records about infrastructure or publishing context only when source facts connect AI to creator operations.';
-  if (themes.has('commerce')) return 'Use only Certifyd Brain records about direct commerce, payments, receipts, Fan or owned customer relationships.';
+  if (themes.has('commerce')) return support.payment ? 'Use only Certifyd Brain records about direct commerce, payments, receipts, Fan or owned customer relationships.' : 'Use only Certifyd Brain records about direct commerce, Fan or owned customer relationships.';
   if (themes.has('dependency')) return 'Use only Certifyd Brain records about Core, identity, network distribution, publishing context or platform dependency.';
   if (themes.has('finance')) return 'Use only Certifyd Brain records about creator ownership, IP context, provenance or business-model framing.';
   return 'Use only the smallest relevant set of Certifyd Brain records; avoid broad ecosystem summaries.';
 }
 
-function competitiveDistinctionFromThemes(themes) {
+function competitiveDistinctionFromThemes(themes, support = {}) {
   if (themes.has('commerce')) return 'Certifyd analysis should focus on creator-owned relationship and transaction context, not generic monetization language.';
-  if (themes.has('infrastructure')) return 'Certifyd analysis should focus on creator-operated infrastructure and control over operating systems, not generic AI, licensing or payout language.';
-  if (themes.has('accountFinance')) return 'Certifyd analysis should focus on account concentration and creator-controlled identity/commerce infrastructure, not music-industry rights boilerplate.';
+  if (themes.has('infrastructure')) return support.licensing || support.payout
+    ? 'Certifyd analysis should focus on creator-operated infrastructure and control over operating systems, not generic adjacent-industry language.'
+    : 'Certifyd analysis should focus on creator-operated infrastructure and control over operating systems, not generic adjacent-industry boilerplate.';
+  if (themes.has('accountFinance')) return 'Certifyd analysis should focus on account concentration and creator-controlled identity/commerce infrastructure, not unrelated music-industry boilerplate.';
   if (themes.has('rights') || themes.has('ai')) return 'Certifyd analysis should focus on verifiable context and creator-controlled permissions only when the source facts support that angle.';
   if (themes.has('dependency')) return 'Certifyd analysis should focus on network and creator-controlled infrastructure rather than platform dependence.';
   return 'Certifyd analysis should be specific and supported by selected Brain records.';
 }
 
-function whatChangedFromThemes(themes, primary = null) {
+function whatChangedFromThemes(themes, primary = null, support = {}) {
   const subject = primary?.title || 'the source story';
   if (themes.has('accountFinance')) return `Before ${subject}, social account security could be treated mainly as a posting and reputation problem. Now payment functionality makes account control a financial-risk issue too.`;
   if (themes.has('infrastructure')) return `Before ${subject}, AI’s impact on independent music could be framed mainly around content, rights, copyright and competition. Now the source facts frame the debate around whether independent music has durable infrastructure of its own.`;
-  if (themes.has('rights') || themes.has('derivatives')) return `Before ${subject}, AI and rights discussions could be treated as abstract policy or licensing questions. Now the source facts make creator opt-in, derivative use, compensation and authorization part of the operational story.`;
+  if (themes.has('rights') || themes.has('derivatives')) {
+    const concreteDetails = [
+      support.licensing ? 'licensing' : '',
+      support.derivative ? 'derivative use' : '',
+      support.compensation ? 'compensation' : '',
+      support.settlement ? 'settlement' : '',
+      support.licensing ? 'authorization' : '',
+    ].filter(Boolean);
+    return concreteDetails.length
+      ? `Before ${subject}, AI and rights discussions could be treated as abstract policy questions. Now the source facts make ${concreteDetails.join(', ')} part of the operational story.`
+      : `Before ${subject}, creator-rights context could be treated as abstract policy. Now the source facts make the operational control question concrete.`;
+  }
   if (themes.has('ai')) return `Before ${subject}, AI could be discussed as a content problem. Now the source facts require asking how AI changes creator operations and dependencies.`;
   if (themes.has('commerce')) return `Before ${subject}, audience activity and creator revenue could be discussed as separate layers. Now the source facts put customer relationships, payment context and creator business control closer together.`;
   if (themes.has('dependency')) return `Before ${subject}, distribution reach could look like the main win. Now the source facts make dependency on external channels part of the cost to examine.`;
@@ -1379,11 +1422,16 @@ function whatChangedFromThemes(themes, primary = null) {
   return `Before ${subject}, the underlying creator-business issue was easier to overlook. Now the source facts give the article a concrete reason to examine it.`;
 }
 
-function creatorConsequenceFromThemes(themes, primary = null) {
+function creatorConsequenceFromThemes(themes, primary = null, support = {}) {
   const subject = primary?.title || 'the story';
   if (themes.has('accountFinance')) return 'A creator may already depend on a social account for identity, audience, reputation and communication; adding payments increases both the value concentrated behind that account and the consequences of losing control of it.';
   if (themes.has('infrastructure')) return 'Independent artists lose leverage when identity, distribution, discovery, audience relationships and commerce all depend on infrastructure operated by third parties.';
-  if (themes.has('rights') || themes.has('derivatives')) return 'A creator may see new value created from existing work, but the practical consequence depends on whether permission, derivative treatment and compensation are explicit before that value moves.';
+  if (themes.has('rights') || themes.has('derivatives')) {
+    if (support.derivative && support.compensation) return 'A creator may see new value created from existing work, but the practical consequence depends on whether permission, derivative treatment and compensation are explicit before that value moves.';
+    if (support.compensation) return 'A creator may see new value created from existing work, but the practical consequence depends on whether permission and compensation are explicit before that value moves.';
+    if (support.derivative) return 'A creator may see new value created from existing work, but the practical consequence depends on whether permission and derivative treatment are explicit before that value moves.';
+    return 'A creator may see work move through new rights or permission systems, but the practical consequence depends on whether authorization and context are clear.';
+  }
   if (themes.has('ai')) return 'A creator may face AI-driven changes not only in content supply, but in the systems that control discovery, distribution and commercial access.';
   if (themes.has('commerce')) return 'A creator can gain sales or support while still losing the customer relationship if the transaction remains controlled by an outside account, app or marketplace.';
   if (themes.has('dependency')) return 'A creator can gain reach while concentrating identity, audience communication and business context inside systems they do not control.';
@@ -1391,7 +1439,7 @@ function creatorConsequenceFromThemes(themes, primary = null) {
   return `${subject} matters to creators only if it changes how their work is discovered, trusted, monetized, authorized or connected to an audience.`;
 }
 
-function selectedCertifydConceptsFromThemes(themes, thesis = '') {
+function selectedCertifydConceptsFromThemes(themes, thesis = '', support = {}) {
   const concepts = [];
   const add = (concept, relevance, sourceConnection) => concepts.push({ concept, relevance, sourceConnection });
   if (themes.has('accountFinance')) {
@@ -1399,11 +1447,17 @@ function selectedCertifydConceptsFromThemes(themes, thesis = '') {
     add('Creator-controlled commerce infrastructure', 'Relevant because the article can examine the risk of concentrating social and financial functions inside one outside account.', 'The source facts say payment functionality made accounts appear more valuable to attackers.');
   } else if (themes.has('infrastructure')) {
     add('Creator-operated infrastructure', 'Relevant because the thesis is about whether independent music has durable infrastructure it can operate instead of only depend on.', 'The source facts frame the report as a fight for music infrastructure and discuss infrastructure erosion.');
-    add('Creator-controlled identity and publishing', 'Relevant because infrastructure control affects how creators maintain identity, releases, discovery context and commercial operations.', 'The source facts connect independent music, AI impact and infrastructure dependency.');
+    if (support.identity) add('Creator-controlled identity and publishing', 'Relevant because infrastructure control affects how creators maintain identity, releases, discovery context and commercial operations.', 'The source facts connect independent music, AI impact, identity and infrastructure dependency.');
   } else if (themes.has('rights') || themes.has('derivatives')) {
-    add('Creator-controlled permissions', 'Relevant because the thesis depends on whether creators can choose or authorize new uses of existing work.', 'The source facts mention licensing, opt-in, derivative use, AI inputs/outputs, settlement or compensation.');
-    add('Publishing and permission context', 'Relevant because the article needs a way to discuss how work and permission context stay attached to creative output.', 'The source facts connect existing creative work to new uses or derivative activity.');
-    add('Commerce or compensation records', 'Relevant only where the source facts discuss compensation, settlement, payments or value flowing back to participants.', 'The source facts include compensation, transaction or settlement language.');
+    const sourceDetails = [
+      support.licensing ? 'licensing, rights, permission or authorization' : '',
+      support.derivative ? 'derivative use or AI inputs/outputs' : '',
+      support.settlement ? 'settlement' : '',
+      support.compensation ? 'compensation' : '',
+    ].filter(Boolean).join(', ') || 'rights or permission context';
+    add('Creator-controlled permissions', 'Relevant because the thesis depends on whether creators can choose or authorize new uses of existing work.', `The source facts mention ${sourceDetails}.`);
+    add('Publishing and permission context', 'Relevant because the article needs a way to discuss how work and permission context stay attached to creative output.', support.derivative ? 'The source facts connect existing creative work to new uses or derivative activity.' : 'The source facts connect existing creative work to rights or permission decisions.');
+    if (support.compensation || support.payment || support.settlement || support.royalty || support.payout) add('Commerce or compensation records', 'Relevant only where the source facts discuss compensation, settlement, payments or value flowing back to participants.', 'The source facts include compensation, transaction or settlement language.');
   } else if (themes.has('ai')) {
     add('Creator-operated infrastructure', 'Relevant only if the source facts show AI changing creator operations, dependency or control.', 'The source facts discuss AI’s impact on the systems creators rely on.');
   } else if (themes.has('commerce')) {
@@ -1414,7 +1468,7 @@ function selectedCertifydConceptsFromThemes(themes, thesis = '') {
     add('Network distribution', 'Relevant because the article can examine distribution without making one platform the creator business.', 'The source facts discuss reach, discovery, distribution or platform policy changes.');
   } else if (themes.has('finance')) {
     add('Creator IP context', 'Relevant because the thesis depends on creative work being treated as an asset with ownership and rights context.', 'The source facts discuss IP, acquisition, stake, catalog value, investment or brand rights.');
-    add('Provenance and rights records', 'Relevant where the article needs to connect financial value to verifiable ownership and permissions.', 'The source facts make control of creative rights or brand assets consequential.');
+    if (support.provenance) add('Provenance and rights records', 'Relevant where the article needs to connect financial value to verifiable ownership and permissions.', 'The source facts make provenance of creative rights or brand assets consequential.');
   }
   if (!concepts.length && thesis) {
     add('Smallest relevant approved Certifyd context', 'Relevant only if it helps explain the specific thesis without turning the article into a product pitch.', 'The source facts must create the connection.');
@@ -1422,18 +1476,18 @@ function selectedCertifydConceptsFromThemes(themes, thesis = '') {
   return concepts.slice(0, 3);
 }
 
-function avoidAnglesFromThemes(themes) {
+function avoidAnglesFromThemes(themes, support = {}) {
   const avoid = ['generic creator ownership rhetoric', 'generic blockchain or decentralization arguments'];
-  if (themes.has('infrastructure')) avoid.push('generic licensing discussion', 'royalty splits', 'generic fair-compensation language', 'attribution boilerplate', 'derivative-work discussion', 'payout definitions');
-  if (themes.has('accountFinance')) avoid.push('licensing', 'provenance', 'attribution', 'derivative works', 'generic payout definitions', 'music-industry rights boilerplate');
-  if (!(themes.has('rights') || themes.has('derivatives'))) avoid.push('licensing, provenance or permissions unless source facts make them central');
-  if (!themes.has('commerce')) avoid.push('direct commerce or payment rails unless source facts discuss transactions, purchases or compensation');
+  if (themes.has('infrastructure')) avoid.push('music-rights boilerplate', 'generic fair-value language', 'adjacent proof boilerplate', 'derived-work discussion', 'financial definitions');
+  if (themes.has('accountFinance')) avoid.push('unrelated music-industry boilerplate', 'generic financial definitions');
+  if (!(themes.has('rights') || themes.has('derivatives'))) avoid.push('adjacent rights angles unless source facts make them central');
+  if (!themes.has('commerce')) avoid.push('direct-commerce framing unless source facts discuss transactions, purchases or customer relationships');
   if (!themes.has('dependency')) avoid.push('platform-dependency claims unless the source facts show a control or account-dependence issue');
   if (!themes.has('finance')) avoid.push('investor or IP-asset framing unless the source facts discuss ownership stakes, acquisitions or asset value');
   return avoid.slice(0, 10);
 }
 
-function articleProgressionFromThemes(themes, primary = null) {
+function articleProgressionFromThemes(themes, primary = null, support = {}) {
   const subject = primary?.title || 'the source facts';
   if (themes.has('accountFinance')) {
     return [
@@ -1458,9 +1512,16 @@ function articleProgressionFromThemes(themes, primary = null) {
   if (themes.has('rights') || themes.has('derivatives')) {
     return [
       `Open with the specific source facts in ${subject}.`,
-      'Establish the licensing, AI, derivative, settlement, opt-in or compensation details that make the story matter.',
+      support.compensation || support.settlement || support.derivative || support.licensing
+        ? `Establish the ${[
+          support.licensing ? 'licensing or authorization' : '',
+          support.derivative ? 'derivative' : '',
+          support.settlement ? 'settlement' : '',
+          support.compensation ? 'compensation' : '',
+        ].filter(Boolean).join(', ')} details that make the story matter.`
+        : 'Establish the specific source-backed rights or permission details that make the story matter.',
       'Explain why those details change the creator’s practical position.',
-      'Introduce only Certifyd concepts that help analyze permission, publishing context or compensation.',
+      support.compensation ? 'Introduce only Certifyd concepts that help analyze permission, publishing context or compensation.' : 'Introduce only Certifyd concepts that help analyze permission and publishing context.',
       'End on the operational distinction between creating new value from work and making creator authorization clear before that value moves.',
     ];
   }
@@ -2127,7 +2188,7 @@ function completeGeneratedArticleFields(value, input) {
   }
   if (!completed.suggestedSlug && completed.title) completed.suggestedSlug = slugify(completed.title);
   if (!completed.excerpt && completed.bodyMarkdown) completed.excerpt = excerptFromBody(completed.bodyMarkdown, completed.title);
-  if (!completed.author) completed.author = 'Certifyd';
+  completed.author = 'Certifyd';
   if (!Array.isArray(completed.tags)) completed.tags = tagsFromTopic(`${input.topic || ''} ${completed.title || ''}`);
   if (completed.seoTitle) completed.seoTitle = normalizeArticleTitle(completed.seoTitle);
   if (!completed.seoTitle && completed.title) completed.seoTitle = `${completed.title} | Certifyd`;
