@@ -14,6 +14,7 @@ const SOURCE_BACKED_BRAIN_LIMIT = 3;
 const EXPLAINER_BRAIN_LIMIT = 8;
 const MAX_INTERACTIVE_OUTPUT_TOKENS = 6000;
 const MAX_ARTICLE_GENERATION_TOKENS = 1200;
+const MAX_OPENAI_ARTICLE_GENERATION_TOKENS = 5000;
 const DEFAULT_OLLAMA_HEALTH_TIMEOUT_MS = 5000;
 const DEFAULT_OPENAI_TIMEOUT_MS = 240000;
 const DEFAULT_OPENAI_HEALTH_TIMEOUT_MS = 12000;
@@ -327,7 +328,7 @@ export class OpenAIGenerationProvider {
         schema: ARTICLE_SCHEMA,
         systemInstruction: articleSystemInstruction,
         userPrompt: articlePrompt,
-        maxOutputTokens: Math.min(this.config.openai.maxOutputTokens, MAX_ARTICLE_GENERATION_TOKENS),
+        maxOutputTokens: Math.min(this.config.openai.maxOutputTokens, MAX_OPENAI_ARTICLE_GENERATION_TOKENS),
         abortSignal,
       });
       stages.push(reasoningResponse.stageMeta, articleResponse.stageMeta);
@@ -363,6 +364,9 @@ export class OpenAIGenerationProvider {
         max_output_tokens: maxOutputTokens,
         store: false,
       }, { signal: abortSignal, timeout: positiveNumber(this.config.openai?.timeoutMs, DEFAULT_OPENAI_TIMEOUT_MS) });
+      if (response.status === 'incomplete') {
+        throw new GenerationValidationError(`OpenAI returned an incomplete ${stage} response. Increase OPENAI_MAX_OUTPUT_TOKENS or reduce the requested draft size.`);
+      }
       const text = extractOpenAIResponseText(response);
       if (!text.trim()) throw new GenerationValidationError(`OpenAI returned no ${stage} content.`);
       return {
@@ -827,7 +831,7 @@ export function getDefaultOpenAIConfig(env = process.env) {
     model: env.BLOG_GENERATION_MODEL || DEFAULT_OPENAI_MODEL,
     timeoutMs: positiveNumber(env.OPENAI_REQUEST_TIMEOUT_MS || env.BLOG_GENERATION_TIMEOUT_MS, DEFAULT_OPENAI_TIMEOUT_MS),
     healthTimeoutMs: positiveNumber(env.OPENAI_HEALTH_TIMEOUT_MS || env.BLOG_GENERATION_HEALTH_TIMEOUT_MS, DEFAULT_OPENAI_HEALTH_TIMEOUT_MS),
-    maxOutputTokens: boundedNumber(env.OPENAI_MAX_OUTPUT_TOKENS || env.BLOG_GENERATION_MAX_OUTPUT_TOKENS, MAX_ARTICLE_GENERATION_TOKENS, 192, MAX_INTERACTIVE_OUTPUT_TOKENS),
+    maxOutputTokens: boundedNumber(env.OPENAI_MAX_OUTPUT_TOKENS || env.BLOG_GENERATION_MAX_OUTPUT_TOKENS, MAX_OPENAI_ARTICLE_GENERATION_TOKENS, 192, MAX_INTERACTIVE_OUTPUT_TOKENS),
     maxContextChars: boundedNumber(env.OPENAI_CONTEXT_LIMIT || env.BLOG_GENERATION_CONTEXT_LIMIT, 18000, 4000, 36000),
     maxConcurrentGenerations: positiveNumber(env.OPENAI_MAX_CONCURRENT_GENERATIONS || env.BLOG_GENERATION_MAX_CONCURRENT_GENERATIONS, 1),
   };
@@ -1245,9 +1249,9 @@ function buildEditorialBrief(input = {}, externalSourceFacts = []) {
   const sourceSupport = conceptSupportFromSourceFacts(externalSourceFacts);
   const editorialTension = editorialTensionFromThemes(themes, primary, sourceSupport);
   const possibleThesis = buildPossibleThesis(themes, primary, sourceSupport);
-  const conceptSupport = conceptSupportFromSourceFacts(externalSourceFacts, possibleThesis);
+  const conceptSupport = sourceSupport;
   const thesisTest = thesisTestResult(possibleThesis, themes, externalSourceFacts);
-  return {
+  return sanitizeEditorialBriefUnsupportedConcepts({
     primaryEvent: primary ? cleanSentence(`${primary.publisher || 'A source'} reports: ${primary.title}. ${primary.summary}`) : cleanSentence(input.topic || input.workingTitle || ''),
     verifiedFacts,
     relevantContext: summarizeRelevantContext(externalSourceFacts),
@@ -1262,11 +1266,11 @@ function buildEditorialBrief(input = {}, externalSourceFacts = []) {
     avoidAngles: avoidAnglesFromThemes(themes, conceptSupport),
     articleProgression: articleProgressionFromThemes(themes, primary, conceptSupport),
     themes: [...themes],
-  };
+  }, sourceSupport);
 }
 
-function conceptSupportFromSourceFacts(externalSourceFacts = [], thesis = '') {
-  const sourceText = `${editorialSourceText(externalSourceFacts)} ${String(thesis || '').toLowerCase()}`;
+function conceptSupportFromSourceFacts(externalSourceFacts = []) {
+  const sourceText = editorialSourceText(externalSourceFacts);
   return {
     royalty: /\broyalt(?:y|ies)\b/.test(sourceText),
     payout: /\bpayouts?\b/.test(sourceText),
@@ -1280,6 +1284,48 @@ function conceptSupportFromSourceFacts(externalSourceFacts = [], thesis = '') {
     derivative: /\b(derivative|derivatives|inputs?|outputs?|remix|sample|cover|adaptation)\b/.test(sourceText),
     commerce: /\b(commerce|customer|direct[-\s]?to[-\s]?fan|subscription|membership|revenue|monetization|monetisation|sales?)\b/.test(sourceText),
     infrastructure: /\b(infrastructure|platform|distribution|discovery|network|third[-\s]?party dependency|operated by third parties)\b/.test(sourceText),
+  };
+}
+
+function sanitizeEditorialBriefUnsupportedConcepts(brief, support = {}) {
+  const replacements = [
+    [!support.royalty, /\broyalt(?:y|ies)\b/gi, 'source-backed rights terms'],
+    [!support.payout, /\bpayouts?\b/gi, 'source-backed business terms'],
+    [!support.payment, /\bpayments?\b/gi, 'business terms'],
+    [!support.payment, /\bpaid\b/gi, 'handled'],
+    [!support.compensation, /\bcompensation\b/gi, 'source-backed terms'],
+    [!support.settlement, /\bsettlement\b/gi, 'source-backed resolution'],
+    [!support.provenance, /\bprovenance\b/gi, 'source-backed context'],
+    [!support.identity, /\bidentity\b/gi, 'creator context'],
+    [!support.licensing, /\blicens(?:e|es|ed|ing)\b/gi, 'rights context'],
+    [!support.ownership, /\bownership\b/gi, 'control'],
+    [!support.ownership, /\bowned\b/gi, 'controlled'],
+    [!support.derivative, /\bderivative works?\b/gi, 'new uses'],
+    [!support.derivative, /\bderivative activity\b/gi, 'new activity'],
+    [!support.derivative, /\bderivative\b/gi, 'new-use'],
+  ];
+  const sanitizeText = (value) => {
+    let text = String(value || '');
+    for (const [active, pattern, replacement] of replacements) {
+      if (active) text = text.replace(pattern, replacement);
+    }
+    return cleanSentence(text).replace(/\s+/g, ' ').trim();
+  };
+  return {
+    ...brief,
+    editorialTension: sanitizeText(brief.editorialTension),
+    whatChanged: sanitizeText(brief.whatChanged),
+    creatorConsequence: sanitizeText(brief.creatorConsequence),
+    possibleThesis: sanitizeText(brief.possibleThesis),
+    certifydRelevance: sanitizeText(brief.certifydRelevance),
+    competitiveDistinction: sanitizeText(brief.competitiveDistinction),
+    selectedCertifydConcepts: (brief.selectedCertifydConcepts || []).map((concept) => ({
+      concept: sanitizeText(concept.concept),
+      relevance: sanitizeText(concept.relevance),
+      sourceConnection: sanitizeText(concept.sourceConnection),
+    })),
+    avoidAngles: (brief.avoidAngles || []).map(sanitizeText),
+    articleProgression: (brief.articleProgression || []).map(sanitizeText),
   };
 }
 

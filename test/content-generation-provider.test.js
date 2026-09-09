@@ -169,7 +169,7 @@ function validReasoning(overrides = {}) {
   };
 }
 
-function mockOpenAIClient({ reasoning = validReasoning(), article, failAt = '', calls = [] } = {}) {
+function mockOpenAIClient({ reasoning = validReasoning(), article, failAt = '', incompleteAt = '', calls = [] } = {}) {
   return {
     responses: {
       create: async (payload) => {
@@ -180,9 +180,19 @@ function mockOpenAIClient({ reasoning = validReasoning(), article, failAt = '', 
           error.status = 500;
           throw error;
         }
+        if (incompleteAt && stage.includes(incompleteAt)) {
+          return {
+            id: `resp_${calls.length}`,
+            status: 'incomplete',
+            output_text: '{"title"',
+            incomplete_details: { reason: 'max_output_tokens' },
+            usage: { input_tokens: 100 + calls.length, output_tokens: 50 + calls.length, total_tokens: 150 + calls.length * 2 },
+          };
+        }
         const body = stage.includes('reasoning') ? reasoning : (article || validArticle('brain:facts/approved-public-claims'));
         return {
           id: `resp_${calls.length}`,
+          status: 'completed',
           output_text: JSON.stringify(body),
           usage: { input_tokens: 100 + calls.length, output_tokens: 50 + calls.length, total_tokens: 150 + calls.length * 2 },
         };
@@ -267,6 +277,7 @@ test('normal generation uses OpenAI Responses with separate reasoning and writin
   assert.equal(calls[1].text.format.name, 'certifyd_article');
   assert.equal(calls[0].model, 'gpt-5.6-terra');
   assert.equal(calls[1].model, 'gpt-5.6-terra');
+  assert.equal(calls[1].max_output_tokens, 5000);
 });
 
 test('source facts are passed to OpenAI reasoning', async () => {
@@ -375,6 +386,18 @@ test('malformed OpenAI model output fails safely', async () => {
   await assert.rejects(
     () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context),
     /AI returned malformed JSON/,
+  );
+});
+
+test('incomplete OpenAI article response fails with token-limit guidance', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({ incompleteAt: 'article' }),
+  });
+  await assert.rejects(
+    () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context),
+    /OpenAI returned an incomplete article-writing response\. Increase OPENAI_MAX_OUTPUT_TOKENS/,
   );
 });
 
