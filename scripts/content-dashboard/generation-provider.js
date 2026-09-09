@@ -130,7 +130,7 @@ export const ARTICLE_SCHEMA = {
 export const EDITORIAL_REASONING_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['eventSummary', 'obviousTake', 'editorialTension', 'hiddenQuestion', 'whatThisReveals', 'editorialIdea', 'editorialIdeaSupport', 'thesis', 'creatorConsequence', 'worthPublishing', 'rejectionReason', 'certifydConcepts', 'avoidAngles', 'articleProgression'],
+  required: ['eventSummary', 'obviousTake', 'editorialTension', 'hiddenQuestion', 'whatThisReveals', 'editorialIdea', 'editorialIdeaSupport', 'verifiedFacts', 'thesis', 'creatorConsequence', 'worthPublishing', 'rejectionReason', 'certifydConcepts', 'avoidAngles', 'articleProgression'],
   properties: {
     eventSummary: { type: 'string' },
     obviousTake: { type: 'string' },
@@ -327,10 +327,11 @@ export class OpenAIGenerationProvider {
       });
       const reasoning = sanitizeOpenAIReasoningUnsupportedConcepts(normalizeOpenAIReasoning(parseJsonContent(reasoningResponse.text), groundedContext), groundedContext);
       assertOpenAIReasoningReady(reasoning, groundedContext);
-      const writingContext = buildOpenAIWritingContext(groundedContext, reasoning);
+      const postA1Reasoning = attachPostA1CertifydConcepts(reasoning, groundedContext);
+      const writingContext = buildOpenAIWritingContext(groundedContext, postA1Reasoning);
       groundedContext.allowedBrainSourceIds = writingContext.allowedBrainSourceIds;
       const articleSystemInstruction = buildArticleSystemInstruction();
-      const articlePrompt = buildArticlePrompt(input, groundedContext, reasoning, writingContext);
+      const articlePrompt = buildArticlePrompt(input, groundedContext, postA1Reasoning, writingContext);
       recordGenerationPromptDiagnostics(input, groundedContext, {
         provider: this.providerName,
         model: this.modelName,
@@ -338,7 +339,7 @@ export class OpenAIGenerationProvider {
         reasoningPrompt,
         articleSystemInstruction,
         articlePrompt,
-        reasoning,
+        reasoning: postA1Reasoning,
         writingContext,
       });
       const articleResponse = await this.createStructuredResponse({
@@ -2283,6 +2284,32 @@ function assertOpenAIReasoningReady(reasoning = {}, groundedContext = {}) {
   if (failures.length) {
     throw new GenerationConfigurationError(`Article generation blocked by editorial gate: ${failures.join('; ')}.`);
   }
+}
+
+function attachPostA1CertifydConcepts(reasoning = {}, groundedContext = {}) {
+  if (reasoning.worthPublishing !== true) return reasoning;
+  const approved = Array.isArray(groundedContext.editorialBrief?.selectedCertifydConcepts)
+    ? groundedContext.editorialBrief.selectedCertifydConcepts
+    : [];
+  const sourceOnlyArgument = [
+    reasoning.eventSummary,
+    reasoning.editorialTension,
+    reasoning.hiddenQuestion,
+    reasoning.whatThisReveals,
+    reasoning.editorialIdea,
+    reasoning.thesis,
+    reasoning.creatorConsequence,
+  ].join(' ');
+  const concepts = approved
+    .map((concept) => ({
+      concept: clampText(concept?.concept, 100),
+      relevance: clampText(concept?.relevance, 260),
+      sourceConnection: clampText(concept?.sourceConnection, 260),
+    }))
+    .filter((concept) => concept.concept && concept.relevance && concept.sourceConnection)
+    .filter((concept) => termOverlapScore(sourceOnlyArgument, `${concept.concept} ${concept.relevance} ${concept.sourceConnection}`) >= 1)
+    .slice(0, 3);
+  return { ...reasoning, certifydConcepts: concepts };
 }
 
 function buildOpenAIWritingContext(groundedContext = {}, reasoning = {}) {

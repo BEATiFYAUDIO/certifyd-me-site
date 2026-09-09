@@ -7,6 +7,7 @@ import {
   buildGroundedContext,
   createDeterministicFallbackArticle,
   createGenerationProvider,
+  EDITORIAL_REASONING_SCHEMA,
   GenerationConfigurationError,
   GenerationValidationError,
   OllamaQwenGenerationProvider,
@@ -84,6 +85,23 @@ function mockResponse(body, status = 200) {
     json: async () => body,
     text: async () => JSON.stringify(body),
   };
+}
+
+function assertStrictObjectSchema(schema, label = 'schema') {
+  if (!schema || typeof schema !== 'object') return;
+  if (schema.type === 'object') {
+    assert.equal(schema.additionalProperties, false, `${label} must set additionalProperties=false`);
+    const propertyKeys = Object.keys(schema.properties || {});
+    assert.ok(Array.isArray(schema.required), `${label} required must be an array`);
+    assert.deepEqual([...schema.required].sort(), propertyKeys.sort(), `${label} required must include exactly every property key`);
+  }
+  for (const [key, value] of Object.entries(schema.properties || {})) {
+    assertStrictObjectSchema(value, `${label}.properties.${key}`);
+  }
+  if (schema.items) assertStrictObjectSchema(schema.items, `${label}.items`);
+  for (const key of ['anyOf', 'oneOf', 'allOf']) {
+    for (const item of schema[key] || []) assertStrictObjectSchema(item, `${label}.${key}`);
+  }
 }
 
 function validArticle(sourceId, overrides = {}) {
@@ -273,6 +291,11 @@ test('OpenAI provider uses default model and env override config', async () => {
   assert.equal(new OpenAIGenerationProvider(overrideConfig, { openaiClient: mockOpenAIClient() }).modelName, 'gpt-5.6-sol');
 });
 
+test('certifyd editorial reasoning schema satisfies strict structured output requirements', () => {
+  assertStrictObjectSchema(EDITORIAL_REASONING_SCHEMA, 'certifyd_editorial_reasoning');
+  assert.ok(EDITORIAL_REASONING_SCHEMA.required.includes('verifiedFacts'));
+});
+
 test('normal generation uses OpenAI Responses with separate reasoning and writing calls', async () => {
   const calls = [];
   const config = await makeConfig();
@@ -381,6 +404,7 @@ test('OpenAI final writing receives no Brain context when source-only reasoning 
     await fs.writeFile(file, text);
   }
   const context = await makeContext(config);
+  completeEditorialGate(context, { selectedCertifydConcepts: [] });
   const sourceId = context.sourceRecords[0].id;
   const provider = new OpenAIGenerationProvider(config, {
     openaiClient: mockOpenAIClient({
@@ -394,6 +418,74 @@ test('OpenAI final writing receives no Brain context when source-only reasoning 
   assert.match(calls[1].input, /No selected Brain facts supplied/i);
   assert.doesNotMatch(calls[1].input, /A payout is the movement of allocated earnings/i);
   assert.doesNotMatch(calls[1].input, /Certifyd profiles describe creator-controlled identity/i);
+});
+
+test('OpenAI Brain context can reach final writing only after source-only reasoning approval', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  const records = [
+    ['content-agent/knowledge/capabilities/profiles.md', '# Profiles\n\nAPPROVED\n\nCertifyd profiles describe creator-controlled identity and account context.'],
+    ['content-agent/knowledge/capabilities/payouts.md', '# Payouts\n\nAPPROVED\n\nA payout is the movement of allocated earnings to creators or participants.'],
+  ];
+  for (const [relative, text] of records) {
+    const file = path.join(config.siteRoot, relative);
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(file, text);
+  }
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [{
+      id: 'artist-authority-story',
+      publisher: 'Billboard',
+      publishedAt: '2026-09-09T09:00:00.000Z',
+      title: 'Artist profile dispute turns on representative authority',
+      summary: 'A source story reports an artist profile dispute involving identity, representative authority and verification.',
+      articleUrl: 'https://example.test/artist-authority',
+      categories: ['Music', 'Identity'],
+      certifydRelevanceScore: 12,
+    }],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Artist profile dispute turns on representative authority',
+    trendSourceItemIds: 'artist-authority-story',
+  });
+  completeEditorialGate(context, {
+    selectedCertifydConcepts: [{
+      concept: 'Creator-controlled identity',
+      relevance: 'Relevant because the source-only thesis turns on identity, authority and profile context.',
+      sourceConnection: 'The source facts identify an artist profile dispute involving identity, representative authority and verification.',
+    }],
+  });
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      calls,
+      reasoning: validReasoning({
+        eventSummary: 'A source story reports an artist profile dispute involving representative authority.',
+        obviousTake: 'The immediate question is who had authority around the profile.',
+        editorialTension: 'The story turns on identity, authority and verification rather than generic platform coverage.',
+        hiddenQuestion: 'How should creator-facing systems preserve authority context?',
+        whatThisReveals: 'Profile disputes become harder to parse when authority context is unclear.',
+        editorialIdea: 'The source facts support a narrow argument about artist identity and representative authority.',
+        editorialIdeaSupport: [{ idea: 'The story turns on identity and representative authority.', factIds: ['artist-authority-story'] }],
+        creatorConsequence: 'Creators can face business confusion when identity and representative authority are unclear.',
+        thesis: 'An artist profile dispute involving representative authority shows why authority context matters around creator identity.',
+      }),
+      article: validArticle(context.sourceRecords[0].id),
+    }),
+  });
+  await provider.generateArticle({
+    actorEmail: 'writer@example.test',
+    topic: 'Artist profile dispute turns on representative authority',
+    audience: 'Creators',
+    objective: 'Explain the source facts.',
+    trendSourceItemIds: 'artist-authority-story',
+  }, context);
+  assert.equal(calls.length, 2);
+  assert.doesNotMatch(calls[0].input, /Certifyd profiles describe creator-controlled identity/i);
+  assert.match(calls[1].input, /Certifyd profiles describe creator-controlled identity/i);
+  assert.doesNotMatch(calls[1].input, /A payout is the movement of allocated earnings/i);
+  assert.deepEqual(context.allowedBrainSourceIds, ['brain:capabilities/profiles']);
 });
 
 test('OpenAI rejects thin Spotify MLC procedural update before Brain retrieval or writing', async () => {
