@@ -414,10 +414,11 @@ test('OpenAI final writing receives no Brain context when source-only reasoning 
     }),
   });
   await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
-  assert.match(calls[1].input, /SELECTED CERTIFYD BRAIN FOR FINAL WRITING/);
+  assert.match(calls[1].input, /RELEVANT CERTIFYD BRAIN/);
   assert.match(calls[1].input, /No selected Brain facts supplied/i);
   assert.doesNotMatch(calls[1].input, /A payout is the movement of allocated earnings/i);
   assert.doesNotMatch(calls[1].input, /Certifyd profiles describe creator-controlled identity/i);
+  assert.match(calls[1].input, /Because no meaningful Certifyd Brain was selected, do not manufacture a Certifyd product connection/i);
 });
 
 test('OpenAI Brain context can reach final writing only after source-only reasoning approval', async () => {
@@ -485,7 +486,98 @@ test('OpenAI Brain context can reach final writing only after source-only reason
   assert.doesNotMatch(calls[0].input, /Certifyd profiles describe creator-controlled identity/i);
   assert.match(calls[1].input, /Certifyd profiles describe creator-controlled identity/i);
   assert.doesNotMatch(calls[1].input, /A payout is the movement of allocated earnings/i);
+  assert.match(calls[1].input, /Because relevant Certifyd Brain was selected, develop a real Certifyd perspective/i);
+  assert.match(calls[1].input, /must never be used as evidence for the external event/i);
   assert.deepEqual(context.allowedBrainSourceIds, ['brain:capabilities/profiles']);
+});
+
+test('OpenAI final writing receives source facts editorial direction and relevant Brain together', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  const records = [
+    ['content-agent/knowledge/capabilities/permissions.md', '# Permissions\n\nAPPROVED\n\nCertifyd can describe permission-aware publishing and access context for creator workflows.'],
+    ['content-agent/knowledge/capabilities/provenance.md', '# Provenance\n\nAPPROVED\n\nCertifyd provenance context can connect publication records, attribution and permission decisions.'],
+  ];
+  for (const [relative, text] of records) {
+    const file = path.join(config.siteRoot, relative);
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(file, text);
+  }
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), JSON.stringify({
+    sourceItems: [
+      {
+        id: 'suno-v6-billboard',
+        publisher: 'Billboard',
+        publishedAt: '2026-09-09T09:00:00.000Z',
+        title: 'Suno v6 launches with opt-in licensed music from rightsholders',
+        summary: 'A source story reports that Suno v6 includes opt-in licensed music and rightsholder participation.',
+        articleUrl: 'https://example.test/suno-v6-billboard',
+        categories: ['AI', 'Music'],
+        certifydRelevanceScore: 14,
+      },
+      {
+        id: 'suno-v6-mbw',
+        publisher: 'Music Business Worldwide',
+        publishedAt: '2026-09-09T09:15:00.000Z',
+        title: 'Suno v6 emphasizes permissioned source material',
+        summary: 'A source story reports that Suno v6 was presented around permissioned music inputs, licensed source material and creator participation.',
+        articleUrl: 'https://example.test/suno-v6-mbw',
+        categories: ['AI', 'Music'],
+        certifydRelevanceScore: 14,
+      },
+    ],
+    opportunities: [],
+  }, null, 2));
+  const context = await makeContext(config, {
+    topic: 'Suno v6 permissioned AI music launch',
+    trendSourceItemIds: 'suno-v6-billboard,suno-v6-mbw',
+  });
+  completeEditorialGate(context, {
+    selectedCertifydConcepts: [{
+      concept: 'Permission-aware publishing',
+      relevance: 'Relevant because the source-only thesis turns on opt-in licensed music and permissioned source material.',
+      sourceConnection: 'The source facts identify Suno v6 as a music AI product presented around opt-in licensed inputs and rightsholder participation.',
+    }],
+  });
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      calls,
+      reasoning: validReasoning({
+        eventSummary: 'Suno v6 was presented around opt-in licensed music, permissioned source material and rightsholder participation.',
+        editorialTension: 'The story turns on whether AI music products move permission upstream into product design.',
+        hiddenQuestion: 'What changes when permission is treated as part of the product surface instead of a later licensing dispute?',
+        whatThisReveals: 'Permission is becoming product architecture in music AI rather than only legal cleanup after launch.',
+        editorialIdea: 'Suno v6 shows why permissioned source material is becoming part of AI music product design.',
+        editorialIdeaSupport: [
+          { idea: 'Suno v6 was presented around opt-in licensed music.', factIds: ['suno-v6-billboard'] },
+          { idea: 'The launch emphasized permissioned source material.', factIds: ['suno-v6-mbw'] },
+        ],
+        creatorConsequence: 'Creators and rightsholders need systems that make permission context visible before music is generated or distributed.',
+        thesis: 'Suno v6 turns permission from a back-end rights question into part of the product architecture of AI music.',
+        certifydConcepts: [],
+      }),
+      article: validArticle(context.sourceRecords[0].id, { claims: [] }),
+    }),
+  });
+  await provider.generateArticle({
+    actorEmail: 'writer@example.test',
+    topic: 'Suno v6 permissioned AI music launch',
+    audience: 'Creators',
+    objective: 'Explain the source facts.',
+    trendSourceItemIds: 'suno-v6-billboard,suno-v6-mbw',
+  }, context);
+  const finalPrompt = calls[1].input;
+  assert.match(finalPrompt, /VERIFIED SOURCE PACKAGE/);
+  assert.match(finalPrompt, /Suno v6 includes opt-in licensed music/i);
+  assert.match(finalPrompt, /EDITORIAL DIRECTION/);
+  assert.match(finalPrompt, /permission from a back-end rights question into part of the product architecture/i);
+  assert.match(finalPrompt, /RELEVANT CERTIFYD BRAIN/);
+  assert.match(finalPrompt, /Certifyd can describe permission-aware publishing/i);
+  assert.match(finalPrompt, /Because relevant Certifyd Brain was selected, develop a real Certifyd perspective/i);
+  assert.match(finalPrompt, /roughly 900 to 1,300 words.*guidance, not a validation gate/i);
+  assert.match(finalPrompt, /assignment guidance, not a rigid outline/i);
+  assert.match(finalPrompt, /must never be used as evidence for the external event/i);
 });
 
 test('OpenAI worthPublishing=false returns founder-review draft with warning instead of failing generation', async () => {
@@ -635,21 +727,17 @@ test('OpenAI final writing instructions discourage validator-facing defensive pr
   assert.match(finalInstructionText, /Write like an informed technology\/music-business publication, not a compliance memo/i);
   assert.match(finalInstructionText, /Do not mention the validation system, source-support restrictions, uncertainty machinery, prompt rules, or internal editorial rules in article prose/i);
   assert.match(finalInstructionText, /Do not add defensive disclaimers merely to show what the article is not claiming/i);
-  assert.match(finalInstructionText, /may contain zero Certifyd product references/i);
-  assert.match(finalInstructionText, /Do not force Certifyd into the article/i);
-  assert.match(finalInstructionText, /Never manufacture a Certifyd connection from generic payouts, provenance, identity, ownership, records, transparency or creator-control language/i);
   assert.match(finalInstructionText, /Prefer confident, conventional editorial prose over defensive phrases/i);
-  assert.match(finalInstructionText, /Default to no Certifyd product mention/i);
-  assert.match(finalInstructionText, /Absence of a Certifyd reference is a successful outcome/i);
-  assert.match(finalInstructionText, /If certifydConcepts is empty, the article must contain zero Certifyd product references/i);
-  assert.match(finalInstructionText, /If certifydConcepts is non-empty, it is permission to consider that concept, not a requirement to mention it/i);
-  assert.match(finalInstructionText, /Use only the Certifyd connection explicitly approved in the reasoning object/i);
-  assert.match(finalInstructionText, /legal dispute → documentation → provenance → Certifyd/i);
-  assert.match(finalInstructionText, /AI → identity → Certifyd/i);
-  assert.match(finalInstructionText, /payments → payouts → Certifyd/i);
-  assert.match(finalInstructionText, /rights → ownership → Certifyd/i);
-  assert.match(finalInstructionText, /creator story → creator control → Certifyd/i);
-  assert.match(finalInstructionText, /Remove unnecessary defensive product disclaimers/i);
+  assert.match(finalInstructionText, /Use the verified source facts, editorial direction and selected Certifyd Brain together/i);
+  assert.match(finalInstructionText, /assignment guidance, not a rigid outline/i);
+  assert.match(finalInstructionText, /When selected Certifyd Brain is supplied, use it to develop a meaningful Certifyd perspective/i);
+  assert.match(finalInstructionText, /When no selected Certifyd Brain is supplied, do not manufacture a Certifyd product connection/i);
+  assert.match(finalInstructionText, /It is not evidence for facts about the external source event/i);
+  assert.match(finalInstructionText, /Do not enumerate source limitations as article prose/i);
+  assert.match(finalInstructionText, /Let article length follow the amount of reporting and argument available/i);
+  assert.doesNotMatch(finalInstructionText, /Default to no Certifyd product mention/i);
+  assert.doesNotMatch(finalInstructionText, /Absence of a Certifyd reference is a successful outcome/i);
+  assert.doesNotMatch(finalInstructionText, /legal dispute → documentation → provenance → Certifyd/i);
 });
 
 test('OpenAI analytical vocabulary in reasoning is allowed without becoming Brain evidence', async () => {

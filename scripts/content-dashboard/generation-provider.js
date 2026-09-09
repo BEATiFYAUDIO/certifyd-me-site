@@ -972,17 +972,16 @@ function buildArticleSystemInstruction() {
     buildSystemInstruction(),
     '',
     'Return only JSON matching the requested schema.',
-    'The private reasoning object is already approved for this draft. Do not rediscover or replace the thesis while writing.',
+    'Use the verified source facts, editorial direction and selected Certifyd Brain together as the writing context.',
+    'The private reasoning object is assignment guidance, not a rigid outline or article structure.',
     'Write like an informed technology/music-business publication, not a compliance memo.',
     'Use direct declarative prose. Do not write around internal safety rules or validation checks.',
     'Do not mention the validation system, source-support restrictions, uncertainty machinery, prompt rules, or internal editorial rules in article prose.',
     'Do not add defensive disclaimers merely to show what the article is not claiming.',
     'When uncertainty is genuinely required, express it naturally and briefly, for example “The case remains unresolved” or “The ruling does not decide the underlying dispute.”',
-    'Default to no Certifyd product mention in source-backed articles unless the approved editorial reasoning object explicitly identifies a specific Certifyd architectural connection that is necessary or genuinely useful to the argument.',
-    'Absence of a Certifyd reference is a successful outcome.',
-    'Do not search for a product connection while writing. Use only the Certifyd connection explicitly approved in the reasoning object.',
-    'If certifydConcepts is empty, the article must contain zero Certifyd product references, no Certifyd product section, no Certifyd Core mention, and no compensating generic creator-control or provenance bridge.',
-    'If certifydConcepts is non-empty, it is permission to consider that concept, not a requirement to mention it.',
+    'When selected Certifyd Brain is supplied, use it to develop a meaningful Certifyd perspective where it materially deepens the source-backed argument.',
+    'When no selected Certifyd Brain is supplied, do not manufacture a Certifyd product connection.',
+    'Selected Certifyd Brain can support claims about Certifyd architecture, principles and capabilities. It is not evidence for facts about the external source event.',
     'Use only the selected Certifyd Brain records supplied in the writing prompt.',
     'For claims[].sourceIds, use only sourceId values from ALLOWED_BRAIN_SOURCE_IDS, exactly as provided.',
     'Never use SOURCE FACTS IDs, article URLs, publisher names, titles, shortened IDs, or newly created IDs in claims[].sourceIds.',
@@ -995,22 +994,26 @@ function buildArticleSystemInstruction() {
 
 function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
   const context = compactGroundedContextForModel({ ...groundedContext, approvedKnowledge: writingContext.approvedKnowledge });
-  const guardrails = buildTopicGuardrails(input).map((item) => `- ${item}`).join('\n');
   const selectedBrainFacts = writingContext.approvedKnowledge.map(formatSelectedBrainFactsForPrompt).filter(Boolean).join('\n') || '- No selected Brain facts supplied.';
   const approvedKnowledge = writingContext.approvedKnowledge.map(formatBrainKnowledgeForPrompt).join('\n') || '- No Certifyd Brain records selected for final writing.';
   const brainSources = writingContext.approvedKnowledge.map(formatBrainSourceForPrompt);
   const externalSources = context.externalSourceFacts.map((item) => `- [${item.id || 'source'}] ${item.publisher}${item.publishedAt ? ` (${item.publishedAt})` : ''}: ${item.title}. ${item.summary}${item.articleUrl ? ` Source: ${item.articleUrl}` : ''}`).join('\n') || '- No external source summaries attached.';
   const prohibited = context.prohibitedClaims.map((item) => `- ${scrubGenericDefinitionForPrompt(item)}`).join('\n') || '- Avoid unsupported claims.';
+  const hasSelectedBrain = writingContext.approvedKnowledge.length > 0;
+  const hasMultipleSources = context.externalSourceFacts.length > 1;
+  const depthGuidance = hasMultipleSources
+    ? '- For a substantial multi-source recommended opportunity, aim for roughly 900 to 1,300 words when the material supports it. This is editorial guidance, not a validation gate; do not pad thin reporting.'
+    : '- Let article length follow the amount of reporting and argument available; do not pad a thin update.';
   return [
     `Topic: ${input.topic || input.workingTitle || 'Certifyd article'}`,
     `Audience: ${input.audience || input.targetAudience || 'Certifyd readers'}`,
     `Objective: ${input.objective || input.businessObjective || 'Create a grounded Certifyd article.'}`,
     '',
-    'SOURCE FACTS:',
+    'VERIFIED SOURCE PACKAGE:',
     externalSources,
     '',
-    'APPROVED EDITORIAL REASONING:',
-    JSON.stringify(reasoning, null, 2),
+    'EDITORIAL DIRECTION:',
+    formatEditorialDirectionForWriter(reasoning),
     '',
     'ALLOWED_BRAIN_SOURCE_IDS:',
     JSON.stringify(writingContext.allowedBrainSourceIds || [], null, 2),
@@ -1018,25 +1021,24 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
     'STRUCTURED BRAIN SOURCES FOR CLAIM PROVENANCE:',
     JSON.stringify({ brainSources }, null, 2),
     '',
-    'SELECTED CERTIFYD BRAIN FOR FINAL WRITING:',
+    'RELEVANT CERTIFYD BRAIN:',
     selectedBrainFacts,
     approvedKnowledge,
     '',
     'DO NOT CLAIM:',
     prohibited,
     '',
-    'WRITING GUARDRAILS:',
-    guardrails,
+    'EDITORIAL ASSIGNMENT:',
     '- Open by immediately identifying the actual story and primary search entity.',
-    '- Use the approved thesis and articleProgression. Do not substitute a generic Certifyd angle.',
-    '- Do not force Certifyd into the article. If the source-derived argument does not naturally reach a specific Certifyd architectural boundary, write the article with no Certifyd product section and no Certifyd product mention beyond required metadata.',
-    '- Never manufacture a Certifyd connection from generic payouts, provenance, identity, ownership, records, transparency or creator-control language merely because those capabilities exist.',
-    '- Certifyd should enter only when the source-derived argument naturally reaches an architectural boundary that Certifyd specifically addresses.',
-    '- Do not create bridge logic such as legal dispute → documentation → provenance → Certifyd, AI → identity → Certifyd, payments → payouts → Certifyd, rights → ownership → Certifyd, or creator story → creator control → Certifyd unless that relationship is specifically established by the approved editorial reasoning object.',
-    '- If approved editorial reasoning has no certifydConcepts, write zero Certifyd product references and no Certifyd section.',
-    '- If approved editorial reasoning has certifydConcepts, include only the explicitly approved concept and only if it materially advances the article.',
+    '- Treat the editorial direction as assignment guidance, not a rigid outline; write normal article prose rather than enumerating the reasoning fields.',
+    hasSelectedBrain
+      ? '- Because relevant Certifyd Brain was selected, develop a real Certifyd perspective where it materially advances the article; avoid generic product pitching.'
+      : '- Because no meaningful Certifyd Brain was selected, do not manufacture a Certifyd product connection.',
+    '- Selected Brain may support Certifyd architecture, principles and capabilities only. It must never be used as evidence for the external event, the source company, legal outcomes, deals, dates, numbers or quotes.',
+    '- Do not claim the news subject uses, leverages, partners with, integrates with, is powered by, or receives benefits from Certifyd.',
+    depthGuidance,
     '- Prefer confident, conventional editorial prose over defensive phrases like “this is not a claim that”, “does not determine legal rights”, “does not create automatic payment obligations”, or “does not establish a direct change”.',
-    '- Remove unnecessary defensive product disclaimers such as “it is not a determination of ownership, authorship or legal rights” when no preceding sentence makes such a determination.',
+    '- Do not enumerate source limitations as article prose. State real uncertainty naturally only when it clarifies the source event.',
     '- Use short natural uncertainty only when it clarifies the source event, not as a shield against unsupported claims.',
     '- Put important named entities early in title, seoTitle, excerpt and opening paragraph when accurate.',
     '- Use conventional 3 to 5 sentence paragraphs. One-sentence paragraphs should be rare and deliberate.',
@@ -1045,6 +1047,23 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
     '- Do not paste Certifyd glossary definitions into the article. If a concept must be explained, paraphrase it in relation to this source story.',
     '- claims[].sourceIds must be copied exactly from ALLOWED_BRAIN_SOURCE_IDS. Do not use SOURCE FACTS IDs such as src-* in claims[].sourceIds.',
     '- Do not mention source IDs, this prompt, the reasoning process, or internal Brain labels.',
+  ].join('\n');
+}
+
+function formatEditorialDirectionForWriter(reasoning = {}) {
+  const facts = Array.isArray(reasoning.verifiedFacts) ? reasoning.verifiedFacts : [];
+  const progression = Array.isArray(reasoning.articleProgression) ? reasoning.articleProgression : [];
+  const concepts = Array.isArray(reasoning.certifydConcepts) ? reasoning.certifydConcepts : [];
+  return [
+    `- Event summary: ${reasoning.eventSummary || 'Use the source facts to identify the event.'}`,
+    `- Editorial tension: ${reasoning.editorialTension || reasoning.tension || 'No separate tension supplied.'}`,
+    `- Hidden question: ${reasoning.hiddenQuestion || 'No separate hidden question supplied.'}`,
+    `- What this reveals: ${reasoning.whatThisReveals || reasoning.whatChanged || 'No separate reveal supplied.'}`,
+    `- Thesis: ${reasoning.thesis || reasoning.editorialIdea || 'Use the source-backed editorial idea.'}`,
+    `- Creator consequence: ${reasoning.creatorConsequence || 'No separate creator consequence supplied.'}`,
+    `- Source-verified facts:\n${facts.map((fact) => `  - ${fact}`).join('\n') || '  - Use the verified source package above.'}`,
+    `- Useful progression, if it helps:\n${progression.map((step) => `  - ${step}`).join('\n') || '  - Let the article structure follow the story.'}`,
+    `- Approved Certifyd concepts:\n${concepts.map((item) => `  - ${item.concept}: ${item.relevance} ${item.sourceConnection}`).join('\n') || '  - None selected.'}`,
   ].join('\n');
 }
 
