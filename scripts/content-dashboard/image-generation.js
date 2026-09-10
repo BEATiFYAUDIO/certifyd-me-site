@@ -93,6 +93,8 @@ export async function buildImageBrief(config, run, overrides = {}) {
     articleSignals,
     '',
     'Hard constraints: no text in the image, no invented logos, no UI dashboards, no corporate stock-photo people, no generic AI glow imagery.',
+    'Brand and company names in the brief or article signals are editorial context only; do not render them as readable text, labels, logos, marks, or venue names on physical objects. Use blank, generic, unbranded tickets, cards, receipts, and documents.',
+    'If the image includes tickets, cards, receipts, slips, screens, forms, or documents, their surfaces must remain visually blank or use only non-readable lines and texture; no letters, words, numbers, barcodes, QR codes, or label-like typography.',
   ].join('\n').slice(0, MAX_PROMPT_CHARS);
   return {
     imageBrief: generatedBrief,
@@ -355,6 +357,9 @@ export function createOpenAIImageProvider(config) {
 async function createLogoComposite(config, { generatedImagePath, slug, revision, logoPosition, size }) {
   const logoPath = config.blogImages?.canonicalLogoPath || path.join(config.siteRoot, 'images', 'certifyd_logo_transparent.svg');
   const logoSvg = await fs.readFile(logoPath, 'utf8');
+  const generatedAbsolutePath = safeSiteImagePath(config, generatedImagePath);
+  const generatedBytes = await fs.readFile(generatedAbsolutePath);
+  const generatedDataUri = `data:${imageMimeType(path.extname(generatedAbsolutePath))};base64,${generatedBytes.toString('base64')}`;
   const logoViewBox = logoSvg.match(/viewBox="([^"]+)"/i)?.[1] || '0 0 428 138';
   const [canvasWidth, canvasHeight] = parseImageSize(size);
   const logoWidth = Math.round(canvasWidth * 0.18);
@@ -364,7 +369,7 @@ async function createLogoComposite(config, { generatedImagePath, slug, revision,
   const y = logoPosition.startsWith('bottom') ? canvasHeight - logoHeight - margin : margin;
   const innerLogo = logoSvg.replace(/<\?xml[\s\S]*?\?>/g, '').replace(/<!DOCTYPE[\s\S]*?>/gi, '').replace(/<\/?svg[^>]*>/gi, '').trim();
   const composite = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvasWidth}" height="${canvasHeight}" viewBox="0 0 ${canvasWidth} ${canvasHeight}">
-  <image href="${escapeXml(generatedImagePath)}" width="${canvasWidth}" height="${canvasHeight}" preserveAspectRatio="xMidYMid slice"/>
+  <image href="${escapeXml(generatedDataUri)}" width="${canvasWidth}" height="${canvasHeight}" preserveAspectRatio="xMidYMid slice"/>
   <g transform="translate(${x} ${y})">
     <svg width="${logoWidth}" height="${logoHeight}" viewBox="${escapeXml(logoViewBox)}">${innerLogo}</svg>
   </g>
@@ -435,6 +440,13 @@ function imageExtension(value) {
   if (clean.includes('jpeg') || clean === '.jpg') return '.jpg';
   if (clean.includes('webp') || clean === '.webp') return '.webp';
   return '.png';
+}
+
+function imageMimeType(extension) {
+  const clean = String(extension || '').toLowerCase();
+  if (clean === '.jpg' || clean === '.jpeg') return 'image/jpeg';
+  if (clean === '.webp') return 'image/webp';
+  return 'image/png';
 }
 
 function normalizeImageSize(value) {

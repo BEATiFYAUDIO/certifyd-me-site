@@ -20,6 +20,7 @@ const env = {
   BLOG_IMAGE_ENABLED: 'true',
   BLOG_IMAGE_MODEL: 'test-image-model',
 };
+const MOCK_PROVIDER_IMAGE_BYTES = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);
 
 test('blog image brief uses article signals and image style guide only', async () => {
   const { config, run } = await fixture();
@@ -35,6 +36,9 @@ test('blog image brief uses article signals and image style guide only', async (
   assert.match(brief.prompt, /Certifyd Blog Image Style Guide/);
   assert.match(brief.prompt, /No text baked into image/);
   assert.match(brief.prompt, /Subscription packaging/);
+  assert.match(brief.prompt, /Brand and company names .* editorial context only/);
+  assert.match(brief.prompt, /blank, generic, unbranded tickets/);
+  assert.match(brief.prompt, /no letters, words, numbers, barcodes, QR codes/);
 });
 
 test('automatic image brief derives Ticketmaster and Meta Muse as commerce discovery', async () => {
@@ -233,7 +237,8 @@ test('reset brief rebuilds the automatic article-derived brief', async () => {
 
 test('logo composite uses exact canonical logo and can be approved as cover', async () => {
   const { config, siteRoot, runId } = await fixture();
-  config.blogImages.providerImpl = mockProvider();
+  const providerCalls = [];
+  config.blogImages.providerImpl = mockProvider(providerCalls);
   const actions = new ContentDashboardActions(config);
 
   await actions.generateCoverImage({
@@ -248,6 +253,11 @@ test('logo composite uses exact canonical logo and can be approved as cover', as
   assert.equal(state.logoPosition, 'top-left');
   assert.match(state.brandedImagePath, /-logo\.svg$/);
   const svg = await fs.readFile(path.join(siteRoot, state.brandedImagePath.slice(1)), 'utf8');
+  const generatedBytes = await fs.readFile(path.join(siteRoot, state.generatedImagePath.slice(1)));
+  assert.equal(generatedBytes.toString('base64'), MOCK_PROVIDER_IMAGE_BYTES.toString('base64'));
+  assert.match(svg, /<svg[^>]+width="1536"[^>]+height="1024"/);
+  assert.match(svg, new RegExp(`href="data:image/png;base64,${generatedBytes.toString('base64')}"`));
+  assert.doesNotMatch(svg, /href="\/images\/blog\//);
   assert.match(svg, /certifyd-base64-logo-test/);
   await actions.approveGeneratedCoverImage({ actor: founder(), runId });
   const approved = await readImageGenerationState(config, runId);
@@ -407,7 +417,7 @@ function mockProvider(calls = []) {
     async generate(request) {
       calls.push(request);
       return {
-        buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]),
+        buffer: MOCK_PROVIDER_IMAGE_BYTES,
         contentType: 'image/png',
         provider: 'mock-openai',
         model: request.model,
