@@ -16,7 +16,7 @@ export const TRENDING_CATEGORIES = [
 ];
 
 export const TREND_PROVIDER_IDS = ['seeded', 'rss', 'manual', 'search', 'social', 'composite'];
-export const TREND_CLUSTERING_VERSION = 'event-identity-v2';
+export const TREND_CLUSTERING_VERSION = 'event-identity-v2.1';
 export const DEFAULT_RECOMMENDATION_TOTAL_LIMIT = 20;
 export const DEFAULT_RECOMMENDATION_CATEGORY_LIMIT = 5;
 export const DEFAULT_RECOMMENDATION_CANDIDATE_LIMIT = 80;
@@ -728,7 +728,7 @@ export function storyFingerprint(item = {}) {
   const action = detectEventAction(lower, eventType);
   const entities = extractEntities(text);
   const normalizedText = normalizeEventText(text);
-  const normalizedObject = normalizeEventObject(detectObject(lower, eventType, normalizedText), lower);
+  const normalizedObject = normalizeEventObject(detectObject(text, lower, eventType, normalizedText, entities), lower);
   const concreteAnchors = concreteEventAnchors(text, eventType, normalizedObject);
   const money = lower.match(/\$[\d,.]+\s*(?:b|bn|billion|m|million)?/i)?.[0] || '';
   const dateContext = dateOnly(item.publishedAt) || '';
@@ -764,6 +764,8 @@ function clusterDecision(cluster, item) {
   const entityAgreement = entityOverlap.length / Math.min(clusterEntityCount, itemEntityCount);
   const sameAction = Boolean(clusterFingerprint.action && clusterFingerprint.action === itemFingerprint.action);
   const sameEventType = Boolean(clusterFingerprint.eventType && clusterFingerprint.eventType === itemFingerprint.eventType);
+  const sameLegalFamily = isLegalEventType(clusterFingerprint.eventType) && isLegalEventType(itemFingerprint.eventType);
+  const sameLegalActionFamily = sameLegalFamily && ['files', 'sues', 'lawsuit', 'complaint'].includes(clusterFingerprint.action) && ['files', 'sues', 'lawsuit', 'complaint'].includes(itemFingerprint.action);
   const objectSimilarity = titleSimilarity(clusterFingerprint.object, itemFingerprint.object);
   const titleScore = titleSimilarity(cluster.items?.[0]?.title, item.title);
   const sameMoney = Boolean(clusterFingerprint.money && itemFingerprint.money && normalizeTitle(clusterFingerprint.money) === normalizeTitle(itemFingerprint.money));
@@ -780,22 +782,22 @@ function clusterDecision(cluster, item) {
   let eventIdentityScore = 0;
   if (samePrimaryEntities) eventIdentityScore += 0.18;
   else if (entityOverlap.length === 1) eventIdentityScore += 0.06;
-  if (sameAction || sameLaunchFamily) eventIdentityScore += 0.18;
-  if (sameEventType || sameLaunchFamily) eventIdentityScore += 0.18;
+  if (sameAction || sameLaunchFamily || sameLegalActionFamily) eventIdentityScore += 0.18;
+  if (sameEventType || sameLaunchFamily || sameLegalFamily) eventIdentityScore += 0.18;
   if (sameNamedEvent) eventIdentityScore += 0.18;
   else if (objectSimilarity >= 0.55) eventIdentityScore += 0.08;
   if (anchorAgreement.matches.length) eventIdentityScore += Math.min(0.34, 0.18 + anchorAgreement.score * 0.16);
   if (sameMoney) eventIdentityScore += 0.08;
   if (titleScore >= 0.78) eventIdentityScore += 0.08;
-  const requiresTwoEntities = ['lawsuit', 'acquisition', 'partnership', 'policy-intervention'].includes(clusterFingerprint.eventType) || ['lawsuit', 'acquisition', 'partnership', 'policy-intervention'].includes(itemFingerprint.eventType);
+  const requiresTwoEntities = [clusterFingerprint.eventType, itemFingerprint.eventType].some((eventType) => isLegalEventType(eventType) || ['acquisition', 'partnership', 'policy-intervention'].includes(eventType));
   const weakEntityOnly = entityOverlap.length === 1 && !sameMoney;
   const eligibleForDirectMerge = !clusterFingerprint.isRoundup
     && !itemFingerprint.isRoundup
     && !(genericDevelopment && anchorAgreement.matches.length === 0 && !sameNamedEvent && !sameMoney)
     && !(requiresTwoEntities && weakEntityOnly);
   const decision = (
-    (sameEventType || sameLaunchFamily)
-      && (sameAction || sameLaunchFamily)
+    (sameEventType || sameLaunchFamily || sameLegalFamily)
+      && (sameAction || sameLaunchFamily || sameLegalActionFamily)
       && (samePrimaryEntities || hasConcreteAnchor)
       && hasConcreteAnchor
       && eligibleForDirectMerge
@@ -807,7 +809,7 @@ function clusterDecision(cluster, item) {
     samePrimaryEntities,
     overlappingEntities: entityOverlap,
     sameAction,
-    sameEventType,
+    sameEventType: sameEventType || sameLegalFamily,
     corroboratedSameEvent,
     concreteAnchorMatches: anchorAgreement.matches,
     objectSimilarity: Number(objectSimilarity.toFixed(2)),
@@ -827,7 +829,7 @@ function hasConcreteEventCorroboration(one = {}, two = {}, entityOverlap = []) {
   if (concreteOverlap.length < 2) return false;
   const objectSimilarity = titleSimilarity(one.object, two.object);
   if (isLegalEvent(one, two)) {
-    return objectSimilarity >= 0.82 || [one.object, two.object].some((value) => /\bcopyright infringement lawsuit\b|\bfair use litigation\b/i.test(value || ''));
+    return objectSimilarity >= 0.82 && !isGenericEventObject(one.object, one.eventType) && !isGenericEventObject(two.object, two.eventType);
   }
   if (isRightsDealEvent(one, two)) {
     const combined = `${one.object || ''} ${two.object || ''}`.toLowerCase();
@@ -838,7 +840,7 @@ function hasConcreteEventCorroboration(one = {}, two = {}, entityOverlap = []) {
 
 function isGenericEventObject(object = '', eventType = '') {
   const value = normalizeTitle(object);
-  if (eventType === 'lawsuit') return /^(lawsuit|copyright infringement lawsuit|fair use litigation)$/.test(value);
+  if (isLegalEventType(eventType)) return /^(lawsuit|case|complaint|settlement|appeal|ruling|copyright infringement lawsuit|fair use litigation)$/.test(value);
   if (eventType === 'partnership') return /^(partnership|deal|publishing catalog name image likeness rights deal|publishing catalog and name image likeness rights deal)$/.test(value);
   if (eventType === 'acquisition') return /^(acquisition|publishing catalog name image likeness rights deal|publishing catalog and name image likeness rights deal)$/.test(value);
   if (eventType === 'development') return /^(development|recorded music h1|show local streaming growth)$/.test(value);
@@ -855,10 +857,14 @@ function isConcreteOverlapEntity(value = '') {
 }
 
 function isLegalEvent(one = {}, two = {}) {
-  return one.eventType === 'lawsuit'
-    && two.eventType === 'lawsuit'
-    && ['sues', 'lawsuit'].includes(one.action)
-    && ['sues', 'lawsuit'].includes(two.action);
+  return isLegalEventType(one.eventType)
+    && isLegalEventType(two.eventType)
+    && ['files', 'sues', 'dismisses', 'rules', 'appeals', 'rejects', 'settles', 'files-comments', 'orders', 'investigates', 'lawsuit', 'complaint'].includes(one.action)
+    && ['files', 'sues', 'dismisses', 'rules', 'appeals', 'rejects', 'settles', 'files-comments', 'orders', 'investigates', 'lawsuit', 'complaint'].includes(two.action);
+}
+
+function isLegalEventType(eventType = '') {
+  return ['lawsuit', 'lawsuit-filed', 'lawsuit-dismissed', 'ruling', 'appeal', 'complaint', 'settlement', 'regulatory-enforcement'].includes(eventType);
 }
 
 function isRightsDealEvent(one = {}, two = {}) {
@@ -910,8 +916,9 @@ function mergeStoryFingerprint(existing = {}, next = {}) {
 function detectEventType(lower) {
   if (/\b(roundup|everything .* announced|event live blog|what .* announced|all .* announced)\b/.test(lower)) return 'roundup';
   if (/\b(launch(?:es|ed|ing)?|release[sd]?|debuts?|introduces?|rolls out|rolling out|unveils?|shows off|ships?)\b/.test(lower)) return 'product-launch';
-  if (/\b(sues?|lawsuit|suit|complaint|court|litigation|legal action|case)\b/.test(lower)) return 'lawsuit';
-  if (/\b(acquires?|acquired|acquisition|buys?|bought|purchase[sd]?|takeover)\b/.test(lower)) return 'acquisition';
+  const legalType = detectLegalEventType(lower);
+  if (legalType) return legalType;
+  if (isAcquisitionEvent(lower)) return 'acquisition';
   if (/\b(strikes?|signs?|inks?|announces?)\s+(?:a\s+)?deal\b|\bdeal\s+with\b/.test(lower)) return 'partnership';
   if (/\b(partners?|partnership|teams up|collaborates?|alliance)\b/.test(lower)) return 'partnership';
   if (/\bannounces?\b[^.]{0,80}\b(festival|event|launch|models?|airpods|iphone|suno|rnb\s*x\s*live)\b/.test(lower)) return 'product-launch';
@@ -925,8 +932,16 @@ function detectEventType(lower) {
 function detectEventAction(lower, eventType) {
   if (eventType === 'roundup') return 'roundup';
   if (/\b(launch(?:es|ed|ing)?|release[sd]?|debuts?|introduces?|rolls out|rolling out|unveils?|shows off|ships?)\b/.test(lower)) return 'launches';
-  if (/\b(sues?|files? suit|files? lawsuit|files? complaint)\b/.test(lower)) return 'sues';
-  if (/\b(acquires?|acquired by|acquisition|buys?|bought|purchases?|purchase of|takeover)\b/.test(lower)) return 'acquires';
+  if (eventType === 'lawsuit-dismissed' && /\b(rejects?|denies?|declines?)\b[^.]{0,80}\b(appeal|motion|lawsuit|case|complaint)\b/.test(lower)) return 'rejects';
+  if (eventType === 'lawsuit-dismissed') return 'dismisses';
+  if (eventType === 'appeal') return /\b(rejects?|denies?)\b/.test(lower) ? 'rejects' : 'appeals';
+  if (eventType === 'ruling') return 'rules';
+  if (eventType === 'settlement') return /\bfiles?\s+comments?\b/.test(lower) ? 'files-comments' : 'settles';
+  if (eventType === 'regulatory-enforcement') return /\binvestigat(?:es|ed|ion|ing)\b/.test(lower) ? 'investigates' : 'orders';
+  if (eventType === 'complaint') return 'files';
+  if (isLegalEventType(eventType) && /\b(sues?|sued by)\b/.test(lower)) return 'sues';
+  if (isLegalEventType(eventType) && /\b(files?|filed)\s+(?:an?\s+)?(?:[a-z0-9-]+\s+){0,4}(?:lawsuit|suit|complaint|legal action)\b/.test(lower)) return 'files';
+  if (isAcquisitionEvent(lower)) return 'acquires';
   if (/\b(strikes?|signs?|inks?|announces?)\s+(?:a\s+)?deal\b|\bdeal\s+with\b/.test(lower)) return 'deal';
   if (/\b(partners?|teams up|collaborates?)\b/.test(lower)) return 'partners';
   if (eventType === 'product-launch' && /\bannounces?\b/.test(lower)) return 'launches';
@@ -937,17 +952,14 @@ function detectEventAction(lower, eventType) {
   return eventType;
 }
 
-function detectObject(lower, eventType, normalizedText) {
+function detectObject(text, lower, eventType, normalizedText, entities = []) {
   const explicit = detectExplicitProductObject(lower);
   if (explicit) return explicit;
-  if (eventType === 'lawsuit') {
-    if (/\bfair use\b/.test(lower)) return 'fair use litigation';
-    if (/\bcopyright\b|\binfringement\b/.test(lower)) return 'copyright infringement lawsuit';
-    return 'lawsuit';
+  if (isLegalEventType(eventType)) {
+    return detectLegalObject(text, lower, entities) || eventType;
   }
   if (eventType === 'acquisition') {
-    if (/\b(publishing catalog|publishing catalogue|catalog|catalogue|name,\s*image\s*&?\s*likeness|name image likeness|nil rights|rights package)\b/.test(lower)) return 'publishing catalog and name image likeness rights deal';
-    return lower.match(/\$[\d,.]+\s*(?:b|bn|billion|m|million)?[^.]{0,80}/i)?.[0] || 'acquisition';
+    return detectAcquisitionObject(text, lower, entities) || 'acquisition';
   }
   if (eventType === 'partnership' && /\b(estate|catalog|catalogue|publishing|name,\s*image\s*&?\s*likeness|name image likeness|rights)\b/.test(lower)) return 'publishing catalog and name image likeness rights deal';
   if (eventType === 'roundup') return 'multi-event roundup';
@@ -1000,6 +1012,75 @@ function detectExplicitProductObject(lower) {
   return '';
 }
 
+function detectLegalEventType(lower) {
+  if (/\b(settlement approved|settlement rejected|settlement proposal|proposed settlement|settles?|settled|settlement comments?|files?\s+comments?\b[^.]{0,80}\bsettlement)\b/.test(lower)) return 'settlement';
+  if (/\b(judge|court|federal judge)\b[^.]{0,80}\b(dismiss(?:es|ed)?|reject(?:s|ed)?|den(?:y|ies|ied)|throws? out)\b[^.]{0,80}\b(lawsuit|case|complaint|appeal|motion)\b/.test(lower)) return 'lawsuit-dismissed';
+  if (/\b(dismiss(?:es|ed|al)|reject(?:s|ed|ion)|den(?:y|ies|ied))\b[^.]{0,80}\b(lawsuit|case|complaint|appeal|motion)\b/.test(lower)) return 'lawsuit-dismissed';
+  if (/\b(court|judge|jury)\b[^.]{0,80}\b(rules?|ruled|finds?|found|orders?|ordered|holds?|held)\b/.test(lower)) return 'ruling';
+  if (/\b(appeals?|appealed|interlocutory appeal|appeal push)\b/.test(lower) && /\b(court|judge|ruling|lawsuit|case|motion|mlc|spotify)\b/.test(lower)) return 'appeal';
+  if (/\b(files?|filed|amended)\s+(?:an?\s+)?complaint\b/.test(lower)) return 'complaint';
+  if (/\b(files?|filed)\s+(?:an?\s+)?(?:[a-z0-9-]+\s+){0,4}(?:lawsuit|suit|legal action)\s+against\b/.test(lower)) return 'lawsuit-filed';
+  if (/\bsues?\b|\bsued by\b|\bcopyright infringement lawsuit\b|\bantitrust case against\b/.test(lower)) return 'lawsuit';
+  if (/\b(ftc|doj|department of justice|regulator|regulatory|attorney general)\b[^.]{0,80}\b(investigat(?:es|ed|ion|ing)|charges?|charged|orders?|ordered|enforcement)\b/.test(lower)) return 'regulatory-enforcement';
+  return '';
+}
+
+function isAcquisitionEvent(lower) {
+  if (/\b(buy tickets?|buy online|buy the album|buy a phone|buy now|where to buy|deal with the problem|licensing deal|partnership deal|record deal|distribution deal|sponsorship deal|strategic partnership)\b/.test(lower)) return false;
+  return /\b(agrees? to acquire|acquires?|acquired by|buys|bought|purchases?|purchased|purchase of|purchases? assets from|takeover of|acquisition of)\b/.test(lower);
+}
+
+function detectLegalObject(text, lower, entities = []) {
+  const subject = legalSubject(lower);
+  const parties = concreteLegalParties(entities);
+  if (/socan/i.test(text) && /suno/i.test(text)) return trim(`socan suno ${subject || 'copyright'} case`, 100);
+  if (/wixen/i.test(text) && /meta/i.test(text)) return trim(`wixen meta ${subject || 'copyright'} case`, 100);
+  if (/(umg|universal music|sony)/i.test(text) && /suno/i.test(text)) return trim(`umg sony suno ${lower.includes('stream') ? 'stream ripping' : subject || 'copyright'} case`, 100);
+  if (/amazon/i.test(text) && /\bftc\b/i.test(text)) return trim(`amazon ftc ${lower.includes('ad') ? 'ad auction' : subject || 'antitrust'} case`, 100);
+  if (/\bniva\b/i.test(text) && /(doj|department of justice)/i.test(text) && /live nation/i.test(text)) return 'niva doj live nation settlement';
+  if (parties.length >= 2) return trim(`${parties.slice(0, 3).join(' ')} ${subject || eventLegalNoun(lower) || 'legal'} case`, 120);
+  if (parties.length === 1 && subject) return trim(`${parties[0]} ${subject} case`, 120);
+  return '';
+}
+
+function concreteLegalParties(entities = []) {
+  return entities
+    .map(normalizeEntity)
+    .filter((entity) => entity && !GENERIC_EVENT_ENTITIES.has(entity) && !/^(federal|court|judge|jury|case|lawsuit|complaint|appeal|settlement|latin)$/.test(entity))
+    .slice(0, 4);
+}
+
+function legalSubject(lower) {
+  if (/\bstream[-\s]?ripping\b/.test(lower)) return 'stream ripping';
+  if (/\bad[-\s]?auction\b/.test(lower)) return 'ad auction';
+  if (/\bsexual[-\s]?assault\b/.test(lower)) return 'sexual assault';
+  if (/\bcopyright\b|\binfringement\b/.test(lower)) return 'copyright';
+  if (/\bantitrust\b/.test(lower)) return 'antitrust';
+  if (/\bfair use\b/.test(lower)) return 'fair use';
+  return '';
+}
+
+function eventLegalNoun(lower) {
+  if (/\bsettlement\b/.test(lower)) return 'settlement';
+  if (/\bappeal\b/.test(lower)) return 'appeal';
+  if (/\bcomplaint\b/.test(lower)) return 'complaint';
+  if (/\blawsuit|suit\b/.test(lower)) return 'lawsuit';
+  return '';
+}
+
+function detectAcquisitionObject(text, lower, entities = []) {
+  const known = entities.map((entity) => canonicalEntity(entity)).filter(Boolean);
+  if (known.length >= 2) return trim(`${known[0]} acquires ${known[1]}`, 100);
+  const direct = text.match(/\b([A-Z][A-Za-z0-9&'.-]*(?:\s+[A-Z][A-Za-z0-9&'.-]*){0,3})\s+(?:agrees?\s+to\s+acquire|acquires|buys|bought|purchases|purchased)\s+([A-Z][A-Za-z0-9&'.-]*(?:\s+[A-Z][A-Za-z0-9&'.-]*){0,3})\b/);
+  if (direct) return trim(`${sanitizeEntity(direct[1])} acquires ${sanitizeEntity(direct[2])}`, 100);
+  const passive = text.match(/\b([A-Z][A-Za-z0-9&'.-]*(?:\s+[A-Z][A-Za-z0-9&'.-]*){0,3})\s+acquired by\s+([A-Z][A-Za-z0-9&'.-]*(?:\s+[A-Z][A-Za-z0-9&'.-]*){0,3})\b/);
+  if (passive) return trim(`${sanitizeEntity(passive[2])} acquires ${sanitizeEntity(passive[1])}`, 100);
+  const target = text.match(/\bacquisition of\s+([A-Z][A-Za-z0-9&'.-]*(?:\s+[A-Z][A-Za-z0-9&'.-]*){0,3})\b/);
+  if (target && known.length) return trim(`${known[0]} acquires ${sanitizeEntity(target[1])}`, 100);
+  void lower;
+  return '';
+}
+
 function normalizeEventObject(value, lower = '') {
   let object = normalizeTitle(value)
     .replace(/\b(new|latest|first|legit|with|improved|better|active|noise|cancellation|transparency|mode|made|record|industry|help|models?)\b/g, ' ')
@@ -1031,7 +1112,10 @@ function concreteEventAnchors(text, eventType, normalizedObject = '') {
   const explicit = detectExplicitProductObject(lower);
   if (explicit) anchors.add(explicit);
   if (normalizedObject && !['development', 'multi-event roundup', 'acquisition', 'partnership', 'report'].includes(normalizedObject)) anchors.add(normalizedObject);
-  for (const phrase of lower.match(/\b(?:case|lawsuit|ruling|appeal|complaint|settlement|grant|program|initiative|festival|halftime|tour|award)\s+(?:[a-z0-9-]+\s*){0,5}/g) || []) {
+  const phraseAnchorPattern = isLegalEventType(eventType)
+    ? /\b(?:case|lawsuit|ruling|appeal|complaint|settlement)\s+(?:[a-z0-9-]+\s*){0,5}/g
+    : /\b(?:grant|program|initiative|festival|halftime|tour|award)\s+(?:[a-z0-9-]+\s*){0,5}/g;
+  for (const phrase of lower.match(phraseAnchorPattern) || []) {
     const anchor = normalizeEventObject(phrase, lower);
     if (anchor.length >= 6) anchors.add(anchor);
   }
@@ -1041,7 +1125,7 @@ function concreteEventAnchors(text, eventType, normalizedObject = '') {
       if (anchor.length >= 8) anchors.add(anchor);
     }
   }
-  return [...anchors].filter((anchor) => anchor && !BROAD_CONTEXT_ANCHORS.has(anchor)).slice(0, 8);
+  return [...anchors].filter((anchor) => anchor && !isGenericEventAnchor(anchor)).slice(0, 8);
 }
 
 function concreteAnchorAgreement(one = {}, two = {}) {
@@ -1074,6 +1158,13 @@ function equivalentLaunchAction(one = {}, two = {}) {
 function isRoundupStory(lower, anchors = []) {
   if (/\b(roundup|everything .* announced|event live blog|what .* announced|all .* announced)\b/.test(lower)) return true;
   return anchors.length >= 3 && /\b(live blog|and more)\b/.test(lower);
+}
+
+function isGenericEventAnchor(value = '') {
+  const anchor = normalizeTitle(value);
+  return !anchor
+    || BROAD_CONTEXT_ANCHORS.has(anchor)
+    || /^(lawsuit|case|complaint|settlement|appeal|acquisition|deal|purchase|buy|partnership|development|report|launch|release|announcement|legal action|ruling)$/.test(anchor);
 }
 
 function extractEntities(text) {
@@ -1259,6 +1350,17 @@ const KNOWN_ENTITY_LABELS = [
   'Wilson Pickett',
   'Music Ally',
   'Billboard',
+  'Wixen',
+  'Meta',
+  'Amazon',
+  'FTC',
+  'NIVA',
+  'Live Nation',
+  'UMG',
+  'Universal Music',
+  'Sony',
+  'YouTube',
+  'N.O.R.E.',
 ];
 
 const KNOWN_ENTITY_PATTERNS = KNOWN_ENTITY_LABELS.map((label) => ({
@@ -1289,6 +1391,17 @@ const ENTITY_ALIASES = new Map([
   ['primary wave', 'Primary Wave'],
   ['primary wave music', 'Primary Wave'],
   ['wilson pickett', 'Wilson Pickett'],
+  ['wixen', 'Wixen'],
+  ['meta', 'Meta'],
+  ['amazon', 'Amazon'],
+  ['ftc', 'FTC'],
+  ['niva', 'NIVA'],
+  ['live nation', 'Live Nation'],
+  ['umg', 'UMG'],
+  ['universal music', 'UMG'],
+  ['sony', 'Sony'],
+  ['youtube', 'YouTube'],
+  ['n o r e', 'N.O.R.E.'],
 ]);
 
 const GENERIC_EVENT_ENTITIES = new Set([

@@ -570,6 +570,113 @@ test('source-level clustering diagnostics persist with source stories and opport
   assert.ok(scan.items[0].clusterDecisions[0].concreteAnchorMatches.includes('suno v6'));
 });
 
+test('event identity v2.1 does not treat ordinary case language as legal classification', () => {
+  const fingerprint = storyFingerprint(sourceStory(
+    "Apple's new CEO is reviving a Steve Jobs strategy from 25 years ago",
+    "John Ternus made the case in his first keynote as Apple CEO that the iPhone isn't going anywhere.",
+  ));
+
+  assert.notEqual(fingerprint.eventType, 'lawsuit');
+  assert.notEqual(fingerprint.canonicalAction, 'lawsuit');
+  assert.notEqual(fingerprint.normalizedObject, 'lawsuit');
+  assert.equal(fingerprint.concreteAnchors.includes('lawsuit'), false);
+  assert.equal(fingerprint.concreteAnchors.some((anchor) => /^case\b/.test(anchor)), false);
+});
+
+test('event identity v2.1 does not treat consumer buy language as acquisition', () => {
+  const fingerprint = storyFingerprint(sourceStory(
+    "Kacey Musgraves' Middle of Nowhere Tour 2026: Here's Where to Buy Affordable Tickets Online",
+    'Fans can buy tickets online for the tour.',
+  ));
+
+  assert.notEqual(fingerprint.eventType, 'acquisition');
+  assert.notEqual(fingerprint.canonicalAction, 'acquires');
+  assert.notEqual(fingerprint.normalizedObject, 'acquisition');
+});
+
+test('event identity v2.1 preserves buyer and target identity for true acquisitions', () => {
+  const fingerprint = storyFingerprint(sourceStory(
+    'Company A acquires Startup B for $500M',
+    'Company A acquired Startup B in a transaction.',
+  ));
+
+  assert.equal(fingerprint.eventType, 'acquisition');
+  assert.equal(fingerprint.canonicalAction, 'acquires');
+  assert.match(fingerprint.normalizedObject, /company.*acquires.*startup b/i);
+  assert.ok(fingerprint.concreteAnchors.some((anchor) => /company.*startup b/i.test(anchor)));
+});
+
+test('event identity v2.1 does not classify licensing or partnership deals as acquisitions', () => {
+  const licensing = storyFingerprint(sourceStory(
+    'Label A signs AI licensing deal with Company B',
+    'The licensing deal covers AI music models.',
+  ));
+  const partnership = storyFingerprint(sourceStory(
+    'Spotify signs strategic partnership with Company B',
+    'The companies announced a partnership deal for creator tools.',
+  ));
+
+  assert.notEqual(licensing.eventType, 'acquisition');
+  assert.notEqual(licensing.canonicalAction, 'acquires');
+  assert.notEqual(partnership.eventType, 'acquisition');
+  assert.notEqual(partnership.canonicalAction, 'acquires');
+});
+
+test('event identity v2.1 requires specific legal case identity before merging legal stories', () => {
+  const suno = sourceStory(
+    'UMG and Sony sue Suno over stream-ripping',
+    'UMG and Sony filed a copyright infringement lawsuit against Suno over stream-ripping.',
+  );
+  const nore = sourceStory(
+    'N.O.R.E. faces sexual-assault lawsuit',
+    'A plaintiff filed a sexual-assault lawsuit against N.O.R.E.',
+  );
+  const niva = sourceStory(
+    'NIVA files comments on DOJ Live Nation proposed settlement',
+    'NIVA filed settlement comments about the DOJ and Live Nation proposed settlement.',
+  );
+  const wixen = sourceStory(
+    'Wixen copyright case against Meta continues',
+    'Wixen is pursuing a copyright case against Meta.',
+  );
+  const amazon = sourceStory(
+    'Amazon faces FTC ad-auction case',
+    'The FTC ad-auction antitrust case against Amazon remains active.',
+  );
+
+  assert.equal(eventClusterDecision(suno, nore).decision, 'separate-events');
+  assert.equal(eventClusterDecision(suno, niva).decision, 'separate-events');
+  assert.equal(eventClusterDecision(wixen, amazon).decision, 'separate-events');
+  assert.equal(clusterSourceItems([suno, nore, niva, wixen, amazon]).length, 5);
+});
+
+test('event identity v2.1 merges same Wixen and Meta legal event across wording', () => {
+  const one = sourceStory(
+    'Federal judge dismisses Wixen copyright case against Meta',
+    'A federal judge dismissed the Wixen copyright lawsuit against Meta.',
+  );
+  const two = sourceStory(
+    'Meta wins dismissal of Wixen copyright complaint',
+    'Meta won dismissal of Wixen copyright complaint in court.',
+  );
+  const decision = eventClusterDecision(one, two);
+
+  assert.equal(decision.decision, 'same-event');
+  assert.ok(decision.concreteAnchorMatches.includes('wixen meta copyright case'));
+  assert.equal(clusterSourceItems([one, two]).length, 1);
+});
+
+test('event identity v2.1 rejects standalone generic legal and acquisition anchors', () => {
+  const anchors = [
+    ...storyFingerprint(sourceStory('Lawsuit', 'A case, complaint, settlement and appeal were mentioned.')).concreteAnchors,
+    ...storyFingerprint(sourceStory('Acquisition', 'A deal, purchase and buy were mentioned.')).concreteAnchors,
+  ];
+
+  for (const generic of ['lawsuit', 'case', 'complaint', 'settlement', 'appeal', 'acquisition', 'deal', 'purchase', 'buy']) {
+    assert.equal(anchors.includes(generic), false, `${generic} should not be a concrete anchor`);
+  }
+});
+
 test('known Frankenstein trend pairs remain separate after corroboration path', () => {
   const pairs = [
     [
@@ -630,7 +737,7 @@ test('generic Certifyd relevance copy does not pass as a specific high-confidenc
   assert.equal(isGenericCertifydRelevance('This connects to Certifyd as infrastructure for identity, publishing, discovery and commerce.'), true);
   assert.equal(isGenericCertifydRelevance('This connects to SOCAN v Suno copyright litigation and creator permission records.'), false);
   const fingerprint = storyFingerprint(sourceStory('Gerencia 360 sues Suno', 'Gerencia 360 filed a copyright lawsuit against Suno.'));
-  assert.equal(fingerprint.eventType, 'lawsuit');
+  assert.equal(fingerprint.eventType, 'lawsuit-filed');
   assert.ok(fingerprint.primaryEntities.includes('Gerencia 360'));
   assert.ok(fingerprint.primaryEntities.includes('Suno'));
 });
