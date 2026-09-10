@@ -390,6 +390,7 @@ class RssTrendProvider {
     const deduped = retainSourceStories(recentItems, this.config).map(enrichSourceStoryForPromotion).map(addSourceClusterDiagnostics);
     const clusters = clusterSourceItems(deduped);
     const brainRecords = await loadApprovedBrainRecords(this.config);
+    const recentCoverage = await loadRecentCoverageIndex(this.config);
     const evaluated = [];
     const evaluateWithQwen = this.options.evaluateWithQwen === true || this.config.trendResearch?.qwenEvaluationEnabled === true;
     const candidateLimit = Math.max(recommendationCandidateLimit(this.config), recommendationTotalLimit(this.config) * 4);
@@ -400,7 +401,7 @@ class RssTrendProvider {
         ? await evaluateClusterWithQwen(this.config, cluster, coverage, this.options).catch(() => fallbackEvaluation(cluster, coverage))
         : fallbackEvaluation(cluster, coverage);
       if (qwen.recommended === false) continue;
-      evaluated.push(opportunityFromCluster(cluster, coverage, qwen));
+      evaluated.push(opportunityFromCluster(cluster, coverage, qwen, { recentCoverage }));
     }
     const items = selectRecommendedOpportunities(evaluated, this.config);
     return {
@@ -444,7 +445,10 @@ export function recommendationCandidateLimit(config = {}) {
 export function selectRecommendedOpportunities(opportunities = [], config = {}) {
   const totalLimit = recommendationTotalLimit(config);
   const categoryLimit = recommendationCategoryLimit(config);
-  const sorted = [...opportunities].sort((a, b) => scoreOpportunity(b) - scoreOpportunity(a));
+  const scored = opportunities.map((opportunity) => opportunity.rankingDiagnostics ? opportunity : withRankingDiagnostics(opportunity, {
+    recentCoverage: config.trendResearch?.recentCoverageSubjects || config.trendResearch?.recentCoverage || [],
+  }));
+  const sorted = [...scored].sort((a, b) => scoreOpportunity(b) - scoreOpportunity(a));
   const grouped = new Map();
   for (const opportunity of sorted) {
     const category = opportunity.category || 'Uncategorized';
@@ -465,7 +469,7 @@ export function selectRecommendedOpportunities(opportunities = [], config = {}) 
       madeProgress = true;
     }
   }
-  return selected;
+  return selected.sort((a, b) => scoreOpportunity(b) - scoreOpportunity(a));
 }
 
 function positiveNumber(value, fallback) {
@@ -1568,14 +1572,14 @@ function fallbackEvaluation(cluster, coverage) {
   };
 }
 
-function opportunityFromCluster(cluster, coverage, qwen) {
+function opportunityFromCluster(cluster, coverage, qwen, options = {}) {
   const newest = newestDate(cluster.items);
   const publishers = [...new Set(cluster.items.map((item) => item.publisher))];
   const sourceCount = cluster.items.length;
   const evidenceLabel = sourceCount > 2 ? 'Repeated coverage' : sourceCount > 1 ? `Appearing across ${sourceCount} sources` : 'Recent source';
   const title = qwen.suggestedTitle || cluster.title;
   const originalSources = cluster.items.map(normalizeOriginalSourceRecord).filter((source) => source.sourceUrl);
-  return {
+  const opportunity = {
     id: `opp-${hashText(cluster.items.map((item) => item.id).join('|')).slice(0, 14)}`,
     title: trim(title, 120),
     category: cluster.category,
@@ -1613,6 +1617,7 @@ function opportunityFromCluster(cluster, coverage, qwen) {
     sourceType: 'rss',
     sourceLabel: publishers.join(', '),
   };
+  return withRankingDiagnostics(opportunity, options);
 }
 
 function whyTrending(cluster) {
@@ -1626,6 +1631,15 @@ function isPromotableCluster(cluster, config = {}) {
   const threshold = positiveNumber(config.trendResearch?.promotionRelevanceThreshold, DEFAULT_PROMOTION_RELEVANCE_THRESHOLD);
   if (Number(cluster.certifydRelevanceScore || 0) < threshold) return false;
   return hasCertifydRelevanceEvidence(cluster);
+}
+
+function withRankingDiagnostics(opportunity, options = {}) {
+  const rankingDiagnostics = opportunityRankingDiagnostics(opportunity, options);
+  return {
+    ...opportunity,
+    rankingDiagnostics,
+    opportunityScore: rankingDiagnostics.finalScore,
+  };
 }
 
 function hasCertifydRelevanceEvidence(cluster) {
@@ -1908,7 +1922,165 @@ function sourceStatusBase(source) {
 }
 
 function scoreOpportunity(item) {
-  return (item.sourceCount || 0) * 3 + (item.brainCoverage === 'Strong' ? 4 : item.brainCoverage === 'Partial' ? 2 : 0) + (item.freshness === 'Fresh' ? 2 : 0);
+  if (Number.isFinite(Number(item?.rankingDiagnostics?.finalScore))) return Number(item.rankingDiagnostics.finalScore);
+  return opportunityRankingDiagnostics(item).finalScore;
+}
+
+function opportunityRankingDiagnostics(item = {}, options = {}) {
+  const baseRelevance = Math.max(0, Math.min(20, Number(item.certifydRelevanceScore || 0)));
+  const freshnessScore = freshnessScoreForDate(item.newestSourceDate || item.publishedAt);
+  const eventSpecificityScore = eventSpecificityScoreFor(item);
+  const structuralSignificanceScore = structuralSignificanceScoreFor(item);
+  const sourceSupportScore = sourceSupportScoreFor(item);
+  const noveltyPenalty = noveltyPenaltyFor(item, options);
+  const brainCoverageScore = item.brainCoverage === 'Strong' ? 1.5 : item.brainCoverage === 'Partial' ? 0.75 : 0;
+  const finalScore = roundScore(
+    baseRelevance * 1.15
+    + freshnessScore
+    + eventSpecificityScore
+    + structuralSignificanceScore
+    + sourceSupportScore
+    + brainCoverageScore
+    - noveltyPenalty,
+  );
+  return {
+    baseRelevance,
+    freshnessScore,
+    eventSpecificityScore,
+    structuralSignificanceScore,
+    sourceSupportScore,
+    brainCoverageScore,
+    noveltyPenalty,
+    finalScore,
+  };
+}
+
+function freshnessScoreForDate(value) {
+  if (!value) return 0.5;
+  const ageDays = (Date.now() - Date.parse(value)) / (24 * 60 * 60 * 1000);
+  if (!Number.isFinite(ageDays)) return 0.5;
+  if (ageDays <= 0.5) return 5;
+  if (ageDays <= 1.5) return 3.5;
+  if (ageDays <= 3) return 1.5;
+  if (ageDays <= 7) return 0.5;
+  return 0;
+}
+
+function eventSpecificityScoreFor(item = {}) {
+  const eventType = item.storyFingerprint?.eventType || '';
+  const concreteTypes = new Map([
+    ['partnership', 4],
+    ['product-launch', 3.5],
+    ['acquisition', 4],
+    ['ruling', 4],
+    ['appeal', 3.5],
+    ['lawsuit-filed', 3.5],
+    ['lawsuit-dismissed', 3.5],
+    ['settlement', 3.5],
+    ['policy-intervention', 3],
+    ['regulatory-enforcement', 3.5],
+    ['controversy', 2.5],
+    ['appointment', 1],
+    ['report', 0.75],
+    ['roundup', -1],
+    ['development', 0.25],
+  ]);
+  const base = concreteTypes.has(eventType) ? concreteTypes.get(eventType) : 1;
+  const entities = item.storyFingerprint?.primaryEntities || [];
+  const anchors = item.storyFingerprint?.concreteAnchors || [];
+  const object = item.storyFingerprint?.normalizedObject || item.storyFingerprint?.object || '';
+  const concreteBonus = Math.min(1.5, (entities.length >= 2 ? 0.75 : 0) + (anchors.length ? 0.5 : 0) + (object && !isGenericEventObject(object, eventType) ? 0.25 : 0));
+  return roundScore(Math.max(-1, base + concreteBonus));
+}
+
+function structuralSignificanceScoreFor(item = {}) {
+  const fingerprint = item.storyFingerprint || {};
+  const text = [
+    item.title,
+    item.summary,
+    item.certifydRelevanceReasons?.join(' '),
+    item.categories?.join(' '),
+    fingerprint.normalizedEventSummary,
+    fingerprint.normalizedObject,
+  ].join(' ').toLowerCase();
+  let score = 0;
+  if (/\b(ai agent|agentic|assistant|discovery|recommendation|search)\b/.test(text) && /\b(commerce|transaction|ticket|checkout|fan|purchase|booking)\b/.test(text)) score += 3.5;
+  if (/\b(platform|product|subscription|bundle|packaging|distribution)\b/.test(text) && /\b(royalt|rights|licens|permission|revenue|payment|payout|economics)\b/.test(text)) score += 3;
+  if (/\b(identity|authentication|verification|impersonation|official profile|credential)\b/.test(text) && /\b(infrastructure|embedded|platform|commerce|discovery|fan|media)\b/.test(text)) score += 2.5;
+  if (/\b(provenance|authenticity|attribution|source context|origin)\b/.test(text) && /\b(operational|requirement|workflow|publishing|distribution|ai)\b/.test(text)) score += 2;
+  if (/\b(direct-to-fan|fan relationship|customer relationship|membership|subscription|creator commerce)\b/.test(text)) score += 2;
+  if (/\b(platform dependency|lock-in|portable|interoperab|owned audience)\b/.test(text)) score += 1.5;
+  return roundScore(Math.min(5, score));
+}
+
+function sourceSupportScoreFor(item = {}) {
+  const count = Number(item.sourceCount || item.originalSources?.length || 0);
+  if (count >= 4) return 3;
+  if (count === 3) return 2.5;
+  if (count === 2) return 2;
+  if (count === 1) return 1;
+  return 0;
+}
+
+function noveltyPenaltyFor(item = {}, options = {}) {
+  const optionCoverage = Array.isArray(options.recentCoverage) && options.recentCoverage.length ? options.recentCoverage : null;
+  const coverage = optionCoverage || item.recentCoverage || item.recentCoverageSubjects || [];
+  if (!Array.isArray(coverage) || !coverage.length) return 0;
+  const fingerprint = item.storyFingerprint || {};
+  const title = normalizeTitle(item.title || '');
+  const entities = new Set((fingerprint.primaryEntities || []).map(normalizeEntity).filter(Boolean));
+  const eventType = fingerprint.eventType || '';
+  const object = normalizeTitle(fingerprint.normalizedObject || fingerprint.object || '');
+  let penalty = 0;
+  for (const record of coverage) {
+    const recordTitle = normalizeTitle(record.title || record.slug || '');
+    if (!recordTitle) continue;
+    const similarity = titleSimilarity(title, recordTitle);
+    const sharedEntity = (record.entities || []).map(normalizeEntity).some((entity) => entities.has(entity));
+    const sameEventFamily = eventType && record.eventType && eventType === record.eventType;
+    const sameObject = object && record.object && titleSimilarity(object, normalizeTitle(record.object)) >= 0.72;
+    if (similarity >= 0.82) penalty = Math.max(penalty, 3);
+    else if (sharedEntity && sameEventFamily && sameObject) penalty = Math.max(penalty, 2);
+    else if (sharedEntity && sameEventFamily) penalty = Math.max(penalty, 1);
+  }
+  return roundScore(Math.min(3, penalty));
+}
+
+async function loadRecentCoverageIndex(config = {}) {
+  const outputDir = config.outputDir || path.join(config.agentRoot || '', 'engine', 'outputs');
+  if (!outputDir) return [];
+  const entries = await fs.readdir(outputDir, { withFileTypes: true }).catch(() => []);
+  const records = [];
+  const cutoff = Date.now() - 45 * 24 * 60 * 60 * 1000;
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const base = path.join(outputDir, entry.name);
+    const manifest = await readJsonFile(path.join(base, 'publication-manifest.json'), {});
+    const article = await readJsonFile(path.join(base, 'final', 'article.json'), {});
+    const title = manifest.title || article.title || entry.name;
+    const updatedAt = manifest.publishedAt || manifest.updatedAt || manifest.lastUpdated || article.updatedAt || '';
+    if (updatedAt && Date.parse(updatedAt) < cutoff) continue;
+    const fingerprint = storyFingerprint({ title, summary: article.excerpt || article.seoDescription || manifest.topic || '', publishedAt: updatedAt });
+    records.push({
+      title,
+      slug: manifest.slug || article.slug || '',
+      entities: fingerprint.primaryEntities || [],
+      eventType: fingerprint.eventType || '',
+      object: fingerprint.normalizedObject || fingerprint.object || '',
+      updatedAt,
+    });
+  }
+  return records.slice(0, 120);
+}
+
+async function readJsonFile(file, fallback = {}) {
+  const text = await fs.readFile(file, 'utf8').catch(() => '');
+  if (!text) return fallback;
+  try { return JSON.parse(text); } catch { return fallback; }
+}
+
+function roundScore(value) {
+  return Number((Number(value) || 0).toFixed(2));
 }
 
 function newestDate(items) {

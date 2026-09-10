@@ -105,6 +105,40 @@ function sourceStory(title, summary, overrides = {}) {
   };
 }
 
+function opportunity(title, overrides = {}) {
+  const eventType = overrides.eventType || 'partnership';
+  const entities = overrides.entities || ['Creator Platform', 'Music Partner'];
+  const object = overrides.object || 'creator commerce partnership';
+  return {
+    id: overrides.id || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80),
+    title,
+    summary: overrides.summary || 'A specific creator commerce development changes identity, discovery, fan relationships and transactions.',
+    category: overrides.category || 'Creator Commerce',
+    categories: overrides.categories || [overrides.category || 'Creator Commerce', 'AI'],
+    sourceCount: overrides.sourceCount ?? 1,
+    brainCoverage: overrides.brainCoverage || 'Partial',
+    newestSourceDate: overrides.newestSourceDate || new Date().toISOString(),
+    certifydRelevanceScore: overrides.certifydRelevanceScore ?? 12,
+    certifydRelevanceReasons: overrides.certifydRelevanceReasons || ['direct commerce or payment model relevance'],
+    suggestedAngle: overrides.suggestedAngle || '',
+    whyItMattersToCertifyd: overrides.whyItMattersToCertifyd || '',
+    storyFingerprint: {
+      eventType,
+      primaryEntities: entities,
+      distinguishingEntities: entities,
+      normalizedObject: object,
+      object,
+      concreteAnchors: overrides.concreteAnchors || [object],
+      normalizedEventSummary: `${entities.join(' / ')} ${eventType} ${object}`,
+    },
+    recentCoverage: overrides.recentCoverageSubjects || [],
+  };
+}
+
+function daysAgo(days) {
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+}
+
 test('trend opportunities default to clearly labeled seeded examples only when seeded is configured', async () => {
   const trends = await getTrendingOpportunities({ trendResearch: { provider: 'seeded', sourceUrls: [] } });
   assert.equal(trends.provider, 'seeded');
@@ -176,6 +210,148 @@ test('recommendation selection returns fewer than twenty when credible candidate
   const selected = selectRecommendedOpportunities(opportunities, { trendResearch: { recommendationTotalLimit: 20, recommendationCategoryLimit: 5 } });
   assert.equal(selected.length, 5);
   assert.ok(selected.every((item) => item.category === 'Music'));
+});
+
+test('fresh specific partnership outranks older generic AI commentary', () => {
+  const partnership = opportunity('Ticketing platform partners with AI agent for fan transactions', {
+    category: 'Music',
+    certifydRelevanceScore: 13,
+    newestSourceDate: new Date().toISOString(),
+    sourceCount: 1,
+    brainCoverage: 'Partial',
+    summary: 'A music ticketing platform and AI agent partnership creates a discovery and transaction interface for fans.',
+    eventType: 'partnership',
+    entities: ['Ticketing Platform', 'AI Agent'],
+    object: 'fan transaction partnership',
+  });
+  const generic = opportunity('AI commentary says platforms are changing creator discovery', {
+    category: 'AI',
+    certifydRelevanceScore: 10,
+    newestSourceDate: daysAgo(2),
+    sourceCount: 2,
+    brainCoverage: 'Strong',
+    summary: 'Commentary about broad AI platform trends for creators.',
+    eventType: 'report',
+    entities: ['AI'],
+    object: 'report',
+  });
+  const selected = selectRecommendedOpportunities([generic, partnership], { trendResearch: { recommendationTotalLimit: 20, recommendationCategoryLimit: 5 } });
+  assert.equal(selected[0].id, partnership.id);
+  assert.ok(selected[0].rankingDiagnostics.freshnessScore > generic.rankingDiagnostics?.freshnessScore || selected[0].rankingDiagnostics.freshnessScore > 0);
+  assert.ok(selected[0].rankingDiagnostics.eventSpecificityScore > selected[1].rankingDiagnostics.eventSpecificityScore);
+});
+
+test('single-source breaking partnership can be recommended without corroboration', () => {
+  const selected = selectRecommendedOpportunities([
+    opportunity('Platform partners with creator commerce agent', {
+      certifydRelevanceScore: 13,
+      sourceCount: 1,
+      newestSourceDate: new Date().toISOString(),
+      eventType: 'partnership',
+      summary: 'The partnership turns AI discovery into a commerce interface for creator and fan transactions.',
+      entities: ['Platform', 'Creator Commerce Agent'],
+      object: 'commerce agent partnership',
+    }),
+  ], { trendResearch: { recommendationTotalLimit: 20, recommendationCategoryLimit: 5 } });
+  assert.equal(selected.length, 1);
+  assert.equal(selected[0].sourceCount, 1);
+  assert.equal(selected[0].rankingDiagnostics.sourceSupportScore, 1);
+});
+
+test('multi-source corroboration improves ranking score but is not mandatory', () => {
+  const single = opportunity('Fresh creator commerce partnership', { certifydRelevanceScore: 12, sourceCount: 1, eventType: 'partnership' });
+  const multi = opportunity('Fresh creator commerce partnership confirmed by several sources', { certifydRelevanceScore: 12, sourceCount: 3, eventType: 'partnership' });
+  const selected = selectRecommendedOpportunities([single, multi], { trendResearch: { recommendationTotalLimit: 20, recommendationCategoryLimit: 5 } });
+  assert.equal(selected[0].id, multi.id);
+  assert.ok(selected[0].rankingDiagnostics.sourceSupportScore > selected[1].rankingDiagnostics.sourceSupportScore);
+  assert.ok(selected.every((item) => item.rankingDiagnostics.finalScore > 0));
+});
+
+test('generic report receives lower event-specificity weight than partnership or ruling', () => {
+  const report = selectRecommendedOpportunities([opportunity('Report on creator AI trends', { eventType: 'report' })], { trendResearch: {} })[0];
+  const partnership = selectRecommendedOpportunities([opportunity('Company partners with creator platform', { eventType: 'partnership' })], { trendResearch: {} })[0];
+  const ruling = selectRecommendedOpportunities([opportunity('Judge rules on music royalty dispute', { eventType: 'ruling' })], { trendResearch: {} })[0];
+  assert.ok(partnership.rankingDiagnostics.eventSpecificityScore > report.rankingDiagnostics.eventSpecificityScore);
+  assert.ok(ruling.rankingDiagnostics.eventSpecificityScore > report.rankingDiagnostics.eventSpecificityScore);
+});
+
+test('higher relevance alone does not always override fresher structural story', () => {
+  const staleHighRelevance = opportunity('Generic AI platform discussion', {
+    category: 'AI',
+    categories: ['AI', 'Technology'],
+    certifydRelevanceScore: 15,
+    certifydRelevanceReasons: ['AI and content-authenticity pressure'],
+    newestSourceDate: daysAgo(5),
+    sourceCount: 2,
+    brainCoverage: 'Strong',
+    eventType: 'report',
+    summary: 'A report discusses AI tools for creator platforms in broad terms.',
+  });
+  const freshStructural = opportunity('AI agent becomes creator commerce checkout interface', {
+    certifydRelevanceScore: 12,
+    newestSourceDate: new Date().toISOString(),
+    sourceCount: 1,
+    brainCoverage: 'Partial',
+    eventType: 'partnership',
+    summary: 'A partnership embeds AI agent discovery into ticketing, checkout and fan transactions.',
+    entities: ['AI Agent', 'Creator Commerce Platform'],
+    object: 'checkout interface partnership',
+  });
+  const selected = selectRecommendedOpportunities([staleHighRelevance, freshStructural], { trendResearch: { recommendationTotalLimit: 20, recommendationCategoryLimit: 5 } });
+  assert.equal(selected[0].id, freshStructural.id);
+  assert.ok(selected[0].rankingDiagnostics.structuralSignificanceScore > selected[1].rankingDiagnostics.structuralSignificanceScore);
+});
+
+test('recently over-covered subject receives modest novelty penalty', () => {
+  const item = opportunity('Suno launches AI licensing workflow', {
+    eventType: 'product-launch',
+    object: 'ai licensing workflow',
+    entities: ['Suno'],
+    recentCoverageSubjects: [{ title: 'Suno launches AI licensing workflow', entities: ['Suno'], eventType: 'product-launch', object: 'ai licensing workflow' }],
+  });
+  const selected = selectRecommendedOpportunities([item], { trendResearch: {} });
+  assert.ok(selected[0].rankingDiagnostics.noveltyPenalty > 0);
+  assert.ok(selected[0].rankingDiagnostics.noveltyPenalty <= 3);
+});
+
+test('novelty penalty does not suppress materially distinct same-company event', () => {
+  const item = opportunity('Suno signs ticketing partnership', {
+    eventType: 'partnership',
+    object: 'ticketing partnership',
+    entities: ['Suno'],
+    recentCoverageSubjects: [{ title: 'Suno launches AI licensing workflow', entities: ['Suno'], eventType: 'product-launch', object: 'ai licensing workflow' }],
+  });
+  const selected = selectRecommendedOpportunities([item], { trendResearch: {} });
+  assert.equal(selected[0].rankingDiagnostics.noveltyPenalty, 0);
+});
+
+test('generic suggested-angle wording has no ranking effect', () => {
+  const base = opportunity('Creator platform launches direct fan checkout', {
+    eventType: 'product-launch',
+    summary: 'A platform launch changes direct fan checkout and creator customer relationships.',
+    suggestedAngle: '',
+    whyItMattersToCertifyd: '',
+  });
+  const genericCopy = {
+    ...base,
+    id: 'generic-angle-copy',
+    suggestedAngle: 'This connects to Certifyd as infrastructure for identity, publishing, discovery and commerce.',
+    whyItMattersToCertifyd: 'This connects to Certifyd as infrastructure for identity, publishing, discovery and commerce.',
+  };
+  const selected = selectRecommendedOpportunities([base, genericCopy], { trendResearch: { recommendationTotalLimit: 20, recommendationCategoryLimit: 5 } });
+  assert.equal(selected[0].rankingDiagnostics.finalScore, selected[1].rankingDiagnostics.finalScore);
+});
+
+test('recommendation selection preserves expected recommendation budget', () => {
+  const opportunities = Array.from({ length: 30 }, (_, index) => opportunity(`Creator commerce partnership ${index}`, {
+    category: index < 12 ? 'Music' : index < 20 ? 'AI' : 'Creator Commerce',
+    sourceCount: 1 + (index % 4),
+    eventType: index % 2 ? 'partnership' : 'product-launch',
+  }));
+  const selected = selectRecommendedOpportunities(opportunities, { trendResearch: { recommendationTotalLimit: 20, recommendationCategoryLimit: 5 } });
+  assert.equal(selected.length, 15);
+  assert.ok(selected.every((item) => item.rankingDiagnostics && Number.isFinite(item.rankingDiagnostics.finalScore)));
+  assert.ok(selected.filter((item) => item.category === 'Music').length <= 5);
 });
 
 test('RSS scans approved sources, categorizes opportunities, persists state and exposes source details', async () => {
