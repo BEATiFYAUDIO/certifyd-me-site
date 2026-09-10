@@ -9,7 +9,7 @@ import { createPublisher } from './publisher.js';
 import { buildGroundedContext, createDeterministicFallbackArticle, createGenerationProvider, normalizeProviderName, persistGeneratedArticleRun } from './generation-provider.js';
 import { cleanArticlePromptText, isSafeImagePath, normalizeArticleTitle, selectArticleCoverImage } from './article-utils.js';
 import { appendGlobalPexelsHistory, selectAutomatedCoverImage } from './cover-image-provider.js';
-import { approveGeneratedBlogImage, generateBlogImage } from './image-generation.js';
+import { approveGeneratedBlogImage, ensureImageBriefForRun, generateBlogImage } from './image-generation.js';
 import { isApprovedBrainRecord } from './brain-utils.js';
 import { submitIndexNow } from './indexnow.js';
 import {
@@ -604,6 +604,20 @@ export class ContentDashboardActions {
       note: result.state?.error || result.state?.generatedImagePath || '',
     });
     return result;
+  }
+
+  async resetImageBrief({ actor, runId }) {
+    const state = await ensureImageBriefForRun(this.config, this.runs, runId, { force: true });
+    await this.audit.append({
+      action: 'blog_image_brief_reset',
+      actorUserId: actor.id,
+      actorDisplayName: actor.email,
+      actorRole: actor.role,
+      runId,
+      result: 'SUCCESS',
+      note: 'rebuilt from article',
+    });
+    return { ok: true, output: 'Image brief rebuilt from article.', state };
   }
 
   async approveGeneratedCoverImage({ actor, runId }) {

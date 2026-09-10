@@ -53,21 +53,33 @@ export async function writeImageGenerationState(config, runId, state) {
   return next;
 }
 
+export async function ensureImageBriefForRun(config, runs, runId, { force = false } = {}) {
+  validateRunId(runId);
+  const previous = await readImageGenerationState(config, runId);
+  if (!force && cleanString(previous.imageBrief, MAX_BRIEF_CHARS)) return previous;
+  const run = await runs.readRun(runId);
+  const brief = await buildImageBrief(config, run);
+  return writeImageGenerationState(config, runId, {
+    ...previous,
+    imageStatus: previous.imageStatus || 'not_generated',
+    imageBrief: brief.imageBrief,
+    promptVersion: brief.promptVersion,
+    promptHash: sha256(brief.prompt),
+    briefGeneratedAt: new Date().toISOString(),
+    briefGeneratedFrom: 'article',
+  });
+}
+
 export async function buildImageBrief(config, run, overrides = {}) {
   const title = cleanArticlePromptText(run.blogPackage?.title || run.summary?.title || 'Untitled article', 'Untitled article');
   const excerpt = cleanArticlePromptText(run.blogPackage?.excerpt || run.blogPackage?.description || run.blogPackage?.seoDescription || '', '');
+  const category = cleanArticlePromptText(run.blogPackage?.category || run.seo?.category || '', '');
   const body = stripFrontmatter(run.articleMarkdown || run.draftMarkdown || run.blogPackage?.body || '');
   const tags = Array.isArray(run.blogPackage?.tags) ? run.blogPackage.tags : [];
   const styleGuide = await readStyleGuide(config);
   const customBrief = cleanString(overrides.imageBrief || '', MAX_BRIEF_CHARS);
   const articleSignals = [title, excerpt, tags.join(', '), body.slice(0, 2500)].filter(Boolean).join('\n\n');
-  const generatedBrief = customBrief || [
-    `Story: ${title}`,
-    excerpt ? `Editorial context: ${excerpt}` : '',
-    tags.length ? `Topic tags: ${tags.join(', ')}` : '',
-    'Visual direction: Create a polished editorial cover image for the Certifyd blog. Use a tangible metaphor from the article topic instead of generic technology imagery.',
-    'Composition: Landscape editorial cover, strong central object, clean negative space for responsive cropping. No text baked into image.',
-  ].filter(Boolean).join('\n');
+  const generatedBrief = customBrief || buildAutomaticImageBrief({ title, excerpt, category, tags, body, styleGuide });
   const prompt = [
     'Create one original landscape editorial blog cover image.',
     '',
@@ -88,6 +100,96 @@ export async function buildImageBrief(config, run, overrides = {}) {
     promptVersion: PROMPT_VERSION,
     size: normalizeImageSize(config.blogImages?.size || DEFAULT_SIZE),
   };
+}
+
+function buildAutomaticImageBrief({ title, excerpt, category, tags, body, styleGuide }) {
+  const subject = conciseSentence(excerpt || firstUsefulParagraph(body) || title, 240);
+  const context = [category, tags.join(', ')].filter(Boolean).join(' / ');
+  const coreIdea = deriveCoreIdea({ title, excerpt, body });
+  const visualDirection = deriveVisualDirection([title, excerpt, body, tags.join(' ')].join(' '));
+  const avoid = deriveAvoidList(styleGuide);
+  return [
+    'EDITORIAL SUBJECT:',
+    `${subject}${context ? ` Context: ${context}.` : ''}`,
+    '',
+    'CORE IDEA:',
+    coreIdea,
+    '',
+    'VISUAL DIRECTION:',
+    visualDirection,
+    '',
+    'STYLE:',
+    'Use the Certifyd image-generation style guide: analog/tactile editorial photography or collage, restrained highlights, strong central object, no baked-in text, and no fake logos.',
+    '',
+    'COMPOSITION:',
+    'Landscape editorial blog cover with enough negative space for responsive and social cropping.',
+    '',
+    'AVOID:',
+    avoid,
+  ].join('\n').slice(0, MAX_BRIEF_CHARS);
+}
+
+function deriveCoreIdea({ title, excerpt, body }) {
+  const haystack = [title, excerpt, body].join(' ').toLowerCase();
+  const first = conciseSentence(excerpt || firstUsefulParagraph(body) || title, 220);
+  if (/\b(subscription|bundle|bundling|package|packaging)\b/.test(haystack) && /\b(royalt|accounting|economics|rate|licens)\b/.test(haystack)) {
+    return 'Product packaging changes the economics around music by turning the container around media into part of the royalty and accounting context.';
+  }
+  if (/\b(identity|impersonat|persona|likeness|voice|deepfake)\b/.test(haystack)) {
+    return 'Identity and authenticity become infrastructure questions when digital media can separate a creator from the signals audiences use to recognize them.';
+  }
+  if (/\b(provenance|attribution|origin|record|receipt|chain)\b/.test(haystack)) {
+    return 'Creative work needs visible origin and attribution context, not just finished media presented without a trail.';
+  }
+  if (/\b(commerce|direct-to-fan|fan|checkout|store|membership|customer)\b/.test(haystack)) {
+    return 'Creator commerce depends on the relationship between the creative work, the audience, and the transaction layer around it.';
+  }
+  if (/\b(rights|copyright|license|licensing|ownership|catalog|songwriting)\b/.test(haystack)) {
+    return 'The business terms around creative work are increasingly shaped by the systems that package, authorize, and distribute it.';
+  }
+  if (first.toLowerCase() !== String(title || '').toLowerCase()) return first;
+  return 'The image should communicate the article’s underlying tension through a tangible visual metaphor rather than a literal company portrait.';
+}
+
+function deriveVisualDirection(text) {
+  const haystack = String(text || '').toLowerCase();
+  if (/\b(subscription|bundle|bundling|package|packaging)\b/.test(haystack) && /\b(royalt|accounting|economics|rate|licens)\b/.test(haystack)) {
+    return 'Show a physical music record, royalty statement, or accounting sheet partially wrapped inside layered subscription packaging, suggesting the container around music changes its economics.';
+  }
+  if (/\b(identity|impersonat|persona|likeness|voice|deepfake)\b/.test(haystack)) {
+    return 'Use a tactile identity metaphor: a portrait fragment, performance artifact, voice-print paper, or verification stamp handled as physical evidence.';
+  }
+  if (/\b(provenance|attribution|origin|record|receipt|chain)\b/.test(haystack)) {
+    return 'Use physical provenance materials: labeled sleeves, stamped receipts, annotated source cards, or archival tags attached to a creative object.';
+  }
+  if (/\b(commerce|direct-to-fan|fan|checkout|store|membership|customer)\b/.test(haystack)) {
+    return 'Use a direct commerce metaphor: a creator artifact, receipt, packing slip, and audience-facing purchase object arranged as an editorial still life.';
+  }
+  if (/\b(rights|copyright|license|licensing|ownership|catalog|songwriting)\b/.test(haystack)) {
+    return 'Use rights and catalog materials as physical objects: marked contracts, song sheets, record sleeves, catalog cards, and careful archival lighting.';
+  }
+  return 'Create a tangible editorial still life that represents the article’s central business or technology tension without relying on generic platform imagery.';
+}
+
+function deriveAvoidList(styleGuide) {
+  const text = String(styleGuide || '');
+  const lines = text.split('\n').map((line) => line.replace(/^[-#\s]+/, '').trim()).filter(Boolean);
+  const avoidIndex = lines.findIndex((line) => /^avoid$/i.test(line));
+  const candidates = avoidIndex >= 0 ? lines.slice(avoidIndex + 1, avoidIndex + 8) : [];
+  const avoid = candidates.filter((line) => !/^brand handling$/i.test(line)).slice(0, 5);
+  return avoid.length ? avoid.join('; ') : 'Generic AI imagery; dashboards; globes; floating icons; stock-photo people; text baked into the image; invented logos.';
+}
+
+function firstUsefulParagraph(markdown) {
+  const body = stripFrontmatter(markdown).replace(/^# .+$/gm, '').split(/\n{2,}/).map((part) => part.replace(/\[[^\]]+\]\([^)]+\)/g, '').trim()).filter((part) => part.length > 40);
+  return body[0] || '';
+}
+
+function conciseSentence(value, max) {
+  const clean = String(value || '').replace(/\s+/g, ' ').trim();
+  if (clean.length <= max) return clean;
+  const sentence = clean.slice(0, max + 1).replace(/\s+\S*$/, '').trim();
+  return `${sentence.replace(/[.,;:!?-]+$/, '')}.`;
 }
 
 export async function generateBlogImage({ config, runs, actor, runId, imageBrief = '', logoEnabled = false, logoPosition = '', provider = null }) {

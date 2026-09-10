@@ -7,7 +7,7 @@ import path from 'node:path';
 import { createContentDashboardServer } from '../scripts/content-dashboard/server.js';
 import { getDashboardConfig } from '../scripts/content-dashboard/config.js';
 import { ContentDashboardActions } from '../scripts/content-dashboard/actions.js';
-import { buildImageBrief, readImageGenerationState, setFrontmatterValue } from '../scripts/content-dashboard/image-generation.js';
+import { buildImageBrief, ensureImageBriefForRun, readImageGenerationState, setFrontmatterValue } from '../scripts/content-dashboard/image-generation.js';
 
 const env = {
   ...process.env,
@@ -24,10 +24,58 @@ const env = {
 test('blog image brief uses article signals and image style guide only', async () => {
   const { config, run } = await fixture();
   const brief = await buildImageBrief(config, run);
-  assert.match(brief.imageBrief, /Story: Spotify Bundling Ruling/);
+  assert.match(brief.imageBrief, /EDITORIAL SUBJECT:/);
+  assert.match(brief.imageBrief, /CORE IDEA:/);
+  assert.match(brief.imageBrief, /VISUAL DIRECTION:/);
+  assert.match(brief.imageBrief, /subscription packaging/i);
+  assert.match(brief.imageBrief, /royalty and accounting context/i);
+  assert.notEqual(brief.imageBrief.trim(), 'Spotify Bundling Ruling');
+  assert.ok(brief.imageBrief.length < 1200);
+  assert.doesNotMatch(brief.imageBrief, /Subscription packaging body stays intact/);
   assert.match(brief.prompt, /Certifyd Blog Image Style Guide/);
   assert.match(brief.prompt, /No text baked into image/);
   assert.match(brief.prompt, /Subscription packaging/);
+});
+
+test('article page load persists an automatic brief when none exists', async () => {
+  const { config, outputDir, runId } = await fixture();
+  let state = await readImageGenerationState(config, runId);
+  assert.equal(state.imageBrief, '');
+
+  await withServer(config, async (base) => {
+    const cookie = await login(base);
+    const response = await fetch(`${base}/app/content/articles/${runId}`, { headers: { cookie } });
+    const html = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(html, /EDITORIAL SUBJECT:/);
+    assert.match(html, /subscription packaging/i);
+    assert.match(html, /Reset brief/);
+    assert.match(html, /logo-branding-controls/);
+    assert.match(html, /logo-position-control/);
+  });
+
+  state = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'blog', 'image-generation.json'), 'utf8'));
+  assert.match(state.imageBrief, /CORE IDEA:/);
+  assert.match(state.imageBrief, /royalty and accounting context/i);
+  assert.equal(state.briefGeneratedFrom, 'article');
+});
+
+test('existing saved brief is preserved across page reloads', async () => {
+  const { config, outputDir, runId } = await fixture();
+  await ensureImageBriefForRun(config, new ContentDashboardActions(config).runs, runId);
+  const stateFile = path.join(outputDir, runId, 'blog', 'image-generation.json');
+  const saved = JSON.parse(await fs.readFile(stateFile, 'utf8'));
+  saved.imageBrief = 'Founder edited brief: make this more analog and less literal.';
+  await fs.writeFile(stateFile, `${JSON.stringify(saved, null, 2)}\n`, 'utf8');
+
+  await withServer(config, async (base) => {
+    const cookie = await login(base);
+    const response = await fetch(`${base}/app/content/articles/${runId}`, { headers: { cookie } });
+    assert.match(await response.text(), /Founder edited brief: make this more analog and less literal\./);
+  });
+
+  const after = JSON.parse(await fs.readFile(stateFile, 'utf8'));
+  assert.equal(after.imageBrief, 'Founder edited brief: make this more analog and less literal.');
 });
 
 test('mocked image generation saves site-local pending asset without approving cover', async () => {
@@ -40,11 +88,12 @@ test('mocked image generation saves site-local pending asset without approving c
   const result = await actions.generateCoverImage({
     actor,
     runId,
-    imageBrief: 'Physical royalty statement wrapped in subscription packaging.',
+    imageBrief: 'Founder edited brief: physical royalty statement wrapped in subscription packaging.',
   });
 
   assert.equal(result.ok, true);
   assert.equal(calls.length, 1);
+  assert.match(calls[0].prompt, /Founder edited brief: physical royalty statement wrapped in subscription packaging\./);
   const state = await readImageGenerationState(config, runId);
   assert.equal(state.imageStatus, 'generated');
   assert.equal(state.provider, 'mock-openai');
@@ -52,6 +101,7 @@ test('mocked image generation saves site-local pending asset without approving c
   assert.equal(state.imageRevision, 1);
   assert.match(state.generatedImagePath, /^\/images\/blog\/\d{4}\/\d{2}\/spotify-bundling-ruling-r1\.png$/);
   assert.equal(state.approvedImagePath, '');
+  assert.equal(state.imageBrief, 'Founder edited brief: physical royalty statement wrapped in subscription packaging.');
   await fs.stat(path.join(siteRoot, state.generatedImagePath.slice(1)));
   const blogPackage = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'blog', 'blog-post.json'), 'utf8'));
   assert.equal(blogPackage.coverImage, '/images/existing-cover.png');
@@ -90,12 +140,29 @@ test('regeneration creates a new revision while preserving previous approved ima
   await actions.approveGeneratedCoverImage({ actor, runId });
   const approved = await readImageGenerationState(config, runId);
 
-  await actions.generateCoverImage({ actor, runId, imageBrief: 'Second image.' });
+  await actions.generateCoverImage({ actor, runId, imageBrief: 'Founder edited regeneration note.' });
   const regenerated = await readImageGenerationState(config, runId);
   assert.equal(regenerated.imageStatus, 'generated');
   assert.equal(regenerated.imageRevision, 2);
   assert.match(regenerated.generatedImagePath, /-r2\.png$/);
   assert.equal(regenerated.approvedImagePath, approved.approvedImagePath);
+  assert.equal(regenerated.imageBrief, 'Founder edited regeneration note.');
+});
+
+test('reset brief rebuilds the automatic article-derived brief', async () => {
+  const { config, outputDir, runId } = await fixture();
+  const stateFile = path.join(outputDir, runId, 'blog', 'image-generation.json');
+  await fs.mkdir(path.dirname(stateFile), { recursive: true });
+  await fs.writeFile(stateFile, `${JSON.stringify({ imageBrief: 'Founder edited brief to reset.', imageStatus: 'generated', imageRevision: 3 }, null, 2)}\n`, 'utf8');
+  const actions = new ContentDashboardActions(config);
+
+  await actions.resetImageBrief({ actor: founder(), runId });
+  const state = JSON.parse(await fs.readFile(stateFile, 'utf8'));
+  assert.match(state.imageBrief, /EDITORIAL SUBJECT:/);
+  assert.match(state.imageBrief, /subscription packaging/i);
+  assert.notEqual(state.imageBrief, 'Founder edited brief to reset.');
+  assert.equal(state.imageStatus, 'generated');
+  assert.equal(state.imageRevision, 3);
 });
 
 test('logo composite uses exact canonical logo and can be approved as cover', async () => {
@@ -144,7 +211,20 @@ test('image controls route exposes generate and approval actions', async () => {
     assert.equal(response.status, 200);
     assert.match(html, /Image brief/);
     assert.match(html, /\/app\/content\/actions\/publishing\/image-generate/);
+    assert.match(html, /\/app\/content\/actions\/publishing\/image-brief-reset/);
     assert.match(html, /Generate cover/);
+  });
+});
+
+test('branding position control is hidden by CSS until logo is checked', async () => {
+  const { config, runId } = await fixture();
+  await withServer(config, async (base) => {
+    const cookie = await login(base);
+    const response = await fetch(`${base}/app/content/articles/${runId}`, { headers: { cookie } });
+    const html = await response.text();
+    assert.match(html, /Add Certifyd logo/);
+    assert.match(html, /class="logo-position-control"/);
+    assert.match(html, /logo-branding-controls:not\(:has\(input\[name=logoEnabled\]:checked\)\) \.logo-position-control\{display:none\}/);
   });
 });
 

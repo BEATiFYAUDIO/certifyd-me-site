@@ -101,7 +101,7 @@ export function styles() {
 .distribution-copy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:12px}
 .distribution-copy-card{display:grid;gap:10px;padding:14px;border:1px solid var(--border);border-radius:16px;background:rgba(5,8,13,.42)}
 .distribution-copy-card form,.distribution-copy-card label{display:grid;gap:10px}
-.distribution-copy-card textarea{min-height:120px;resize:vertical}
+.distribution-copy-card textarea{min-height:120px;resize:vertical}.logo-branding-controls{display:grid;gap:10px}.inline-check{display:flex;align-items:center;gap:8px;color:var(--muted);font-weight:800}.inline-check input{width:auto}.logo-branding-controls:not(:has(input[name=logoEnabled]:checked)) .logo-position-control{display:none}
 .distribution-copy-card .mini-actions{justify-content:flex-start}
 .instagram-copy-card{grid-column:span 2}
 .instagram-asset-preview{display:grid;grid-template-columns:minmax(150px,220px) minmax(150px,220px);gap:12px;align-items:start}
