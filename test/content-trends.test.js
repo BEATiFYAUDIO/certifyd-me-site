@@ -23,6 +23,7 @@ import {
   SEEDED_OPPORTUNITIES,
   startTrendDailyScheduler,
   storyFingerprint,
+  TREND_CLUSTERING_VERSION,
 } from '../scripts/content-dashboard/trends.js';
 import { getDashboardConfig } from '../scripts/content-dashboard/config.js';
 
@@ -416,6 +417,157 @@ test('same Wilson Pickett and Primary Wave rights deal corroborates across deal 
   assert.equal(clusters[0].items.length, 2);
   assert.equal(decision.decision, 'same-event');
   assert.equal(decision.corroboratedSameEvent, true);
+});
+
+test('event identity v2 keeps same-company product and development stories separate without a concrete anchor', () => {
+  const pairs = [
+    [
+      'Apple AirPods 5 and iPhone 18 Pro pricing',
+      sourceStory('Apple AirPods 5 leak points to camera controls', 'Apple is developing AirPods 5 features for future audio devices.'),
+      sourceStory('Apple iPhone 18 Pro price tipped by analysts', 'Apple may increase iPhone 18 Pro pricing next year.'),
+    ],
+    [
+      'iPhone Duo history and black iPhone Pro color',
+      sourceStory('Apple iPhone Duo launch history resurfaces', 'A report looks back at the rumored iPhone Duo product history.'),
+      sourceStory('Apple black iPhone 18 Pro color could return', 'A supply-chain note discusses a possible black iPhone 18 Pro finish.'),
+    ],
+    [
+      'GPT-6 Astra and journalism support',
+      sourceStory('OpenAI GPT-6 Astra details surface in model roadmap', 'OpenAI GPT-6 Astra is described as a future model development.'),
+      sourceStory('OpenAI expands initiatives to support journalism classrooms', 'OpenAI announced support programs for journalism educators.'),
+    ],
+    [
+      'GPT-6 Astra and Navier-Stokes',
+      sourceStory('OpenAI GPT-6 Astra details surface in model roadmap', 'OpenAI GPT-6 Astra is described as a future model development.'),
+      sourceStory("OpenAI's Navier-Stokes breakthrough claims draw scrutiny", 'Researchers debate a reported Navier-Stokes mathematics result.'),
+    ],
+    [
+      'CrowdTangle and Meta AI child-abuse ads enforcement',
+      sourceStory('Meta CrowdTangle replacement draws publisher criticism', 'Meta faces questions from researchers after retiring CrowdTangle.'),
+      sourceStory('Meta and San Francisco officials target AI child abuse ads', 'Meta, Facebook and Instagram enforcement actions address AI child abuse ads.'),
+    ],
+    [
+      'NFL halftime and generic season boundaries',
+      sourceStory('NFL taps Cage the Elephant for Munich halftime show', 'The NFL announced Cage the Elephant for the Munich halftime show.'),
+      sourceStory('NFL clarifies broadcast boundaries for new season', 'The NFL outlined generic media policies and season boundaries.'),
+    ],
+    [
+      'Italy and Spain recorded music H1',
+      sourceStory('Italy recorded-music H1 revenue rises', 'Italy recorded-music H1 results show local streaming growth.'),
+      sourceStory('Spain recorded-music H1 revenue rises', 'Spain recorded-music H1 results show local streaming growth.'),
+    ],
+    [
+      'Italy and France recorded music H1',
+      sourceStory('Italy recorded-music H1 revenue rises', 'Italy recorded-music H1 results show local streaming growth.'),
+      sourceStory('France recorded-music H1 revenue rises', 'France recorded-music H1 results show local streaming growth.'),
+    ],
+  ];
+
+  for (const [label, one, two] of pairs) {
+    const decision = eventClusterDecision(one, two);
+    assert.equal(decision.decision, 'separate-events', label);
+    assert.equal(clusterSourceItems([one, two]).length, 2, label);
+    assert.ok(decision.blockingReasons.length > 0, label);
+  }
+});
+
+test('roundups can corroborate one concrete story without bridging distinct events transitively', () => {
+  const airpods = sourceStory('Apple AirPods 5 debuts with improved noise cancellation', 'Apple shows off AirPods 5 with updated audio hardware.');
+  const roundup = sourceStory('Everything Apple announced: AirPods 5, iPhone Duo and more', 'Apple announced AirPods 5, iPhone Duo, Apple Watch updates and other product news in a roundup.');
+  const iphoneDuo = sourceStory('Apple iPhone Duo launches as foldable phone project', 'Apple introduces iPhone Duo as a separate foldable iPhone product.');
+  const clusters = clusterSourceItems([airpods, roundup, iphoneDuo]);
+
+  assert.equal(eventClusterDecision(airpods, roundup).decision, 'separate-events');
+  assert.equal(eventClusterDecision(roundup, iphoneDuo).decision, 'separate-events');
+  assert.equal(eventClusterDecision(airpods, iphoneDuo).decision, 'separate-events');
+  assert.equal(clusters.length, 3);
+  assert.ok(clusters.every((cluster) => cluster.items.length === 1));
+});
+
+test('launch synonyms and normalized objects merge coverage of the same product launch', () => {
+  const pairs = [
+    [
+      sourceStory('Suno rolls out Warner- and BMG-backed v6 AI music models', 'Suno is rolling out v6 AI music models backed by Warner Music and BMG.', { publisher: 'Digital Music News' }),
+      sourceStory('Suno launches v6 models after label deals', 'Suno launched new v6 models following label partnerships.', { publisher: 'Music Ally' }),
+    ],
+    [
+      sourceStory('Suno rolls out Warner- and BMG-backed v6 AI music models', 'Suno is rolling out v6 AI music models backed by Warner Music and BMG.', { publisher: 'Digital Music News' }),
+      sourceStory("Suno's new v6 models are here", 'The Verge reports that Suno released its v6 models with licensed music support.', { publisher: 'The Verge' }),
+    ],
+    [
+      sourceStory('Suno rolls out Warner- and BMG-backed v6 AI music models', 'Suno is rolling out v6 AI music models backed by Warner Music and BMG.', { publisher: 'Digital Music News' }),
+      sourceStory('Suno v6 model launch follows Warner and BMG agreements', 'Music Business Worldwide covers the Suno v6 launch and label agreements.', { publisher: 'Music Business Worldwide' }),
+    ],
+    [
+      sourceStory('Apple shows off AirPods 5 with new audio features', 'TechCrunch reports Apple showed off AirPods 5 during its product event.', { publisher: 'TechCrunch' }),
+      sourceStory('Apple debuts AirPods 5 at hardware event', 'Ars Technica reports Apple debuted AirPods 5 with updated audio features.', { publisher: 'Ars Technica' }),
+    ],
+  ];
+
+  for (const [one, two] of pairs) {
+    const decision = eventClusterDecision(one, two);
+    assert.equal(decision.decision, 'same-event', `${one.title} should merge with ${two.title}`);
+    assert.ok(decision.concreteAnchorMatches.length > 0);
+    assert.equal(clusterSourceItems([one, two]).length, 1);
+  }
+
+  const sunoFingerprint = storyFingerprint(pairs[0][0]);
+  assert.equal(sunoFingerprint.eventType, 'product-launch');
+  assert.equal(sunoFingerprint.action, 'launches');
+  assert.equal(sunoFingerprint.normalizedObject, 'suno v6');
+});
+
+test('same legal ruling and same acquisition coverage still merge with concrete corroboration', () => {
+  const legal = [
+    sourceStory('Federal judge rejects MLC interlocutory appeal in Spotify bundling case', 'A federal judge rejected the Mechanical Licensing Collective interlocutory appeal in the Spotify bundling lawsuit.'),
+    sourceStory('Spotify bundling lawsuit ruling denies MLC appeal push', 'The court denied the MLC interlocutory appeal in the Spotify bundling case.'),
+  ];
+  const acquisition = [
+    sourceStory('HarbourView acquires David Kershenbaum catalog in rights transaction', 'HarbourView acquired David Kershenbaum catalog interests and producer royalties in a rights transaction.'),
+    sourceStory('David Kershenbaum catalog acquired by HarbourView', 'HarbourView completed a catalog acquisition covering David Kershenbaum rights.'),
+  ];
+
+  assert.equal(eventClusterDecision(legal[0], legal[1]).decision, 'same-event');
+  assert.equal(clusterSourceItems(legal).length, 1);
+  assert.equal(eventClusterDecision(acquisition[0], acquisition[1]).decision, 'same-event');
+  assert.equal(clusterSourceItems(acquisition).length, 1);
+});
+
+test('Spotify RNB X Live Dallas festival announcement continues to merge', () => {
+  const one = sourceStory('Spotify announces RNB X Live Dallas festival', 'Spotify announced RNB X Live Dallas as a live music festival event.');
+  const two = sourceStory('Spotify brings RNB X Live to Dallas', 'Spotify will launch the RNB X Live Dallas festival with artists and fans.');
+  const decision = eventClusterDecision(one, two);
+
+  assert.equal(decision.decision, 'same-event');
+  assert.equal(clusterSourceItems([one, two]).length, 1);
+  assert.ok(decision.concreteAnchorMatches.includes('rnb x live dallas') || decision.concreteAnchorMatches.includes('rnb x live'));
+});
+
+test('source-level clustering diagnostics persist with source stories and opportunities', async () => {
+  const agentRoot = await tempAgentRoot();
+  const feed = rssFeed([
+    {
+      title: 'Suno rolls out Warner- and BMG-backed v6 AI music models',
+      description: 'Suno is rolling out v6 AI music models after label deals involving rights, permissions and creators.',
+      link: 'https://example.test/suno-v6-dmn',
+    },
+    {
+      title: 'Suno launches v6 models after label deals',
+      description: 'Suno launched v6 models with licensing, creator permission and AI music context.',
+      link: 'https://example.test/suno-v6-music-ally',
+    },
+  ]);
+  const scan = await scanTrendOpportunities(config(agentRoot), { fetchImpl: async () => response(feed) });
+
+  assert.equal(scan.clusteringVersion, TREND_CLUSTERING_VERSION);
+  assert.equal(scan.sourceStories.length, 2);
+  assert.ok(scan.sourceStories.every((story) => story.storyFingerprint));
+  assert.ok(scan.sourceStories.every((story) => story.clusterDiagnostics?.clusteringVersion === TREND_CLUSTERING_VERSION));
+  assert.ok(scan.sourceStories.every((story) => story.clusterDiagnostics?.normalizedObject === 'suno v6'));
+  assert.equal(scan.items.length, 1);
+  assert.equal(scan.items[0].sourceCount, 2);
+  assert.equal(scan.items[0].storyFingerprint.normalizedObject, 'suno v6');
+  assert.ok(scan.items[0].clusterDecisions[0].concreteAnchorMatches.includes('suno v6'));
 });
 
 test('known Frankenstein trend pairs remain separate after corroboration path', () => {
