@@ -39,6 +39,7 @@ test('blog image brief uses article signals and image style guide only', async (
   assert.match(brief.prompt, /Brand and company names .* editorial context only/);
   assert.match(brief.prompt, /blank, generic, unbranded tickets/);
   assert.match(brief.prompt, /no letters, words, numbers, barcodes, QR codes/);
+  assert.match(brief.prompt, /Leave intentional negative space for deterministic editorial typography/);
 });
 
 test('automatic image brief derives Ticketmaster and Meta Muse as commerce discovery', async () => {
@@ -264,6 +265,63 @@ test('logo composite uses exact canonical logo and can be approved as cover', as
   assert.equal(approved.approvedImagePath, state.brandedImagePath);
 });
 
+test('branded composite adds deterministic editorial cover typography from article metadata', async () => {
+  const { config, outputDir, siteRoot, runId } = await fixture();
+  await setBlogPackage(outputDir, runId, {
+    title: 'Ticketmaster Joins Meta Muse, Moving Live-Event Discovery Into the Agent Layer',
+    category: 'music business',
+    excerpt: 'AI-assisted discovery is moving closer to the commerce layer, turning recommendation interfaces into a path toward ticket and fan transactions.',
+    tags: ['ai agents', 'discovery', 'live events', 'ticketing', 'commerce'],
+  });
+  config.blogImages.providerImpl = mockProvider();
+  const actions = new ContentDashboardActions(config);
+
+  await actions.generateCoverImage({ actor: founder(), runId, imageBrief: 'Editorial ticketing cover.', logoEnabled: 'true' });
+  const state = await readImageGenerationState(config, runId);
+  const svg = await fs.readFile(path.join(siteRoot, state.brandedImagePath.slice(1)), 'utf8');
+  const blogPackage = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'blog', 'blog-post.json'), 'utf8'));
+
+  assert.equal(state.imageStatus, 'generated');
+  assert.equal(state.approvedImagePath, '');
+  assert.equal(blogPackage.coverImage, '/images/existing-cover.png');
+  assert.match(svg, new RegExp(`href="data:image/png;base64,${MOCK_PROVIDER_IMAGE_BYTES.toString('base64')}"`));
+  assert.doesNotMatch(svg, /href="\/images\/blog\//);
+  assert.match(svg, /certifyd-base64-logo-test/);
+  assert.match(svg, /CERTIFYD \/\/ Music Business/);
+  assert.match(svg, /Certifyd editorial cover for Ticketmaster Joins Meta Muse, Moving Live-Event Discovery Into the Agent Layer/);
+  assert.match(svg, /Ticketmaster Joins Meta Muse/);
+  assert.match(svg, /Moving Live-Event Discovery/);
+  assert.match(svg, /AI Agents • Discovery • Live Events • Ticketing/);
+  assert.doesNotMatch(svg, /Commerce<\/text>/);
+});
+
+test('branded composite wraps long titles and escapes article-derived SVG text', async () => {
+  const { config, outputDir, siteRoot, runId } = await fixture();
+  const title = `Ticketmaster & Meta <Muse> "Agent's Layer" Turns Discovery Discovery Discovery Into Commerce Infrastructure For Live Music`;
+  await setBlogPackage(outputDir, runId, {
+    title,
+    category: 'music & business',
+    excerpt: 'A short deck with <unsafe> & quoted context should remain safe.',
+    tags: ['ai & agents', 'live <events>', 'creator "commerce"', 'identity'],
+  });
+  config.blogImages.providerImpl = mockProvider();
+  const actions = new ContentDashboardActions(config);
+
+  await actions.generateCoverImage({ actor: founder(), runId, imageBrief: 'Escaped cover.', logoEnabled: 'true' });
+  const state = await readImageGenerationState(config, runId);
+  const svg = await fs.readFile(path.join(siteRoot, state.brandedImagePath.slice(1)), 'utf8');
+  const headline = svg.match(/<text[^>]+font-weight="900"[^>]*>([\s\S]*?)<\/text>/)?.[1] || '';
+  const headlineLines = headline.match(/<tspan /g) || [];
+
+  assert.ok(headlineLines.length > 1);
+  assert.ok(headlineLines.length <= 4);
+  assert.match(svg, /Ticketmaster &amp; Meta &lt;Muse&gt; &quot;Agent's Layer&quot;/);
+  assert.match(svg, /CERTIFYD \/\/ Music &amp; Business/);
+  assert.match(svg, /AI &amp; Agents • Live &lt;events&gt; • Creator &quot;commerce&quot; • Identity/);
+  assert.doesNotMatch(svg, /<Muse>/);
+  assert.doesNotMatch(svg, /live <events>/i);
+});
+
 test('provider failure records failed status and does not fail article state', async () => {
   const { config, outputDir, runId } = await fixture();
   config.blogImages.providerImpl = { generate: async () => { throw new Error('mock provider offline'); } };
@@ -410,6 +468,12 @@ async function createMinimalRun(runDir) {
   }));
   await fs.writeFile(path.join(runDir, 'claim-ledger.json'), JSON.stringify({ claims: [] }));
   await fs.writeFile(path.join(runDir, 'research-record.json'), JSON.stringify({ selectedEvidence: [] }));
+}
+
+async function setBlogPackage(outputDir, runId, updates) {
+  const file = path.join(outputDir, runId, 'blog', 'blog-post.json');
+  const current = JSON.parse(await fs.readFile(file, 'utf8'));
+  await fs.writeFile(file, `${JSON.stringify({ ...current, ...updates }, null, 2)}\n`, 'utf8');
 }
 
 function mockProvider(calls = []) {

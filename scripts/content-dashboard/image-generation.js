@@ -95,6 +95,7 @@ export async function buildImageBrief(config, run, overrides = {}) {
     'Hard constraints: no text in the image, no invented logos, no UI dashboards, no corporate stock-photo people, no generic AI glow imagery.',
     'Brand and company names in the brief or article signals are editorial context only; do not render them as readable text, labels, logos, marks, or venue names on physical objects. Use blank, generic, unbranded tickets, cards, receipts, and documents.',
     'If the image includes tickets, cards, receipts, slips, screens, forms, or documents, their surfaces must remain visually blank or use only non-readable lines and texture; no letters, words, numbers, barcodes, QR codes, or label-like typography.',
+    'Leave intentional negative space for deterministic editorial typography that will be added by Certifyd after generation.',
   ].join('\n').slice(0, MAX_PROMPT_CHARS);
   return {
     imageBrief: generatedBrief,
@@ -261,7 +262,7 @@ export async function generateBlogImage({ config, runs, actor, runId, imageBrief
     await fs.writeFile(absolutePath, buffer);
     const generatedImagePath = `/${relativePath}`;
     const brandedImagePath = normalizedLogoEnabled
-      ? await createLogoComposite(config, { generatedImagePath, slug, revision, logoPosition: normalizedPosition, size: brief.size })
+      ? await createLogoComposite(config, { generatedImagePath, slug, revision, logoPosition: normalizedPosition, size: brief.size, article: run.blogPackage })
       : '';
     const state = await writeImageGenerationState(config, runId, {
       ...previous,
@@ -354,7 +355,7 @@ export function createOpenAIImageProvider(config) {
   };
 }
 
-async function createLogoComposite(config, { generatedImagePath, slug, revision, logoPosition, size }) {
+async function createLogoComposite(config, { generatedImagePath, slug, revision, logoPosition, size, article = {} }) {
   const logoPath = config.blogImages?.canonicalLogoPath || path.join(config.siteRoot, 'images', 'certifyd_logo_transparent.svg');
   const logoSvg = await fs.readFile(logoPath, 'utf8');
   const generatedAbsolutePath = safeSiteImagePath(config, generatedImagePath);
@@ -368,8 +369,11 @@ async function createLogoComposite(config, { generatedImagePath, slug, revision,
   const x = logoPosition.endsWith('right') ? canvasWidth - logoWidth - margin : margin;
   const y = logoPosition.startsWith('bottom') ? canvasHeight - logoHeight - margin : margin;
   const innerLogo = logoSvg.replace(/<\?xml[\s\S]*?\?>/g, '').replace(/<!DOCTYPE[\s\S]*?>/gi, '').replace(/<\/?svg[^>]*>/gi, '').trim();
+  const overlay = buildEditorialCoverOverlay({ article, canvasWidth, canvasHeight, logoPosition });
   const composite = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvasWidth}" height="${canvasHeight}" viewBox="0 0 ${canvasWidth} ${canvasHeight}">
+  <desc>${escapeXml(`Certifyd editorial cover for ${coverTitle(article)}`)}</desc>
   <image href="${escapeXml(generatedDataUri)}" width="${canvasWidth}" height="${canvasHeight}" preserveAspectRatio="xMidYMid slice"/>
+${overlay}
   <g transform="translate(${x} ${y})">
     <svg width="${logoWidth}" height="${logoHeight}" viewBox="${escapeXml(logoViewBox)}">${innerLogo}</svg>
   </g>
@@ -380,6 +384,130 @@ async function createLogoComposite(config, { generatedImagePath, slug, revision,
   await fs.mkdir(path.dirname(absolutePath), { recursive: true });
   await fs.writeFile(absolutePath, composite, 'utf8');
   return `/${relativePath}`;
+}
+
+function buildEditorialCoverOverlay({ article, canvasWidth, canvasHeight, logoPosition }) {
+  const title = coverTitle(article);
+  const category = displayLabel(article?.category || article?.section || primaryTag(article) || 'Music Business');
+  const deck = shortDeck(article?.excerpt || article?.description || article?.seoDescription || '');
+  const tags = displayTags(article?.tags || []).slice(0, 4);
+  const left = Math.round(canvasWidth * 0.07);
+  const top = logoPosition.startsWith('top') && logoPosition.endsWith('left') ? Math.round(canvasHeight * 0.19) : Math.round(canvasHeight * 0.1);
+  const textWidth = Math.round(canvasWidth * 0.62);
+  const tagY = Math.round(canvasHeight * 0.865);
+  const titleLayout = wrapHeadline(title, textWidth, { maxLines: deck ? 4 : 5, startSize: 76, minSize: 44 });
+  const titleY = top + 86;
+  const titleHeight = titleLayout.lines.length * titleLayout.lineHeight;
+  const deckLines = deck ? wrapText(deck, textWidth, 28, 2) : [];
+  const deckY = titleY + titleHeight + 30;
+  const tagText = tags.join(' • ');
+  return [
+    '  <defs>',
+    '    <linearGradient id="certifyd-cover-scrim" x1="0" y1="0" x2="1" y2="0">',
+    '      <stop offset="0" stop-color="#020711" stop-opacity="0.9"/>',
+    '      <stop offset="0.55" stop-color="#020711" stop-opacity="0.58"/>',
+    '      <stop offset="1" stop-color="#020711" stop-opacity="0"/>',
+    '    </linearGradient>',
+    '    <linearGradient id="certifyd-cover-floor" x1="0" y1="1" x2="0" y2="0">',
+    '      <stop offset="0" stop-color="#020711" stop-opacity="0.74"/>',
+    '      <stop offset="0.42" stop-color="#020711" stop-opacity="0"/>',
+    '    </linearGradient>',
+    '  </defs>',
+    `  <rect width="${canvasWidth}" height="${canvasHeight}" fill="url(#certifyd-cover-scrim)"/>`,
+    `  <rect width="${canvasWidth}" height="${canvasHeight}" fill="url(#certifyd-cover-floor)"/>`,
+    `  <text x="${left}" y="${top}" fill="#ff9f1a" font-family="${svgFontStack()}" font-size="24" font-weight="800" letter-spacing="5">${escapeXml(`CERTIFYD // ${category}`)}</text>`,
+    svgTextLines(titleLayout.lines, { x: left, y: titleY, fill: '#f4f7fb', size: titleLayout.fontSize, weight: 900, lineHeight: titleLayout.lineHeight }),
+    deckLines.length ? svgTextLines(deckLines, { x: left, y: deckY, fill: '#d9e2ef', size: 30, weight: 600, lineHeight: 38, opacity: 0.94 }) : '',
+    tagText ? `  <text x="${left}" y="${tagY}" fill="#9fd9ff" font-family="${svgFontStack()}" font-size="22" font-weight="800" letter-spacing="3">${escapeXml(tagText)}</text>` : '',
+  ].filter(Boolean).join('\n');
+}
+
+function coverTitle(article = {}) {
+  return cleanString(article?.title || article?.seoTitle || 'Untitled article', 180);
+}
+
+function displayTags(tags) {
+  return (Array.isArray(tags) ? tags : []).map(displayLabel).filter(Boolean).filter((tag) => tag.toLowerCase() !== 'certifyd');
+}
+
+function primaryTag(article = {}) {
+  return displayTags(article?.tags || [])[0] || '';
+}
+
+function displayLabel(value) {
+  return String(value || '').replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim().split(' ').map((word) => {
+    const lower = word.toLowerCase();
+    if (['ai', 'ip', 'mlc', 'nft', 'nfts', 'api'].includes(lower)) return lower.toUpperCase();
+    return lower ? `${lower[0].toUpperCase()}${lower.slice(1)}` : '';
+  }).join(' ');
+}
+
+function shortDeck(value) {
+  const clean = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!clean || clean.length < 40) return '';
+  const first = clean.split(/(?<=[.!?])\s+/)[0] || clean;
+  return conciseSentence(first, 145);
+}
+
+function wrapHeadline(text, maxWidth, { maxLines, startSize, minSize }) {
+  for (let size = startSize; size >= minSize; size -= 4) {
+    const lines = wrapText(text, maxWidth, size, maxLines);
+    if (lines.join(' ') === String(text || '').replace(/\s+/g, ' ').trim()) {
+      return { lines, fontSize: size, lineHeight: Math.round(size * 1.04) };
+    }
+  }
+  return { lines: wrapText(text, maxWidth, minSize, maxLines), fontSize: minSize, lineHeight: Math.round(minSize * 1.08) };
+}
+
+function wrapText(text, maxWidth, fontSize, maxLines) {
+  const words = String(text || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+  if (!words.length) return [];
+  const lines = [];
+  let line = '';
+  const maxChars = Math.max(8, Math.floor(maxWidth / (fontSize * 0.55)));
+  for (let index = 0; index < words.length; index += 1) {
+    const word = words[index];
+    const next = line ? `${line} ${word}` : word;
+    if (next.length > maxChars && line) {
+      lines.push(line);
+      line = word;
+      if (lines.length === maxLines - 1) {
+        const remaining = words.slice(index);
+        line = fitLine(remaining.join(' '), maxChars);
+        break;
+      }
+    } else {
+      line = next;
+    }
+  }
+  if (line && lines.length < maxLines) lines.push(fitLine(line, maxChars));
+  if (lines.length > maxLines) return lines.slice(0, maxLines);
+  return lines;
+}
+
+function fitLine(text, maxChars) {
+  const clean = String(text || '').trim();
+  if (clean.length <= maxChars) return clean;
+  const shortened = clean.slice(0, Math.max(1, maxChars - 1)).replace(/\s+\S*$/, '').trim();
+  return `${shortened || clean.slice(0, Math.max(1, maxChars - 1)).trim()}…`;
+}
+
+function svgTextLines(lines, { x, y, fill, size, weight, lineHeight, opacity = 1 }) {
+  const attrs = [
+    `x="${x}"`,
+    `y="${y}"`,
+    `fill="${fill}"`,
+    `font-family="${svgFontStack()}"`,
+    `font-size="${size}"`,
+    `font-weight="${weight}"`,
+    opacity < 1 ? `opacity="${opacity}"` : '',
+  ].filter(Boolean).join(' ');
+  const tspans = lines.map((line, index) => `<tspan x="${x}" dy="${index === 0 ? 0 : lineHeight}">${escapeXml(line)}</tspan>`).join('');
+  return `  <text ${attrs}>${tspans}</text>`;
+}
+
+function svgFontStack() {
+  return 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
 }
 
 async function updateCoverImageFrontmatter(base, coverImage) {
