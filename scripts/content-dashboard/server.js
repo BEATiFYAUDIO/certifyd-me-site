@@ -159,6 +159,8 @@ async function handleAction(req, res, url, ctx) {
   else if (action.endsWith('/review/reject')) { needs('content.article.review'); result = await ctx.actions.reject({ actor: ctx.user, runId: form.get('runId'), note: form.get('note') }); }
   else if (action.endsWith('/publishing/prepare')) { needs('content.article.publish.prepare'); result = await ctx.actions.preparePublishing({ actor: ctx.user, runId: form.get('runId') }); }
   else if (action.endsWith('/publishing/validate')) { needs('content.article.publish.prepare'); result = await ctx.actions.validatePublishing({ actor: ctx.user, runId: form.get('runId') }); }
+  else if (action.endsWith('/publishing/image-generate')) { needs('content.article.edit'); result = await ctx.actions.generateCoverImage({ actor: ctx.user, runId: form.get('runId'), imageBrief: form.get('imageBrief'), logoEnabled: form.get('logoEnabled'), logoPosition: form.get('logoPosition') }); }
+  else if (action.endsWith('/publishing/image-approve')) { needs('content.article.edit'); result = await ctx.actions.approveGeneratedCoverImage({ actor: ctx.user, runId: form.get('runId') }); }
   else if (action.endsWith('/publishing/cover')) { needs('content.article.edit'); result = await ctx.actions.updateCoverImage({ actor: ctx.user, runId: form.get('runId'), coverImage: form.get('coverImage'), mode: form.get('mode') }); }
   else if (action.endsWith('/publishing/cover-upload')) { needs('content.article.edit'); result = await ctx.actions.uploadCoverImage({ actor: ctx.user, runId: form.get('runId'), file: form.getFile('coverUpload') }); }
   else if (action.endsWith('/publishing/pr')) { needs('content.article.publish.prepare'); result = await ctx.actions.publishToCertifyd({ actor: ctx.user, runId: form.get('runId'), version: form.get('version') }); }
@@ -178,7 +180,7 @@ async function handleAction(req, res, url, ctx) {
   else if (action.endsWith('/article/archive')) { needs('content.article.archive'); result = await ctx.actions.archiveArticle({ actor: ctx.user, runId: form.get('runId') }); }
   else if (action.endsWith('/article/delete-draft')) { needs('content.article.delete'); result = await ctx.actions.deleteDraft({ actor: ctx.user, runId: form.get('runId'), confirmDelete: form.get('confirmDelete') }); }
   else return sendStatus(res, 404, 'Unknown action');
-  if (action.endsWith('/publishing/cover') || action.endsWith('/publishing/cover-upload')) {
+  if (action.endsWith('/publishing/cover') || action.endsWith('/publishing/cover-upload') || action.endsWith('/publishing/image-generate') || action.endsWith('/publishing/image-approve')) {
     return redirect(res, `/app/content/articles/${validateRunId(String(form.get('runId') || ''))}#cover-image`);
   }
   if (action.includes('/distribution/')) {
@@ -1212,6 +1214,22 @@ function coverImageControls(run, csrf, permissions, config = {}) {
   const canEdit = permissions.includes('content.article.edit');
   const runId = run.summary?.runId || run.runId || '';
   const coverImage = run.blogPackage?.coverImage || run.manifest?.coverImage || '';
+  const imageState = run.imageGeneration || {};
+  const generatedImage = imageState.brandedImagePath || imageState.generatedImagePath || '';
+  const imageStatus = imageState.imageStatus || 'not_generated';
+  const imageBrief = imageState.imageBrief || '';
+  const imageError = imageState.error || '';
+  const imageStatusMeta = [
+    `Status: ${imageStatus}`,
+    imageState.provider ? `Provider: ${imageState.provider}` : '',
+    imageState.model ? `Model: ${imageState.model}` : '',
+    imageState.imageRevision ? `Revision: ${imageState.imageRevision}` : '',
+    imageState.generatedAt ? `Generated: ${formatDashboardDate(imageState.generatedAt)}` : '',
+    imageState.approvedAt ? `Approved: ${formatDashboardDate(imageState.approvedAt)}` : '',
+  ].filter(Boolean).map((line) => `<p class="muted">${escapeHtml(line)}</p>`).join('');
+  const generatedPreview = generatedImage
+    ? `<div class="article-hero-image"><img src="${escapeHtml(generatedImage)}" alt="" loading="lazy" decoding="async"></div><p class="muted">${escapeHtml(generatedImage)}</p>`
+    : '<p class="muted">No generated image is waiting for approval.</p>';
   const provider = run.blogPackage?.coverImageProvider || '';
   const credit = run.blogPackage?.coverImageCredit || '';
   const creditUrl = run.blogPackage?.coverImageCreditUrl || '';
@@ -1228,7 +1246,12 @@ function coverImageControls(run, csrf, permissions, config = {}) {
     ? `<div class="article-hero-image"><img src="${escapeHtml(coverImage)}" alt="" loading="lazy" decoding="async"></div><p class="muted">${escapeHtml(coverImage)}</p>${details}`
     : '<p class="muted">No custom cover selected. Publishing will choose one automatically.</p>';
   if (!canEdit) return preview;
-  return `${preview}<div class="cover-actions"><form class="upload-row" method="post" action="/app/content/actions/publishing/cover-upload" enctype="multipart/form-data"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><label>Upload image<input name="coverUpload" type="file" accept="image/jpeg,image/png,image/webp" required></label><button class="primary" type="submit">Upload Cover</button></form><form method="post" action="/app/content/actions/publishing/cover"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="mode" value="auto"><button class="ghost" type="submit">${escapeHtml(autoLabel)}</button></form><details class="advanced-cover"><summary>Advanced: use existing image path</summary><form class="search-row" method="post" action="/app/content/actions/publishing/cover"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="mode" value="manual"><label>Existing /images path<input name="coverImage" value="${escapeHtml(coverImage)}" placeholder="/images/blog/example.jpg"></label><button class="ghost" type="submit">Set Path</button></form></details></div>`;
+  const logoPosition = imageState.logoPosition || config.blogImages?.defaultLogoPosition || 'bottom-right';
+  const logoOptions = ['top-left', 'top-right', 'bottom-left', 'bottom-right'].map((position) => `<option value="${position}" ${position === logoPosition ? 'selected' : ''}>${humanizeLabel(position)}</option>`).join('');
+  const imageEnabled = config.blogImages?.enabled;
+  const generationButton = imageState.generatedImagePath ? 'Regenerate cover' : 'Generate cover';
+  const imageForm = `<section class="panel compact-panel generated-image-panel"><div class="section-head"><div><h3>Image</h3><p class="muted">Generate a pending blog cover. Approval is required before it becomes the article cover image.</p></div>${statusPill(imageStatus)}</div>${generatedPreview}${imageStatusMeta}${imageError ? `<p class="notice warn">${escapeHtml(imageError)}</p>` : ''}<form method="post" action="/app/content/actions/publishing/image-generate"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><label>Image brief<textarea name="imageBrief" rows="8" maxlength="5000" placeholder="Describe the desired editorial image direction.">${escapeHtml(imageBrief)}</textarea></label><label class="inline-check"><input type="checkbox" name="logoEnabled" value="true" ${imageState.logoEnabled ? 'checked' : ''}> Add Certifyd logo</label><label>Logo position<select name="logoPosition">${logoOptions}</select></label><div class="mini-actions"><button class="primary" type="submit" ${imageEnabled ? '' : 'disabled'}>${escapeHtml(generationButton)}</button>${generatedImage ? `<button class="ghost" type="submit" formaction="/app/content/actions/publishing/image-approve">Approve image</button>` : ''}</div>${imageEnabled ? '' : '<p class="muted">Set BLOG_IMAGE_ENABLED=true and OPENAI_API_KEY to enable live image generation.</p>'}</form></section>`;
+  return `${imageForm}${preview}<div class="cover-actions"><form class="upload-row" method="post" action="/app/content/actions/publishing/cover-upload" enctype="multipart/form-data"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><label>Upload image<input name="coverUpload" type="file" accept="image/jpeg,image/png,image/webp" required></label><button class="primary" type="submit">Upload Cover</button></form><form method="post" action="/app/content/actions/publishing/cover"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="mode" value="auto"><button class="ghost" type="submit">${escapeHtml(autoLabel)}</button></form><details class="advanced-cover"><summary>Advanced: use existing image path</summary><form class="search-row" method="post" action="/app/content/actions/publishing/cover"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="mode" value="manual"><label>Existing /images path<input name="coverImage" value="${escapeHtml(coverImage)}" placeholder="/images/blog/example.jpg"></label><button class="ghost" type="submit">Set Path</button></form></details></div>`;
 }
 
 function articleEditor(run, csrf, permissions) {

@@ -9,6 +9,7 @@ import { createPublisher } from './publisher.js';
 import { buildGroundedContext, createDeterministicFallbackArticle, createGenerationProvider, normalizeProviderName, persistGeneratedArticleRun } from './generation-provider.js';
 import { cleanArticlePromptText, isSafeImagePath, normalizeArticleTitle, selectArticleCoverImage } from './article-utils.js';
 import { appendGlobalPexelsHistory, selectAutomatedCoverImage } from './cover-image-provider.js';
+import { approveGeneratedBlogImage, generateBlogImage } from './image-generation.js';
 import { isApprovedBrainRecord } from './brain-utils.js';
 import { submitIndexNow } from './indexnow.js';
 import {
@@ -581,6 +582,42 @@ export class ContentDashboardActions {
     await this.writeRunJson(base, 'blog/blog-post.json', blogPackage);
     await this.audit.append({ action: 'cover_image_upload', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: 'SUCCESS', note: selectedCover });
     return { ok: true, output: `Cover image uploaded to ${selectedCover}.` };
+  }
+
+  async generateCoverImage({ actor, runId, imageBrief = '', logoEnabled = false, logoPosition = '' }) {
+    const result = await generateBlogImage({
+      config: this.config,
+      runs: this.runs,
+      actor,
+      runId,
+      imageBrief,
+      logoEnabled,
+      logoPosition,
+    });
+    await this.audit.append({
+      action: 'blog_image_generate',
+      actorUserId: actor.id,
+      actorDisplayName: actor.email,
+      actorRole: actor.role,
+      runId,
+      result: result.ok ? 'SUCCESS' : 'FAILED',
+      note: result.state?.error || result.state?.generatedImagePath || '',
+    });
+    return result;
+  }
+
+  async approveGeneratedCoverImage({ actor, runId }) {
+    const result = await approveGeneratedBlogImage({ config: this.config, runs: this.runs, actor, runId });
+    await this.audit.append({
+      action: 'blog_image_approve',
+      actorUserId: actor.id,
+      actorDisplayName: actor.email,
+      actorRole: actor.role,
+      runId,
+      result: 'SUCCESS',
+      note: result.state?.approvedImagePath || '',
+    });
+    return result;
   }
 
   async publishToCertifyd({ actor, runId, version, republish = false }) {

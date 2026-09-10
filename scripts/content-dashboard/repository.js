@@ -78,6 +78,7 @@ export class ContentRunRepository {
       reviews: await this.readReviews(base),
       versions: await this.readVersions(base),
       blogPackage: await this.readJson(base, 'blog/blog-post.json', {}),
+      imageGeneration: await this.readJson(base, 'blog/image-generation.json', {}),
       modelRequests: await this.readModelRequests(base),
     };
   }

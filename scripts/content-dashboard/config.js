@@ -111,6 +111,15 @@ export function getDashboardConfig(env = process.env) {
       pexelsLocale: env.CONTENT_DASHBOARD_PEXELS_LOCALE || 'en-US',
       timeoutMs: positiveInt(env.CONTENT_DASHBOARD_COVER_IMAGE_TIMEOUT_MS, 12000, 1000),
     },
+    blogImages: {
+      enabled: env.BLOG_IMAGE_ENABLED === 'true',
+      provider: normalizeBlogImageProvider(env.BLOG_IMAGE_PROVIDER || 'openai'),
+      model: env.BLOG_IMAGE_MODEL || env.OPENAI_IMAGE_MODEL || 'gpt-image-1',
+      size: normalizeBlogImageSize(env.BLOG_IMAGE_SIZE || '1536x1024'),
+      styleGuidePath: path.resolve(env.BLOG_IMAGE_STYLE_GUIDE_PATH || path.join(env.CONTENT_AGENT_ROOT || defaultAgentRoot, 'image-generation', 'style-guide.md')),
+      canonicalLogoPath: path.resolve(env.BLOG_IMAGE_CANONICAL_LOGO_PATH || path.join(siteRoot, 'images', 'certifyd_logo_transparent.svg')),
+      defaultLogoPosition: normalizeLogoPosition(env.BLOG_IMAGE_LOGO_POSITION || 'bottom-right'),
+    },
     agentRoot: path.resolve(env.CONTENT_AGENT_ROOT || defaultAgentRoot),
     outputDir: path.resolve(env.CONTENT_AGENT_OUTPUT_DIR || path.join(env.CONTENT_AGENT_ROOT || defaultAgentRoot, 'engine/outputs')),
     modelProvider,
@@ -196,6 +205,19 @@ function normalizeAuthMode(value) {
 
 function normalizeCoverImageProvider(value) {
   return ['local', 'pexels'].includes(value) ? value : 'local';
+}
+
+function normalizeBlogImageProvider(value) {
+  return ['openai'].includes(value) ? value : 'openai';
+}
+
+function normalizeBlogImageSize(value) {
+  return /^\d+x\d+$/.test(String(value || '')) ? String(value) : '1536x1024';
+}
+
+function normalizeLogoPosition(value) {
+  const clean = String(value || '').trim().toLowerCase();
+  return ['top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(clean) ? clean : 'bottom-right';
 }
 
 function normalizeTeamDomain(value) {
