@@ -424,6 +424,98 @@ test('source stories are classified, scored and promoted into opportunities with
   assert.ok(Number.isFinite(retainedOnly.certifydRelevanceScore));
 });
 
+test('Certifyd relevance scoring rejects incidental vocabulary false positives', async () => {
+  const agentRoot = await tempAgentRoot();
+  const feed = rssFeed([
+    {
+      title: 'New standards for masculinity are stacked against men’s health',
+      description: 'A newsletter essay covers men’s health, looksmaxxing culture and how an algorithm can reinforce body-image pressure.',
+      link: 'https://example.test/masculinity-health',
+    },
+    {
+      title: 'Healthcare AI’s next test is integration',
+      description: 'Hospitals are testing AI models in clinical workflows, with records and evidence still difficult to integrate across care teams.',
+      link: 'https://example.test/healthcare-ai-integration',
+    },
+    {
+      title: 'Google and Mitti Labs sign rice-methane carbon-credit verification deal',
+      description: 'The companies will verify methane reductions and carbon-credit records for rice farmers using technology and measurement systems.',
+      link: 'https://example.test/google-mitti-carbon',
+    },
+  ]);
+  const scan = await scanTrendOpportunities(config(agentRoot), { fetchImpl: async () => response(feed) });
+
+  assert.equal(scan.items.length, 0);
+  for (const url of ['https://example.test/masculinity-health', 'https://example.test/healthcare-ai-integration', 'https://example.test/google-mitti-carbon']) {
+    const story = scan.sourceStories.find((item) => item.sourceUrl === url);
+    assert.ok(story, `${url} should remain inspectable as a retained source story`);
+    assert.equal(story.retentionStatus, 'Retained');
+    assert.deepEqual(story.opportunityIds, []);
+    assert.deepEqual(story.certifydRelevanceReasons, []);
+    assert.ok(story.certifydRelevanceScore < 8, `${url} score should stay below promotion threshold`);
+  }
+
+  const masculinity = scan.sourceStories.find((item) => item.sourceUrl === 'https://example.test/masculinity-health');
+  assert.doesNotMatch((masculinity.certifydRelevanceReasons || []).join(' '), /platform dependency|publishing or media business/i);
+  const healthcare = scan.sourceStories.find((item) => item.sourceUrl === 'https://example.test/healthcare-ai-integration');
+  assert.doesNotMatch((healthcare.certifydRelevanceReasons || []).join(' '), /AI and content-authenticity pressure|sports creator/i);
+  const carbon = scan.sourceStories.find((item) => item.sourceUrl === 'https://example.test/google-mitti-carbon');
+  assert.doesNotMatch((carbon.certifydRelevanceReasons || []).join(' '), /attribution, provenance or verification/i);
+});
+
+test('Certifyd relevance scoring preserves material true positives', async () => {
+  const agentRoot = await tempAgentRoot();
+  const feed = rssFeed([
+    {
+      title: 'Ticketmaster is first music partner for Meta’s Muse AI agent',
+      description: 'The partnership makes Ticketmaster inventory part of AI-mediated concert discovery, giving fans a new route from recommendations to ticket commerce.',
+      link: 'https://example.test/ticketmaster-meta-muse',
+    },
+    {
+      title: 'Suno rolls out Warner- and BMG-backed v6 AI music models with Believe distribution path',
+      description: 'Suno v6 is tied to label-backed AI music generation, creator participation, licensing permission, release distribution and rights relationships.',
+      link: 'https://example.test/suno-v6-believe',
+    },
+    {
+      title: 'Music publishers expand cue-sheet royalty licensing workflow',
+      description: 'The new workflow links cue sheets, work identification, contributor attribution, royalties and licensing for music publishers and rights holders.',
+      link: 'https://example.test/cue-sheet-royalties',
+    },
+    {
+      title: 'Digital identity group launches provenance standard for creator media',
+      description: 'The standard focuses on creator identity, authenticated authorship, content provenance, attribution and verification for published media.',
+      link: 'https://example.test/creator-media-provenance',
+    },
+    {
+      title: 'Creator platform launches direct fan commerce memberships',
+      description: 'Artists can sell memberships and digital products directly to fans, preserving customer relationships outside a social platform feed.',
+      link: 'https://example.test/direct-fan-memberships',
+    },
+  ]);
+  const scan = await scanTrendOpportunities(config(agentRoot), { fetchImpl: async () => response(feed) });
+
+  const byUrl = new Map(scan.sourceStories.map((item) => [item.sourceUrl, item]));
+  for (const url of [
+    'https://example.test/ticketmaster-meta-muse',
+    'https://example.test/suno-v6-believe',
+    'https://example.test/cue-sheet-royalties',
+    'https://example.test/creator-media-provenance',
+    'https://example.test/direct-fan-memberships',
+  ]) {
+    const story = byUrl.get(url);
+    assert.ok(story, `${url} should be retained`);
+    assert.ok(story.certifydRelevanceReasons.length > 0);
+    assert.ok(story.certifydRelevanceScore >= 8, `${url} should qualify for promotion`);
+  }
+
+  assert.match(byUrl.get('https://example.test/ticketmaster-meta-muse').certifydRelevanceReasons.join(' '), /direct commerce|platform dependency|creator, fan or audience/i);
+  assert.match(byUrl.get('https://example.test/suno-v6-believe').certifydRelevanceReasons.join(' '), /AI and content-authenticity pressure|rights, permissions or licensing/i);
+  assert.match(byUrl.get('https://example.test/cue-sheet-royalties').certifydRelevanceReasons.join(' '), /rights, permissions or licensing|attribution, provenance or verification/i);
+  assert.match(byUrl.get('https://example.test/creator-media-provenance').certifydRelevanceReasons.join(' '), /digital identity|attribution, provenance or verification/i);
+  assert.match(byUrl.get('https://example.test/direct-fan-memberships').certifydRelevanceReasons.join(' '), /direct commerce|creator, fan or audience/i);
+  assert.ok(scan.items.length >= 1);
+});
+
 test('seeded scans do not overwrite existing source-backed trend results', async () => {
   const agentRoot = await tempAgentRoot();
   const trendStateDir = path.join(agentRoot, 'dashboard', 'trends');

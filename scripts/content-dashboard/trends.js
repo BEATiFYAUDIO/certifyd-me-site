@@ -1291,7 +1291,7 @@ function enrichSourceStoryForPromotion(item) {
 }
 
 function scoreCertifydRelevanceStory(item = {}) {
-  const text = `${item.title || item.sourceTitle || ''} ${item.summary || ''} ${(item.keywords || []).join(' ')}`.toLowerCase();
+  const text = `${item.title || item.sourceTitle || ''} ${item.summary || ''}`.toLowerCase();
   const reasons = [];
   let score = 0;
   for (const category of item.categories || []) {
@@ -1301,10 +1301,9 @@ function scoreCertifydRelevanceStory(item = {}) {
   if (Number.isFinite(ageDays) && ageDays <= 2) score += 2;
   else if (Number.isFinite(ageDays) && ageDays <= 7) score += 1;
   score += Math.min(3, Math.floor(Number(item.sourcePriority || 0) / 30));
-  for (const rule of CERTIFYD_RELEVANCE_RULES) {
-    if (!rule.pattern.test(text)) continue;
-    score += rule.weight;
-    reasons.push(rule.reason);
+  for (const dimension of certifydRelevanceDimensions(text)) {
+    score += dimension.weight;
+    reasons.push(dimension.reason);
   }
   return { score, reasons: [...new Set(reasons)].slice(0, 5), matched: reasons.length > 0 };
 }
@@ -1644,14 +1643,14 @@ function withRankingDiagnostics(opportunity, options = {}) {
 
 function hasCertifydRelevanceEvidence(cluster) {
   const lead = cluster.items?.[0];
-  const leadText = `${lead?.title || cluster.title || ''} ${lead?.summary || ''} ${(lead?.keywords || []).join(' ')}`.toLowerCase();
-  const sourceText = `${cluster.title || ''} ${cluster.summary || ''} ${(cluster.keywords || []).join(' ')}`.toLowerCase();
+  const leadText = `${lead?.title || cluster.title || ''} ${lead?.summary || ''}`.toLowerCase();
+  const sourceText = `${cluster.title || ''} ${cluster.summary || ''}`.toLowerCase();
   if (!leadText.trim() || !sourceText.trim()) return false;
   return (cluster.items || []).some((item) => item.certifydRelevanceMatched) || (matchesCertifydRelevance(leadText) && matchesCertifydRelevance(sourceText));
 }
 
 function matchesCertifydRelevance(text) {
-  return CERTIFYD_RELEVANCE_TERMS.some((pattern) => pattern.test(text));
+  return certifydRelevanceDimensions(text).length > 0;
 }
 
 function isUnfaithfulQwenEvaluation(value) {
@@ -1668,62 +1667,43 @@ export function isGenericCertifydRelevance(value) {
   return genericHits > 0 && !sourceSpecificHits;
 }
 
-const CERTIFYD_RELEVANCE_TERMS = [
-  /\bcreator(s)?\b/,
-  /\bartist(s)?\b/,
-  /\bmusic\b/,
-  /\brelease(s)?\b/,
-  /\broyalt(y|ies)\b/,
-  /\bright(s)?\b/,
-  /\battribution\b/,
-  /\bauthorship\b/,
-  /\bprovenance\b/,
-  /\bauthenticity\b/,
-  /\bcopyright\b/,
-  /\bpublishing\b/,
-  /\bcontent authenticity\b/,
-  /\bcreator content\b/,
-  /\bdigital content\b/,
-  /\bmedia ownership\b/,
-  /\bpublic media\b/,
-  /\bjournalis(m|t|ts)\b/,
-  /\bnewsletter(s)?\b/,
-  /\bplatform distribution\b/,
-  /\bplatform dependency\b/,
-  /\bcreator discovery\b/,
-  /\bfan discovery\b/,
-  /\bcommerce\b/,
-  /\bpayment(s)?\b/,
-  /\bsubscription(s)?\b/,
-  /\bmembership(s)?\b/,
-  /\bdirect-to-fan\b/,
-  /\bfan attendance\b/,
-  /\bfan relationship(s)?\b/,
-  /\bfan support\b/,
-  /\baudience relationship(s)?\b/,
-  /\baudience ownership\b/,
-  /\bcustomer relationship(s)?\b/,
-  /\bidentity\b/,
-  /\bprofile(s)?\b/,
-  /\bownership\b/,
-  /\bfraud\b/,
-  /\bbot(s)?\b/,
-  /\bstreaming\b/,
-  /\blicens(e|ing)\b/,
-];
+function certifydRelevanceDimensions(text) {
+  const haystack = String(text || '').toLowerCase();
+  const dimensions = [];
+  const add = (condition, weight, reason) => {
+    if (condition) dimensions.push({ weight, reason });
+  };
 
-const CERTIFYD_RELEVANCE_RULES = [
-  { pattern: /\bcreator(s)?\b|\bartist(s)?\b|\bfan(s)?\b|\baudience(s)?\b/, weight: 4, reason: 'creator, fan or audience impact' },
-  { pattern: /\bright(s)?\b|\blicens(e|ing)\b|\broyalt(y|ies)\b|\bcopyright\b|\bpermission(s)?\b|\bclearance\b/, weight: 4, reason: 'rights, permissions or licensing pressure' },
-  { pattern: /\battribution\b|\bauthorship\b|\bprovenance\b|\bauthenticity\b|\bcredit(s)?\b|\bverified\b/, weight: 4, reason: 'attribution, provenance or verification relevance' },
-  { pattern: /\bcommerce\b|\bpayment(s)?\b|\bsubscription(s)?\b|\bmembership(s)?\b|\bdirect-to-fan\b|\bcheckout\b|\breceipt(s)?\b|\bcustomer(s)?\b/, weight: 4, reason: 'direct commerce or payment model relevance' },
-  { pattern: /\bAI\b|\bartificial intelligence\b|\bgenerative\b|\bsynthetic media\b|\btraining data\b|\bdeepfake(s)?\b|\bmodel(s)?\b/i, weight: 3, reason: 'AI and content-authenticity pressure' },
-  { pattern: /\bplatform dependency\b|\bplatform distribution\b|\bdiscovery\b|\bstreaming\b|\bdistribution\b|\balgorithm(s)?\b/, weight: 3, reason: 'platform dependency, discovery or distribution relevance' },
-  { pattern: /\bidentity\b|\bprofile(s)?\b|\bverification\b|\blogin\b|\bauthentication\b|\bcredential(s)?\b/, weight: 4, reason: 'digital identity or profile relevance' },
-  { pattern: /\bfraud\b|\bbot(s)?\b|\bfake\b|\bscam(s)?\b|\bimpersonation\b/, weight: 4, reason: 'anti-fraud or trust relevance' },
-  { pattern: /\bpublish(ing|er|ers)?\b|\bmedia\b|\bjournalis(m|t|ts)\b|\bnewsletter(s)?\b|\bpress\b/, weight: 2, reason: 'publishing or media business relevance' },
-  { pattern: /\bathlete(s)?\b|\bsport(s)?\b|\bleague(s)?\b|\bteam(s)?\b|\bticket(s|ing)?\b/, weight: 3, reason: 'sports creator or fan-business relevance' },
-];
+  const creativeDomain = hasPattern(haystack, /\b(creator(s)?|artist(s)?|musician(s)?|songwriter(s)?|publisher(s)?|label(s)?|rights[-\s]?holder(s)?|rightsholder(s)?|fan(s)?|audience(s)?|music|song(s)?|track(s)?|recording(s)?|catalog|release(s)?|concert(s)?|venue(s)?|ticket(s|ing)?|live[-\s]?event(s)?|spotify|suno|believe|warner music|bmg|universal music|mechanical licensing collective|mlc|dsp(s)?)\b/);
+  const creativeContentDomain = creativeDomain || hasPattern(haystack, /\b(creator content|digital content|content authenticity|media rights|authorship|attribution|provenance|synthetic media|generated media|published media)\b/);
+  const rightsDomain = hasPattern(haystack, /\b(rights?|licens(e|ing|ed)|royalt(y|ies)|copyright|permission(s)?|clearance|repertoire|publishing catalog|mechanical licensing collective|mlc|rightsholder(s)?|rights[-\s]?holder(s)?)\b/)
+    || (hasPattern(haystack, /\b(opt[-\s]?in|consent)\b/) && creativeContentDomain && hasPattern(haystack, /\b(ai|artist(s)?|creator(s)?|music|model(s)?|rights?|licens(e|ing)|permission(s)?|release(s)?|catalog)\b/));
+  const commerceDomain = hasPattern(haystack, /\b(commerce|payment(s)?|payout(s)?|subscription(s)?|membership(s)?|direct[-\s]?to[-\s]?fan|checkout|receipt(s)?|customer(s)?|transaction(s)?|revenue|sale(s)?|storefront(s)?|merch|ticket(s|ing)?)\b/);
+  const platformDomain = hasPattern(haystack, /\b(platform dependency|platform distribution|discovery|recommendation(s)?|algorithm(s)?|streaming|distribution|feed(s)?|access|intermediat(e|ed|ion)|marketplace|agent(s)?|assistant(s)?)\b/);
+  const aiDomain = hasPattern(haystack, /\b(ai|artificial intelligence|generative|synthetic media|training data|deepfake(s)?|model(s)?|agent(s)?|assistant(s)?)\b/);
+  const identityDomain = hasPattern(haystack, /\b(identity|profile(s)?|verification|authenticated?|credential(s)?|impersonation|impersonat(e|ed|ing)|likeness|voice|authority|authenticity)\b/);
+  const provenanceDomain = hasPattern(haystack, /\b(attribution|authorship|provenance|origin|source record(s)?|credit(s)?|verified|chain of custody|content authenticity)\b/);
+  const mediaBusinessMechanism = hasPattern(haystack, /\b(publisher(s)?|subscriber(s)?|audience relationship(s)?|audience ownership|platform distribution|platform dependency|media business|newsletter business|revenue|monetization|licens(e|ing)|rights?|content authenticity|distribution deal|publishing deal)\b/);
+  const creatorBusinessMechanism = hasPattern(haystack, /\b(commerce|transaction(s)?|payment(s)?|payout(s)?|royalt(y|ies)|revenue|subscription(s)?|membership(s)?|direct[-\s]?to[-\s]?fan|fan commerce|fan relationship(s)?|audience relationship(s)?|ticket(s|ing)?|discovery|distribution|access|monetiz(e|ation)|rights?|licens(e|ing)|release(s)?|catalog)\b/);
+  const authenticityMechanism = hasPattern(haystack, /\b(generated media|synthetic media|training data|authorship|creator identity|artist identity|content authenticity|provenance|rights?|licens(e|ing)|attribution|impersonation|deepfake(s)?|publishing|distribution|creator commerce|fan commerce|output(s)?|input(s)?|permission(s)?|opt[-\s]?in|consent)\b/);
+
+  add(creativeDomain && creatorBusinessMechanism, 4, 'creator, fan or audience impact');
+  add(rightsDomain && creativeContentDomain, 4, 'rights, permissions or licensing pressure');
+  add((provenanceDomain || hasPattern(haystack, /\b(authenticity|verified)\b/)) && (creativeContentDomain || hasPattern(haystack, /\b(authorship|attribution|rights?|artist identity|creator identity)\b/)), 4, 'attribution, provenance or verification relevance');
+  add(commerceDomain && (creativeDomain || hasPattern(haystack, /\b(creator(s)?|artist(s)?|fan(s)?|audience(s)?|music|media|content|publishing)\b/)), 4, 'direct commerce or payment model relevance');
+  add(aiDomain && authenticityMechanism && (creativeContentDomain || rightsDomain || (commerceDomain && creativeDomain) || identityDomain), 3, 'AI and content-authenticity pressure');
+  add(platformDomain && (creativeDomain || hasPattern(haystack, /\b(content|media|publisher(s)?|journalis(m|t|ts)|newsletter(s)?|fan(s)?|audience(s)?)\b/)) && creatorBusinessMechanism, 3, 'platform dependency, discovery or distribution relevance');
+  add(identityDomain && (creativeDomain || hasPattern(haystack, /\b(digital identity|creator identity|artist identity|content authenticity|authorship|attribution|provenance|official profile(s)?|public profile(s)?)\b/)), 4, 'digital identity or profile relevance');
+  add(hasPattern(haystack, /\b(fraud|bot(s)?|fake|scam(s)?|impersonation|impersonat(e|ed|ing))\b/) && (creativeContentDomain || commerceDomain || identityDomain), 4, 'anti-fraud or trust relevance');
+  add(hasPattern(haystack, /\b(publish(ing|er|ers)?|media|journalis(m|t|ts)|newsletter(s)?|press)\b/) && mediaBusinessMechanism, 2, 'publishing or media business relevance');
+  add(hasPattern(haystack, /\b(athlete(s)?|sport(s)?|league(s)?|team(s)?)\b/) && hasPattern(haystack, /\b(fan(s)?|commerce|membership(s)?|media rights|streaming rights|ticket(s|ing)?|creator(s)?|audience(s)?|direct access|distribution|monetiz(e|ation))\b/), 3, 'sports creator or fan-business relevance');
+
+  return dimensions;
+}
+
+function hasPattern(text, pattern) {
+  return pattern.test(String(text || ''));
+}
 
 const GENERIC_CERTIFYD_RELEVANCE_PATTERNS = [
   /\bcertifyd as infrastructure for identity, publishing, discovery and commerce\b/,
