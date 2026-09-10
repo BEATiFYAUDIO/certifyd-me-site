@@ -27,8 +27,6 @@ import {
 const STATIC_TYPES = new Map([['.html','text/html; charset=utf-8'],['.css','text/css; charset=utf-8'],['.js','text/javascript; charset=utf-8'],['.svg','image/svg+xml'],['.png','image/png'],['.jpg','image/jpeg'],['.jpeg','image/jpeg'],['.webp','image/webp'],['.xml','application/xml; charset=utf-8'],['.txt','text/plain; charset=utf-8'],['.mp4','video/mp4']]);
 const generationJobs = new Map();
 const GENERATION_JOB_TTL_MS = 60 * 60 * 1000;
-const ARTICLE_GENERATION_FROZEN = true;
-const ARTICLE_GENERATION_FROZEN_MESSAGE = 'Article generation is frozen while clustering diagnostics are in progress.';
 
 export function createContentDashboardServer(options = {}) {
   const config = options.config || getDashboardConfig(options.env || process.env);
@@ -146,7 +144,6 @@ async function handleAction(req, res, url, ctx) {
   let result;
   if (action.endsWith('/generate')) {
     needs('content.article.create');
-    if (ARTICLE_GENERATION_FROZEN) return sendStatus(res, 503, ARTICLE_GENERATION_FROZEN_MESSAGE);
     validateIntake(form);
     const job = startGenerationJob(ctx, snapshotForm(form));
     return redirect(res, `/app/content/generation/${encodeURIComponent(job.id)}`);
@@ -275,9 +272,6 @@ function compactRunRow(run) {
 
 function qwenPromptForm({ csrf, compact = false, advanced = false } = {}) {
   const promptId = compact ? 'blog-ai-topic-compact' : 'blog-ai-topic';
-  if (ARTICLE_GENERATION_FROZEN) {
-    return `<section class="notice danger"><strong>Article generation frozen.</strong><p>${escapeHtml(ARTICLE_GENERATION_FROZEN_MESSAGE)}</p></section>`;
-  }
   const body = `<form class="prompt-form ${compact ? 'prompt-form-compact' : ''}" method="post" action="/app/content/actions/generate" data-generating-form data-primary-generation-form>
     <input type="hidden" name="_csrf" value="${escapeHtml(csrf)}">
     <input type="hidden" name="provider" value="openai">
@@ -365,9 +359,6 @@ function brainCoveragePill(value) {
 }
 
 function quickGenerateForm({ csrf, label, topic, className = 'example-chip', extraFields = {} }) {
-  if (ARTICLE_GENERATION_FROZEN) {
-    return `<button class="${escapeHtml(className)}" type="button" disabled title="${escapeHtml(ARTICLE_GENERATION_FROZEN_MESSAGE)}">Generation frozen</button>`;
-  }
   const hidden = Object.entries(extraFields || {}).map(([name, value]) => `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`).join('');
   return `<form method="post" action="/app/content/actions/generate" data-generating-form>
     <input type="hidden" name="_csrf" value="${escapeHtml(csrf)}">

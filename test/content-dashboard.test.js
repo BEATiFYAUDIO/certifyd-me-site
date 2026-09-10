@@ -93,17 +93,18 @@ test('4b article workspace owns AI generation and trending opportunities', async
   assert.match(html, /Blog Engine/);
   assert.match(html, /Article workspace/);
   assert.match(html, /What should Certifyd write about\?/);
-  assert.match(html, /Article generation frozen/);
+  assert.match(html, /data-primary-generation-form/);
+  assert.match(html, /action="\/app\/content\/actions\/generate"/);
+  assert.match(html, /Generate Article/);
   assert.match(html, /Trending Opportunities/);
   assert.match(html, /Recent Source Stories/);
   assert.match(html, /No live trend scan has been saved yet/);
   assert.match(html, /Music/);
   assert.match(html, /Creator Economy/);
-  assert.doesNotMatch(html, /data-primary-generation-form/);
-  assert.doesNotMatch(html, /action="\/app\/content\/actions\/generate"/);
+  assert.doesNotMatch(html, /Generation frozen/);
 }));
 
-test('4bd generation action is frozen before background job creation', async () => {
+test('4bd generation action starts background job when requested', async () => {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-bg-generation-'));
   const outputDir = path.join(tmpRoot, 'engine', 'outputs');
   await fs.mkdir(path.join(tmpRoot, 'knowledge/facts'), { recursive: true });
@@ -135,8 +136,8 @@ test('4bd generation action is frozen before background job creation', async () 
       contentType: 'article',
     }),
   });
-  assert.equal(response.status, 503);
-  assert.match(await response.text(), /Article generation is frozen while clustering diagnostics are in progress/);
+  assert.equal(response.status, 303);
+  assert.match(response.headers.get('location') || '', /^\/app\/content\/generation\//);
   }, {
     CONTENT_AGENT_ROOT: tmpRoot,
     CONTENT_AGENT_OUTPUT_DIR: outputDir,
@@ -204,12 +205,12 @@ test('4ba article ideas separate recommended opportunities from retained source 
     assert.match(html, /13 recommended/);
     assert.match(html, /Recent Source Stories/);
     assert.match(html, /Retained Source Story 15/);
-    assert.match(html, /Retained Source Story 15[\s\S]*Generation frozen/);
+    assert.match(html, /Retained Source Story 15[\s\S]*Generate Article/);
     assert.match(html, /In recommended opportunity/);
     assert.match(html, /Source publication time is separate from fetched time/);
     assert.match(html, /Retention:/);
     assert.match(html, /Grouped into recommended opportunity/);
-    assert.match(html, /Recommended Opportunity 13[\s\S]*Generation frozen/);
+    assert.match(html, /Recommended Opportunity 13[\s\S]*Generate Article/);
     assert.match(html, /Read original ↗/);
     assert.match(html, /https:\/\/example\.test\/story-1/);
     assert.match(html, /<summary class="ghost">View sources<\/summary>/);
@@ -256,8 +257,8 @@ test('4bab retained source stories show existing draft instead of duplicate gene
     assert.equal(response.status, 200);
     const html = await response.text();
     assert.match(html, /Existing source draft story[\s\S]*Draft exists[\s\S]*Open draft/);
-    assert.match(html, /New retained source story[\s\S]*Low Certifyd relevance[\s\S]*Generation frozen/);
-    assert.equal((html.match(/class="source-story-actions"[\s\S]*?Generation frozen/g) || []).length, 1);
+    assert.match(html, /New retained source story[\s\S]*Low Certifyd relevance[\s\S]*Generate Article/);
+    assert.equal((html.match(/class="source-story-actions"[\s\S]*?action="\/app\/content\/actions\/generate"/g) || []).length, 1);
   }, { CONTENT_AGENT_ROOT: tmpRoot });
 });
 
@@ -534,8 +535,9 @@ test('9 writer can access create draft action page path but cannot approve', asy
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /What should Certifyd write about\?/);
-  assert.match(html, /Article generation frozen/);
-  assert.doesNotMatch(html, /Check AI/);
+  assert.match(html, /Generate Article/);
+  assert.match(html, /Check AI/);
+  assert.doesNotMatch(html, /Generation frozen/);
   assert.doesNotMatch(html, /<button class="primary" type="submit">Approve<\/button>/);
 }));
 
