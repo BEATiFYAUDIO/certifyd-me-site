@@ -103,14 +103,14 @@ export async function buildImageBrief(config, run, overrides = {}) {
 }
 
 function buildAutomaticImageBrief({ title, excerpt, category, tags, body, styleGuide }) {
-  const subject = conciseSentence(excerpt || firstUsefulParagraph(body) || title, 240);
-  const context = [category, tags.join(', ')].filter(Boolean).join(' / ');
-  const coreIdea = deriveCoreIdea({ title, excerpt, body });
-  const visualDirection = deriveVisualDirection([title, excerpt, body, tags.join(' ')].join(' '));
+  const openingParagraphs = firstUsefulParagraphs(body, 3);
+  const subject = extractCentralSubject({ title, excerpt, openingParagraphs });
+  const coreIdea = extractStructuralThesis({ title, excerpt, openingParagraphs });
+  const visualDirection = mapThesisToVisualMetaphor(coreIdea);
   const avoid = deriveAvoidList(styleGuide);
   return [
     'EDITORIAL SUBJECT:',
-    `${subject}${context ? ` Context: ${context}.` : ''}`,
+    subject,
     '',
     'CORE IDEA:',
     coreIdea,
@@ -119,7 +119,7 @@ function buildAutomaticImageBrief({ title, excerpt, category, tags, body, styleG
     visualDirection,
     '',
     'STYLE:',
-    'Use the Certifyd image-generation style guide: analog/tactile editorial photography or collage, restrained highlights, strong central object, no baked-in text, and no fake logos.',
+    'Use the Certifyd image-generation style guide only for aesthetic direction: analog/tactile editorial photography or collage, restrained highlights, strong central object, no baked-in text, and no fake logos.',
     '',
     'COMPOSITION:',
     'Landscape editorial blog cover with enough negative space for responsive and social cropping.',
@@ -129,46 +129,80 @@ function buildAutomaticImageBrief({ title, excerpt, category, tags, body, styleG
   ].join('\n').slice(0, MAX_BRIEF_CHARS);
 }
 
-function deriveCoreIdea({ title, excerpt, body }) {
-  const haystack = [title, excerpt, body].join(' ').toLowerCase();
-  const first = conciseSentence(excerpt || firstUsefulParagraph(body) || title, 220);
-  if (/\b(subscription|bundle|bundling|package|packaging)\b/.test(haystack) && /\b(royalt|accounting|economics|rate|licens)\b/.test(haystack)) {
-    return 'Product packaging changes the economics around music by turning the container around media into part of the royalty and accounting context.';
+function extractCentralSubject({ title, excerpt, openingParagraphs }) {
+  const opening = openingParagraphs.join(' ');
+  const first = conciseSentence(opening || excerpt || title, 240);
+  if (!first || first.toLowerCase() === String(title || '').toLowerCase()) return conciseSentence(title, 240);
+  return conciseSentence(`${title}: ${first}`, 260);
+}
+
+function extractStructuralThesis({ title, excerpt, openingParagraphs }) {
+  const haystack = [title, ...openingParagraphs, excerpt].join(' ').toLowerCase();
+  const first = conciseSentence(openingParagraphs[0] || excerpt || title, 220);
+
+  if (hasAny(haystack, ['ticketmaster', 'ticket', 'tickets', 'venue']) && hasAny(haystack, ['meta muse', 'meta', 'muse', 'agent', 'assistant', 'discovery', 'commerce', 'purchase'])) {
+    return 'AI-assisted discovery is moving closer to the commerce layer, turning recommendation interfaces into a path toward ticket and fan transactions.';
   }
-  if (/\b(identity|impersonat|persona|likeness|voice|deepfake)\b/.test(haystack)) {
-    return 'Identity and authenticity become infrastructure questions when digital media can separate a creator from the signals audiences use to recognize them.';
+
+  if (hasAny(haystack, ['subscription', 'bundle', 'bundling', 'package', 'packaging']) && hasAny(haystack, ['royalty', 'royalties', 'accounting', 'economics', 'rate', 'mechanical licensing collective', 'mlc'])) {
+    return 'Subscription packaging is becoming an input into music royalty economics.';
   }
-  if (/\b(provenance|attribution|origin|record|receipt|chain)\b/.test(haystack)) {
-    return 'Creative work needs visible origin and attribution context, not just finished media presented without a trail.';
+
+  if (hasAny(haystack, ['suno', 'believe', 'license', 'licensed', 'licensing', 'opt-in', 'consent', 'authorized']) && hasAny(haystack, ['release', 'distribution', 'distributor', 'catalog', 'recorded music', 'model'])) {
+    return 'Licensing and distribution are moving upstream into the release workflow for AI-assisted music.';
   }
-  if (/\b(commerce|direct-to-fan|fan|checkout|store|membership|customer)\b/.test(haystack)) {
-    return 'Creator commerce depends on the relationship between the creative work, the audience, and the transaction layer around it.';
+
+  if (hasAny(haystack, ['identity', 'impersonation', 'impersonate', 'persona', 'likeness', 'voice', 'deepfake', 'authenticity', 'verified creator'])) {
+    return 'Creator identity becomes a visible operating layer when media can imitate the signals audiences use to recognize an artist.';
   }
-  if (/\b(rights|copyright|license|licensing|ownership|catalog|songwriting)\b/.test(haystack)) {
-    return 'The business terms around creative work are increasingly shaped by the systems that package, authorize, and distribute it.';
+
+  if (hasAny(haystack, ['provenance', 'attribution', 'origin', 'source record', 'receipt', 'chain of custody'])) {
+    return 'Creative provenance becomes part of how audiences and partners evaluate where media came from.';
   }
+
+  if (hasAny(haystack, ['commerce', 'direct-to-fan', 'checkout', 'store', 'membership', 'customer', 'merch', 'transaction'])) {
+    return 'Creator commerce is shifting toward the interface where audiences discover, choose, and transact.';
+  }
+
+  if (hasAny(haystack, ['rights', 'copyright', 'ownership', 'catalog', 'songwriting', 'publishing']) && hasAny(haystack, ['workflow', 'platform', 'distribution', 'deal', 'market', 'business model'])) {
+    return 'The business terms around creative work are being shaped by the systems that package and distribute it.';
+  }
+
   if (first.toLowerCase() !== String(title || '').toLowerCase()) return first;
   return 'The image should communicate the article’s underlying tension through a tangible visual metaphor rather than a literal company portrait.';
 }
 
-function deriveVisualDirection(text) {
-  const haystack = String(text || '').toLowerCase();
-  if (/\b(subscription|bundle|bundling|package|packaging)\b/.test(haystack) && /\b(royalt|accounting|economics|rate|licens)\b/.test(haystack)) {
+function mapThesisToVisualMetaphor(thesis) {
+  const haystack = String(thesis || '').toLowerCase();
+  if (hasAny(haystack, ['ticket', 'commerce', 'transaction', 'discovery'])) {
+    return 'Show a concert ticket, order slip, or fan purchase object emerging from a tactile discovery surface such as a marked recommendation card or concierge desk, suggesting discovery has become a commerce path.';
+  }
+  if (hasAny(haystack, ['subscription packaging', 'royalty economics', 'royalties'])) {
     return 'Show a physical music record, royalty statement, or accounting sheet partially wrapped inside layered subscription packaging, suggesting the container around music changes its economics.';
   }
-  if (/\b(identity|impersonat|persona|likeness|voice|deepfake)\b/.test(haystack)) {
+  if (hasAny(haystack, ['licensing', 'distribution', 'release workflow'])) {
+    return 'Show a licensing opt-in form, stamped approval sheet, and release/distribution materials feeding into a physical record sleeve or shipping tray, suggesting authorization has moved into the release path.';
+  }
+  if (hasAny(haystack, ['identity', 'imitate', 'recognize', 'authenticity'])) {
     return 'Use a tactile identity metaphor: a portrait fragment, performance artifact, voice-print paper, or verification stamp handled as physical evidence.';
   }
-  if (/\b(provenance|attribution|origin|record|receipt|chain)\b/.test(haystack)) {
+  if (hasAny(haystack, ['provenance', 'where media came from'])) {
     return 'Use physical provenance materials: labeled sleeves, stamped receipts, annotated source cards, or archival tags attached to a creative object.';
   }
-  if (/\b(commerce|direct-to-fan|fan|checkout|store|membership|customer)\b/.test(haystack)) {
+  if (hasAny(haystack, ['creator commerce', 'checkout', 'store', 'membership'])) {
     return 'Use a direct commerce metaphor: a creator artifact, receipt, packing slip, and audience-facing purchase object arranged as an editorial still life.';
   }
-  if (/\b(rights|copyright|license|licensing|ownership|catalog|songwriting)\b/.test(haystack)) {
+  if (hasAny(haystack, ['rights', 'copyright', 'ownership', 'catalog', 'songwriting'])) {
     return 'Use rights and catalog materials as physical objects: marked contracts, song sheets, record sleeves, catalog cards, and careful archival lighting.';
   }
   return 'Create a tangible editorial still life that represents the article’s central business or technology tension without relying on generic platform imagery.';
+}
+
+function hasAny(text, terms) {
+  return terms.some((term) => {
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`\\b${escaped}\\b`, 'i').test(text);
+  });
 }
 
 function deriveAvoidList(styleGuide) {
@@ -181,8 +215,12 @@ function deriveAvoidList(styleGuide) {
 }
 
 function firstUsefulParagraph(markdown) {
+  return firstUsefulParagraphs(markdown, 1)[0] || '';
+}
+
+function firstUsefulParagraphs(markdown, limit = 3) {
   const body = stripFrontmatter(markdown).replace(/^# .+$/gm, '').split(/\n{2,}/).map((part) => part.replace(/\[[^\]]+\]\([^)]+\)/g, '').trim()).filter((part) => part.length > 40);
-  return body[0] || '';
+  return body.slice(0, limit);
 }
 
 function conciseSentence(value, max) {

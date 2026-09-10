@@ -28,13 +28,79 @@ test('blog image brief uses article signals and image style guide only', async (
   assert.match(brief.imageBrief, /CORE IDEA:/);
   assert.match(brief.imageBrief, /VISUAL DIRECTION:/);
   assert.match(brief.imageBrief, /subscription packaging/i);
-  assert.match(brief.imageBrief, /royalty and accounting context/i);
+  assert.match(brief.imageBrief, /music royalty economics/i);
   assert.notEqual(brief.imageBrief.trim(), 'Spotify Bundling Ruling');
   assert.ok(brief.imageBrief.length < 1200);
-  assert.doesNotMatch(brief.imageBrief, /Subscription packaging body stays intact/);
+  assert.match(brief.imageBrief, /partially wrapped inside layered subscription packaging/i);
   assert.match(brief.prompt, /Certifyd Blog Image Style Guide/);
   assert.match(brief.prompt, /No text baked into image/);
   assert.match(brief.prompt, /Subscription packaging/);
+});
+
+test('automatic image brief derives Ticketmaster and Meta Muse as commerce discovery', async () => {
+  const brief = await briefForArticle({
+    title: 'Ticketmaster and Meta Muse Move Concert Discovery Toward the Transaction',
+    body: [
+      'Ticketmaster is appearing inside Meta Muse as a concert discovery surface, bringing live-event inventory closer to the place where fans ask for recommendations.',
+      'The important shift is not another promotional placement. It is that an AI assistant can become the interface between discovery and the purchase path.',
+      'For artists and venues, that puts ticket commerce inside a new recommendation workflow instead of waiting for fans to search a separate marketplace.',
+    ].join('\n\n'),
+  });
+
+  assert.match(brief.imageBrief, /commerce layer/i);
+  assert.match(brief.imageBrief, /ticket and fan transactions/i);
+  assert.match(brief.imageBrief, /concert ticket|order slip|fan purchase object/i);
+  assert.match(brief.imageBrief, /discovery/i);
+  assert.doesNotMatch(brief.imageBrief, /provenance materials/i);
+});
+
+test('automatic image brief derives Spotify bundling as packaging and royalty economics', async () => {
+  const brief = await briefForArticle({
+    title: 'Spotify Bundling Ruling Shows Product Design Is Now a Royalty Lever',
+    body: [
+      'A federal ruling in the Spotify bundling dispute keeps attention on how subscription packaging can affect music royalty accounting.',
+      'The structural issue is that the commercial wrapper around access to music can change the economics of the underlying catalog.',
+      'That turns product packaging into something more consequential than marketing copy or tier design.',
+    ].join('\n\n'),
+  });
+
+  assert.match(brief.imageBrief, /Subscription packaging is becoming an input into music royalty economics/i);
+  assert.match(brief.imageBrief, /royalty statement|accounting sheet/i);
+  assert.match(brief.imageBrief, /layered subscription packaging/i);
+  assert.doesNotMatch(brief.imageBrief, /identity metaphor/i);
+});
+
+test('automatic image brief derives Suno and Believe as licensing distribution workflow', async () => {
+  const brief = await briefForArticle({
+    title: 'Suno and Believe Turn AI Opt-In Into a Route to Release',
+    body: [
+      'Suno and Believe are framing licensed AI music creation as part of a path that can move from opt-in authorization toward release.',
+      'The shift is that licensing and distribution are no longer separate downstream paperwork steps. They are being pulled into the product workflow where AI-assisted tracks are made and prepared for market.',
+      'That makes the release path itself the center of the story.',
+    ].join('\n\n'),
+  });
+
+  assert.match(brief.imageBrief, /Licensing and distribution are moving upstream/i);
+  assert.match(brief.imageBrief, /release workflow/i);
+  assert.match(brief.imageBrief, /licensing opt-in form|stamped approval sheet/i);
+  assert.match(brief.imageBrief, /release\/distribution materials/i);
+  assert.doesNotMatch(brief.imageBrief, /provenance materials/i);
+});
+
+test('automatic image brief still derives identity visuals for identity articles', async () => {
+  const brief = await briefForArticle({
+    title: 'AI Voice Impersonation Makes Artist Identity a Release Problem',
+    body: [
+      'AI voice impersonation is changing how audiences recognize artists when a track can copy vocal signals without carrying the performer.',
+      'The structural shift is that creator identity becomes part of the operating layer around release, platform trust, and fan recognition.',
+      'That makes authenticity a visible question rather than a background assumption.',
+    ].join('\n\n'),
+  });
+
+  assert.match(brief.imageBrief, /Creator identity becomes a visible operating layer/i);
+  assert.match(brief.imageBrief, /tactile identity metaphor/i);
+  assert.match(brief.imageBrief, /portrait fragment|voice-print paper|verification stamp/i);
+  assert.doesNotMatch(brief.imageBrief, /subscription packaging/i);
 });
 
 test('article page load persists an automatic brief when none exists', async () => {
@@ -56,7 +122,7 @@ test('article page load persists an automatic brief when none exists', async () 
 
   state = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'blog', 'image-generation.json'), 'utf8'));
   assert.match(state.imageBrief, /CORE IDEA:/);
-  assert.match(state.imageBrief, /royalty and accounting context/i);
+  assert.match(state.imageBrief, /music royalty economics/i);
   assert.equal(state.briefGeneratedFrom, 'article');
 });
 
@@ -276,6 +342,31 @@ async function fixture() {
   config.siteRoot = siteRoot;
   const run = await new ContentDashboardActions(config).runs.readRun(runId);
   return { config, outputDir, runId, run, siteRoot };
+}
+
+async function briefForArticle({ title, body, excerpt = '' }) {
+  const { config, run } = await fixture();
+  return buildImageBrief(config, {
+    ...run,
+    blogPackage: {
+      ...run.blogPackage,
+      title,
+      excerpt,
+      description: excerpt,
+      seoDescription: excerpt,
+      tags: ['music', 'creator economy'],
+    },
+    articleMarkdown: [
+      '---',
+      `title: "${title}"`,
+      '---',
+      '',
+      `# ${title}`,
+      '',
+      body,
+    ].join('\n'),
+    draftMarkdown: '',
+  });
 }
 
 async function createMinimalRun(runDir) {
