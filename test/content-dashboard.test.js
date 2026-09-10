@@ -93,18 +93,17 @@ test('4b article workspace owns AI generation and trending opportunities', async
   assert.match(html, /Blog Engine/);
   assert.match(html, /Article workspace/);
   assert.match(html, /What should Certifyd write about\?/);
-  assert.match(html, /Generate Article/);
+  assert.match(html, /Article generation frozen/);
   assert.match(html, /Trending Opportunities/);
   assert.match(html, /Recent Source Stories/);
   assert.match(html, /No live trend scan has been saved yet/);
   assert.match(html, /Music/);
   assert.match(html, /Creator Economy/);
-  assert.match(html, /data-primary-generation-form/);
-  assert.equal((html.match(/data-primary-generation-form/g) || []).length, 1);
-  assert.match(html, /generation-progress/);
+  assert.doesNotMatch(html, /data-primary-generation-form/);
+  assert.doesNotMatch(html, /action="\/app\/content\/actions\/generate"/);
 }));
 
-test('4bd generation action redirects immediately to background status page', async () => {
+test('4bd generation action is frozen before background job creation', async () => {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-bg-generation-'));
   const outputDir = path.join(tmpRoot, 'engine', 'outputs');
   await fs.mkdir(path.join(tmpRoot, 'knowledge/facts'), { recursive: true });
@@ -123,7 +122,6 @@ test('4bd generation action redirects immediately to background status page', as
   await withServer(async (base) => {
   const cookie = await login(base, 'founder@example.test');
   const csrf = await getCsrf(base, cookie);
-  const started = Date.now();
   const response = await fetch(`${base}/app/content/actions/generate`, {
     method: 'POST',
     redirect: 'manual',
@@ -137,15 +135,8 @@ test('4bd generation action redirects immediately to background status page', as
       contentType: 'article',
     }),
   });
-  assert.equal(response.status, 303);
-  const location = response.headers.get('location') || '';
-  assert.match(location, /^\/app\/content\/generation\//);
-  assert.ok(Date.now() - started < 1000, 'generation POST should not wait for draft completion');
-
-  const status = await fetch(`${base}${location}`, { headers: { cookie } });
-  assert.equal(status.status, 200);
-  const html = await status.text();
-  assert.match(html, /Generating draft\.|Draft ready\./);
+  assert.equal(response.status, 503);
+  assert.match(await response.text(), /Article generation is frozen while clustering diagnostics are in progress/);
   }, {
     CONTENT_AGENT_ROOT: tmpRoot,
     CONTENT_AGENT_OUTPUT_DIR: outputDir,
@@ -213,12 +204,12 @@ test('4ba article ideas separate recommended opportunities from retained source 
     assert.match(html, /13 recommended/);
     assert.match(html, /Recent Source Stories/);
     assert.match(html, /Retained Source Story 15/);
-    assert.match(html, /Retained Source Story 15[\s\S]*Generate Article/);
+    assert.match(html, /Retained Source Story 15[\s\S]*Generation frozen/);
     assert.match(html, /In recommended opportunity/);
     assert.match(html, /Source publication time is separate from fetched time/);
     assert.match(html, /Retention:/);
     assert.match(html, /Grouped into recommended opportunity/);
-    assert.match(html, /Recommended Opportunity 13[\s\S]*Generate Article/);
+    assert.match(html, /Recommended Opportunity 13[\s\S]*Generation frozen/);
     assert.match(html, /Read original ↗/);
     assert.match(html, /https:\/\/example\.test\/story-1/);
     assert.match(html, /<summary class="ghost">View sources<\/summary>/);
@@ -265,9 +256,8 @@ test('4bab retained source stories show existing draft instead of duplicate gene
     assert.equal(response.status, 200);
     const html = await response.text();
     assert.match(html, /Existing source draft story[\s\S]*Draft exists[\s\S]*Open draft/);
-    assert.match(html, /Existing source draft story[\s\S]*Generate Article[\s\S]*Draft exists/);
-    assert.match(html, /New retained source story[\s\S]*Low Certifyd relevance[\s\S]*Generate Article/);
-    assert.equal((html.match(/class="source-story-actions"[\s\S]*?Generate Article/g) || []).length, 2);
+    assert.match(html, /New retained source story[\s\S]*Low Certifyd relevance[\s\S]*Generation frozen/);
+    assert.equal((html.match(/class="source-story-actions"[\s\S]*?Generation frozen/g) || []).length, 1);
   }, { CONTENT_AGENT_ROOT: tmpRoot });
 });
 
@@ -544,7 +534,8 @@ test('9 writer can access create draft action page path but cannot approve', asy
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /What should Certifyd write about\?/);
-  assert.match(html, /Check AI/);
+  assert.match(html, /Article generation frozen/);
+  assert.doesNotMatch(html, /Check AI/);
   assert.doesNotMatch(html, /<button class="primary" type="submit">Approve<\/button>/);
 }));
 
