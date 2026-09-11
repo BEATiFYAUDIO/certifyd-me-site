@@ -56,5 +56,3 @@ Those capabilities do not answer every permissions question, nor do they establi
 
 The UMG–ElevenLabs deal is one announcement in a crowded AI music market. Its larger significance is the model it advances: the next generation of music tools may be defined as much by the creative uses they are authorized to offer as by the generation technology underneath them.
 
-> Draft generated for founder review. Not approved for publishing.
-
