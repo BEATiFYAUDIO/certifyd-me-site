@@ -12,6 +12,8 @@ const MAX_PROMPT_CHARS = 12000;
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 const PROMPT_VERSION = 'blog-image-openai-v1';
 const VALID_LOGO_POSITIONS = new Set(['top-left', 'top-right', 'bottom-left', 'bottom-right']);
+const COVER_LOGO_SAFE_RIGHT = 64;
+const COVER_LOGO_SAFE_BOTTOM = 128;
 
 export function defaultImageGenerationState() {
   return {
@@ -366,10 +368,10 @@ async function createLogoComposite(config, { generatedImagePath, slug, revision,
   const logoWidth = Math.round(canvasWidth * 0.18);
   const logoHeight = Math.round(logoWidth * (138 / 428));
   const margin = Math.round(canvasWidth * 0.04);
-  const x = logoPosition.endsWith('right') ? canvasWidth - logoWidth - margin : margin;
-  const y = logoPosition.startsWith('bottom') ? canvasHeight - logoHeight - margin : margin;
+  const x = logoPosition.endsWith('right') ? canvasWidth - logoWidth - COVER_LOGO_SAFE_RIGHT : margin;
+  const y = logoPosition.startsWith('bottom') ? canvasHeight - logoHeight - COVER_LOGO_SAFE_BOTTOM : margin;
   const innerLogo = logoSvg.replace(/<\?xml[\s\S]*?\?>/g, '').replace(/<!DOCTYPE[\s\S]*?>/gi, '').replace(/<\/?svg[^>]*>/gi, '').trim();
-  const overlay = buildEditorialCoverOverlay({ article, canvasWidth, canvasHeight, logoPosition });
+  const overlay = buildEditorialCoverOverlay({ article, canvasWidth, canvasHeight, logoPosition, logoBox: { x, y, width: logoWidth, height: logoHeight } });
   const composite = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvasWidth}" height="${canvasHeight}" viewBox="0 0 ${canvasWidth} ${canvasHeight}">
   <desc>${escapeXml(`Certifyd editorial cover for ${coverTitle(article)}`)}</desc>
   <image href="${escapeXml(generatedDataUri)}" width="${canvasWidth}" height="${canvasHeight}" preserveAspectRatio="xMidYMid slice"/>
@@ -386,7 +388,7 @@ ${overlay}
   return `/${relativePath}`;
 }
 
-function buildEditorialCoverOverlay({ article, canvasWidth, canvasHeight, logoPosition }) {
+function buildEditorialCoverOverlay({ article, canvasWidth, canvasHeight, logoPosition, logoBox = null }) {
   const title = coverTitle(article);
   const category = displayLabel(article?.category || article?.section || primaryTag(article) || 'Music Business');
   const deck = shortDeck(article?.excerpt || article?.description || article?.seoDescription || '');
@@ -400,7 +402,7 @@ function buildEditorialCoverOverlay({ article, canvasWidth, canvasHeight, logoPo
   const titleHeight = titleLayout.lines.length * titleLayout.lineHeight;
   const deckLines = deck ? wrapText(deck, textWidth, 28, 2) : [];
   const deckY = titleY + titleHeight + 30;
-  const tagText = tags.join(' • ');
+  const tagText = safeTagStrip(tags.join(' • '), { left, fontSize: 22, textWidth, logoBox, tagY });
   return [
     '  <defs>',
     '    <linearGradient id="certifyd-cover-scrim" x1="0" y1="0" x2="1" y2="0">',
@@ -420,6 +422,14 @@ function buildEditorialCoverOverlay({ article, canvasWidth, canvasHeight, logoPo
     deckLines.length ? svgTextLines(deckLines, { x: left, y: deckY, fill: '#d9e2ef', size: 30, weight: 600, lineHeight: 38, opacity: 0.94 }) : '',
     tagText ? `  <text x="${left}" y="${tagY}" fill="#9fd9ff" font-family="${svgFontStack()}" font-size="22" font-weight="800" letter-spacing="3">${escapeXml(tagText)}</text>` : '',
   ].filter(Boolean).join('\n');
+}
+
+function safeTagStrip(value, { left, fontSize, textWidth, logoBox, tagY }) {
+  let width = textWidth;
+  if (logoBox && tagY >= logoBox.y - fontSize && tagY <= logoBox.y + logoBox.height + fontSize) {
+    width = Math.min(width, Math.max(160, logoBox.x - left - 48));
+  }
+  return fitLine(value, Math.max(8, Math.floor(width / (fontSize * 0.62))));
 }
 
 function coverTitle(article = {}) {

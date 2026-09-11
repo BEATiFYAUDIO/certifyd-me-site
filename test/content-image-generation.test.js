@@ -247,11 +247,11 @@ test('logo composite uses exact canonical logo and can be approved as cover', as
     runId,
     imageBrief: 'Cover with exact logo overlay.',
     logoEnabled: 'true',
-    logoPosition: 'top-left',
+    logoPosition: 'bottom-right',
   });
   const state = await readImageGenerationState(config, runId);
   assert.equal(state.logoEnabled, true);
-  assert.equal(state.logoPosition, 'top-left');
+  assert.equal(state.logoPosition, 'bottom-right');
   assert.match(state.brandedImagePath, /-logo\.svg$/);
   const svg = await fs.readFile(path.join(siteRoot, state.brandedImagePath.slice(1)), 'utf8');
   const generatedBytes = await fs.readFile(path.join(siteRoot, state.generatedImagePath.slice(1)));
@@ -260,6 +260,16 @@ test('logo composite uses exact canonical logo and can be approved as cover', as
   assert.match(svg, new RegExp(`href="data:image/png;base64,${generatedBytes.toString('base64')}"`));
   assert.doesNotMatch(svg, /href="\/images\/blog\//);
   assert.match(svg, /certifyd-base64-logo-test/);
+  const logo = logoPlacement(svg);
+  assert.equal(logo.x, 1196);
+  assert.equal(logo.y, 807);
+  assert.equal(logo.width, 276);
+  assert.equal(logo.height, 89);
+  assert.ok(logo.x >= 0);
+  assert.ok(logo.y >= 0);
+  assert.ok(logo.x + logo.width <= 1536 - 64);
+  assert.ok(logo.y + logo.height <= 1024 - 128);
+  assert.ok(Math.abs((logo.width / logo.height) - (428 / 138)) < 0.02);
   await actions.approveGeneratedCoverImage({ actor: founder(), runId });
   const approved = await readImageGenerationState(config, runId);
   assert.equal(approved.approvedImagePath, state.brandedImagePath);
@@ -293,6 +303,7 @@ test('branded composite adds deterministic editorial cover typography from artic
   assert.match(svg, /Moving Live-Event Discovery/);
   assert.match(svg, /AI Agents • Discovery • Live Events • Ticketing/);
   assert.doesNotMatch(svg, /Commerce<\/text>/);
+  assert.equal(logoOverlapsTopicStrip(svg), false);
 });
 
 test('branded composite wraps long titles and escapes article-derived SVG text', async () => {
@@ -320,6 +331,25 @@ test('branded composite wraps long titles and escapes article-derived SVG text',
   assert.match(svg, /AI &amp; Agents • Live &lt;events&gt; • Creator &quot;commerce&quot; • Identity/);
   assert.doesNotMatch(svg, /<Muse>/);
   assert.doesNotMatch(svg, /live <events>/i);
+});
+
+test('branded composite keeps long topic strip out of bottom-right logo safe area', async () => {
+  const { config, outputDir, siteRoot, runId } = await fixture();
+  await setBlogPackage(outputDir, runId, {
+    title: 'Short Cover Title',
+    category: 'music business',
+    excerpt: 'A deterministic cover overlay should keep text clear of the logo.',
+    tags: ['very long discovery commerce ticketing topic', 'another unusually long music business label', 'live events and agentic checkout', 'creator commerce infrastructure'],
+  });
+  config.blogImages.providerImpl = mockProvider();
+  const actions = new ContentDashboardActions(config);
+
+  await actions.generateCoverImage({ actor: founder(), runId, imageBrief: 'Long tag cover.', logoEnabled: 'true' });
+  const state = await readImageGenerationState(config, runId);
+  const svg = await fs.readFile(path.join(siteRoot, state.brandedImagePath.slice(1)), 'utf8');
+
+  assert.equal(logoOverlapsTopicStrip(svg), false);
+  assert.match(svg, /…/);
 });
 
 test('provider failure records failed status and does not fail article state', async () => {
@@ -474,6 +504,24 @@ async function setBlogPackage(outputDir, runId, updates) {
   const file = path.join(outputDir, runId, 'blog', 'blog-post.json');
   const current = JSON.parse(await fs.readFile(file, 'utf8'));
   await fs.writeFile(file, `${JSON.stringify({ ...current, ...updates }, null, 2)}\n`, 'utf8');
+}
+
+function logoPlacement(svg) {
+  const match = svg.match(/<g transform="translate\(([-\d.]+) ([-\d.]+)\)">\s*<svg width="([-\d.]+)" height="([-\d.]+)"/);
+  assert.ok(match, 'expected logo placement group');
+  return { x: Number(match[1]), y: Number(match[2]), width: Number(match[3]), height: Number(match[4]) };
+}
+
+function logoOverlapsTopicStrip(svg) {
+  const logo = logoPlacement(svg);
+  const tag = svg.match(/<text x="([-\d.]+)" y="([-\d.]+)"[^>]+font-size="22"[^>]*>(.*?)<\/text>/);
+  assert.ok(tag, 'expected topic strip');
+  const x = Number(tag[1]);
+  const y = Number(tag[2]);
+  const text = tag[3].replace(/<[^>]+>/g, '');
+  const width = text.length * 22 * 0.62;
+  const height = 26;
+  return x < logo.x + logo.width && x + width > logo.x && y - height < logo.y + logo.height && y > logo.y;
 }
 
 function mockProvider(calls = []) {
