@@ -50,7 +50,7 @@ The terms and commercial mechanics of the UMG–ElevenLabs product have not been
 
 Certifyd’s perspective begins with the need for stronger creator-controlled foundations for identity, publishing context, commerce activity and public records. That principle becomes more relevant as creative works travel through an expanding set of AI-mediated experiences.
 
-Certifyd Core supports release records that preserve work, release and attribution context for creator workflows, though the underlying record schema and correction behavior remain unclear. Separately, Certifyd Core’s catalog-management capability is currently in beta and maintains catalog context for works and releases.
+Certifyd Core supports release records that preserve work, release and attribution context for creator workflows. Separately, Certifyd Core’s catalog-management capability is currently in beta and maintains catalog context for works and releases.
 
 Those capabilities do not answer every permissions question, nor do they establish legal ownership or manage royalties. Their relevance is more fundamental: AI-era creative products increase the value of keeping a work’s identity and release context connected to the creator’s own record of activity. As permissions become part of the product, creator context cannot remain an afterthought.
 
