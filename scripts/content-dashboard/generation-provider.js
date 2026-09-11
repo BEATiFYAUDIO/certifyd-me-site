@@ -754,6 +754,12 @@ export function validateGeneratedArticle(value, groundedContext) {
     throw new GenerationValidationError('Generated draft made unsupported external Certifyd adoption claims.', externalAdoptionHits);
   }
   if (hasExternalSources) {
+    const certifydNeedFailure = assessCertifydNeedConnection(value.bodyMarkdown, groundedContext);
+    if (certifydNeedFailure) {
+      throw new GenerationValidationError('Generation needs editorial repair: Certifyd relevance lacks story-specific architectural need.', [certifydNeedFailure]);
+    }
+  }
+  if (hasExternalSources) {
     const depthFailures = detectShallowEditorialDraft(value.bodyMarkdown);
     if (depthFailures.length) {
       throw new GenerationValidationError(`Generation failed validation — article is too shallow for source-backed editorial: ${depthFailures.join('; ')}.`);
@@ -1006,6 +1012,7 @@ function buildArticleSystemInstruction() {
     'Do not add defensive disclaimers merely to show what the article is not claiming.',
     'When uncertainty is genuinely required, express it naturally and briefly, for example “The case remains unresolved” or “The ruling does not decide the underlying dispute.”',
     'When selected Certifyd Brain is supplied, use it to develop a meaningful Certifyd perspective where it materially deepens the source-backed argument.',
+    'When Certifyd is relevant, explain why the source development creates a stronger need for creator-controlled infrastructure before listing what Certifyd provides.',
     'When no selected Certifyd Brain is supplied, do not manufacture a Certifyd product connection.',
     'Selected Certifyd Brain can support claims about Certifyd architecture, principles and capabilities. It is not evidence for facts about the external source event.',
     'Verified Brain facts about Certifyd may be stated directly and confidently. Do not weaken verified Certifyd capabilities with “may support,” “intended to support,” “where implemented,” “potentially supports,” or “is designed to potentially” unless the selected Brain record itself contains that uncertainty.',
@@ -1072,6 +1079,18 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
     hasSelectedBrain
       ? '- Because relevant Certifyd Brain was selected, develop a real Certifyd perspective only where it materially advances the article; select only the Brain capabilities needed to illuminate the thesis and avoid generic product pitching, feature inventory, product documentation or capability lists.'
       : '- Because no meaningful Certifyd Brain was selected, do not manufacture a Certifyd product connection.',
+    hasSelectedBrain
+      ? '- Answer this in story-specific prose: why does this development create a stronger need for creator-controlled infrastructure, and what specifically does Certifyd make possible? Explain the need before the capability.'
+      : '',
+    hasSelectedBrain
+      ? '- Reason from industry change to structural consequence to missing or fragile infrastructure to creator-controlled infrastructure to the specific Certifyd relevance. Do not reverse that order into a Certifyd feature list.'
+      : '',
+    hasSelectedBrain
+      ? '- Weak: “Certifyd Core supports identity, provenance, catalog management and commerce.” Stronger: explain why this story makes identity, work, release, attribution, permission, discovery, commerce or fan-relationship context harder to leave inside disconnected third-party systems, then introduce the selected Certifyd capability as the architecture that supports that need.'
+      : '',
+    hasSelectedBrain
+      ? '- Avoid generic bridges such as “This is where Certifyd comes in,” “Certifyd solves this,” “This underscores the importance of Certifyd,” or sovereignty language that could be pasted into an unrelated article.'
+      : '',
     '- Do not automatically create sections titled “The Certifyd perspective,” “How this connects to Certifyd,” or “Why this matters to Certifyd” unless that structure is editorially natural.',
     '- Do not mechanically mention every selected Brain record. Do not add unrelated surfaces such as discovery, Awards, commerce, profiles, or payouts unless they materially support the article’s argument.',
     '- Selected Brain may support Certifyd architecture, principles and capabilities only. It must never be used as evidence for the external event, the source company, legal outcomes, deals, dates, numbers or quotes.',
@@ -1371,6 +1390,7 @@ function isGenericDefinitionLeakError(error) {
 
 function isRepairablePostGenerationError(error) {
   if (isGenericDefinitionLeakError(error)) return true;
+  if (/Certifyd relevance lacks story-specific architectural need/i.test(error?.message || '')) return true;
   return /Generation needs editorial repair/i.test(error?.message || '');
 }
 
@@ -2121,6 +2141,81 @@ function detectGenericCertifydDefinitions(bodyMarkdown) {
     /\b(?:A|An)\s+(?:receipt|record|credential|profile|release record)\s+is\b[^.]{0,220}\./gi,
   ];
   return patterns.flatMap((pattern) => [...text.matchAll(pattern)].map((match) => match[0].trim()));
+}
+
+function assessCertifydNeedConnection(bodyMarkdown, groundedContext = {}) {
+  const approvedConcepts = Array.isArray(groundedContext.editorialBrief?.selectedCertifydConcepts)
+    ? groundedContext.editorialBrief.selectedCertifydConcepts
+    : [];
+  const hasSelectedBrain = getAllowedBrainSourceIds(groundedContext).some((id) => id.startsWith('brain:'))
+    || approvedConcepts.length > 0
+    || (groundedContext.approvedKnowledge || []).some((item) => String(item?.id || '').startsWith('brain:'));
+  if (!hasSelectedBrain) return '';
+  const text = normalizeNeedConnectionText(bodyMarkdown);
+  if (!/\bcertifyd\b/.test(text)) return '';
+  const genericBridge = /\b(?:this is where certifyd comes in|certifyd solves this|this underscores the importance of certifyd|as the industry evolves certifyd|for the future of creators|creator economy)\b/.test(text);
+  const genericOnly = isGenericCertifydFeatureList(text);
+  if (genericBridge) {
+    return 'Certifyd relevance is not story-specific enough: Certifyd wording uses reusable bridge boilerplate instead of a source-specific architectural need.';
+  }
+  if (!genericBridge && !genericOnly) return '';
+  const storyText = normalizeNeedConnectionText([
+    ...(groundedContext.externalSourceFacts || []).flatMap((source) => [source.title, source.summary, source.sourceText, source.rssSummary, (source.categories || []).join(' ')]),
+    groundedContext.editorialBrief?.primaryEvent,
+    groundedContext.editorialBrief?.editorialTension,
+    groundedContext.editorialBrief?.whatChanged,
+    groundedContext.editorialBrief?.creatorConsequence,
+    groundedContext.editorialBrief?.possibleThesis,
+    groundedContext.editorialBrief?.sourceFacts?.join(' '),
+    ...approvedConcepts.flatMap((concept) => [concept.concept, concept.relevance, concept.sourceConnection]),
+  ].filter(Boolean).join(' '));
+  const activeFrames = storyFramesFromText(storyText);
+  if (!activeFrames.length) return '';
+  const articleFrames = storyFramesFromText(text);
+  const sharedFrames = activeFrames.filter((frame) => articleFrames.includes(frame));
+  const hasNeed = /\b(?:need|needs|needed|benefit|benefits|dependent|depends|dependency|exposed|fragile|fragmented|rebuild|cede|controlled|control|portable|persistent|starting point|source of|independent|creator-controlled|creator controlled|infrastructure)\b/.test(text);
+  const hasCausalBridge = /\b(?:because|as|when|once|if|therefore|that means|which means|creates|exposes|moves|turns|depends|requires|increases the value|becomes)\b/.test(text);
+  const hasInfrastructure = /\b(?:creator-controlled|creator controlled|infrastructure|independent layer|own record|portable record|context|identity|work|works|release|attribution|permission|discovery|commerce|fan relationship|relationship)\b/.test(text);
+  if (sharedFrames.length && hasNeed && hasCausalBridge && hasInfrastructure && !genericOnly) return '';
+  const missing = [];
+  if (!sharedFrames.length) missing.push('no source-story frame is carried into the Certifyd relevance');
+  if (!hasNeed) missing.push('no practical need or dependency is explained');
+  if (!hasCausalBridge) missing.push('no causal bridge from the external development to Certifyd relevance');
+  if (!hasInfrastructure) missing.push('no creator-controlled infrastructure consequence');
+  if (genericOnly) missing.push('Certifyd wording reads as a reusable feature list');
+  return `Certifyd relevance is not story-specific enough: ${missing.join('; ')}.`;
+}
+
+function normalizeNeedConnectionText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/[^\p{L}\p{N}’'-]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function storyFramesFromText(text) {
+  const frames = [
+    ['permissions-product', /\b(permission|permissions|licensed|licensing|authorization|authorized|opt-in|rights-managed)\b/],
+    ['product-packaging-economics', /\b(bundle|bundling|subscription|packaging|package|product design|royalty|royalties|compensation|economics|payout)\b/],
+    ['agent-discovery', /\b(agent|agents|ai agent|recommendation|recommendations|discovery|ticketmaster|meta muse|event discovery)\b/],
+    ['identity-provenance', /\b(identity|provenance|authorship|authority|impersonation|attribution|verified|verification)\b/],
+    ['creator-commerce', /\b(commerce|transaction|transactions|receipt|receipts|customer|fan relationship|direct-to-fan|direct fan|audience relationship)\b/],
+    ['platform-dependency', /\b(platform|intermediary|intermediaries|third-party|fragmented|dependency|upstream|centralized)\b/],
+  ];
+  return frames.filter(([, pattern]) => pattern.test(text)).map(([frame]) => frame);
+}
+
+function isGenericCertifydFeatureList(text) {
+  const windows = [...text.matchAll(/\bcertifyd\b/g)].map((match) => text.slice(match.index, match.index + 320));
+  if (!windows.length) return false;
+  return windows.some((windowText) => {
+    const featureHits = (windowText.match(/\b(identity|provenance|catalog|commerce|publishing|discovery|attribution|rights|release records?|profiles?|payments?)\b/g) || []).length;
+    const hasOnlyCapabilityVerb = /\b(?:supports|provides|offers|includes|powers|maintains|enables)\b/.test(windowText);
+    const hasReason = /\b(?:because|as|when|once|therefore|need|needs|dependency|fragmented|controlled|rebuild|cede|exposed|fragile|persistent|portable|starting point|independent)\b/.test(windowText);
+    return featureHits >= 3 && hasOnlyCapabilityVerb && !hasReason;
+  });
 }
 
 function detectShallowEditorialDraft(bodyMarkdown) {

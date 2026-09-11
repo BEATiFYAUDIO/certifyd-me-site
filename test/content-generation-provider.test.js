@@ -15,6 +15,7 @@ import {
   parseJsonContent,
   persistGeneratedArticleRun,
   resetGenerationState,
+  validateGeneratedArticle,
 } from '../scripts/content-dashboard/generation-provider.js';
 
 async function makeConfig(overrides = {}) {
@@ -144,6 +145,85 @@ function validArticle(sourceId, overrides = {}) {
     claims: [{ text: 'Certifyd Core supports identity, publishing and direct commerce.', sourceIds: [sourceId], confidence: 'supported' }],
     warnings: [],
     ...overrides,
+  };
+}
+
+function whyCertifydContext({ title, summary, thesis, concept, sourceConnection }) {
+  return {
+    sourceRecords: [{
+      id: 'brain:facts/approved-public-claims',
+      title: 'Approved Public Claims',
+      path: 'content-agent/knowledge/facts/approved-public-claims.md',
+      supportedClaims: ['Certifyd Core supports identity, publishing, provenance, release records, attribution context, discovery and direct commerce.'],
+      qualifiedClaims: [],
+      prohibitedClaims: ['Certifyd does not establish legal ownership by itself.'],
+      currentStatus: 'current',
+      confidence: 'approved',
+    }],
+    allowedBrainSourceIds: ['brain:facts/approved-public-claims'],
+    approvedKnowledge: [{
+      id: 'brain:facts/approved-public-claims',
+      supportedClaims: ['Certifyd Core supports identity, publishing, provenance, release records, attribution context, discovery and direct commerce.'],
+      qualifiedClaims: [],
+      prohibitedClaims: ['Certifyd does not establish legal ownership by itself.'],
+    }],
+    approvedClaims: ['Certifyd Core supports identity, publishing, provenance, release records, attribution context, discovery and direct commerce.'],
+    productFacts: [],
+    terminology: [],
+    prohibitedClaims: ['Certifyd does not establish legal ownership by itself.'],
+    externalSourceFacts: [{
+      id: 'src-1',
+      publisher: 'Source',
+      publishedAt: '2026-09-11',
+      title,
+      summary,
+      sourceText: summary,
+      hydrationStatus: 'hydrated',
+      categories: ['music business'],
+    }],
+    editorialBrief: {
+      verifiedFacts: [summary],
+      primaryEvent: title,
+      editorialTension: summary,
+      whatChanged: thesis,
+      creatorConsequence: sourceConnection,
+      possibleThesis: thesis,
+      selectedCertifydConcepts: [{
+        concept,
+        relevance: `Relevant because ${sourceConnection}`,
+        sourceConnection,
+      }],
+      articleProgression: ['Open with source facts.', 'Explain what changed.', 'Show the dependency.', 'Explain the creator-controlled infrastructure need.'],
+    },
+    editorialQualityWarnings: [],
+    featureStatus: {},
+  };
+}
+
+function whyCertifydArticle(context, paragraphs) {
+  const bodyMarkdown = [
+    '# Source Story',
+    '',
+    ...paragraphs.flatMap((paragraph) => [paragraph, '']),
+    'That is the practical reader question the article has to answer before it names a product capability. The outside source establishes the business change; the editorial analysis has to explain the consequence of that change; and the Certifyd reference has to enter only after the article has shown why a creator-controlled layer would matter in that specific operating context. The article also needs enough room to separate the reported event from the operational consequence, the platform dependency it exposes, and the narrower infrastructure response that follows from those facts. That structure keeps the source story, creator need and Certifyd relevance in order. This fixture keeps the draft substantive enough for review without adding unsupported claims about partnerships, legal ownership, royalty management, product adoption, or results the source facts do not establish.',
+  ].join('\n').trim();
+  return {
+    title: 'Source Story',
+    suggestedSlug: 'source-story',
+    excerpt: 'A source-backed article with story-specific Certifyd relevance.',
+    tags: ['music business', 'creator infrastructure'],
+    seoTitle: 'Source Story | Certifyd',
+    seoDescription: 'A source-backed article with story-specific Certifyd relevance.',
+    focusKeyword: 'creator infrastructure',
+    secondaryKeywords: ['creator-controlled infrastructure'],
+    category: 'Creator Infrastructure',
+    bodyMarkdown,
+    claims: [{
+      text: 'Certifyd Core supports identity, publishing, provenance, release records, attribution context, discovery and direct commerce.',
+      sourceIds: ['brain:facts/approved-public-claims'],
+      confidence: 'supported',
+    }],
+    warnings: [],
   };
 }
 
@@ -1140,6 +1220,126 @@ test('OpenAI final writing instructions discourage validator-facing defensive pr
   assert.doesNotMatch(finalInstructionText, /Default to no Certifyd product mention/i);
   assert.doesNotMatch(finalInstructionText, /Absence of a Certifyd reference is a successful outcome/i);
   assert.doesNotMatch(finalInstructionText, /legal dispute → documentation → provenance → Certifyd/i);
+});
+
+test('final writing instructions require why-Certifyd architectural need before feature inventory', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({ calls, article: validArticle(context.sourceRecords[0].id) }),
+  });
+  await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
+  const finalInstructionText = `${calls[1].instructions}\n${calls[1].input}`;
+  assert.match(finalInstructionText, /why does this development create a stronger need for creator-controlled infrastructure/i);
+  assert.match(finalInstructionText, /what specifically does Certifyd make possible/i);
+  assert.match(finalInstructionText, /Explain the need before the capability/i);
+  assert.match(finalInstructionText, /industry change to structural consequence to missing or fragile infrastructure to creator-controlled infrastructure to the specific Certifyd relevance/i);
+  assert.match(finalInstructionText, /Do not reverse that order into a Certifyd feature list/i);
+  assert.match(finalInstructionText, /Weak: “Certifyd Core supports identity, provenance, catalog management and commerce.”/i);
+  assert.match(finalInstructionText, /Avoid generic bridges such as “This is where Certifyd comes in,” “Certifyd solves this,”/i);
+});
+
+test('why-Certifyd validation accepts UMG permission-product architectural need', () => {
+  const context = whyCertifydContext({
+    title: 'UMG and ElevenLabs develop licensed AI music product',
+    summary: 'The source story says licensed AI music products move permission and artist participation into the product experience.',
+    thesis: 'Permission is becoming part of product design.',
+    concept: 'Creator-controlled release context',
+    sourceConnection: 'The source facts connect licensed AI music products to permission, artist participation and release context.',
+  });
+  const article = whyCertifydArticle(context, [
+    'UMG and ElevenLabs show a music market in which permission is moving into the product rather than remaining a downstream clearance task.',
+    'That change creates a practical infrastructure problem for creators because AI products depend on knowing what the work is, who participated, what release context surrounds it and which uses have been authorized.',
+    'When that context is rebuilt inside every third-party system, the creator keeps ceding the starting point to platforms and intermediaries.',
+    'Certifyd matters in that specific shift because creator-controlled infrastructure gives the artist or operator a starting place for identity, works, releases, attribution and permission context before those works enter another product workflow.',
+  ]);
+  assert.doesNotThrow(() => validateGeneratedArticle(article, context));
+});
+
+test('why-Certifyd validation accepts Ticketmaster agent-discovery architectural need', () => {
+  const context = whyCertifydContext({
+    title: 'Ticketmaster joins Meta Muse for live event discovery',
+    summary: 'The source story says Ticketmaster inventory is moving into an AI agent discovery layer through Meta Muse.',
+    thesis: 'Discovery is moving into agent-mediated recommendation systems.',
+    concept: 'Creator-controlled discovery and commerce relationship',
+    sourceConnection: 'The source facts connect agent discovery to live-event discovery and platform-controlled recommendations.',
+  });
+  const article = whyCertifydArticle(context, [
+    'Ticketmaster and Meta Muse point to a discovery market where live events are increasingly found through agents and recommendation systems.',
+    'That creates a dependency risk for creators because the agent layer can become the place where identity, availability, audience context and commerce intent are interpreted before a fan ever reaches the creator.',
+    'If that discovery context lives only inside the platform operating the agent, creators have to rebuild legibility whenever the next discovery surface changes.',
+    'Certifyd is relevant here because creator-controlled identity, publishing, discovery and commerce infrastructure gives creators a more independent relationship layer that can exist before any one agent decides what to recommend.',
+  ]);
+  assert.doesNotThrow(() => validateGeneratedArticle(article, context));
+});
+
+test('why-Certifyd validation accepts Spotify bundling architectural need', () => {
+  const context = whyCertifydContext({
+    title: 'Spotify bundling ruling affects royalty economics',
+    summary: 'The source story says subscription bundling and product packaging can affect music royalty economics.',
+    thesis: 'Platform product design can become an input into creator economics.',
+    concept: 'Creator-controlled commerce and context layer',
+    sourceConnection: 'The source facts connect subscription bundling, platform packaging and creator compensation exposure.',
+  });
+  const article = whyCertifydArticle(context, [
+    'The Spotify bundling fight shows that subscription packaging is not just marketing language; product design can affect royalty economics.',
+    'That exposes a structural weakness for creators because upstream platforms can define the commercial container around the work before the creator sees the economic result.',
+    'When identity, works, audience relationships and transaction context are controlled elsewhere, creators remain dependent on product definitions they do not set.',
+    'Certifyd matters to that problem because creator-controlled commerce and work-context infrastructure gives creators an independent layer for identity, works, fan relationships and business context rather than starting entirely inside the platform package.',
+  ]);
+  assert.doesNotThrow(() => validateGeneratedArticle(article, context));
+});
+
+test('why-Certifyd validation rejects generic feature-list output', () => {
+  const context = whyCertifydContext({
+    title: 'Licensed AI music product',
+    summary: 'The source story says licensed AI music products move permission into product design.',
+    thesis: 'Permission is becoming part of product design.',
+    concept: 'Creator-controlled release context',
+    sourceConnection: 'The source facts connect permission, products and release context.',
+  });
+  const article = whyCertifydArticle(context, [
+    'The source story describes a new AI music product and the industry will continue watching how it develops.',
+    'The companies involved are moving quickly in a market where licensing and creative technology are important subjects.',
+    'Certifyd provides identity, provenance, rights and commerce tools.',
+    'Certifyd Core supports identity, provenance, catalog management and commerce.',
+  ]);
+  assert.throws(() => validateGeneratedArticle(article, context), /Certifyd relevance lacks story-specific architectural need/i);
+});
+
+test('why-Certifyd validation rejects boilerplate relevance that could fit any story', () => {
+  const context = whyCertifydContext({
+    title: 'Ticketmaster joins Meta Muse',
+    summary: 'The source story says live-event discovery is moving into an AI agent recommendation layer.',
+    thesis: 'Discovery is moving into agent-mediated recommendation systems.',
+    concept: 'Creator-controlled discovery relationship',
+    sourceConnection: 'The source facts connect AI agents, discovery and platform dependency.',
+  });
+  const article = whyCertifydArticle(context, [
+    'The source story describes a technology announcement and the market will continue changing over time.',
+    'This is where Certifyd comes in for creators and partners who want stronger tools.',
+    'As the industry evolves, Certifyd supports identity, provenance, publishing, discovery and commerce for the creator economy.',
+    'This underscores the importance of Certifyd for the future of creators.',
+  ]);
+  assert.throws(() => validateGeneratedArticle(article, context), /Certifyd relevance lacks story-specific architectural need/i);
+});
+
+test('why-Certifyd validation accepts story-specific architectural reasoning', () => {
+  const context = whyCertifydContext({
+    title: 'AI impersonation dispute raises artist identity questions',
+    summary: 'The source story says AI impersonation increases ambiguity around artist identity, authority, attribution and provenance.',
+    thesis: 'Identity cannot just be an account inside each platform.',
+    concept: 'Creator-controlled identity and provenance',
+    sourceConnection: 'The source facts connect AI impersonation to identity, authority, attribution and provenance.',
+  });
+  const article = whyCertifydArticle(context, [
+    'The AI impersonation dispute is not only about one fake asset; it shows how authorship and authority become harder to read when synthetic media can travel across platforms.',
+    'That creates a practical need for creators because identity, attribution and provenance cannot be reconstructed from scratch inside every account or marketplace after confusion has already spread.',
+    'A portable creator-controlled record gives the creator a stronger starting point for connecting identity, works and public activity before another platform interprets that context.',
+    'Certifyd matters in this kind of identity story because its approved architecture centers creator-controlled identity and provenance infrastructure rather than treating identity as only a profile inside someone else’s system.',
+  ]);
+  assert.doesNotThrow(() => validateGeneratedArticle(article, context));
 });
 
 test('OpenAI analytical vocabulary in reasoning is allowed without becoming Brain evidence', async () => {
