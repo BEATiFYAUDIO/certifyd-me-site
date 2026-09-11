@@ -3,6 +3,7 @@ import path from 'node:path';
 import process from 'node:process';
 import matter from 'gray-matter';
 import { marked } from 'marked';
+import { sanitizePublicArticleMarkdown } from './content-dashboard/public-markdown.js';
 
 const ROOT = process.cwd();
 const CONTENT_DIR = path.join(ROOT, 'content', 'blog');
@@ -224,7 +225,7 @@ async function readArticles() {
     const coverImageProvider = String(data.coverImageProvider || '').trim();
     const author = String(data.author || 'Certifyd').trim() || 'Certifyd';
     const tags = asArray(data.tags || data.keywords);
-    const body = marked.parse(prepareArticleMarkdown(parsed.content || '', title));
+    const body = marked.parse(prepareArticleMarkdown(sanitizePublicArticleMarkdown(parsed.content || ''), title));
 
     articles.push({
       file,

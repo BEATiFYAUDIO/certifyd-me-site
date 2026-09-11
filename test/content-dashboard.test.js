@@ -660,6 +660,52 @@ test('20 approved articles can become READY_TO_PUBLISH locally', async () => {
   assert.match(validated.output, /Publishing package is ready/);
 });
 
+test('20aa publishing preparation removes review-only footer from public artifacts', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-public-boundary-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const runId = 'review-footer-boundary-001';
+  const runDir = path.join(outputDir, runId);
+  const markdown = [
+    '---',
+    'title: "Review Footer Boundary"',
+    '---',
+    '',
+    '# Review Footer Boundary',
+    '',
+    'This public paragraph should remain intact.',
+    '',
+    '> Draft generated for founder review. Not approved for publishing.',
+    '',
+    'This public closing paragraph should also remain intact.',
+  ].join('\n');
+  await createMinimalRun(runDir, {
+    title: 'Review Footer Boundary',
+    slug: 'review-footer-boundary',
+    status: 'FOUNDER_APPROVED',
+    publishability: 'APPROVED_READY',
+    markdown,
+  });
+  const actions = new ContentDashboardActions(getDashboardConfig({
+    ...env,
+    CONTENT_AGENT_ROOT: tmpRoot,
+    CONTENT_AGENT_OUTPUT_DIR: outputDir,
+    CONTENT_DASHBOARD_DB_PATH: ':memory:',
+  }));
+  const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+
+  await actions.preparePublishing({ actor, runId });
+
+  const finalMarkdown = await fs.readFile(path.join(runDir, 'final', 'article.md'), 'utf8');
+  const blogMarkdown = await fs.readFile(path.join(runDir, 'blog', 'blog-post.md'), 'utf8');
+  const blogPackage = JSON.parse(await fs.readFile(path.join(runDir, 'blog', 'blog-post.json'), 'utf8'));
+  for (const value of [finalMarkdown, blogMarkdown, blogPackage.body]) {
+    assert.doesNotMatch(value, /Draft generated for founder review/i);
+    assert.doesNotMatch(value, /Not approved for publishing/i);
+    assert.match(value, /This public paragraph should remain intact/);
+    assert.match(value, /This public closing paragraph should also remain intact/);
+  }
+});
+
 test('20a publishing validation fails without approved Brain context', async () => {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-no-brain-publish-'));
   const outputDir = path.join(tmpRoot, 'engine', 'outputs');
@@ -1253,9 +1299,11 @@ test('20bba direct publish generation preserves existing GitHub branch articles 
   const tmpSiteRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-publisher-hydrate-'));
   await fs.mkdir(path.join(tmpSiteRoot, 'content', 'blog'), { recursive: true });
   await fs.mkdir(path.join(tmpSiteRoot, 'scripts'), { recursive: true });
+  await fs.mkdir(path.join(tmpSiteRoot, 'scripts', 'content-dashboard'), { recursive: true });
   await fs.symlink(path.join(process.cwd(), 'node_modules'), path.join(tmpSiteRoot, 'node_modules'), 'dir');
   await fs.cp(path.join(process.cwd(), 'templates'), path.join(tmpSiteRoot, 'templates'), { recursive: true });
   await fs.copyFile(path.join(process.cwd(), 'scripts', 'build-blog.js'), path.join(tmpSiteRoot, 'scripts', 'build-blog.js'));
+  await fs.copyFile(path.join(process.cwd(), 'scripts', 'content-dashboard', 'public-markdown.js'), path.join(tmpSiteRoot, 'scripts', 'content-dashboard', 'public-markdown.js'));
   await fs.writeFile(path.join(tmpSiteRoot, 'index.html'), [
     '<main>',
     '<!-- BLOG_RECENT_START -->',

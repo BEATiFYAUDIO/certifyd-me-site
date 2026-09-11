@@ -5,6 +5,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { validateRunId } from './security.js';
 import { normalizeArticleTitle, selectArticleCoverImage } from './article-utils.js';
+import { publicArticleBodyMarkdown, stripMarkdownFrontmatter } from './public-markdown.js';
 
 export class GitHubPullRequestPublisher {
   constructor(config, runs) {
@@ -361,7 +362,7 @@ function buildBlogMarkdown(pkg, run, options = {}) {
       title: pkg.title || run.summary.title,
       tags,
       excerpt: pkg.excerpt || pkg.description || run.summary.summary || '',
-      body: run.articleMarkdown || pkg.body || '',
+      body: publicArticleBodyMarkdown(pkg.body, run.articleMarkdown),
     }),
     coverImageAlt: pkg.coverImageAlt || '',
     coverImageCredit: pkg.coverImageCredit || '',
@@ -373,16 +374,7 @@ function buildBlogMarkdown(pkg, run, options = {}) {
     seoDescription: pkg.seoDescription || pkg.description || '',
   };
   const yaml = Object.entries(frontmatter).map(([key, value]) => `${key}: ${yamlValue(value)}`).join('\n');
-  return `---\n${yaml}\n---\n\n${stripMarkdownFrontmatter(run.articleMarkdown || pkg.body || '')}\n`;
-}
-
-function stripMarkdownFrontmatter(markdown) {
-  const value = String(markdown || '');
-  if (!value.startsWith('---')) return value;
-  const end = value.indexOf('\n---', 3);
-  if (end === -1) return value;
-  const after = value.indexOf('\n', end + 4);
-  return after === -1 ? '' : value.slice(after + 1).trimStart();
+  return `---\n${yaml}\n---\n\n${publicArticleBodyMarkdown(pkg.body, run.articleMarkdown)}\n`;
 }
 
 function yamlValue(value) {

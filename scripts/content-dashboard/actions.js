@@ -12,6 +12,7 @@ import { appendGlobalPexelsHistory, selectAutomatedCoverImage } from './cover-im
 import { approveGeneratedBlogImage, ensureImageBriefForRun, generateBlogImage } from './image-generation.js';
 import { isApprovedBrainRecord } from './brain-utils.js';
 import { submitIndexNow } from './indexnow.js';
+import { publicArticleBodyMarkdown } from './public-markdown.js';
 import {
   DESTINATION_STATES,
   buildDistributionAdapters,
@@ -418,7 +419,7 @@ export class ContentDashboardActions {
     const base = this.runs.runPath(runId);
     const slug = safeSlug(run.blogPackage?.slug || run.summary.slug || run.summary.title || runId);
     const title = normalizeArticleTitle(run.blogPackage?.title || run.summary.title);
-    const articleMarkdown = stripFrontmatter(run.articleMarkdown || run.draftMarkdown || '');
+    const articleMarkdown = publicArticleBodyMarkdown(run.blogPackage?.body, run.articleMarkdown, run.draftMarkdown);
     const canonicalUrl = blogUrl(slug);
     const blogPackage = {
       ...run.blogPackage,
@@ -434,6 +435,8 @@ export class ContentDashboardActions {
     };
     await this.writeRunJson(base, 'blog/blog-post.json', blogPackage);
     await this.writeRunText(base, 'blog/blog-post.md', articleMarkdown);
+    await this.writeRunText(base, 'final/article.md', buildPreparedFinalMarkdown(run.articleMarkdown || run.draftMarkdown || '', articleMarkdown));
+    await this.writeRunText(base, 'final-article.md', buildPreparedFinalMarkdown(run.articleMarkdown || run.draftMarkdown || '', articleMarkdown));
     await this.writeRunJson(base, 'distribution/distribution-plan.json', {
       primaryTarget: {
         channel: 'Certifyd Blog',
@@ -1266,13 +1269,20 @@ function distributionArticle(run = {}) {
   const summary = run.summary || {};
   return {
     title: pkg.title || summary.title || 'Untitled article',
-    markdown: stripFrontmatter(run.articleMarkdown || run.draftMarkdown || pkg.body || ''),
+    markdown: publicArticleBodyMarkdown(pkg.body, run.articleMarkdown, run.draftMarkdown),
     excerpt: pkg.description || pkg.excerpt || summary.topic || '',
     tags: Array.isArray(pkg.tags) ? pkg.tags : [],
     featuredImage: pkg.coverImage || '',
     date: pkg.date || new Date().toISOString(),
     canonicalUrl: summary.canonicalUrl || pkg.canonicalUrl || '',
   };
+}
+
+function buildPreparedFinalMarkdown(originalMarkdown, publicBody) {
+  const original = String(originalMarkdown || '');
+  const match = original.match(/^\uFEFF?---\s*[\r\n][\s\S]*?[\r\n]---\s*[\r\n]?/);
+  const frontmatter = match ? match[0].trimEnd() : '';
+  return `${frontmatter ? `${frontmatter}\n\n` : ''}${String(publicBody || '').trim()}\n`;
 }
 
 function publishedState({ previous = {}, externalPostId = '', externalUrl = '' } = {}) {

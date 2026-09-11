@@ -55,4 +55,3 @@ Certifyd Core supports release records that preserve work, release and attributi
 Those capabilities do not answer every permissions question, nor do they establish legal ownership or manage royalties. Their relevance is more fundamental: AI-era creative products increase the value of keeping a work’s identity and release context connected to the creator’s own record of activity. As permissions become part of the product, creator context cannot remain an afterthought.
 
 The UMG–ElevenLabs deal is one announcement in a crowded AI music market. Its larger significance is the model it advances: the next generation of music tools may be defined as much by the creative uses they are authorized to offer as by the generation technology underneath them.
-

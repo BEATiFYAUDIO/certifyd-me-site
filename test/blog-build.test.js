@@ -133,6 +133,25 @@ test('build demotes body h1 headings while preserving section text', async () =>
   assert.match(articleHtml, /<h2>Body Section Heading<\/h2>/);
 });
 
+test('build excludes review-only footer text from public article HTML and feed', async () => {
+  const root = await makeFixture({
+    'review-footer.md': `---\ntitle: "Review Footer Article"\nslug: "review-footer-article"\ndate: "2026-07-26"\nupdated: "2026-07-26"\nauthor: "Certifyd"\nexcerpt: "A fixture article with review footer leakage."\ncoverImage: "/images/fallback.png"\ntags:\n  - sample\nstatus: "published"\n---\n\n# Review Footer Article\n\nThis public body text should remain visible.\n\n> Draft generated for founder review. Not approved for publishing.\n\nThis public closing sentence should remain visible.\n`,
+  });
+  const result = runBuild(root);
+  assert.equal(result.status, 0, result.stderr);
+
+  const articleHtml = await fs.readFile(path.join(root, 'blog', 'review-footer-article', 'index.html'), 'utf8');
+  assert.match(articleHtml, /This public body text should remain visible/);
+  assert.match(articleHtml, /This public closing sentence should remain visible/);
+  assert.doesNotMatch(articleHtml, /Draft generated for founder review/i);
+  assert.doesNotMatch(articleHtml, /Not approved for publishing/i);
+
+  const feed = await fs.readFile(path.join(root, 'feed.xml'), 'utf8');
+  assert.match(feed, /Review Footer Article/);
+  assert.doesNotMatch(feed, /Draft generated for founder review/i);
+  assert.doesNotMatch(feed, /Not approved for publishing/i);
+});
+
 test('published article missing required fields fails with useful error', async () => {
   const root = await makeFixture({
     'bad.md': `---\ntitle: "Bad"\nslug: "bad"\ndate: "2026-07-26"\nauthor: "Certifyd"\nstatus: "published"\n---\n\nBody.`,
