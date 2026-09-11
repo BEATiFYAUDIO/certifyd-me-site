@@ -1,6 +1,9 @@
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
+import { spawnSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 import matter from 'gray-matter';
 import { marked } from 'marked';
 import { sanitizePublicArticleMarkdown } from './content-dashboard/public-markdown.js';
@@ -11,6 +14,9 @@ const TEMPLATE_DIR = path.join(ROOT, 'templates');
 const OUT_DIR = path.join(ROOT, 'blog');
 const BASE_URL = 'https://certifyd.me';
 const DEFAULT_IMAGE = '/images/certifyd-main-image-independent-scene-20260613.png';
+const SOCIAL_IMAGE_WIDTH = 1200;
+const SOCIAL_IMAGE_HEIGHT = 630;
+const SOCIAL_IMAGE_BACKGROUND = '#071421';
 const ORGANIZATION = {
   name: 'Certifyd',
   url: BASE_URL,
@@ -105,6 +111,16 @@ function validateImagePath(value, file) {
   return raw;
 }
 
+function validateOptionalImagePath(value, file, field) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (!raw.startsWith('/images/')) throw new Error(`${file}: ${field} must be a root-relative /images/ path`);
+  if (raw.includes('..') || raw.includes('\\') || /%2f|%5c/i.test(raw) || raw.split('/').some((part) => part === '..')) {
+    throw new Error(`${file}: ${field} contains an unsafe path`);
+  }
+  return raw;
+}
+
 function normalizeHeadingText(value) {
   return String(value || '')
     .replace(/<[^>]*>/g, '')
@@ -139,6 +155,78 @@ function absoluteUrl(value) {
   const raw = String(value || DEFAULT_IMAGE).trim();
   if (/^https?:\/\//i.test(raw)) return raw;
   return `${BASE_URL}${raw.startsWith('/') ? raw : `/${raw}`}`;
+}
+
+function sitePathFromImagePath(value) {
+  return path.join(ROOT, String(value || '').replace(/^\//, ''));
+}
+
+function isSvgImage(value) {
+  return /\.svg$/i.test(String(value || '').split('?')[0]);
+}
+
+function isRasterSocialImage(value) {
+  return /\.(?:png|jpe?g)$/i.test(String(value || '').split('?')[0]);
+}
+
+function socialImagePathForCover(coverImage) {
+  const raw = String(coverImage || '').trim();
+  if (!isSvgImage(raw)) return raw;
+  return raw.replace(/\.svg$/i, '-social.png');
+}
+
+async function ensureSocialImageForArticle(article) {
+  if (article.socialImage && isRasterSocialImage(article.socialImage)) return article.socialImage;
+  if (!isSvgImage(article.coverImage)) return article.socialImage || article.coverImage;
+  const socialImage = socialImagePathForCover(article.coverImage);
+  const source = sitePathFromImagePath(article.coverImage);
+  const target = sitePathFromImagePath(socialImage);
+  try {
+    const [sourceStat, targetStat] = await Promise.all([
+      fs.stat(source),
+      fs.stat(target).catch(() => null),
+    ]);
+    if (targetStat && targetStat.mtimeMs >= sourceStat.mtimeMs && targetStat.size > 0) return socialImage;
+    await rasterizeSvgSocialImage(source, target);
+    const written = await fs.stat(target);
+    if (!written.size) throw new Error('rasterized social image is empty');
+    return socialImage;
+  } catch (error) {
+    throw new Error(`${article.file}: failed to create social image from ${article.coverImage}: ${error.message}`);
+  }
+}
+
+async function ensureSocialImages(articles) {
+  for (const article of articles) article.socialImage = await ensureSocialImageForArticle(article);
+}
+
+async function rasterizeSvgSocialImage(source, target) {
+  await fs.mkdir(path.dirname(target), { recursive: true });
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-social-image-'));
+  const htmlPath = path.join(tempDir, 'render.html');
+  const html = `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    html,body{margin:0;width:${SOCIAL_IMAGE_WIDTH}px;height:${SOCIAL_IMAGE_HEIGHT}px;overflow:hidden;background:${SOCIAL_IMAGE_BACKGROUND}}
+    img{display:block;width:${SOCIAL_IMAGE_WIDTH}px;height:${SOCIAL_IMAGE_HEIGHT}px;object-fit:contain}
+  </style>
+</head>
+<body><img src="${pathToFileURL(source).href}" alt=""></body>
+</html>`;
+  await fs.writeFile(htmlPath, html, 'utf8');
+  const chrome = process.env.CHROME_BIN || 'google-chrome';
+  const result = spawnSync(chrome, [
+    '--headless=new',
+    '--disable-gpu',
+    '--no-sandbox',
+    `--window-size=${SOCIAL_IMAGE_WIDTH},${SOCIAL_IMAGE_HEIGHT}`,
+    `--screenshot=${target}`,
+    pathToFileURL(htmlPath).href,
+  ], { encoding: 'utf8' });
+  await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+  if (result.status !== 0) throw new Error((result.stderr || result.stdout || `${chrome} failed`).trim());
 }
 
 function verificationMeta() {
@@ -219,6 +307,7 @@ async function readArticles() {
     const excerpt = String(data.excerpt || data.description || '').trim();
     if (!excerpt) throw new Error(`${file}: missing excerpt`);
     const coverImage = validateImagePath(data.coverImage || data.image, file);
+    const socialImage = validateOptionalImagePath(data.socialImage || data.ogImage || '', file, 'socialImage');
     const coverImageAlt = String(data.coverImageAlt || '').trim();
     const coverImageCredit = String(data.coverImageCredit || '').trim();
     const coverImageCreditUrl = validateOptionalUrl(data.coverImageCreditUrl || '', file);
@@ -236,6 +325,7 @@ async function readArticles() {
       author,
       excerpt,
       coverImage,
+      socialImage,
       coverImageAlt,
       coverImageCredit,
       coverImageCreditUrl,
@@ -315,6 +405,7 @@ function organizationJsonLd() {
 
 function articleJsonLd(article) {
   const canonicalUrl = articleUrl(article);
+  const image = article.socialImage || article.coverImage;
   return {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
@@ -322,7 +413,7 @@ function articleJsonLd(article) {
     url: canonicalUrl,
     headline: article.title,
     description: article.seoDescription || article.excerpt,
-    image: [absoluteUrl(article.coverImage)],
+    image: [absoluteUrl(image)],
     author: { '@type': 'Organization', name: article.author, url: BASE_URL },
     publisher: {
       '@type': 'Organization',
@@ -391,7 +482,7 @@ async function writeArticle(article, template) {
     canonicalUrl: articleUrl(article),
     robotsMeta: '',
     googleVerificationMeta: verificationMeta(),
-    ogImage: absoluteUrl(article.coverImage),
+    ogImage: absoluteUrl(article.socialImage || article.coverImage),
     publishedIso: article.date.toISOString(),
     updatedIso: article.updated.toISOString(),
     author: escapeHtml(article.author),
@@ -650,6 +741,7 @@ export async function buildBlog() {
     fs.readFile(path.join(TEMPLATE_DIR, 'blog-article.html'), 'utf8'),
   ]);
   const articles = await readArticles();
+  await ensureSocialImages(articles);
   await ensureEmptyDir(OUT_DIR);
   await writeBlogIndex(articles, indexTemplate);
   await Promise.all(articles.map((article) => writeArticle(article, articleTemplate)));

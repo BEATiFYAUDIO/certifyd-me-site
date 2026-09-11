@@ -98,6 +98,52 @@ test('build renders blog index, article pages, homepage section and metadata', a
   assert.match(seo.stdout, /SEO validation passed/);
 });
 
+test('build keeps branded SVG cover visible but uses raster social image metadata', async () => {
+  const root = await makeFixture({
+    'branded-svg.md': article({
+      title: 'Branded SVG Cover',
+      slug: 'branded-svg-cover',
+      date: '2026-09-11',
+      excerpt: 'A branded SVG cover should remain visible while social metadata uses a raster derivative.',
+      coverImage: '/images/blog/branded-svg-cover-logo.svg',
+    }),
+  });
+  await fs.mkdir(path.join(root, 'images', 'blog'), { recursive: true });
+  const svgPath = path.join(root, 'images', 'blog', 'branded-svg-cover-logo.svg');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="1024" viewBox="0 0 1536 1024">
+  <rect width="1536" height="1024" fill="#071421"/>
+  <image id="source-ai-raster-placeholder" href="data:image/png;base64,iVBORw0KGgo=" width="1536" height="1024"/>
+  <text x="96" y="190" fill="#ffffff" font-size="92" font-family="Arial, sans-serif" font-weight="700">Branded SVG Cover</text>
+  <g id="certifyd-logo" transform="translate(1120 820)">
+    <rect width="280" height="90" rx="16" fill="#ffffff"/>
+    <text x="24" y="60" fill="#071421" font-size="46" font-family="Arial, sans-serif" font-weight="700">certifyd</text>
+  </g>
+</svg>`;
+  await fs.writeFile(svgPath, svg);
+  const beforeMarkdown = await fs.readFile(path.join(root, 'content', 'blog', 'branded-svg.md'), 'utf8');
+
+  const result = runBuild(root);
+  assert.equal(result.status, 0, result.stderr);
+
+  const articleHtml = await fs.readFile(path.join(root, 'blog', 'branded-svg-cover', 'index.html'), 'utf8');
+  const socialPath = '/images/blog/branded-svg-cover-logo-social.png';
+  const socialAbsolute = path.join(root, socialPath.replace(/^\//, ''));
+  const socialStat = await fs.stat(socialAbsolute);
+  assert.ok(socialStat.size > 0);
+  assert.match(articleHtml, /<div class="article-hero-image"><img src="\/images\/blog\/branded-svg-cover-logo\.svg"/);
+  assert.match(articleHtml, /<meta property="og:image" content="https:\/\/certifyd\.me\/images\/blog\/branded-svg-cover-logo-social\.png" \/>/);
+  assert.match(articleHtml, /<meta name="twitter:image" content="https:\/\/certifyd\.me\/images\/blog\/branded-svg-cover-logo-social\.png" \/>/);
+  assert.doesNotMatch(articleHtml, /property="og:image" content="[^"]+\.svg"/);
+  assert.doesNotMatch(articleHtml, /name="twitter:image" content="[^"]+\.svg"/);
+  const jsonLd = [...articleHtml.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((match) => JSON.parse(match[1]));
+  assert.deepEqual(jsonLd.find((item) => item['@type'] === 'BlogPosting').image, ['https://certifyd.me/images/blog/branded-svg-cover-logo-social.png']);
+  assert.equal(await fs.readFile(path.join(root, 'content', 'blog', 'branded-svg.md'), 'utf8'), beforeMarkdown);
+  assert.match(await fs.readFile(svgPath, 'utf8'), /id="certifyd-logo"/);
+  const identify = spawnSync('identify', ['-format', '%m %w %h', socialAbsolute], { encoding: 'utf8' });
+  assert.equal(identify.status, 0, identify.stderr);
+  assert.equal(identify.stdout, 'PNG 1200 630');
+});
+
 test('build writes safe Google and IndexNow verification files from environment', async () => {
   const root = await makeFixture({
     'article.md': article({ title: 'Verification Article', slug: 'verification-article', date: '2026-07-26' }),
