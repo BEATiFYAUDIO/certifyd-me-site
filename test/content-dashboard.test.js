@@ -5,7 +5,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { createContentDashboardServer } from '../scripts/content-dashboard/server.js';
+import { createContentDashboardServer, trendOpportunityTopicForIntake } from '../scripts/content-dashboard/server.js';
 import { getDashboardConfig } from '../scripts/content-dashboard/config.js';
 import { validateRunId, safeReturnPath } from '../scripts/content-dashboard/security.js';
 import { AuditLogRepository, ContentDashboardActions } from '../scripts/content-dashboard/actions.js';
@@ -224,6 +224,42 @@ test('4ba article ideas separate recommended opportunities from retained source 
     assert.equal(trends.summary.storiesCollected, 90);
     assert.equal(trends.sourceStories[0].retentionStatus, 'Recommended');
   }, { CONTENT_AGENT_ROOT: tmpRoot });
+});
+
+test('4baa trend opportunity intake keeps normal topics unchanged', () => {
+  const topic = 'Write about creator-owned music infrastructure';
+  assert.equal(trendOpportunityTopicForIntake({ topic, title: 'Creator infrastructure' }), topic);
+});
+
+test('4bab trend opportunity intake bounds long source-derived topics while preserving source headline metadata', () => {
+  const fullSourceHeadline = 'US musicians’ union files opposition to Universal and Warner motions to dismiss, saying members’ recordings were ‘fed into AI systems for commercial exploitation’';
+  const opportunity = {
+    title: 'US musicians’ union files opposition to Universal and Warner motions to dismiss, saying members’ recordings were ‘fed i…',
+    topic: `${'Write a Certifyd article about: '}US musicians’ union files opposition to Universal and Warner motions to dismiss, saying members’ recordings were ‘fed i…. Use this angle: This connects to AI-era permissions, rights clearance, attribution, creator opt-in and provenance around inputs, outputs and derivative works.`,
+    originalSources: [{
+      id: 'src-f2ac98953c46e3ea',
+      sourceTitle: fullSourceHeadline,
+      title: fullSourceHeadline,
+      publisher: 'Music Business Worldwide',
+    }],
+  };
+  const intakeTopic = trendOpportunityTopicForIntake(opportunity);
+  assert.equal(intakeTopic, fullSourceHeadline);
+  assert.ok(intakeTopic.length <= 300);
+  assert.equal(opportunity.originalSources[0].sourceTitle, fullSourceHeadline);
+  assert.equal(opportunity.originalSources[0].publisher, 'Music Business Worldwide');
+});
+
+test('4bac trend opportunity intake truncates oversized fallback topics at a word boundary where possible', () => {
+  const longHeadline = Array.from({ length: 80 }, (_, index) => `word${index}`).join(' ');
+  const intakeTopic = trendOpportunityTopicForIntake({
+    topic: `Write a Certifyd article about: ${longHeadline}. Use this angle: ${longHeadline}`,
+    originalSources: [{ sourceTitle: longHeadline }],
+  });
+  assert.ok(intakeTopic.length <= 300);
+  assert.match(intakeTopic, /…$/);
+  const finalToken = intakeTopic.slice(0, -1).split(' ').at(-1);
+  assert.ok(longHeadline.split(' ').includes(finalToken));
 });
 
 test('4bab retained source stories show existing draft instead of duplicate generation', async () => {

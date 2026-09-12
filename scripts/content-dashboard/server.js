@@ -28,6 +28,7 @@ import { ensureImageBriefForRun } from './image-generation.js';
 const STATIC_TYPES = new Map([['.html','text/html; charset=utf-8'],['.css','text/css; charset=utf-8'],['.js','text/javascript; charset=utf-8'],['.svg','image/svg+xml'],['.png','image/png'],['.jpg','image/jpeg'],['.jpeg','image/jpeg'],['.webp','image/webp'],['.xml','application/xml; charset=utf-8'],['.txt','text/plain; charset=utf-8'],['.mp4','video/mp4']]);
 const generationJobs = new Map();
 const GENERATION_JOB_TTL_MS = 60 * 60 * 1000;
+const INTAKE_FIELD_MAX_LENGTH = 300;
 
 export function createContentDashboardServer(options = {}) {
   const config = options.config || getDashboardConfig(options.env || process.env);
@@ -331,12 +332,52 @@ function opportunityCard(item, csrf, canCreate) {
       <dt>Risk</dt><dd>${riskFlags.length ? riskFlags.map((flag) => `<span class="pill bad">${escapeHtml(flag)}</span>`).join(' ') : '<span class="pill good">No source risk flagged</span>'}</dd>
     </dl>
     <div class="opportunity-actions">
-      ${canCreate ? quickGenerateForm({ csrf, label: 'Generate Article', topic: item.topic || item.title, className: 'primary', extraFields: { trendOpportunityId: item.id || '', trendSourceItemIds: sourceIds, trendBrainRecordIds: brainIds, sourceRestrictions: restrictions } }) : '<p class="muted">Generation unavailable for this role.</p>'}
+      ${canCreate ? quickGenerateForm({ csrf, label: 'Generate Article', topic: trendOpportunityTopicForIntake(item), className: 'primary', extraFields: { trendOpportunityId: item.id || '', trendSourceItemIds: sourceIds, trendBrainRecordIds: brainIds, sourceRestrictions: restrictions } }) : '<p class="muted">Generation unavailable for this role.</p>'}
       ${sourceIds ? `<a class="ghost" href="/app/content/trends/${encodeURIComponent(item.id || '')}/sources">View Sources</a>` : ''}
       <form method="post" action="/app/content/actions/trends/save"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="opportunityId" value="${escapeHtml(item.id || '')}"><button class="ghost" type="submit">${item.saved ? 'Saved' : 'Save'}</button></form>
       <form method="post" action="/app/content/actions/trends/dismiss"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="opportunityId" value="${escapeHtml(item.id || '')}"><button class="ghost" type="submit">Dismiss</button></form>
     </div>
   </article>`;
+}
+
+export function trendOpportunityTopicForIntake(item = {}) {
+  const rawTopic = cleanInlineText(item.topic || item.title || '');
+  if (rawTopic.length <= INTAKE_FIELD_MAX_LENGTH) return rawTopic;
+  const candidates = [
+    firstOriginalSourceTitle(item),
+    cleanInlineText(item.title || ''),
+    sourceSubjectFromTrendTopic(rawTopic),
+    rawTopic,
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    if (candidate.length <= INTAKE_FIELD_MAX_LENGTH) return candidate;
+  }
+  return truncateInlineText(candidates[0] || rawTopic, INTAKE_FIELD_MAX_LENGTH);
+}
+
+function firstOriginalSourceTitle(item = {}) {
+  const source = Array.isArray(item.originalSources) ? item.originalSources.find((entry) => entry?.sourceTitle || entry?.title) : null;
+  return cleanInlineText(source?.sourceTitle || source?.title || '');
+}
+
+function sourceSubjectFromTrendTopic(topic = '') {
+  const withoutPrefix = cleanInlineText(topic).replace(/^write a certifyd article about:\s*/i, '');
+  return cleanInlineText(withoutPrefix.split(/\s+Use this angle:\s+/i)[0] || withoutPrefix);
+}
+
+function cleanInlineText(value = '') {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function truncateInlineText(value = '', maxLength = INTAKE_FIELD_MAX_LENGTH) {
+  const text = cleanInlineText(value);
+  if (text.length <= maxLength) return text;
+  if (maxLength <= 1) return text.slice(0, maxLength);
+  const limit = maxLength - 1;
+  const slice = text.slice(0, limit);
+  const lastSpace = slice.lastIndexOf(' ');
+  const trimmed = lastSpace >= Math.floor(limit * 0.6) ? slice.slice(0, lastSpace) : slice;
+  return `${trimmed.trimEnd()}…`;
 }
 
 function originalSourceLinks(item = {}) {
@@ -1342,7 +1383,7 @@ function validateIntake(form) {
   for (const field of requiredFields) {
     const value = String(form.get(field) || '').trim();
     if (!value) throw Object.assign(new Error(`Missing required intake field: ${field}`), { statusCode: 400 });
-    if (value.length > 300) throw Object.assign(new Error(`Intake field is too long: ${field}`), { statusCode: 400 });
+    if (value.length > INTAKE_FIELD_MAX_LENGTH) throw Object.assign(new Error(`Intake field is too long: ${field}`), { statusCode: 400 });
   }
   const contentType = String(form.get('contentType') || '');
   const provider = String(form.get('provider') || '');
