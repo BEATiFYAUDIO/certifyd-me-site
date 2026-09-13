@@ -284,6 +284,7 @@ export class GitHubPullRequestPublisher {
           targetDir: path.join(tempRoot, 'content', 'blog'),
         });
       }
+      await copySiteImagesForBuild(this.siteRoot, tempRoot);
       await fs.cp(path.join(this.siteRoot, 'templates'), path.join(tempRoot, 'templates'), { recursive: true });
       await fs.copyFile(path.join(this.siteRoot, 'index.html'), path.join(tempRoot, 'index.html'));
       await fs.writeFile(path.join(tempRoot, 'content', 'blog', `${slug}.md`), markdown);
@@ -310,12 +311,8 @@ export class GitHubPullRequestPublisher {
       }
       const coverImagePath = coverImagePathFromMarkdown(markdown);
       if (coverImagePath) {
-        const imagePath = coverImagePath.replace(/^\//, '');
-        const fullImagePath = path.join(this.siteRoot, imagePath);
-        if (fullImagePath.startsWith(this.siteRoot)) {
-          const stat = await fs.stat(fullImagePath).catch(() => null);
-          if (stat?.isFile()) files.push({ path: imagePath, content: await fs.readFile(fullImagePath) });
-        }
+        await addImageFileIfExists(files, this.siteRoot, coverImagePath);
+        await addImageFileIfExists(files, tempRoot, socialImagePathForCover(coverImagePath));
       }
       return files;
     } finally {
@@ -696,6 +693,31 @@ function coverImagePathFromMarkdown(markdown) {
   if (!match?.[1]) return '';
   if (match[1].includes('\\') || match[1].includes('..') || /%2f|%5c/i.test(match[1])) return '';
   return match[1];
+}
+
+function socialImagePathForCover(coverImagePath) {
+  const raw = String(coverImagePath || '').trim();
+  if (!/\.svg$/i.test(raw.split('?')[0])) return '';
+  return raw.replace(/\.svg$/i, '-social.png');
+}
+
+async function copySiteImagesForBuild(siteRoot, tempRoot) {
+  const source = path.join(siteRoot, 'images');
+  const stat = await fs.stat(source).catch(() => null);
+  if (!stat?.isDirectory()) return;
+  await fs.cp(source, path.join(tempRoot, 'images'), { recursive: true });
+}
+
+async function addImageFileIfExists(files, root, imagePath) {
+  const relativePath = String(imagePath || '').replace(/^\//, '');
+  if (!relativePath) return;
+  const rootPath = path.resolve(root);
+  const fullImagePath = path.resolve(rootPath, relativePath);
+  if (path.relative(rootPath, fullImagePath).startsWith('..')) return;
+  const stat = await fs.stat(fullImagePath).catch(() => null);
+  if (stat?.isFile() && !files.some((file) => file.path === relativePath)) {
+    files.push({ path: relativePath, content: await fs.readFile(fullImagePath) });
+  }
 }
 
 function indexNowKeyFileName() {

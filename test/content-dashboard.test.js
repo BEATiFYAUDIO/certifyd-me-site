@@ -1598,6 +1598,63 @@ test('20bbd direct publishing skips GitHub commits when generated output is unch
   }
 });
 
+test('20bbe publish-time static generation stages SVG cover images and generated social images', async () => {
+  const tmpSiteRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-publisher-svg-'));
+  await fs.mkdir(path.join(tmpSiteRoot, 'content', 'blog'), { recursive: true });
+  await fs.mkdir(path.join(tmpSiteRoot, 'images', 'blog', '2026', '09'), { recursive: true });
+  await fs.mkdir(path.join(tmpSiteRoot, 'scripts', 'content-dashboard'), { recursive: true });
+  await fs.mkdir(path.join(tmpSiteRoot, 'scripts'), { recursive: true });
+  await fs.symlink(path.join(process.cwd(), 'node_modules'), path.join(tmpSiteRoot, 'node_modules'), 'dir');
+  await fs.cp(path.join(process.cwd(), 'templates'), path.join(tmpSiteRoot, 'templates'), { recursive: true });
+  await fs.copyFile(path.join(process.cwd(), 'scripts', 'build-blog.js'), path.join(tmpSiteRoot, 'scripts', 'build-blog.js'));
+  await fs.copyFile(path.join(process.cwd(), 'scripts', 'content-dashboard', 'public-markdown.js'), path.join(tmpSiteRoot, 'scripts', 'content-dashboard', 'public-markdown.js'));
+  await fs.writeFile(path.join(tmpSiteRoot, 'index.html'), [
+    '<main>',
+    '<!-- BLOG_RECENT_START -->',
+    '<!-- BLOG_RECENT_END -->',
+    '</main>',
+  ].join('\n'));
+  await fs.writeFile(path.join(tmpSiteRoot, 'images', 'blog', '2026', '09', 'svg-cover-logo.svg'), [
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">',
+    '<rect width="1200" height="630" fill="#04121f"/>',
+    '<circle cx="840" cy="260" r="160" fill="#ff9f1c"/>',
+    '<text x="80" y="180" fill="#ffffff" font-size="72" font-family="Arial">SVG Cover</text>',
+    '</svg>',
+  ].join(''));
+
+  const publisher = new GitHubPullRequestPublisher({
+    siteRoot: tmpSiteRoot,
+    githubPublishing: {
+      enabled: true,
+      owner: 'BEATiFYAUDIO',
+      repo: 'certifyd-me-site',
+      token: 'test-token',
+      baseBranch: 'main',
+    },
+  }, {});
+  const files = await publisher.buildGeneratedSiteFiles('svg-cover-test', [
+    '---',
+    'title: "SVG Cover Test"',
+    'slug: "svg-cover-test"',
+    'date: "2026-09-13"',
+    'updated: "2026-09-13"',
+    'author: "Certifyd"',
+    'excerpt: "SVG cover image publish test."',
+    'coverImage: "/images/blog/2026/09/svg-cover-logo.svg"',
+    'status: "published"',
+    '---',
+    '',
+    '# SVG Cover Test',
+    '',
+    'Body.',
+  ].join('\n'));
+
+  assert.ok(files.some((file) => file.path === 'content/blog/svg-cover-test.md'));
+  assert.ok(files.some((file) => file.path === 'blog/svg-cover-test/index.html'));
+  assert.ok(files.some((file) => file.path === 'images/blog/2026/09/svg-cover-logo.svg'));
+  assert.ok(files.some((file) => file.path === 'images/blog/2026/09/svg-cover-logo-social.png'));
+});
+
 test('20bc IndexNow submits only after publish, update and removal', async () => {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-indexnow-'));
   const outputDir = path.join(tmpRoot, 'engine', 'outputs');

@@ -385,6 +385,20 @@ function renderCategoryTags(articles) {
   return tags.map((tag) => `<span class="category-tag">${escapeHtml(tag)}</span>`).join('\n');
 }
 
+function renderFeaturedCategoryTags(articles) {
+  const tags = new Set(articles.flatMap((article) => article.tags).map((tag) => String(tag || '').toLowerCase()));
+  const featured = [
+    'creator ownership',
+    'AI music',
+    'music rights',
+    'direct-to-fan',
+    'creator infrastructure',
+    'artist identity',
+  ].filter((tag) => tags.has(tag.toLowerCase()));
+  const fallback = featured.length ? featured : ['creator ownership', 'AI music', 'music rights', 'direct-to-fan'];
+  return fallback.map((tag) => `<span class="category-tag featured">${escapeHtml(tag)}</span>`).join('\n');
+}
+
 function jsonLdScript(data) {
   return `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`;
 }
@@ -463,6 +477,7 @@ async function writeBlogIndex(articles, template) {
     canonicalUrl: `${BASE_URL}/blog/`,
     googleVerificationMeta: verificationMeta(),
     socialImage: absoluteUrl(DEFAULT_IMAGE),
+    featuredCategories: renderFeaturedCategoryTags(articles),
     categories: renderCategoryTags(articles),
     articles: articles.length ? articles.map(renderArticleCard).join('\n') : '<p class="empty-state">No published articles yet.</p>',
   });
