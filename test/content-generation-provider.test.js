@@ -1236,7 +1236,11 @@ test('final writing instructions require why-Certifyd architectural need before 
   assert.match(finalInstructionText, /Explain the need before the capability/i);
   assert.match(finalInstructionText, /industry change to structural consequence to missing or fragile infrastructure to creator-controlled infrastructure to the specific Certifyd relevance/i);
   assert.match(finalInstructionText, /Do not reverse that order into a Certifyd feature list/i);
+  assert.match(finalInstructionText, /what remains platform-controlled or fragmented without creator-controlled infrastructure/i);
+  assert.match(finalInstructionText, /what becomes more durable, portable or possible for the creator/i);
   assert.match(finalInstructionText, /Weak: “Certifyd Core supports identity, provenance, catalog management and commerce.”/i);
+  assert.match(finalInstructionText, /Also weak: “Certifyd maintains catalog context” or “Certifyd supports release records”/i);
+  assert.match(finalInstructionText, /rather than only in a platform, distributor, label, PRO, AI product, marketplace or other intermediary system/i);
   assert.match(finalInstructionText, /Avoid generic bridges such as “This is where Certifyd comes in,” “Certifyd solves this,”/i);
 });
 
@@ -1291,6 +1295,40 @@ test('why-Certifyd validation accepts Spotify bundling architectural need', () =
   assert.doesNotThrow(() => validateGeneratedArticle(article, context));
 });
 
+test('why-Certifyd validation rejects shallow Spotify catalog-context capability listing', () => {
+  const context = whyCertifydContext({
+    title: 'Spotify bundling ruling affects royalty economics',
+    summary: 'The source story says subscription bundling and product packaging can affect music royalty economics.',
+    thesis: 'Platform product design can become an input into creator economics.',
+    concept: 'Creator-controlled commerce and context layer',
+    sourceConnection: 'The source facts connect subscription bundling, platform packaging and creator compensation exposure.',
+  });
+  const article = whyCertifydArticle(context, [
+    'The Spotify bundling fight shows that subscription packaging is not just marketing language; product design can affect royalty economics.',
+    'The story raises questions about how product packaging, subscription definitions and music compensation may interact over time.',
+    'The industry consequence is that platforms can shape the commercial frame around music before creators see the downstream economic result.',
+    'Certifyd maintains catalog context for works and releases.',
+  ]);
+  assert.throws(() => validateGeneratedArticle(article, context), /Certifyd relevance lacks story-specific architectural need/i);
+});
+
+test('why-Certifyd validation rejects shallow UMG release-record capability listing', () => {
+  const context = whyCertifydContext({
+    title: 'UMG and ElevenLabs develop licensed AI music product',
+    summary: 'The source story says licensed AI music products move permission and artist participation into the product experience.',
+    thesis: 'Permission is becoming part of product design.',
+    concept: 'Creator-controlled release context',
+    sourceConnection: 'The source facts connect licensed AI music products to permission, artist participation and release context.',
+  });
+  const article = whyCertifydArticle(context, [
+    'UMG and ElevenLabs show a music market in which permission is moving into the product rather than remaining a downstream clearance task.',
+    'That shift changes where participation context is interpreted because AI products increasingly need to know which works and artists can enter a product workflow.',
+    'The article should explain why that operating context matters before naming any product capability.',
+    'Certifyd supports release records that preserve work, release and attribution context.',
+  ]);
+  assert.throws(() => validateGeneratedArticle(article, context), /Certifyd relevance lacks story-specific architectural need/i);
+});
+
 test('why-Certifyd validation rejects generic feature-list output', () => {
   const context = whyCertifydContext({
     title: 'Licensed AI music product',
@@ -1323,6 +1361,23 @@ test('why-Certifyd validation rejects boilerplate relevance that could fit any s
     'This underscores the importance of Certifyd for the future of creators.',
   ]);
   assert.throws(() => validateGeneratedArticle(article, context), /Certifyd relevance lacks story-specific architectural need/i);
+});
+
+test('why-Certifyd validation accepts unrelated direct-commerce architectural reasoning without reusing rights rationale', () => {
+  const context = whyCertifydContext({
+    title: 'Creator storefront moves fan purchases into a direct channel',
+    summary: 'The source story says independent artists are moving music and merchandise transactions into direct-to-fan commerce instead of relying only on marketplace discovery.',
+    thesis: 'Fan commerce is moving closer to the creator relationship.',
+    concept: 'Creator-controlled commerce relationship',
+    sourceConnection: 'The source facts connect direct fan commerce, transactions and marketplace dependency.',
+  });
+  const article = whyCertifydArticle(context, [
+    'The direct-commerce story is not mainly about rights or permission; it shows fan purchases moving closer to the creator relationship.',
+    'That creates a different dependency problem because marketplace systems can own the customer context, transaction history and repeat relationship even when the creator made the demand.',
+    'If that fan relationship has to be rebuilt inside every shop or discovery surface, the creator remains dependent on whichever intermediary controls the next transaction.',
+    'Certifyd matters here because creator-controlled commerce infrastructure gives the creator an independent relationship and receipt layer that can persist before any one marketplace decides how to package the next sale.',
+  ]);
+  assert.doesNotThrow(() => validateGeneratedArticle(article, context));
 });
 
 test('why-Certifyd validation accepts story-specific architectural reasoning', () => {
