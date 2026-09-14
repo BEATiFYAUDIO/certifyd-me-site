@@ -1419,6 +1419,7 @@ function buildArticleRevisionPrompt(originalPrompt, article, genericDefinitionHi
     'Do not restore an earlier weaker Stage A1 thesis or structure while repairing the factual issue.',
     'Do not add new facts, new Certifyd capabilities, new source claims, or new Brain concepts.',
     'Remove or qualify unsupported claims. Preserve general explanatory context only when it is clearly not a factual claim about the source event.',
+    'If the validation finding says Certifyd relevance lacks story-specific architectural need, revise only the Certifyd relevance passage so it explains the dependency or structural gap created by the source story, what the creator lacks without creator-controlled infrastructure, how the selected Certifyd architecture changes that condition, and what becomes possible or more durable for the creator.',
     'Do not use sentences beginning “A payout is”, “A record is”, “A receipt is”, “A profile is”, “A release record is”, or “Provenance is evidence about”.',
     '',
     'BLOCKED PHRASES:',
@@ -2165,7 +2166,8 @@ function assessCertifydNeedConnection(bodyMarkdown, groundedContext = {}) {
   }
   const certWindows = certifydReasoningWindows(bodyMarkdown);
   const genericOnly = certWindows.some(isGenericCertifydFeatureList);
-  if (!genericOnly) return '';
+  const requiresArchitecturalCheck = genericOnly || certWindows.some(requiresCertifydArchitecturalReasoning);
+  if (!requiresArchitecturalCheck) return '';
   const storyText = normalizeNeedConnectionText([
     ...(groundedContext.externalSourceFacts || []).flatMap((source) => [source.title, source.summary, source.sourceText, source.rssSummary, (source.categories || []).join(' ')]),
     groundedContext.editorialBrief?.primaryEvent,
@@ -2183,9 +2185,9 @@ function assessCertifydNeedConnection(bodyMarkdown, groundedContext = {}) {
   const strongCertifydReasoning = certWindows.some((windowText) => {
     const windowFrames = storyFramesFromText(windowText);
     const windowSharedFrames = activeFrames.filter((frame) => windowFrames.includes(frame));
-    const hasDependency = /\b(?:platform|platforms|third-party|third party|intermediary|intermediaries|distributor|distributors|label|labels|pro|cmo|ai product|marketplace|outside system|other system|elsewhere|dependent|depends|dependency|fragmented|fragile|rebuild|cede|controlled elsewhere|not control|do not control|without creator-controlled|rather than only|rather than starting|inside every|inside another|inside someone else's)\b/.test(windowText);
-    const hasCreatorControl = /\b(?:creator-controlled|creator controlled|creator-operated|creator operated|independent|portable|persistent|durable|own record|own layer|starting point|source of|originates with the creator|originates with creators|infrastructure)\b/.test(windowText);
-    const hasOutcome = /\b(?:makes possible|make possible|what becomes possible|gives|allows|lets|means|becomes|can carry|can enter|can persist|more durable|more portable|portable|persistent|starting place|starting point|before those works|before another|before any one|rather than treating|rather than starting)\b/.test(windowText);
+    const hasDependency = hasCertifydDependencyReasoning(windowText);
+    const hasCreatorControl = hasCertifydControlChangeReasoning(windowText);
+    const hasOutcome = hasCertifydOutcomeReasoning(windowText);
     const hasCausalBridge = /\b(?:because|as|when|once|if|therefore|that means|which means|creates|exposes|moves|turns|depends|requires|increases the value|becomes|rather than)\b/.test(windowText);
     return windowSharedFrames.length && hasDependency && hasCreatorControl && hasOutcome && hasCausalBridge && !isGenericCertifydFeatureList(windowText);
   });
@@ -2220,7 +2222,7 @@ function storyFramesFromText(text) {
 
 function certifydReasoningWindows(bodyMarkdown) {
   const sentences = String(bodyMarkdown || '')
-    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^\s{0,3}#{1,6}\s+.+$/gm, '')
     .split(/(?<=[.!?])\s+|\n{2,}/)
     .map(normalizeNeedConnectionText)
     .filter(Boolean);
@@ -2232,17 +2234,42 @@ function certifydReasoningWindows(bodyMarkdown) {
   return windows;
 }
 
+function requiresCertifydArchitecturalReasoning(windowText) {
+  return /\bcertifyd['’]s perspective\b/.test(windowText)
+    || /\bcertifyd\b[^.]{0,180}\b(?:supports|provides|offers|includes|powers|maintains|enables|preserves)\b/.test(windowText)
+    || /\bcertifyd\b[^.]{0,180}\b(?:release records?|catalog(?:-management)?|catalog context|work context|attribution context|public records?|capabilit(?:y|ies))\b/.test(windowText);
+}
+
+function hasCertifydDependencyReasoning(windowText) {
+  return /\b(?:platform|platforms|third-party|third party|intermediary|intermediaries|distributor|distributors|label|labels|pro|cmo|ai product|ai products|marketplace|marketplaces|downstream systems?|outside systems?|other systems?|elsewhere|dependent|depends|dependency|fragmented|fragmentation|fragile|rebuild|recreated|recreate|cede|controlled elsewhere|left entirely|left only|exists only|lives only|sits inside|inside every|inside another|inside someone else's|not control|do not control|cannot carry|unable to carry|without that continuity|without continuity|without an independent|without creator-controlled|rather than only|rather than starting)\b/.test(windowText);
+}
+
+function hasCertifydControlChangeReasoning(windowText) {
+  return /\b(?:creator-controlled|creator controlled|creator-operated|creator operated|independent|portable|persistent|durable|own record|own layer|starting point|starting place|source context|source of|originates with the creator|originates with creators|creator maintains|creators maintain|creator can maintain|creators can maintain|maintained by the creator|controlled by the creator|infrastructure layer)\b/.test(windowText);
+}
+
+function hasCertifydOutcomeReasoning(windowText) {
+  return /\b(?:makes possible|make possible|what becomes possible|gives|allows|lets|means|becomes|can carry|can enter|can persist|can travel|can participate|can remain|remain usable|remains usable|more durable|more portable|more valuable|portable|persistent|durable|continuity|before those works|before another|before any one|across downstream|across products|across relationships|across systems|rather than treating|rather than starting)\b/.test(windowText);
+}
+
 function isGenericCertifydFeatureList(text) {
-  const windows = [...String(text || '').matchAll(/\bcertifyd\b/g)].map((match) => String(text || '').slice(match.index, match.index + 360));
+  const windows = [...String(text || '').matchAll(/\bcertifyd\b/g)].map((match) => {
+    const value = String(text || '');
+    const start = Math.max(0, match.index - 120);
+    return value.slice(start, match.index + 360);
+  });
   if (!windows.length) return false;
   return windows.some((windowText) => {
     const featureHits = (windowText.match(/\b(identity|provenance|catalog|commerce|publishing|discovery|attribution|rights|release records?|release context|catalog context|profiles?|payments?)\b/g) || []).length;
     const hasCapabilityVerb = /\b(?:supports|provides|offers|includes|powers|maintains|enables|preserves)\b/.test(windowText);
     const shallowCapabilitySentence = /\bcertifyd(?:\s+core)?\b[^.!?]{0,120}\b(?:supports|provides|offers|includes|powers|maintains|enables|preserves)\b[^.!?]{0,180}\b(?:identity|provenance|catalog|commerce|publishing|discovery|attribution|rights|release records?|release context|catalog context|profiles?|payments?)\b/i.test(windowText);
-    const hasDependency = /\b(?:platform|platforms|third-party|third party|intermediary|intermediaries|distributor|distributors|label|labels|pro|cmo|ai product|marketplace|dependent|dependency|fragmented|fragile|rebuild|cede|controlled elsewhere|inside every|inside another|inside someone else's)\b/.test(windowText);
-    const hasCreatorControl = /\b(?:creator-controlled|creator controlled|creator-operated|creator operated|independent|portable|persistent|durable|own record|own layer|source of|originates with|infrastructure)\b/.test(windowText);
-    const hasOutcome = /\b(?:makes possible|make possible|gives|allows|lets|means|becomes|can carry|can enter|can persist|more durable|more portable|starting place|starting point|before another|before any one|rather than)\b/.test(windowText);
-    return (featureHits >= 3 && hasCapabilityVerb && !(hasDependency && hasCreatorControl && hasOutcome))
+    const hasDependency = hasCertifydDependencyReasoning(windowText);
+    const hasCreatorControl = hasCertifydControlChangeReasoning(windowText);
+    const hasOutcome = hasCertifydOutcomeReasoning(windowText);
+    const hasConcreteCertifydCapabilityClaim = shallowCapabilitySentence
+      || /\bcertifyd['’]s perspective\b/i.test(windowText)
+      || /\bcertifyd\b[^.!?]{0,180}\b(?:release records?|catalog(?:-management)?|catalog context|work context|attribution context|public records?|capabilit(?:y|ies))\b/i.test(windowText);
+    return (hasConcreteCertifydCapabilityClaim && featureHits >= 3 && hasCapabilityVerb && !(hasDependency && hasCreatorControl && hasOutcome))
       || (shallowCapabilitySentence && !(hasDependency && hasCreatorControl && hasOutcome));
   });
 }

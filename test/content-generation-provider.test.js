@@ -1261,6 +1261,75 @@ test('why-Certifyd validation accepts UMG permission-product architectural need'
   assert.doesNotThrow(() => validateGeneratedArticle(article, context));
 });
 
+test('why-Certifyd validation rejects post-fix UMG passage with implicit creator-controlled value only', () => {
+  const context = whyCertifydContext({
+    title: 'UMG and ElevenLabs develop licensed AI music product',
+    summary: 'The source story says licensed AI music products move permission and artist participation into the product experience.',
+    thesis: 'Permission is becoming part of product design.',
+    concept: 'Creator-controlled release context',
+    sourceConnection: 'The source facts connect licensed AI music products to permission, artist participation and release context.',
+  });
+  const article = whyCertifydArticle(context, [
+    'UMG and ElevenLabs show a music market in which permission is moving into the product rather than remaining a downstream clearance task.',
+    'Certifyd’s perspective begins with the need for stronger creator-controlled foundations for identity, publishing context, commerce activity and public records. That principle becomes more relevant as creative works travel through an expanding set of AI-mediated experiences.',
+    'Certifyd Core supports release records that preserve work, release and attribution context for creator workflows. Separately, Certifyd Core’s catalog-management capability is currently in beta and maintains catalog context for works and releases.',
+    'Those capabilities do not answer every permissions question, nor do they establish legal ownership or manage royalties. Their relevance is more fundamental: AI-era creative products increase the value of keeping a work’s identity and release context connected to the creator’s own record of activity. As permissions become part of the product, creator context cannot remain an afterthought.',
+  ]);
+  assert.throws(() => validateGeneratedArticle(article, context), /Certifyd relevance lacks story-specific architectural need/i);
+});
+
+test('why-Certifyd validation accepts AFM structural dependency reasoning', () => {
+  const context = whyCertifydContext({
+    title: 'AFM files opposition in Universal and Warner AI licensing dispute',
+    summary: 'The source story says a musicians union filing challenges AI licensing arguments involving recordings, permissions and commercial exploitation.',
+    thesis: 'AI licensing disputes make recording context more operationally important.',
+    concept: 'Creator-controlled work context',
+    sourceConnection: 'The source facts connect AI licensing disputes to recordings, permissions and context around works.',
+  });
+  const article = whyCertifydArticle(context, [
+    'The AFM filing does not settle the legal dispute, but it shows why recordings can acquire more possible uses as AI licensing arguments expand.',
+    'Those capabilities do not determine who is owed what under the Sound Recording Labor Agreement.',
+    'They address a related structural problem: as recordings acquire more possible uses, creators need context around their work that is not left entirely inside disconnected third-party systems.',
+    'Certifyd matters to that problem because creator-controlled infrastructure gives creators a persistent starting point for work, release and attribution context before a new licensing or product relationship asks that context to travel somewhere else.',
+  ]);
+  assert.doesNotThrow(() => validateGeneratedArticle(article, context));
+});
+
+test('why-Certifyd validation rejects creator-controlled vocabulary without dependency reasoning', () => {
+  const context = whyCertifydContext({
+    title: 'UMG and ElevenLabs develop licensed AI music product',
+    summary: 'The source story says licensed AI music products move permission and artist participation into the product experience.',
+    thesis: 'Permission is becoming part of product design.',
+    concept: 'Creator-controlled release context',
+    sourceConnection: 'The source facts connect licensed AI music products to permission, artist participation and release context.',
+  });
+  const article = whyCertifydArticle(context, [
+    'The source story describes permission becoming part of AI music product design.',
+    'Creator-controlled infrastructure is valuable for identity, publishing context, commerce activity and public records.',
+    'Certifyd Core supports release records and catalog context for creator workflows.',
+    'Keeping a work’s identity and release context connected to the creator’s own record of activity matters as permissions become part of the product.',
+  ]);
+  assert.throws(() => validateGeneratedArticle(article, context), /Certifyd relevance lacks story-specific architectural need/i);
+});
+
+test('why-Certifyd validation accepts dependency reasoning without literal third-party systems phrase', () => {
+  const context = whyCertifydContext({
+    title: 'AI discovery layer changes creator visibility',
+    summary: 'The source story says AI recommendation products increasingly decide how creators and works appear in discovery experiences.',
+    thesis: 'Discovery is moving into mediated product layers.',
+    concept: 'Creator-controlled identity and publishing context',
+    sourceConnection: 'The source facts connect AI discovery to creator visibility and product-mediated recommendation.',
+  });
+  const article = whyCertifydArticle(context, [
+    'The discovery story shows visibility being decided inside mediated product layers rather than only on a creator’s own surface.',
+    'If each recommendation product rebuilds the creator’s identity and work context for itself, the creator has to restart legibility every time the next discovery surface changes.',
+    'That is a concrete creator consequence because identity and publishing context need continuity before recommendations can interpret the work in a new environment.',
+    'Certifyd matters here because creator-controlled identity and publishing infrastructure gives the creator an independent starting point for that context.',
+    'That context can remain usable across downstream discovery relationships instead of being recreated from scratch for each new product layer.',
+  ]);
+  assert.doesNotThrow(() => validateGeneratedArticle(article, context));
+});
+
 test('why-Certifyd validation accepts Ticketmaster agent-discovery architectural need', () => {
   const context = whyCertifydContext({
     title: 'Ticketmaster joins Meta Muse for live event discovery',
