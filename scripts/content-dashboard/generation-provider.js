@@ -384,7 +384,7 @@ export class OpenAIGenerationProvider {
           tokenUsage: mergeOpenAITokenUsage(stages.map((stage) => stage.tokenUsage)),
           stages,
         };
-        const validated = validateGeneratedArticle(revisedArticle, groundedContext);
+        const validated = validateGeneratedArticle(revisedArticle, groundedContext, { preserveCertifydNeedFailure: true });
         logPostGenerationValidationFindings(error.validationFindings, true);
         return validated;
       }
@@ -666,7 +666,7 @@ export async function buildGroundedContext(config, input) {
   return trimGroundedContext(context, maxContextChars(config));
 }
 
-export function validateGeneratedArticle(value, groundedContext) {
+export function validateGeneratedArticle(value, groundedContext, options = {}) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new GenerationValidationError('Generated article must be an object.');
   if ('status' in value || 'published' in value || 'approved' in value || 'publicationDate' in value || 'githubBranch' in value || 'mergeState' in value) {
     throw new GenerationValidationError('Generated article cannot set publication, approval, GitHub or merge state.');
@@ -756,7 +756,11 @@ export function validateGeneratedArticle(value, groundedContext) {
   if (hasExternalSources) {
     const certifydNeedFailure = assessCertifydNeedConnection(value.bodyMarkdown, groundedContext);
     if (certifydNeedFailure) {
-      throw new GenerationValidationError('Generation needs editorial repair: Certifyd relevance lacks story-specific architectural need.', [certifydNeedFailure]);
+      if (options.preserveCertifydNeedFailure) {
+        warnings.push(certifydNeedFailure);
+      } else {
+        throw new GenerationValidationError('Generation needs editorial repair: Certifyd relevance lacks story-specific architectural need.', [certifydNeedFailure]);
+      }
     }
   }
   if (hasExternalSources) {

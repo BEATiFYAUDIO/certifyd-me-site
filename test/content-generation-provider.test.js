@@ -1466,6 +1466,132 @@ test('why-Certifyd validation accepts story-specific architectural reasoning', (
   assert.doesNotThrow(() => validateGeneratedArticle(article, context));
 });
 
+test('OpenAI Certifyd architectural relevance repair passes and returns revised draft', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  const context = whyCertifydContext({
+    title: 'UMG and ElevenLabs develop licensed AI music product',
+    summary: 'The source story says licensed AI music products move permission and artist participation into the product experience.',
+    thesis: 'Permission is becoming part of product design.',
+    concept: 'Creator-controlled release context',
+    sourceConnection: 'The source facts connect licensed AI music products to permission, artist participation and release context.',
+  });
+  const weakArticle = whyCertifydArticle(context, [
+    'UMG and ElevenLabs show a music market in which permission is moving into the product rather than remaining a downstream clearance task.',
+    'The source story is therefore about product packaging, artist participation and the way licensed AI music experiences are being assembled for market.',
+    'For creators, the practical question is how participation context remains legible as music products add new interfaces, models and release paths.',
+    'Certifyd Core supports release records that preserve work, release and attribution context for creator workflows.',
+    'As permissions become part of the product, creator context cannot remain an afterthought.',
+  ]);
+  const repairedArticle = whyCertifydArticle(context, [
+    'UMG and ElevenLabs show a music market in which permission is moving into the product rather than remaining a downstream clearance task.',
+    'That product shift creates a dependency problem for creators because artist participation and release context can end up interpreted inside each AI product or label workflow rather than traveling from a creator-controlled starting point.',
+    'Certifyd matters in that specific shift because creator-controlled release-record infrastructure gives the creator an independent starting place for work, release and attribution context before those works enter another product workflow.',
+    'That context can remain usable across downstream products and permission relationships instead of being recreated from scratch each time a new AI music product asks the work to participate.',
+  ]);
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      calls,
+      reasoning: validReasoning({
+        eventSummary: context.editorialBrief.primaryEvent,
+        editorialTension: context.editorialBrief.editorialTension,
+        hiddenQuestion: 'What changes when permission moves into product design?',
+        whatThisReveals: context.editorialBrief.whatChanged,
+        editorialIdea: context.editorialBrief.possibleThesis,
+        thesis: context.editorialBrief.possibleThesis,
+        creatorConsequence: context.editorialBrief.creatorConsequence,
+      }),
+      article: [weakArticle, repairedArticle],
+    }),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: context.editorialBrief.primaryEvent, audience: 'Creators', objective: 'Explain the source story.' }, context);
+  assert.deepEqual(calls.map((call) => call.text.format.name), ['certifyd_editorial_reasoning', 'certifyd_article', 'certifyd_article']);
+  assert.match(calls[2].input, /Certifyd relevance lacks story-specific architectural need/i);
+  assert.match(article.bodyMarkdown, /creator-controlled release-record infrastructure/i);
+  assert.doesNotMatch(article.warnings.join('\n'), /Certifyd relevance lacks story-specific architectural need/i);
+});
+
+test('OpenAI Certifyd architectural relevance repair still saves weak revised draft with warning', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  const context = whyCertifydContext({
+    title: 'UMG and ElevenLabs develop licensed AI music product',
+    summary: 'The source story says licensed AI music products move permission and artist participation into the product experience.',
+    thesis: 'Permission is becoming part of product design.',
+    concept: 'Creator-controlled release context',
+    sourceConnection: 'The source facts connect licensed AI music products to permission, artist participation and release context.',
+  });
+  const weakArticle = whyCertifydArticle(context, [
+    'UMG and ElevenLabs show a music market in which permission is moving into the product rather than remaining a downstream clearance task.',
+    'The source story is therefore about product packaging, artist participation and the way licensed AI music experiences are being assembled for market.',
+    'For creators, the practical question is how participation context remains legible as music products add new interfaces, models and release paths.',
+    'Certifyd Core supports release records that preserve work, release and attribution context for creator workflows.',
+    'As permissions become part of the product, creator context cannot remain an afterthought.',
+  ]);
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      calls,
+      reasoning: validReasoning({
+        eventSummary: context.editorialBrief.primaryEvent,
+        editorialTension: context.editorialBrief.editorialTension,
+        hiddenQuestion: 'What changes when permission moves into product design?',
+        whatThisReveals: context.editorialBrief.whatChanged,
+        editorialIdea: context.editorialBrief.possibleThesis,
+        thesis: context.editorialBrief.possibleThesis,
+        creatorConsequence: context.editorialBrief.creatorConsequence,
+      }),
+      article: [weakArticle, weakArticle],
+    }),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: context.editorialBrief.primaryEvent, audience: 'Creators', objective: 'Explain the source story.' }, context);
+  assert.deepEqual(calls.map((call) => call.text.format.name), ['certifyd_editorial_reasoning', 'certifyd_article', 'certifyd_article']);
+  assert.match(article.bodyMarkdown, /Certifyd Core supports release records/i);
+  assert.match(article.warnings.join('\n'), /Certifyd relevance is not story-specific enough/i);
+});
+
+test('OpenAI Certifyd architectural relevance repair does not pardon unsupported factual claims', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  const context = whyCertifydContext({
+    title: 'UMG and ElevenLabs develop licensed AI music product',
+    summary: 'The source story says licensed AI music products move permission and artist participation into the product experience.',
+    thesis: 'Permission is becoming part of product design.',
+    concept: 'Creator-controlled release context',
+    sourceConnection: 'The source facts connect licensed AI music products to permission, artist participation and release context.',
+  });
+  const weakArticle = whyCertifydArticle(context, [
+    'UMG and ElevenLabs show a music market in which permission is moving into the product rather than remaining a downstream clearance task.',
+    'The source story is therefore about product packaging, artist participation and the way licensed AI music experiences are being assembled for market.',
+    'For creators, the practical question is how participation context remains legible as music products add new interfaces, models and release paths.',
+    'Certifyd Core supports release records that preserve work, release and attribution context for creator workflows.',
+    'As permissions become part of the product, creator context cannot remain an afterthought.',
+  ]);
+  const unsupportedArticle = {
+    ...weakArticle,
+    bodyMarkdown: `${weakArticle.bodyMarkdown}\n\nBillboard reports that the deal created a new royalty obligation for performers.`,
+  };
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      calls,
+      reasoning: validReasoning({
+        eventSummary: context.editorialBrief.primaryEvent,
+        editorialTension: context.editorialBrief.editorialTension,
+        hiddenQuestion: 'What changes when permission moves into product design?',
+        whatThisReveals: context.editorialBrief.whatChanged,
+        editorialIdea: context.editorialBrief.possibleThesis,
+        thesis: context.editorialBrief.possibleThesis,
+        creatorConsequence: context.editorialBrief.creatorConsequence,
+      }),
+      article: [weakArticle, unsupportedArticle],
+    }),
+  });
+  await assert.rejects(
+    () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: context.editorialBrief.primaryEvent, audience: 'Creators', objective: 'Explain the source story.' }, context),
+    /unsupported factual claim/i,
+  );
+  assert.deepEqual(calls.map((call) => call.text.format.name), ['certifyd_editorial_reasoning', 'certifyd_article', 'certifyd_article']);
+});
+
 test('OpenAI analytical vocabulary in reasoning is allowed without becoming Brain evidence', async () => {
   const calls = [];
   const config = await makeConfig();
