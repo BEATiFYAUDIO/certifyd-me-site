@@ -132,7 +132,13 @@ test('build keeps branded SVG cover visible but uses raster social image metadat
   assert.ok(socialStat.size > 0);
   assert.match(articleHtml, /<div class="article-hero-image"><img src="\/images\/blog\/branded-svg-cover-logo\.svg"/);
   assert.match(articleHtml, /<meta property="og:image" content="https:\/\/certifyd\.me\/images\/blog\/branded-svg-cover-logo-social\.png" \/>/);
+  assert.match(articleHtml, /<meta property="og:image:secure_url" content="https:\/\/certifyd\.me\/images\/blog\/branded-svg-cover-logo-social\.png" \/>/);
+  assert.match(articleHtml, /<meta property="og:image:type" content="image\/png" \/>/);
+  assert.match(articleHtml, /<meta property="og:image:width" content="1200" \/>/);
+  assert.match(articleHtml, /<meta property="og:image:height" content="630" \/>/);
+  assert.match(articleHtml, /<meta property="og:image:alt" content="Branded SVG Cover" \/>/);
   assert.match(articleHtml, /<meta name="twitter:image" content="https:\/\/certifyd\.me\/images\/blog\/branded-svg-cover-logo-social\.png" \/>/);
+  assert.match(articleHtml, /<meta name="twitter:image:alt" content="Branded SVG Cover" \/>/);
   assert.doesNotMatch(articleHtml, /property="og:image" content="[^"]+\.svg"/);
   assert.doesNotMatch(articleHtml, /name="twitter:image" content="[^"]+\.svg"/);
   const jsonLd = [...articleHtml.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((match) => JSON.parse(match[1]));

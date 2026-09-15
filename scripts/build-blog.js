@@ -175,6 +175,13 @@ function socialImagePathForCover(coverImage) {
   return raw.replace(/\.svg$/i, '-social.png');
 }
 
+function socialImageType(value) {
+  const clean = String(value || '').split('?')[0].toLowerCase();
+  if (clean.endsWith('.jpg') || clean.endsWith('.jpeg')) return 'image/jpeg';
+  if (clean.endsWith('.webp')) return 'image/webp';
+  return 'image/png';
+}
+
 async function ensureSocialImageForArticle(article) {
   if (article.socialImage && isRasterSocialImage(article.socialImage)) return article.socialImage;
   if (!isSvgImage(article.coverImage)) return article.socialImage || article.coverImage;
@@ -477,6 +484,10 @@ async function writeBlogIndex(articles, template) {
     canonicalUrl: `${BASE_URL}/blog/`,
     googleVerificationMeta: verificationMeta(),
     socialImage: absoluteUrl(DEFAULT_IMAGE),
+    socialImageType: socialImageType(DEFAULT_IMAGE),
+    socialImageWidth: SOCIAL_IMAGE_WIDTH,
+    socialImageHeight: SOCIAL_IMAGE_HEIGHT,
+    socialImageAlt: 'Certifyd creator-owned commerce infrastructure',
     featuredCategories: renderFeaturedCategoryTags(articles),
     categories: renderCategoryTags(articles),
     articles: articles.length ? articles.map(renderArticleCard).join('\n') : '<p class="empty-state">No published articles yet.</p>',
@@ -490,6 +501,7 @@ async function writeArticle(article, template) {
   await fs.mkdir(outDir, { recursive: true });
   const metaTitle = article.seoTitle || `${article.title} | Certifyd Blog`;
   const metaDescription = article.seoDescription || article.excerpt;
+  const ogImagePath = article.socialImage || article.coverImage;
   const html = renderTemplate(template, {
     metaTitle: escapeHtml(metaTitle),
     ogTitle: escapeHtml(article.title),
@@ -497,7 +509,11 @@ async function writeArticle(article, template) {
     canonicalUrl: articleUrl(article),
     robotsMeta: '',
     googleVerificationMeta: verificationMeta(),
-    ogImage: absoluteUrl(article.socialImage || article.coverImage),
+    ogImage: absoluteUrl(ogImagePath),
+    ogImageType: socialImageType(ogImagePath),
+    ogImageWidth: SOCIAL_IMAGE_WIDTH,
+    ogImageHeight: SOCIAL_IMAGE_HEIGHT,
+    ogImageAlt: escapeHtml(article.coverImageAlt || article.title),
     publishedIso: article.date.toISOString(),
     updatedIso: article.updated.toISOString(),
     author: escapeHtml(article.author),
