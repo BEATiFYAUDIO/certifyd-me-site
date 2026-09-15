@@ -838,6 +838,110 @@ test('source-level clustering diagnostics persist with source stories and opport
   assert.ok(scan.items[0].clusterDecisions[0].concreteAnchorMatches.includes('suno v6'));
 });
 
+test('malformed listicle grammar does not become a synthesized partnership opportunity title', async () => {
+  const agentRoot = await tempAgentRoot();
+  const title = '5 things You Need to Know About ElevenLabs, the UMG AI partner with an $11B valuation – and big ambitions in music.';
+  const description = 'UMG and ElevenLabs announced a licensing agreement, which will see the latter build a fan platform for remixes, mashups, and new track interpretations.';
+  const scan = await scanTrendOpportunities(config(agentRoot), {
+    fetchImpl: async () => response(rssFeed([{ title, description, link: 'https://example.test/elevenlabs-umg-ai-partner' }])),
+  });
+
+  const promoted = scan.items.find((item) => item.sourceUrls.includes('https://example.test/elevenlabs-umg-ai-partner'));
+  assert.ok(promoted);
+  assert.notEqual(promoted.title, 'You Need partners with Know About ElevenLabs');
+  assert.equal(promoted.title, title);
+  assert.equal(promoted.storyFingerprint.eventType, 'partnership');
+  assert.deepEqual(promoted.sourceItemIds, [scan.sourceStories.find((item) => item.sourceUrl === 'https://example.test/elevenlabs-umg-ai-partner').id]);
+});
+
+test('opportunity titles do not manufacture actor/action phrases from incidental headline grammar', () => {
+  const items = [
+    sourceStory(
+      '5 things You Need to Know About ElevenLabs, the UMG AI partner with an $11B valuation – and big ambitions in music.',
+      'UMG and ElevenLabs announced a licensing agreement for remixes, mashups and new track interpretations.',
+      { articleUrl: 'https://example.test/elevenlabs' },
+    ),
+    sourceStory(
+      'EU achieved revenue growth exceeding that of China during 2025, IFPI shows',
+      'The European Union generated nearly $7 billion from recorded music during 2025.',
+      { articleUrl: 'https://example.test/eu-recorded-music' },
+    ),
+    sourceStory(
+      "Apple Home's security camera features cost as much as $60 per year",
+      'Apple Intelligence for Home brings AI-powered video summaries to HomeKit Secure Video.',
+      { articleUrl: 'https://example.test/apple-home' },
+    ),
+  ];
+  const clusters = clusterSourceItems(items);
+  const titles = clusters.map((cluster) => cluster.title);
+
+  assert.ok(titles.includes(items[0].title));
+  assert.ok(titles.includes(items[1].title));
+  assert.ok(titles.includes(items[2].title));
+  assert.ok(titles.every((title) => !/You Need partners with Know About ElevenLabs/i.test(title)));
+  assert.ok(titles.every((title) => !/EU Achieved launches/i.test(title)));
+  assert.ok(titles.every((title) => !/Apple Home's launches/i.test(title)));
+});
+
+test('legitimate synthesized opportunity title still works', () => {
+  const acquisition = clusterSourceItems([
+    sourceStory('Company A acquires Startup B for $500M', 'Company A acquired Startup B in a creator commerce transaction.'),
+  ]);
+
+  assert.equal(acquisition[0].title, 'Company A acquires Startup B for $500M');
+});
+
+test('opportunity title falls back to normalized source headline when synthesis confidence is insufficient', () => {
+  const title = 'ElevenLabs launched Music V2.5 shortly after announcing its UMG licensing deal';
+  const clusters = clusterSourceItems([
+    sourceStory(title, 'The model is now the default for prompted and reference generation in ElevenMusic.'),
+  ]);
+
+  assert.equal(clusters[0].title, title);
+  assert.doesNotMatch(clusters[0].title, /ElevenLabs launches Elevenlabs Launched/i);
+});
+
+test('malformed-title fallback preserves relevance and ranking inputs outside opportunity naming', async () => {
+  const agentRoot = await tempAgentRoot();
+  const title = '5 things You Need to Know About ElevenLabs, the UMG AI partner with an $11B valuation – and big ambitions in music.';
+  const description = 'UMG and ElevenLabs announced a licensing agreement for remixes, mashups, new track interpretations, AI music, rights, fans and creator permissions.';
+  const scan = await scanTrendOpportunities(config(agentRoot), {
+    fetchImpl: async () => response(rssFeed([{ title, description, link: 'https://example.test/elevenlabs-umg-ai-partner' }])),
+  });
+
+  const source = scan.sourceStories.find((item) => item.sourceUrl === 'https://example.test/elevenlabs-umg-ai-partner');
+  const promoted = scan.items.find((item) => item.sourceUrls.includes('https://example.test/elevenlabs-umg-ai-partner'));
+  assert.ok(source);
+  assert.ok(promoted);
+  assert.ok(source.certifydRelevanceScore >= 8);
+  assert.match(source.certifydRelevanceReasons.join(' '), /creator, fan or audience|rights, permissions or licensing|AI and content-authenticity/i);
+  assert.ok(Number.isFinite(promoted.rankingDiagnostics.finalScore));
+
+  const strong = opportunity('Ticketing platform partners with AI agent for fan transactions', {
+    category: 'Music',
+    certifydRelevanceScore: 13,
+    newestSourceDate: new Date().toISOString(),
+    sourceCount: 1,
+    brainCoverage: 'Partial',
+    summary: 'A music ticketing platform and AI agent partnership creates a discovery and transaction interface for fans.',
+    eventType: 'partnership',
+    entities: ['Ticketing Platform', 'AI Agent'],
+    object: 'fan transaction partnership',
+  });
+  const weak = opportunity('Generic AI platform commentary', {
+    category: 'AI',
+    certifydRelevanceScore: 10,
+    newestSourceDate: daysAgo(2),
+    sourceCount: 2,
+    brainCoverage: 'Strong',
+    summary: 'Commentary about broad AI platform trends for creators.',
+    eventType: 'report',
+    entities: ['AI'],
+    object: 'report',
+  });
+  assert.equal(selectRecommendedOpportunities([weak, strong], { trendResearch: { recommendationTotalLimit: 20, recommendationCategoryLimit: 5 } })[0].id, strong.id);
+});
+
 test('event identity v2.1 does not treat ordinary case language as legal classification', () => {
   const fingerprint = storyFingerprint(sourceStory(
     "Apple's new CEO is reviving a Steve Jobs strategy from 25 years ago",

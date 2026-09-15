@@ -1241,14 +1241,19 @@ function primaryCategory(cluster) {
 function clusterTitle(cluster) {
   const fingerprint = cluster.storyFingerprint || storyFingerprint(cluster.items?.[0] || {});
   const entities = fingerprint.primaryEntities || [];
-  if (fingerprint.eventType === 'lawsuit' && entities.length >= 2) return trim(`${entities[0]} files lawsuit against ${entities[1]}`, 120);
-  if (fingerprint.eventType === 'acquisition' && entities.length >= 2) return trim(`${entities[0]} acquires ${entities[1]}${fingerprint.money ? ` for ${fingerprint.money}` : ''}`, 120);
-  if (fingerprint.eventType === 'partnership' && entities.length >= 2) return trim(`${entities[0]} partners with ${entities[1]}`, 120);
-  if (fingerprint.eventType === 'product-launch' && fingerprint.normalizedObject) return trim(`${entities[0] || ''} launches ${humanizeEventObject(fingerprint.normalizedObject)}`.trim(), 120);
-  if (fingerprint.eventType === 'roundup') return trim(cluster.items[0]?.title || 'Multi-event roundup', 120);
-  if (fingerprint.eventType === 'policy-intervention' && entities.length) return trim(fingerprint.normalizedEventSummary || cluster.items[0]?.title || 'Untitled opportunity', 120);
-  if ((cluster.items || []).length > 1 && fingerprint.normalizedObject && fingerprint.normalizedObject !== 'development') return trim(`${entities[0] || ''} ${fingerprint.action || fingerprint.eventType} ${humanizeEventObject(fingerprint.normalizedObject)}`.trim(), 120);
-  return trim(cluster.items[0]?.title || fingerprint.normalizedEventSummary || 'Untitled opportunity', 120);
+  const fallback = normalizedPrimarySourceHeadline(cluster);
+  const synthetic = (() => {
+    if (fingerprint.eventType === 'lawsuit' && entities.length >= 2) return trim(`${entities[0]} files lawsuit against ${entities[1]}`, 120);
+    if (fingerprint.eventType === 'acquisition' && entities.length >= 2) return trim(`${entities[0]} acquires ${entities[1]}${fingerprint.money ? ` for ${fingerprint.money}` : ''}`, 120);
+    if (fingerprint.eventType === 'partnership' && entities.length >= 2) return trim(`${entities[0]} partners with ${entities[1]}`, 120);
+    if (fingerprint.eventType === 'product-launch' && fingerprint.normalizedObject) return trim(`${entities[0] || ''} launches ${humanizeEventObject(fingerprint.normalizedObject)}`.trim(), 120);
+    if (fingerprint.eventType === 'roundup') return trim(cluster.items[0]?.title || 'Multi-event roundup', 120);
+    if (fingerprint.eventType === 'policy-intervention' && entities.length) return trim(fingerprint.normalizedEventSummary || cluster.items[0]?.title || 'Untitled opportunity', 120);
+    if ((cluster.items || []).length > 1 && fingerprint.normalizedObject && fingerprint.normalizedObject !== 'development') return trim(`${entities[0] || ''} ${fingerprint.action || fingerprint.eventType} ${humanizeEventObject(fingerprint.normalizedObject)}`.trim(), 120);
+    return '';
+  })();
+  if (synthetic && isConfidentSyntheticOpportunityTitle(synthetic, cluster, fingerprint)) return synthetic;
+  return fallback || trim(fingerprint.normalizedEventSummary || 'Untitled opportunity', 120);
 }
 
 function humanizeEventObject(value = '') {
@@ -1260,6 +1265,73 @@ function humanizeEventObject(value = '') {
     .replace(/\bai\b/g, 'AI')
     .replace(/\brnb x live\b/g, 'RNB X Live')
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function normalizedPrimarySourceHeadline(cluster = {}) {
+  const titles = (cluster.items || [])
+    .map((item) => item.sourceTitle || item.title || '')
+    .map((title) => sanitizeText(title).replace(/\s+([,.;:!?])/g, '$1'))
+    .filter(Boolean);
+  return trim(titles.sort((a, b) => sourceHeadlineQualityScore(b) - sourceHeadlineQualityScore(a))[0] || '', 120);
+}
+
+function sourceHeadlineQualityScore(title = '') {
+  const clean = String(title || '').trim();
+  if (!clean) return 0;
+  const words = clean.split(/\s+/).length;
+  let score = Math.min(30, clean.length / 4) + Math.min(20, words * 2);
+  if (/^(?:\d+\s+things?|how|why|what|when|where)\b/i.test(clean)) score += 6;
+  if (/[.!?]$/.test(clean)) score += 2;
+  if (/\b(?:source|the post is from)\b/i.test(clean)) score -= 6;
+  return score;
+}
+
+function isConfidentSyntheticOpportunityTitle(title = '', cluster = {}, fingerprint = {}) {
+  const normalized = normalizeTitle(title);
+  if (!normalized || normalized.length < 10) return false;
+  const entities = fingerprint.primaryEntities || [];
+  const synthesizedEntities = entities.filter((entity) => normalized.includes(normalizeTitle(entity)));
+  if (synthesizedEntities.some(isDubiousSyntheticEntity)) return false;
+  if (isDubiousSyntheticObject(fingerprint.normalizedObject || fingerprint.object || '', cluster, fingerprint)) return false;
+  if (looksLikeFragmentedSyntheticTitle(title)) return false;
+  return true;
+}
+
+function isDubiousSyntheticEntity(value = '') {
+  const entity = String(value || '').trim();
+  const normalized = normalizeEntity(entity);
+  if (!normalized) return true;
+  if (/^(you need|need to know|know about|things you|things to|with|fresh|thanks|face|are|during|shortly|source|the post|revenue growth exceeding|eu achieved|apple home s|apple home's)$/i.test(entity)) return true;
+  if (/\b(you need|need to know|know about|things to know|shortly after|wasn'?t|thanks to|with the)\b/i.test(entity)) return true;
+  if (/^(with|fresh|thanks|face|are|during|while|after|before|source)$/i.test(entity)) return true;
+  if (entity.split(/\s+/).length >= 3 && /\b(?:says?|shows?|achieved|exceeding|launched|unveils?|cost|features)\b/i.test(entity)) return true;
+  return false;
+}
+
+function isDubiousSyntheticObject(value = '', cluster = {}, fingerprint = {}) {
+  const object = normalizeTitle(value);
+  if (!object) return true;
+  if (/^(?:\d+\s+)?things? you need to know\b/.test(object)) return true;
+  if (/\b(?:you need to know|know about|shortly after announcing|but .* wasn|thanks in part|during 2025|cost as)\b/.test(object)) return true;
+  if (/\b(?:launched|unveils?|announcing|achieved|exceeding|features)\b/.test(object) && !hasExplicitKnownObject(object, cluster, fingerprint)) return true;
+  if (object.split(/\s+/).length >= 7 && !hasExplicitKnownObject(object, cluster, fingerprint)) return true;
+  return false;
+}
+
+function hasExplicitKnownObject(object = '', cluster = {}, fingerprint = {}) {
+  const lower = `${object} ${(cluster.items || []).map((item) => `${item.title || ''} ${item.summary || ''}`).join(' ')}`.toLowerCase();
+  if (detectExplicitProductObject(lower)) return true;
+  if (isLegalEventType(fingerprint.eventType)) return true;
+  if (fingerprint.eventType === 'acquisition' && /\bacquires?\b/.test(object)) return true;
+  return false;
+}
+
+function looksLikeFragmentedSyntheticTitle(title = '') {
+  const clean = String(title || '').trim();
+  if (!clean) return true;
+  if (/\b(?:You Need|Know About|Shortly After Announcing|But Umg Wasn|Cost As|During)$/i.test(clean)) return true;
+  if (/\b(?:launches|partners with|acquires)\s+(?:With|Fresh|Thanks|Face|Are)\b/i.test(clean)) return true;
+  return false;
 }
 
 function clusterSummary(cluster) {
