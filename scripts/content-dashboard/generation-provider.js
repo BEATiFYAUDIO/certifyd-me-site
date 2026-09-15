@@ -774,16 +774,16 @@ export function validateGeneratedArticle(value, groundedContext, options = {}) {
   return {
     title: clampText(title, 160),
     slug,
-    excerpt: clampText(value.excerpt, 260),
+    excerpt: clampMetadataText(value.excerpt, 260),
     author: 'Certifyd',
     tags,
-    seoTitle: clampText(value.seoTitle ? normalizeArticleTitle(value.seoTitle) : `${title} | Certifyd`, 70),
-    seoDescription: clampText(value.seoDescription || value.excerpt, 165),
-    focusKeyword: clampText(value.focusKeyword || title, 80),
+    seoTitle: clampMetadataText(value.seoTitle ? normalizeArticleTitle(value.seoTitle) : `${title} | Certifyd`, 70),
+    seoDescription: clampMetadataText(value.seoDescription || value.excerpt, 165),
+    focusKeyword: clampMetadataText(value.focusKeyword || title, 80),
     secondaryKeywords,
-    category: clampText(value.category || inferArticleCategory(tags), 80),
+    category: clampMetadataText(value.category || inferArticleCategory(tags), 80),
     coverImage: normalizeBlogCoverImage(value.coverImage, { title, tags, excerpt: value.excerpt, body: value.bodyMarkdown }),
-    bodyMarkdown: cleanArticleBodyMarkdown(value.bodyMarkdown, title),
+    bodyMarkdown: cleanArticleBodyMarkdown(removeInternalReviewFooter(value.bodyMarkdown), title),
     claims: normalizedClaims,
     warnings: [...new Set(warnings)].slice(0, 30),
     status: 'draft',
@@ -822,7 +822,7 @@ export async function persistGeneratedArticleRun(config, article, input, grounde
     '---',
     '',
   ].join('\n');
-  const articleMarkdown = `${frontMatter}${article.bodyMarkdown}\n\n> Draft generated for founder review. Not approved for publishing.\n`;
+  const articleMarkdown = `${frontMatter}${removeInternalReviewFooter(article.bodyMarkdown)}\n`;
   const claimLedger = {
     claims: article.claims.map((claim, index) => ({
       claimId: `claim-${index + 1}`,
@@ -2868,6 +2868,7 @@ function completeGeneratedArticleFields(value, input) {
     ].join('\n');
     completed.warnings.push('Qwen returned structured JSON without a usable bodyMarkdown field. Founder revision is required.');
   }
+  completed.bodyMarkdown = removeInternalReviewFooter(completed.bodyMarkdown);
   if (!completed.suggestedSlug && completed.title) completed.suggestedSlug = slugify(completed.title);
   if (!completed.excerpt && completed.bodyMarkdown) completed.excerpt = excerptFromBody(completed.bodyMarkdown, completed.title);
   completed.author = 'Certifyd';
@@ -3055,7 +3056,7 @@ function excerptFromBody(bodyMarkdown, title) {
     .replace(/[#>*_`-]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  return clampText(clean || `A Certifyd draft about ${title}.`, 220);
+  return clampMetadataText(clean || `A Certifyd draft about ${title}.`, 220);
 }
 
 function tagsFromTopic(topic) {
@@ -3648,6 +3649,37 @@ function createRunId(slug) {
 
 function clampText(value, max) {
   return String(value || '').trim().slice(0, max);
+}
+
+function clampMetadataText(value, max) {
+  const clean = String(value || '').replace(/\s+/g, ' ').trim();
+  const limit = Math.max(0, Number(max) || 0);
+  if (!limit || clean.length <= limit) return clean;
+  const sentencePrefix = clean
+    .slice(0, limit + 1)
+    .match(/^([\s\S]*[.!?])(?:\s|$)/)?.[1]
+    ?.trim();
+  if (sentencePrefix && sentencePrefix.length <= limit) {
+    return cleanMetadataEnding(sentencePrefix);
+  }
+  const clipped = clean.slice(0, limit + 1);
+  const boundary = clipped.search(/\s+\S*$/);
+  const wordBoundary = boundary > 0 ? clipped.slice(0, boundary) : clean.slice(0, limit);
+  return cleanMetadataEnding(wordBoundary);
+}
+
+function cleanMetadataEnding(value) {
+  return String(value || '')
+    .replace(/\s+/g, ' ')
+    .replace(/[\s,;:–—-]+$/g, '')
+    .trim();
+}
+
+function removeInternalReviewFooter(bodyMarkdown) {
+  return String(bodyMarkdown || '')
+    .replace(/(?:\n{1,3}|^)\s*>?\s*Draft generated for founder review\.\s+Not approved for publishing\.\s*$/gim, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 function positiveNumber(value, fallback) {

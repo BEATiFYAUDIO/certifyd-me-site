@@ -431,6 +431,106 @@ test('normal generation uses OpenAI Responses with separate reasoning and writin
   assert.equal(calls[1].max_output_tokens, 5000);
 });
 
+test('generated article metadata is clipped at sentence or word boundaries', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const longExcerpt = [
+    'This complete metadata sentence fits.',
+    'ElevenLabs and UMG’s licensing agreement points to a larger shift: fan-made music reinterpretations are becoming a licensed product category with creator context and attribution becoming more important across the whole product surface.',
+  ].join(' ');
+  const longSeoDescription = 'ElevenLabs and UMG’s licensing agreement points to a larger shift: fan-made music reinterpretations are becoming a licensed product category, not just a rights-enforcement problem for platforms and labels.';
+  const unchangedSeoTitle = 'ElevenLabs and UMG Licensing | Certifyd';
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      article: validArticle(sourceId, {
+        excerpt: longExcerpt,
+        seoTitle: unchangedSeoTitle,
+        seoDescription: longSeoDescription,
+      }),
+    }),
+  });
+
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
+
+  assert.equal(article.status, 'draft');
+  assert.equal(article.excerpt, 'This complete metadata sentence fits.');
+  assert.ok(article.excerpt.length <= 260);
+  assert.ok(article.seoDescription.length <= 165);
+  assert.doesNotMatch(article.seoDescription, /enfor$/i);
+  assert.doesNotMatch(article.seoDescription, /\S[,\-–—;:]$/);
+  assert.equal(article.seoTitle, unchangedSeoTitle);
+});
+
+test('generated metadata already within limits is unchanged', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const excerpt = 'A precise source-backed article about creator infrastructure.';
+  const seoDescription = 'A precise SEO description about creator infrastructure.';
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      article: validArticle(sourceId, { excerpt, seoDescription }),
+    }),
+  });
+
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
+
+  assert.equal(article.excerpt, excerpt);
+  assert.equal(article.seoDescription, seoDescription);
+});
+
+test('generated article body removes only the known internal founder-review footer', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const base = validArticle(sourceId);
+  const paragraphBeforeFooter = 'This exact public closing paragraph should remain intact.';
+  const legitimateReviewProse = 'The founder of a music company can review publishing drafts without making that workflow text part of the public article.';
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      article: {
+        ...base,
+        bodyMarkdown: [
+          base.bodyMarkdown,
+          '',
+          legitimateReviewProse,
+          '',
+          paragraphBeforeFooter,
+          '',
+          '> Draft generated for founder review. Not approved for publishing.',
+        ].join('\n'),
+      },
+    }),
+  });
+
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
+
+  assert.equal(article.status, 'draft');
+  assert.doesNotMatch(article.bodyMarkdown, /Draft generated for founder review\. Not approved for publishing\./);
+  assert.match(article.bodyMarkdown, new RegExp(escapeRegExp(paragraphBeforeFooter)));
+  assert.match(article.bodyMarkdown, new RegExp(escapeRegExp(legitimateReviewProse)));
+});
+
+test('persisted generated Markdown does not append internal founder-review footer', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({ article: validArticle(sourceId) }),
+  });
+
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
+  const run = await persistGeneratedArticleRun(config, article, { topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context, provider);
+  const draftMarkdown = await fs.readFile(path.join(config.outputDir, run.runId, 'draft.md'), 'utf8');
+  const articleJson = JSON.parse(await fs.readFile(path.join(config.outputDir, run.runId, 'final', 'article.json'), 'utf8'));
+
+  assert.equal(articleJson.status, 'draft');
+  assert.doesNotMatch(draftMarkdown, /Draft generated for founder review/i);
+  assert.doesNotMatch(draftMarkdown, /Not approved for publishing/i);
+  assert.match(draftMarkdown, /A source-backed Certifyd draft should begin/);
+});
+
 test('source facts are passed to OpenAI reasoning', async () => {
   const calls = [];
   const config = await makeConfig();
