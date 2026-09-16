@@ -1272,6 +1272,17 @@ test('OpenAI final writing instructions discourage validator-facing defensive pr
   await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
   const finalInstructionText = `${calls[1].instructions}\n${calls[1].input}`;
   assert.match(finalInstructionText, /Write like an informed technology\/music-business publication, not a compliance memo/i);
+  assert.match(finalInstructionText, /Use plain, direct language for intelligent creators, musicians, producers and general music-business readers/i);
+  assert.match(finalInstructionText, /Aim roughly for Grade 8 to 10 readability without simplifying the underlying reasoning/i);
+  assert.match(finalInstructionText, /Prefer familiar words, concrete statements, active voice and shorter sentence structures over academic, corporate, policy, investor or strategy-memo language/i);
+  assert.match(finalInstructionText, /Preserve necessary industry terminology, factual qualifications and technical precision/i);
+  assert.match(finalInstructionText, /When an idea can be expressed accurately in simpler language, use the simpler language/i);
+  assert.match(finalInstructionText, /Avoid elevated strategy phrases such as/i);
+  assert.match(finalInstructionText, /The strategic direction is this/i);
+  assert.match(finalInstructionText, /increasingly inseparable from/i);
+  assert.match(finalInstructionText, /Avoid abstract noun chains/i);
+  assert.match(finalInstructionText, /Keep the reasoning deep but the language simple/i);
+  assert.match(finalInstructionText, /should not need a technology, policy, finance or academic background/i);
   assert.match(finalInstructionText, /Do not mention the validation system, source-support restrictions, uncertainty machinery, prompt rules, or internal editorial rules in article prose/i);
   assert.match(finalInstructionText, /Do not add defensive disclaimers merely to show what the article is not claiming/i);
   assert.match(finalInstructionText, /Prefer confident, conventional editorial prose over defensive phrases/i);
