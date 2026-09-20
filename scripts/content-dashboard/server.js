@@ -238,7 +238,7 @@ async function renderOverview(ctx, csrf) {
   const needsAttention = runs.filter((run) => articleMatchesView(run, 'attention'));
   const recent = runs
     .slice()
-    .sort((a, b) => String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || '')))
+    .sort((a, b) => String(dashboardRunDate(b)).localeCompare(String(dashboardRunDate(a))))
     .slice(0, 5);
   const statusText = ctx.config.openai?.apiKey ? `OpenAI configured: ${ctx.config.openai.model}` : 'OpenAI not configured';
   const body = `<section class="mission-head">
@@ -272,7 +272,11 @@ function summaryCard(title, count, label, href) {
 }
 
 function compactRunRow(run) {
-  return `<article class="review-item compact-row"><div><h3>${escapeHtml(run.title || 'Untitled article')}</h3><p>${statusPill(run.status)} <span class="muted">${escapeHtml(formatDashboardDate(run.updatedAt || run.createdAt))}</span></p></div><a class="ghost" href="/app/content/articles/${escapeHtml(run.runId)}">Open</a></article>`;
+  return `<article class="review-item compact-row"><div><h3>${escapeHtml(run.title || 'Untitled article')}</h3><p>${statusPill(run.status)} <span class="muted">${escapeHtml(formatDashboardDate(dashboardRunDate(run)))}</span></p></div><a class="ghost" href="/app/content/articles/${escapeHtml(run.runId)}">Open</a></article>`;
+}
+
+function dashboardRunDate(run) {
+  return run.lastUpdated || run.updatedAt || run.createdAt || run.publishedAt || '';
 }
 
 function qwenPromptForm({ csrf, compact = false, advanced = false } = {}) {

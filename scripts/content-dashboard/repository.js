@@ -39,6 +39,9 @@ export class ContentRunRepository {
     const deterministicFallback = modelProvider === 'deterministic' || modelRequests[0]?.deterministicFallbackUsed;
     const claims = Array.isArray(claimLedger.claims) ? claimLedger.claims : [];
     const blockingClaims = claims.filter((claim) => ['BLOCKED', 'PROHIBITED', 'UNRESOLVED'].includes(claim.status));
+    const publishedAt = manifest.publishedAt || article.publishedAt || '';
+    const updatedAt = lifecycle.updatedAt || review.timestamp || manifest.updatedAt || article.updatedAt || '';
+    const createdAt = lifecycle.createdAt || manifest.createdAt || article.createdAt || '';
     return {
       runId,
       title: normalizeArticleTitle(article.title || intake.workingTitle || manifest.title, 'Untitled'),
@@ -55,7 +58,10 @@ export class ContentRunRepository {
       unresolvedIssueCount: blockingClaims.length,
       claimCount: claims.length,
       reviewStatus: review.reviewStatus || 'PENDING_FOUNDER_REVIEW',
-      lastUpdated: lifecycle.updatedAt || review.timestamp || manifest.updatedAt || '',
+      publishedAt,
+      updatedAt,
+      createdAt,
+      lastUpdated: updatedAt || createdAt || publishedAt,
     };
   }
 

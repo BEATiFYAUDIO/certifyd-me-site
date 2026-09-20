@@ -85,6 +85,37 @@ test('4 founder can view dashboard', async () => withServer(async (base) => {
   assert.doesNotMatch(html, /Review Queue/);
 }));
 
+test('4a recent activity shows the run summary date', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-recent-date-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const runDir = path.join(outputDir, 'dated-recent-activity-mu123abc');
+  await fs.mkdir(path.join(runDir, 'final'), { recursive: true });
+  await fs.mkdir(path.join(tmpRoot, 'knowledge/facts'), { recursive: true });
+  await fs.writeFile(path.join(runDir, 'publication-manifest.json'), JSON.stringify({
+    title: 'Dated Recent Activity',
+    slug: 'dated-recent-activity',
+    currentStatus: 'PUBLISHING',
+    publishability: 'PUBLISHING_DEPLOYMENT',
+    updatedAt: '2026-09-19T14:00:00.000Z',
+  }, null, 2));
+  await fs.writeFile(path.join(runDir, 'final/article.json'), JSON.stringify({
+    title: 'Dated Recent Activity',
+    slug: 'dated-recent-activity',
+    version: 'v1',
+  }, null, 2));
+
+  await withServer(async (base) => {
+    const cookie = await login(base, 'founder@example.test');
+    const response = await fetch(`${base}/app/content`, { headers: { cookie } });
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    assert.match(html, /Recent Activity/);
+    assert.match(html, /Dated Recent Activity/);
+    assert.match(html, /2026-09-19/);
+    assert.doesNotMatch(html, /Dated Recent Activity[\s\S]{0,300}No date/);
+  }, { CONTENT_AGENT_ROOT: tmpRoot, CONTENT_AGENT_OUTPUT_DIR: outputDir });
+});
+
 test('4b article workspace owns AI generation and trending opportunities', async () => withServer(async (base) => {
   const cookie = await login(base, 'founder@example.test');
   const response = await fetch(`${base}/app/content/articles?view=ideas`, { headers: { cookie } });
