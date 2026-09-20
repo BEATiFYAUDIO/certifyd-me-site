@@ -1715,6 +1715,35 @@ test('why-Certifyd validation rejects centralized-platform story that only compl
   assert.throws(() => validateGeneratedArticle(article, context), /story-specific architectural need/i);
 });
 
+test('why-Certifyd validation rejects centralized-platform story that resolves to portable release records', () => {
+  const context = whyCertifydContext({
+    title: 'Audiomack Pro expands artist tools',
+    summary: 'The source story says Audiomack Pro adds analytics, promotion, payout access and verification for artists inside the streaming service.',
+    thesis: 'More artist workflow is moving inside centralized platform infrastructure.',
+    concept: 'Creator-operated Core infrastructure',
+    sourceConnection: 'The source facts connect platform tools to analytics, promotion, payouts and artist workflow dependency.',
+    canonicalThesis: {
+      mode: 'centralized-intermediary',
+      industryDevelopment: 'Audiomack is moving analytics, promotion, verification and payout access into its creator-facing operating environment.',
+      structuralChange: 'More creator operating functions are being centralized inside Audiomack.',
+      dependency: 'The creator receives more capability but remains dependent on infrastructure, rules and relationships controlled by Audiomack.',
+      architecturalQuestion: 'Why must these creator functions require a centralized intermediary?',
+      certifydRelevance: 'Certifyd Core takes the opposite architectural direction: creator-operated infrastructure and a network designed to move supported functions away from centralized intermediaries and toward creators.',
+      creatorConsequence: 'The creator moves from being an account inside the operating environment toward operating part of the infrastructure themselves.',
+    },
+  });
+  const article = sourceBackedArticleWithoutFixtureFooter(context, [
+    'Audiomack Pro puts analytics, promotion, payout access and verification inside the platform account.',
+    'That creates a dependency problem because more of the artist operating workflow is organized by infrastructure the service controls.',
+    'Certifyd is building creator-operated infrastructure that moves supported functions away from centralized intermediaries and toward creators.',
+    'Today, Certifyd Core supports release records that preserve work, release and attribution context for creator workflows.',
+    'Those release records give creators durable context they can carry between services and keep outside a dashboard.',
+    'Release records do not replace Audiomack analytics, promotion or payout access, but they are one concrete place to start maintaining an independent foundation alongside platforms.',
+    'The conclusion is that artists can keep useful portable records while continuing to choose centralized services for the main operating environment.',
+  ]);
+  assert.throws(() => validateGeneratedArticle(article, context), /story-specific architectural need/i);
+});
+
 test('why-Certifyd validation accepts centralized-platform story that answers intermediary displacement thesis', () => {
   const context = whyCertifydContext({
     title: 'Audiomack Pro expands artist tools',
@@ -1741,6 +1770,36 @@ test('why-Certifyd validation accepts centralized-platform story that answers in
     'That does not claim Audiomack uses Certifyd or that every platform function has already been replaced. It keeps the current and future boundary clear: current Brain-supported Core capabilities can be named, while broader intermediary displacement is described as the architectural direction the article is testing.',
     'The practical difference is concrete. The artist can use useful services without allowing each service to become the only place where identity, work context, promotion history, payout access and fan relationships are organized. The creator-operated starting point comes first, so later service relationships do not have to become the only record of the artist operation.',
     'That is why the thesis is not a generic portability sermon. It connects the reported platform bundle to the control question the bundle exposes, then brings in Certifyd analysis only to explain the supported architecture that changes where the artist operation begins.',
+  ]);
+  assert.doesNotThrow(() => validateGeneratedArticle(article, context));
+});
+
+test('why-Certifyd validation accepts current release records as evidence under canonical architecture', () => {
+  const context = whyCertifydContext({
+    title: 'Audiomack Pro expands artist tools',
+    summary: 'The source story says Audiomack Pro adds analytics, promotion, payout access and verification for artists inside the streaming service.',
+    thesis: 'More artist workflow is moving inside centralized platform infrastructure.',
+    concept: 'Creator-operated Core infrastructure',
+    sourceConnection: 'The source facts connect platform tools to analytics, promotion, payouts and artist workflow dependency.',
+    canonicalThesis: {
+      mode: 'centralized-intermediary',
+      industryDevelopment: 'Audiomack is moving analytics, promotion, verification and payout access into its creator-facing operating environment.',
+      structuralChange: 'More creator operating functions are being centralized inside Audiomack.',
+      dependency: 'The creator receives more capability but remains dependent on infrastructure, rules and relationships controlled by Audiomack.',
+      architecturalQuestion: 'Why must these creator functions require a centralized intermediary?',
+      certifydRelevance: 'Certifyd Core takes the opposite architectural direction: creator-operated infrastructure and a network designed to move supported functions away from centralized intermediaries and toward creators.',
+      creatorConsequence: 'The creator moves from being an account inside the operating environment toward operating part of the infrastructure themselves.',
+    },
+  });
+  const article = sourceBackedArticleWithoutFixtureFooter(context, [
+    'Audiomack Pro puts analytics, promotion, payout access and verification inside the platform account.',
+    'That centralizes more creator operating functions inside an operating environment controlled by Audiomack.',
+    'Certifyd takes the opposite architectural direction: creator-operated infrastructure where supported functions can move toward creator/Core/network control rather than requiring the platform account to become the necessary home for the artist operating layer, which makes possible more durable creator control over the operation.',
+    'Current Brain-supported capability evidence should stay narrower: Core release records preserve work, release and attribution context for creator workflows.',
+    'Those release records are a current example inside the architecture, not the whole answer. The broader architectural direction is that supported creator functions move toward infrastructure the creator operates instead of becoming permanent functions of a centralized intermediary.',
+    'The structural distinction is who operates the creator operating layer. If more identity, work context, commercial activity and fan relationship context can begin from creator/Core/network infrastructure, the centralized service becomes less structurally necessary as the home of the artist business.',
+    'That keeps the current capability factual: analytics, promotion and payout access remain outside the current Brain-supported capability claim while the article preserves the canonical thesis about where creator functions should originate.',
+    'The article can therefore use release-record evidence without shrinking the argument into release records alone or implying unsupported Certifyd adoption by Audiomack.',
   ]);
   assert.doesNotThrow(() => validateGeneratedArticle(article, context));
 });

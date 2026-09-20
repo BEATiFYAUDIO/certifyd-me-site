@@ -1122,6 +1122,12 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
       ? '- For centralized-intermediary canonical theses, carry the same canonical argument into the Certifyd answer: identify the function concentrated in the intermediary, state Certifyd’s opposite creator-operated architectural direction, name only currently supported Core capabilities from Brain, describe broader intermediary-dependency reduction as architectural direction rather than completed replacement, and explain what changes if supported functions move toward creator/Core/network control.'
       : '',
     hasSelectedBrain
+      ? '- Treat selected Brain capability records as current factual evidence, not as the editorial answer. A narrower capability such as release records, catalog context, attribution context or portable records must support the canonical thesis; it must not replace, narrow or redefine the thesis into “creators can carry durable context between services.”'
+      : '',
+    hasSelectedBrain
+      ? '- Do not insert defensive complementarity language merely because current Brain does not prove Certifyd replaces every outside-platform function. Current/future claim discipline is enough; the conclusion should still preserve the canonical contrast between a platform-operated creator layer and functions moving toward creator/Core/network infrastructure.'
+      : '',
+    hasSelectedBrain
       ? '- For centralized creator platforms or intermediaries, identify what part of the creator operation is being pulled into the service: identity, catalog context, publishing, analytics, promotion, payout access, commerce, permissions, discovery, fan relationships, or operating records.'
       : '',
     hasSelectedBrain
@@ -1469,6 +1475,7 @@ function buildArticleRevisionPrompt(originalPrompt, article, genericDefinitionHi
     'Remove or qualify unsupported claims. Preserve general explanatory context only when it is clearly not a factual claim about the source event.',
     'If the validation finding says Certifyd relevance lacks story-specific architectural need, revise only the Certifyd relevance passage so it names Certifyd, explains why Certifyd matters to this story, identifies the dependency or structural gap created by the source story, explains what the creator lacks without creator-controlled infrastructure, explains how the selected Certifyd architecture changes that condition, and states what practical creator consequence becomes possible or more durable.',
     'For centralized-intermediary findings, restore the missing architectural relationship: what creator function/control is concentrated in the intermediary, why that function should not have to require a centralized company in the middle, what current Certifyd capability is actually supported by Brain, and what broader creator-operated direction Certifyd is building toward without claiming the platform function is already replaced.',
+    'Use current Brain capabilities as evidence of present implementation. Do not repair by adding more feature descriptions, portability language, durable-context language, or “this does not replace the platform” complementarity language.',
     'Do not use sentences beginning “A payout is”, “A record is”, “A receipt is”, “A profile is”, “A release record is”, or “Provenance is evidence about”.',
     '',
     'BLOCKED PHRASES:',
@@ -2372,14 +2379,16 @@ function assessCertifydNeedConnection(bodyMarkdown, groundedContext = {}) {
     const hasCreatorControl = hasCertifydControlChangeReasoning(windowText);
     const hasOutcome = hasCertifydOutcomeReasoning(windowText);
     const hasIntermediaryChallenge = !requiresIntermediaryChallenge || hasCertifydIntermediaryChallengeReasoning(windowText);
+    const preservesCanonicalContrast = !requiresIntermediaryChallenge || hasCanonicalIntermediaryArchitectureResolution(windowText);
+    const resolvesToPortabilityOnly = requiresIntermediaryChallenge && hasPortabilityOnlyCapabilityResolution(windowText);
     const hasCausalBridge = /\b(?:because|as|when|once|if|therefore|that means|which means|creates|exposes|moves|turns|depends|requires|increases the value|becomes|rather than)\b/.test(windowText);
-    return windowSharedFrames.length && hasDependency && hasCreatorControl && hasOutcome && hasIntermediaryChallenge && hasCausalBridge && !isGenericCertifydFeatureList(windowText);
+    return windowSharedFrames.length && hasDependency && hasCreatorControl && hasOutcome && hasIntermediaryChallenge && preservesCanonicalContrast && !resolvesToPortabilityOnly && hasCausalBridge && !isGenericCertifydFeatureList(windowText);
   });
   if (sharedFrames.length && strongCertifydReasoning && !genericOnly) return '';
   const missing = [];
   if (!sharedFrames.length) missing.push('no source-story frame is carried into the Certifyd relevance');
   if (!strongCertifydReasoning) missing.push('the Certifyd passage does not explain the dependency, creator-controlled infrastructure need and creator outcome');
-  if (requiresIntermediaryChallenge) missing.push('the Certifyd passage does not answer why the creator function should require a centralized intermediary');
+  if (requiresIntermediaryChallenge) missing.push('the Certifyd passage does not preserve the canonical contrast between intermediary-operated functions and creator/Core/network-operated infrastructure');
   if (genericOnly) missing.push('Certifyd wording reads as a reusable feature list');
   return `Certifyd relevance is not story-specific enough: ${missing.join('; ')}.`;
 }
@@ -2439,6 +2448,20 @@ function hasCertifydOutcomeReasoning(windowText) {
 
 function hasCertifydIntermediaryChallengeReasoning(windowText) {
   return /\b(?:intermediary|intermediaries|necessary home|company in the middle|without requiring|does not require|do not have to require|rather than requiring|instead of requiring|away from centralized|toward creators|creator-operated infrastructure|infrastructure the creator operates|operating part of the infrastructure|from the creator rather than from the platform)\b/.test(windowText);
+}
+
+function hasCanonicalIntermediaryArchitectureResolution(windowText) {
+  const hasCreatorNetworkDirection = /\b(?:toward creators?|toward creator\/core\/network|creator\/core\/network|core\/network|creator-operated infrastructure|infrastructure the creator operates|operating part of the infrastructure|from the creator rather than from the platform|functions? (?:move|moves|moving) toward)\b/.test(windowText);
+  const hasIntermediaryOperatingLayer = /\b(?:operating layer|operating environment|creator operation|creator functions?|functions?|analytics|promotion|payout|verification|fan relationships?|identity|commercial activity|audience relationships?)\b/.test(windowText)
+    && /\b(?:centralized|intermediary|platform|service account|dashboard|company in the middle|platform account)\b/.test(windowText);
+  const hasStructuralConsequence = /\b(?:structural distinction|structural necessity|necessary home|does not have to become|do not have to require|should not have to require|reduces? dependence|reducing dependence|away from centralized|rather than requiring|instead of requiring|who operates|where .* begins)\b/.test(windowText);
+  return hasCreatorNetworkDirection && hasIntermediaryOperatingLayer && hasStructuralConsequence;
+}
+
+function hasPortabilityOnlyCapabilityResolution(windowText) {
+  const capabilityNarrowing = /\b(?:release records?|catalog context|attribution context|work context|portable records?|durable context|independent foundation|context outside|outside the dashboard|carry .* between services|carry .* across services|move .* between services|between services)\b/.test(windowText);
+  const lacksCreatorNetworkDirection = !/\b(?:toward creators?|toward creator\/core\/network|creator\/core\/network|core\/network|functions? (?:move|moves|moving) toward|away from centralized|operating layer|operating environment|who operates|structural necessity)\b/.test(windowText);
+  return capabilityNarrowing && lacksCreatorNetworkDirection;
 }
 
 function isGenericCertifydFeatureList(text) {
