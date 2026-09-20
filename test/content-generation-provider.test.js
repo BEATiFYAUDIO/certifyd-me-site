@@ -118,6 +118,10 @@ function validArticle(sourceId, overrides = {}) {
     '',
     'The useful article does not turn Certifyd into a claimed participant in another company’s story. It separates what the outside source reported from the narrower Certifyd relevance selected from approved Brain records.',
     '',
+    'Certifyd matters to that distinction because creator-controlled infrastructure gives creators an independent starting point for identity, publishing context, direct commerce and audience relationships before those records enter a platform, marketplace, distributor or other intermediary system.',
+    '',
+    'That changes the operating condition for the creator: the source story can be analyzed through the dependency it exposes, the context that would otherwise remain controlled elsewhere, and the more durable record that can persist across products, services and business relationships.',
+    '',
     'That distinction matters because creator businesses often depend on identity, publishing context, distribution, commerce and audience relationships that live across many outside systems.',
     '',
     'A strong draft should show the mechanism behind the shift, identify the specific creator consequence, and use only the Certifyd concept that clarifies that mechanism.',
@@ -224,6 +228,18 @@ function whyCertifydArticle(context, paragraphs) {
       confidence: 'supported',
     }],
     warnings: [],
+  };
+}
+
+function sourceBackedArticleWithoutFixtureFooter(context, paragraphs, overrides = {}) {
+  return {
+    ...whyCertifydArticle(context, []),
+    bodyMarkdown: [
+      '# Source Story',
+      '',
+      ...paragraphs.flatMap((paragraph) => [paragraph, '']),
+    ].join('\n').trim(),
+    ...overrides,
   };
 }
 
@@ -1399,6 +1415,98 @@ test('why-Certifyd validation accepts UMG permission-product architectural need'
   assert.doesNotThrow(() => validateGeneratedArticle(article, context));
 });
 
+test('why-Certifyd validation rejects source-backed article with zero Certifyd mentions', () => {
+  const context = whyCertifydContext({
+    title: 'Audiomack Pro expands artist tools',
+    summary: 'The source story says Audiomack Pro adds analytics, promotion, payout access and content-response tools for artists.',
+    thesis: 'More artist workflow is moving inside centralized platform infrastructure.',
+    concept: 'Creator-operated Core infrastructure',
+    sourceConnection: 'The source facts connect platform tools to analytics, promotion, payouts and artist workflow dependency.',
+  });
+  const article = sourceBackedArticleWithoutFixtureFooter(context, [
+    'Audiomack Pro puts more of the artist operating workflow inside one platform account.',
+    'That can make analytics, promotion, payout access and content response easier to reach from the same dashboard.',
+    'The structural problem is that the artist still depends on infrastructure operated by the platform for identity, audience context, promotion signals and commercial records.',
+    'Creator-controlled infrastructure gives artists a different starting point because identity, work context and relationship records can originate outside the service that packages the tools.',
+    'That makes the creator less dependent on one platform account as the operating center for the business.',
+  ]);
+  let error;
+  assert.throws(() => {
+    try {
+      validateGeneratedArticle(article, context);
+    } catch (caught) {
+      error = caught;
+      throw caught;
+    }
+  }, /Certifyd relevance lacks story-specific architectural need/i);
+  assert.match(error.warnings.join('\n'), /without naming Certifyd or explaining why Certifyd matters to this story/i);
+});
+
+test('why-Certifyd validation rejects generic creator-controlled infrastructure with no Certifyd connection', () => {
+  const context = whyCertifydContext({
+    title: 'Audiomack Pro expands artist tools',
+    summary: 'The source story says Audiomack Pro adds analytics, promotion, payout access and content-response tools for artists.',
+    thesis: 'More artist workflow is moving inside centralized platform infrastructure.',
+    concept: 'Creator-operated Core infrastructure',
+    sourceConnection: 'The source facts connect platform tools to analytics, promotion, payouts and artist workflow dependency.',
+  });
+  const article = sourceBackedArticleWithoutFixtureFooter(context, [
+    'The source story shows a platform adding more creator tools to one dashboard.',
+    'Creator-controlled infrastructure is important because artists need more sovereignty, portability and ownership.',
+    'Decentralized operating records can help creators keep control across many services.',
+    'That general direction matters as platforms add more features to the creator stack.',
+  ]);
+  let error;
+  assert.throws(() => {
+    try {
+      validateGeneratedArticle(article, context);
+    } catch (caught) {
+      error = caught;
+      throw caught;
+    }
+  }, /Certifyd relevance lacks story-specific architectural need/i);
+  assert.match(error.warnings.join('\n'), /without naming Certifyd or explaining why Certifyd matters to this story/i);
+});
+
+test('why-Certifyd validation rejects token Certifyd mention without architectural reasoning', () => {
+  const context = whyCertifydContext({
+    title: 'Audiomack Pro expands artist tools',
+    summary: 'The source story says Audiomack Pro adds analytics, promotion, payout access and content-response tools for artists.',
+    thesis: 'More artist workflow is moving inside centralized platform infrastructure.',
+    concept: 'Creator-operated Core infrastructure',
+    sourceConnection: 'The source facts connect platform tools to analytics, promotion, payouts and artist workflow dependency.',
+  });
+  const article = sourceBackedArticleWithoutFixtureFooter(context, [
+    'Audiomack Pro puts more analytics, promotion and payout access inside the platform account.',
+    'That shift shows how creator workflows can become concentrated inside a service-operated dashboard.',
+    'This is relevant to Certifyd.',
+    'Artists still need more control, portability and sovereignty as the platform market changes.',
+  ]);
+  assert.throws(() => validateGeneratedArticle(article, context), /Certifyd relevance lacks story-specific architectural need/i);
+});
+
+test('why-Certifyd validation accepts explicit Certifyd architectural difference and creator consequence', () => {
+  const context = whyCertifydContext({
+    title: 'Audiomack Pro expands artist tools',
+    summary: 'The source story says Audiomack Pro adds analytics, promotion, payout access and content-response tools for artists.',
+    thesis: 'More artist workflow is moving inside centralized platform infrastructure.',
+    concept: 'Creator-operated Core infrastructure',
+    sourceConnection: 'The source facts connect platform tools to analytics, promotion, payouts and artist workflow dependency.',
+  });
+  const article = sourceBackedArticleWithoutFixtureFooter(context, [
+    'Audiomack Pro puts more analytics, promotion, payout access and content-response tools inside the platform account.',
+    'That creates a dependency problem because the artist’s operating record, audience signals and commercial workflow can sit inside infrastructure the platform controls.',
+    'Certifyd matters to that specific problem because Certifyd Core supports creator-operated identity, publishing and commerce infrastructure that can originate from the creator rather than from the platform account.',
+    'That gives the creator a more durable starting point for work, release and relationship context before any one service decides how to package the next promotion, payout or fan interaction.',
+    'The distinction is not that artists should avoid every useful service. The distinction is that the platform account should not become the only operating record for the artist business.',
+    'When the creator has a durable starting point outside the intermediary, audience context, release context and commercial activity can remain legible as the work moves across services.',
+    'That is the practical difference between receiving better tools from a centralized platform and operating infrastructure that the creator can carry into future relationships.',
+    'It also changes what the article can responsibly say about the outside company. Audiomack can improve the platform experience without becoming the necessary home for the artist’s identity, catalog context, promotion history or commercial relationships.',
+    'The Certifyd argument is narrower and stronger than generic portability: more of the creator operation can begin from infrastructure the creator operates, then connect outward to services instead of being rebuilt inside each one.',
+  ]);
+  assert.doesNotThrow(() => validateGeneratedArticle(article, context));
+});
+
 test('why-Certifyd validation rejects post-fix UMG passage with implicit creator-controlled value only', () => {
   const context = whyCertifydContext({
     title: 'UMG and ElevenLabs develop licensed AI music product',
@@ -1645,8 +1753,65 @@ test('OpenAI Certifyd architectural relevance repair passes and returns revised 
   const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: context.editorialBrief.primaryEvent, audience: 'Creators', objective: 'Explain the source story.' }, context);
   assert.deepEqual(calls.map((call) => call.text.format.name), ['certifyd_editorial_reasoning', 'certifyd_article', 'certifyd_article']);
   assert.match(calls[2].input, /Certifyd relevance lacks story-specific architectural need/i);
+  assert.match(calls[2].input, /names Certifyd/i);
+  assert.match(calls[2].input, /explains why Certifyd matters to this story/i);
+  assert.match(calls[2].input, /identifies the dependency or structural gap/i);
+  assert.match(calls[2].input, /explains how the selected Certifyd architecture changes that condition/i);
+  assert.match(calls[2].input, /practical creator consequence/i);
   assert.match(article.bodyMarkdown, /creator-controlled release-record infrastructure/i);
   assert.doesNotMatch(article.warnings.join('\n'), /Certifyd relevance lacks story-specific architectural need/i);
+});
+
+test('OpenAI Certifyd repair runs once when first draft omits Certifyd entirely', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  const context = whyCertifydContext({
+    title: 'Audiomack Pro expands artist tools',
+    summary: 'The source story says Audiomack Pro adds analytics, promotion, payout access and content-response tools for artists.',
+    thesis: 'More artist workflow is moving inside centralized platform infrastructure.',
+    concept: 'Creator-operated Core infrastructure',
+    sourceConnection: 'The source facts connect platform tools to analytics, promotion, payouts and artist workflow dependency.',
+  });
+  const weakArticle = sourceBackedArticleWithoutFixtureFooter(context, [
+    'Audiomack Pro puts more analytics, promotion, payout access and content-response tools inside the platform account.',
+    'That creates a dependency problem because the artist’s operating record, audience signals and commercial workflow can sit inside infrastructure the platform controls.',
+    'Creator-operated infrastructure gives the artist a more durable starting point for work, release and relationship context before any one service packages the next promotion, payout or fan interaction.',
+    'The issue is not whether the service can ship useful tools. The issue is who owns the operating environment once more of the creator workflow moves into the service dashboard.',
+    'If audience context, payment access, promotion signals and content-response data all live in one intermediary account, the creator has to treat that account as the business center.',
+    'That makes the source story useful for testing whether the generated article will name the actual Certifyd architecture instead of stopping at generic creator-controlled language.',
+  ]);
+  const repairedArticle = sourceBackedArticleWithoutFixtureFooter(context, [
+    'Audiomack Pro puts more analytics, promotion, payout access and content-response tools inside the platform account.',
+    'That creates a dependency problem because the artist’s operating record, audience signals and commercial workflow can sit inside infrastructure the platform controls.',
+    'Certifyd matters to that specific problem because Certifyd Core supports creator-operated identity, publishing and commerce infrastructure that can originate from the creator rather than from the platform account.',
+    'That gives the creator a more durable starting point for work, release and relationship context before any one service decides how to package the next promotion, payout or fan interaction.',
+    'The practical consequence is that the creator can use a service without letting the service become the only place where identity, release context, commercial records and relationship history are organized.',
+    'That keeps the editorial contrast focused on architecture: platform-provided tools can be useful, but Certifyd points toward creator-operated infrastructure that reduces dependence on the platform as the operating center.',
+    'The article therefore names Certifyd as the supported architectural alternative and explains the creator consequence instead of merely inserting a brand reference.',
+    'That matters for future services too. If the next platform changes promotion rules, payout access or audience tools, the creator still has a source of identity, publishing and commerce context that did not originate inside that platform account.',
+    'The repaired draft therefore shows why Certifyd matters to this particular story: more tools inside Audiomack can deepen workflow dependency, while creator-operated infrastructure gives the artist a place to begin from before connecting outward.',
+  ]);
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      calls,
+      reasoning: validReasoning({
+        eventSummary: context.editorialBrief.primaryEvent,
+        editorialTension: context.editorialBrief.editorialTension,
+        hiddenQuestion: 'Why should artist workflow live inside one platform account?',
+        whatThisReveals: context.editorialBrief.whatChanged,
+        editorialIdea: context.editorialBrief.possibleThesis,
+        thesis: context.editorialBrief.possibleThesis,
+        creatorConsequence: context.editorialBrief.creatorConsequence,
+      }),
+      article: [weakArticle, repairedArticle],
+    }),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: context.editorialBrief.primaryEvent, audience: 'Creators', objective: 'Explain the source story.' }, context);
+  assert.deepEqual(calls.map((call) => call.text.format.name), ['certifyd_editorial_reasoning', 'certifyd_article', 'certifyd_article']);
+  assert.match(calls[2].input, /names Certifyd/i);
+  assert.match(calls[2].input, /practical creator consequence/i);
+  assert.match(article.bodyMarkdown, /Certifyd Core supports creator-operated identity/i);
+  assert.doesNotMatch(article.warnings.join('\n'), /without naming Certifyd/i);
 });
 
 test('OpenAI Certifyd architectural relevance repair still saves weak revised draft with warning', async () => {
@@ -2941,6 +3106,8 @@ test('source story generation keeps BMG Suno article coherent without internal c
         'Certifyd’s approved knowledge points to permissions, publishing context and commerce records as useful infrastructure for creator-owned decision making. That makes this kind of licensing story relevant without implying any adoption by BMG or Suno.',
         '',
         'The useful Certifyd angle is therefore narrow. It is not a claim that Certifyd is part of the deal. It is an example of the type of creator-side infrastructure that becomes more important when permission, publishing context and commercial participation need to travel with the work.',
+        '',
+        'Certifyd matters to that specific dependency because creator-controlled permission, publishing and commerce infrastructure gives the creator an independent starting point before a label workflow, AI product or other intermediary decides how participation is recorded. That context can remain usable across downstream licensing, derivative-work and compensation relationships rather than being recreated inside each new product layer.',
       ].join('\n'),
       claims: [{ text: 'Certifyd access records help describe permissions, creator opt-in and creator-controlled access decisions.', sourceIds: [sourceId], confidence: 'supported' }],
     }), calls),

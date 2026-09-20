@@ -1458,7 +1458,7 @@ function buildArticleRevisionPrompt(originalPrompt, article, genericDefinitionHi
     'Do not restore an earlier weaker Stage A1 thesis or structure while repairing the factual issue.',
     'Do not add new facts, new Certifyd capabilities, new source claims, or new Brain concepts.',
     'Remove or qualify unsupported claims. Preserve general explanatory context only when it is clearly not a factual claim about the source event.',
-    'If the validation finding says Certifyd relevance lacks story-specific architectural need, revise only the Certifyd relevance passage so it explains the dependency or structural gap created by the source story, what the creator lacks without creator-controlled infrastructure, how the selected Certifyd architecture changes that condition, and what becomes possible or more durable for the creator.',
+    'If the validation finding says Certifyd relevance lacks story-specific architectural need, revise only the Certifyd relevance passage so it names Certifyd, explains why Certifyd matters to this story, identifies the dependency or structural gap created by the source story, explains what the creator lacks without creator-controlled infrastructure, explains how the selected Certifyd architecture changes that condition, and states what practical creator consequence becomes possible or more durable.',
     'Do not use sentences beginning “A payout is”, “A record is”, “A receipt is”, “A profile is”, “A release record is”, or “Provenance is evidence about”.',
     '',
     'BLOCKED PHRASES:',
@@ -2198,15 +2198,15 @@ function assessCertifydNeedConnection(bodyMarkdown, groundedContext = {}) {
     || (groundedContext.approvedKnowledge || []).some((item) => String(item?.id || '').startsWith('brain:'));
   if (!hasSelectedBrain) return '';
   const text = normalizeNeedConnectionText(bodyMarkdown);
-  if (!/\bcertifyd\b/.test(text)) return '';
+  if (!/\bcertifyd\b/.test(text)) {
+    return 'Certifyd relevance is not story-specific enough: the article discusses creator-controlled infrastructure without naming Certifyd or explaining why Certifyd matters to this story.';
+  }
   const genericBridge = /\b(?:this is where certifyd comes in|certifyd solves this|this underscores the importance of certifyd|as the industry evolves certifyd|for the future of creators|creator economy)\b/.test(text);
   if (genericBridge) {
     return 'Certifyd relevance is not story-specific enough: Certifyd wording uses reusable bridge boilerplate instead of a source-specific architectural need.';
   }
   const certWindows = certifydReasoningWindows(bodyMarkdown);
   const genericOnly = certWindows.some(isGenericCertifydFeatureList);
-  const requiresArchitecturalCheck = genericOnly || certWindows.some(requiresCertifydArchitecturalReasoning);
-  if (!requiresArchitecturalCheck) return '';
   const storyText = normalizeNeedConnectionText([
     ...(groundedContext.externalSourceFacts || []).flatMap((source) => [source.title, source.summary, source.sourceText, source.rssSummary, (source.categories || []).join(' ')]),
     groundedContext.editorialBrief?.primaryEvent,
@@ -2757,6 +2757,8 @@ function sourceBackedDraft(input, groundedContext, sourceIds) {
       brief.possibleThesis,
       progression.slice(4, 7).map((step) => cleanSentence(step)).join(' '),
       conceptParagraph,
+      'Certifyd matters to this source story because creator-controlled infrastructure gives creators an independent starting point for identity, publishing context, commerce, permissions, discovery and relationship records before those functions are interpreted inside a platform, marketplace, distributor, label or other intermediary system.',
+      'That changes the practical creator consequence: the creator can carry more durable context across products, services and business relationships rather than rebuilding the operating record from whichever outside system controls the next workflow.',
     ].filter(Boolean).join(' '),
     '',
     [
