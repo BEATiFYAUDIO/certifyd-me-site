@@ -1119,6 +1119,9 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
       ? '- Do not default to conclusions such as “the future needs both useful services and durable creator-controlled infrastructure,” “platforms and Certifyd can work together,” or “Certifyd complements these tools.” Those may be true in some stories, but they must not replace the architectural question: why does this function need a centralized company in the middle at all?'
       : '',
     hasSelectedBrain
+      ? '- For centralized-intermediary canonical theses, carry the same canonical argument into the Certifyd answer: identify the function concentrated in the intermediary, state Certifyd’s opposite creator-operated architectural direction, name only currently supported Core capabilities from Brain, describe broader intermediary-dependency reduction as architectural direction rather than completed replacement, and explain what changes if supported functions move toward creator/Core/network control.'
+      : '',
+    hasSelectedBrain
       ? '- For centralized creator platforms or intermediaries, identify what part of the creator operation is being pulled into the service: identity, catalog context, publishing, analytics, promotion, payout access, commerce, permissions, discovery, fan relationships, or operating records.'
       : '',
     hasSelectedBrain
@@ -1465,6 +1468,7 @@ function buildArticleRevisionPrompt(originalPrompt, article, genericDefinitionHi
     'Do not add new facts, new Certifyd capabilities, new source claims, or new Brain concepts.',
     'Remove or qualify unsupported claims. Preserve general explanatory context only when it is clearly not a factual claim about the source event.',
     'If the validation finding says Certifyd relevance lacks story-specific architectural need, revise only the Certifyd relevance passage so it names Certifyd, explains why Certifyd matters to this story, identifies the dependency or structural gap created by the source story, explains what the creator lacks without creator-controlled infrastructure, explains how the selected Certifyd architecture changes that condition, and states what practical creator consequence becomes possible or more durable.',
+    'For centralized-intermediary findings, restore the missing architectural relationship: what creator function/control is concentrated in the intermediary, why that function should not have to require a centralized company in the middle, what current Certifyd capability is actually supported by Brain, and what broader creator-operated direction Certifyd is building toward without claiming the platform function is already replaced.',
     'Do not use sentences beginning “A payout is”, “A record is”, “A receipt is”, “A profile is”, “A release record is”, or “Provenance is evidence about”.',
     '',
     'BLOCKED PHRASES:',
@@ -2284,6 +2288,7 @@ function detectUnsupportedExternalAdoptionClaims(markdown, groundedContext = {})
       /\b(?:Suno|BMG|Universal Music Group|UMG|Spotify|Deezer|company|label|platform|distributor)\b[^.]{0,160}\b(?:licenses?|licensed|clears?|cleared|settles?|settled|processes?|processed|routes?|routed|receives?|received)\b[^.]{0,120}\b(?:through|via|with|on)\s+Certifyd\b/gi,
       /\bfacilitated\s+(?:by|through|via)\s+Certifyd\b/gi,
       /\bpowered\s+by\s+Certifyd\b/gi,
+      /\bCertifyd\b[^.]{0,160}\b(?:already|currently)?\s*(?:replaces?|replaced|has replaced)\b[^.]{0,180}\b(?:Audiomack|Spotify|SoundCloud|YouTube|TikTok|platform|service|analytics|promotion|payouts?|monetization|verification)\b/gi,
       /\bCertifyd\b[^.]{0,120}\b(?:facilitates?|routes?|pays?|distributes?|deposits?|licenses?|clears?)\b[^.]{0,120}\b(?:Suno|BMG|Universal Music Group|UMG|Spotify|Deezer|company|label|platform|distributor|royalt(?:y|ies)|payment|payments)\b/gi,
     );
   }
@@ -2741,7 +2746,26 @@ function buildOpenAIWritingContext(groundedContext = {}, reasoning = {}) {
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .slice(0, Math.min(3, Math.max(1, reasoning.certifydConcepts?.length || 1)))
     .map(({ item }) => item);
-  return { approvedKnowledge: selected, allowedBrainSourceIds: selected.map((item) => item.id).filter(Boolean) };
+  const withRequiredArchitecture = ensureCanonicalArchitectureContext(selected, knowledge, groundedContext);
+  return { approvedKnowledge: withRequiredArchitecture, allowedBrainSourceIds: withRequiredArchitecture.map((item) => item.id).filter(Boolean) };
+}
+
+function ensureCanonicalArchitectureContext(selected = [], knowledge = [], groundedContext = {}) {
+  if (groundedContext.editorialBrief?.canonicalThesis?.mode !== 'centralized-intermediary') return selected;
+  if (selected.some(isCanonicalArchitectureSource)) return selected.slice(0, 3);
+  const architecture = knowledge.find(isCanonicalArchitectureSource);
+  if (!architecture) return selected.slice(0, 3);
+  const next = [architecture, ...selected.filter((item) => item?.id !== architecture.id)];
+  return next.slice(0, 3);
+}
+
+function isCanonicalArchitectureSource(item = {}) {
+  const haystack = `${item.id || ''} ${item.path || ''} ${item.title || ''} ${item.theme || ''} ${item.excerpt || ''} ${(item.supportedClaims || []).join(' ')} ${(item.qualifiedClaims || []).join(' ')} ${(item.safeWording || []).join(' ')}`.toLowerCase();
+  if (/content-agent\/knowledge\/(?:ecosystem|constitution|capabilities\/network-distribution|facts\/approved-public-claims)\.md/.test(haystack)) {
+    return /\b(reduce|reducing|dependency|centralized|platform|creator-operated|infrastructure|network|core)\b/.test(haystack);
+  }
+  return /\bcertifyd\b/.test(haystack)
+    && /\b(creator-operated infrastructure|reduce creator dependency|reducing dependency|centralized platforms?|network distribution|distributed infrastructure layer|supported functions away from centralized)\b/.test(haystack);
 }
 
 function termOverlapScore(a = '', b = '') {

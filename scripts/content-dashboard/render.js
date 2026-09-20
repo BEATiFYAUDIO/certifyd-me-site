@@ -74,6 +74,19 @@ export function styles() {
 .article-meta-grid span{display:block;color:var(--muted);font-size:.75rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em}
 .article-meta-grid strong{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;color:var(--text)}
 .canonical-line,.run-id-line{margin:0;font-size:.92rem;overflow-wrap:anywhere}
+.source-evidence-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:16px;align-items:start}
+.source-evidence-grid .panel{min-width:0;overflow:hidden}
+.source-evidence-grid h2{font-size:clamp(1.25rem,2.1vw,1.9rem);letter-spacing:-.025em}
+.source-evidence-grid p,.source-evidence-grid li,.source-evidence-grid a,.source-evidence-grid code,.source-evidence-grid span{overflow-wrap:anywhere;word-break:normal}
+.source-evidence-grid code{white-space:normal}
+.source-evidence-grid details{min-width:0}
+.table-scroll{width:100%;overflow-x:auto}
+.claims-table{min-width:680px;table-layout:fixed}
+.claims-table th,.claims-table td{overflow-wrap:anywhere;word-break:normal}
+.claims-table th:nth-child(1),.claims-table td:nth-child(1){width:34%}
+.claims-table th:nth-child(2),.claims-table td:nth-child(2){width:150px}
+.claims-table th:nth-child(3),.claims-table td:nth-child(3){width:180px}
+@media(min-width:1180px){.source-evidence-grid .panel:nth-child(4),.source-evidence-grid .panel:nth-child(5){grid-column:span 2}}
 .action-panel{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:20px 0}
 .action-group{border:1px solid var(--border);border-radius:20px;padding:14px;background:rgba(255,255,255,.03)}
 .action-group h3{font-size:.76rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0 0 10px}
