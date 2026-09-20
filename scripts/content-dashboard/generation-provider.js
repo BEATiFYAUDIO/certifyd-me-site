@@ -1022,6 +1022,9 @@ function buildArticleSystemInstruction() {
     'When uncertainty is genuinely required, express it naturally and briefly, for example “The case remains unresolved” or “The ruling does not decide the underlying dispute.”',
     'When selected Certifyd Brain is supplied, use it to develop a meaningful Certifyd perspective where it materially deepens the source-backed argument.',
     'When Certifyd is relevant, explain why the source development creates a stronger need for creator-controlled infrastructure before listing what Certifyd provides.',
+    'For stories about centralized creator platforms or intermediaries, critique the architecture rather than the company: distinguish what the feature does from who controls the infrastructure that does it.',
+    'Do not default to treating centralized platforms as permanent useful infrastructure that Certifyd merely complements with a creator-controlled layer.',
+    'When the evidence supports it, ask whether the function actually needs a centralized intermediary, and explain how creator-operated infrastructure changes the control relationship.',
     'When no selected Certifyd Brain is supplied, do not manufacture a Certifyd product connection.',
     'Selected Certifyd Brain can support claims about Certifyd architecture, principles and capabilities. It is not evidence for facts about the external source event.',
     'Verified Brain facts about Certifyd may be stated directly and confidently. Do not weaken verified Certifyd capabilities with “may support,” “intended to support,” “where implemented,” “potentially supports,” or “is designed to potentially” unless the selected Brain record itself contains that uncertainty.',
@@ -1096,6 +1099,30 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
       : '',
     hasSelectedBrain
       ? '- By the end of any Certifyd-specific passage, the reader should understand the dependency or gap this story exposes, what remains platform-controlled or fragmented without creator-controlled infrastructure, how the selected Certifyd architecture changes that condition, and what becomes more durable, portable or possible for the creator.'
+      : '',
+    hasSelectedBrain
+      ? '- For source stories about another company or platform, make the architectural sequence clear when the evidence supports it: current approach or solution -> what it improves -> what dependency, limitation, fragmentation or control problem remains -> selected Certifyd approach -> the practical difference for the creator. This is critical analysis, not hostility.'
+      : '',
+    hasSelectedBrain
+      ? '- Do not spend repeated language reassuring the reader that the outside product is useful. State what it does, then follow the architecture to the point where its control, context or portability stops.'
+      : '',
+    hasSelectedBrain
+      ? '- Do not position Certifyd as merely another tool beside the source company. When selected Brain supports it, preserve the distinction between tools used by creators and infrastructure operated or controlled by creators.'
+      : '',
+    hasSelectedBrain
+      ? '- Do not default to conclusions such as “the future needs both useful services and durable creator-controlled infrastructure,” “platforms and Certifyd can work together,” or “Certifyd complements these tools.” Those may be true in some stories, but they must not replace the architectural question: why does this function need a centralized company in the middle at all?'
+      : '',
+    hasSelectedBrain
+      ? '- For centralized creator platforms or intermediaries, identify what part of the creator operation is being pulled into the service: identity, catalog context, publishing, analytics, promotion, payout access, commerce, permissions, discovery, fan relationships, or operating records.'
+      : '',
+    hasSelectedBrain
+      ? '- When source facts support it, explain that adding more analytics, promotion, monetization, identity, discovery, fan, or commerce tools inside a platform can deepen dependency by moving more of the creator operation into infrastructure the creator does not operate.'
+      : '',
+    hasSelectedBrain
+      ? '- Frame Certifyd Core as a different network architecture where supported identity, works, release context, publishing, commerce, permissions and creator/fan relationship context can originate from creator-operated infrastructure instead of requiring a centralized platform to own the operating environment.'
+      : '',
+    hasSelectedBrain
+      ? '- Avoid vague Certifyd conclusions such as “creator-controlled infrastructure becomes more valuable,” “Certifyd exists to help,” “that direction points toward,” or “can inform other Certifyd surfaces.” Replace them with the specific supported capability and the concrete architectural difference it creates in this story.'
       : '',
     hasSelectedBrain
       ? '- Weak: “Certifyd Core supports identity, provenance, catalog management and commerce.” Stronger: explain why this story makes identity, work, release, attribution, permission, discovery, commerce or fan-relationship context harder to leave inside disconnected third-party systems, then introduce the selected Certifyd capability as the architecture that supports that need.'
