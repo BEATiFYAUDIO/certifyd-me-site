@@ -81,7 +81,8 @@ export async function buildImageBrief(config, run, overrides = {}) {
   const styleGuide = await readStyleGuide(config);
   const customBrief = cleanString(overrides.imageBrief || '', MAX_BRIEF_CHARS);
   const articleSignals = [title, excerpt, tags.join(', '), body.slice(0, 2500)].filter(Boolean).join('\n\n');
-  const generatedBrief = customBrief || buildAutomaticImageBrief({ title, excerpt, category, tags, body, styleGuide });
+  const canonicalThesis = run.researchRecord?.editorialBrief?.canonicalThesis || run.researchRecord?.generationDiagnostics?.editorialBrief?.canonicalThesis || null;
+  const generatedBrief = customBrief || buildAutomaticImageBrief({ title, excerpt, category, tags, body, styleGuide, canonicalThesis });
   const prompt = [
     'Create one original landscape editorial blog cover image.',
     '',
@@ -107,10 +108,10 @@ export async function buildImageBrief(config, run, overrides = {}) {
   };
 }
 
-function buildAutomaticImageBrief({ title, excerpt, category, tags, body, styleGuide }) {
+function buildAutomaticImageBrief({ title, excerpt, category, tags, body, styleGuide, canonicalThesis = null }) {
   const openingParagraphs = firstUsefulParagraphs(body, 3);
   const subject = extractCentralSubject({ title, excerpt, openingParagraphs });
-  const coreIdea = extractStructuralThesis({ title, excerpt, openingParagraphs });
+  const coreIdea = extractStructuralThesis({ title, excerpt, openingParagraphs, canonicalThesis });
   const visualDirection = mapThesisToVisualMetaphor(coreIdea);
   const avoid = deriveAvoidList(styleGuide);
   return [
@@ -141,7 +142,9 @@ function extractCentralSubject({ title, excerpt, openingParagraphs }) {
   return conciseSentence(`${title}: ${first}`, 260);
 }
 
-function extractStructuralThesis({ title, excerpt, openingParagraphs }) {
+function extractStructuralThesis({ title, excerpt, openingParagraphs, canonicalThesis = null }) {
+  const canonicalIdea = structuralThesisFromCanonical(canonicalThesis);
+  if (canonicalIdea) return canonicalIdea;
   const haystack = [title, ...openingParagraphs, excerpt].join(' ').toLowerCase();
   const first = conciseSentence(openingParagraphs[0] || excerpt || title, 220);
 
@@ -177,8 +180,19 @@ function extractStructuralThesis({ title, excerpt, openingParagraphs }) {
   return 'The image should communicate the article’s underlying tension through a tangible visual metaphor rather than a literal company portrait.';
 }
 
+function structuralThesisFromCanonical(thesis = {}) {
+  if (!thesis || typeof thesis !== 'object') return '';
+  if (thesis.mode === 'centralized-intermediary') {
+    return 'Centralized creator platforms can absorb more of the creator operating environment; the article asks what changes when those functions move toward creator-operated infrastructure.';
+  }
+  return conciseSentence(thesis.structuralChange || thesis.industryDevelopment || '', 240);
+}
+
 function mapThesisToVisualMetaphor(thesis) {
   const haystack = String(thesis || '').toLowerCase();
+  if (hasAny(haystack, ['centralized creator platforms', 'creator-operated infrastructure', 'operating environment'])) {
+    return 'Show a tactile still life contrasting a closed platform account folder with a separate creator-operated core record: blank cards, a small physical network node, release sheets, and relationship notes moving outward from the creator-owned center.';
+  }
   if (hasAny(haystack, ['ticket', 'commerce', 'transaction', 'discovery'])) {
     return 'Show a concert ticket, order slip, or fan purchase object emerging from a tactile discovery surface such as a marked recommendation card or concierge desk, suggesting discovery has become a commerce path.';
   }

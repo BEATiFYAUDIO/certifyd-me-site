@@ -59,6 +59,44 @@ test('automatic image brief derives Ticketmaster and Meta Muse as commerce disco
   assert.doesNotMatch(brief.imageBrief, /provenance materials/i);
 });
 
+test('automatic image brief uses canonical thesis before commerce keyword fallback', async () => {
+  const { config, run } = await fixture();
+  const brief = await buildImageBrief(config, {
+    ...run,
+    researchRecord: {
+      editorialBrief: {
+        canonicalThesis: {
+          mode: 'centralized-intermediary',
+          industryDevelopment: 'Audiomack is moving analytics, promotion, verification and payout access into its creator-facing operating environment.',
+          structuralChange: 'More creator operating functions are being centralized inside Audiomack.',
+          dependency: 'The creator receives more capability but remains dependent on infrastructure, rules and relationships controlled by Audiomack.',
+          architecturalQuestion: 'Why must these creator functions require a centralized intermediary?',
+          certifydRelevance: 'Certifyd Core takes the opposite architectural direction.',
+          creatorConsequence: 'The creator moves from being an account inside the operating environment toward operating part of the infrastructure themselves.',
+        },
+      },
+    },
+    blogPackage: {
+      ...run.blogPackage,
+      title: 'Audiomack Pro Puts More Artist Workflow Inside the Platform',
+      excerpt: 'Audiomack Pro combines analytics, promotion, verification, payout access and commerce tools.',
+      tags: ['music business', 'creator commerce'],
+    },
+    articleMarkdown: [
+      '# Audiomack Pro Puts More Artist Workflow Inside the Platform',
+      '',
+      'Audiomack Pro combines analytics, promotion, verification, payout access and commerce tools in one artist environment.',
+      '',
+      'The structural question is whether those creator functions need a centralized intermediary as the operating center.',
+    ].join('\n'),
+  });
+
+  assert.match(brief.imageBrief, /Centralized creator platforms can absorb more of the creator operating environment/i);
+  assert.match(brief.imageBrief, /creator-operated infrastructure/i);
+  assert.match(brief.imageBrief, /closed platform account folder/i);
+  assert.doesNotMatch(brief.imageBrief, /concert ticket|order slip|fan purchase object/i);
+});
+
 test('automatic image brief derives Spotify bundling as packaging and royalty economics', async () => {
   const brief = await briefForArticle({
     title: 'Spotify Bundling Ruling Shows Product Design Is Now a Royalty Lever',

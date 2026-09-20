@@ -84,6 +84,11 @@ async function makeContext(config, input = {}) {
   });
 }
 
+async function writeTrendSources(config, sourceItems) {
+  await fs.mkdir(path.join(config.agentRoot, 'dashboard/trends'), { recursive: true });
+  await fs.writeFile(path.join(config.agentRoot, 'dashboard/trends/trend-state.json'), `${JSON.stringify({ sourceItems }, null, 2)}\n`);
+}
+
 function mockResponse(body, status = 200) {
   return {
     ok: status >= 200 && status < 300,
@@ -152,7 +157,7 @@ function validArticle(sourceId, overrides = {}) {
   };
 }
 
-function whyCertifydContext({ title, summary, thesis, concept, sourceConnection }) {
+function whyCertifydContext({ title, summary, thesis, concept, sourceConnection, canonicalThesis = null }) {
   return {
     sourceRecords: [{
       id: 'brain:facts/approved-public-claims',
@@ -192,6 +197,7 @@ function whyCertifydContext({ title, summary, thesis, concept, sourceConnection 
       whatChanged: thesis,
       creatorConsequence: sourceConnection,
       possibleThesis: thesis,
+      canonicalThesis,
       selectedCertifydConcepts: [{
         concept,
         relevance: `Relevant because ${sourceConnection}`,
@@ -1305,7 +1311,8 @@ test('OpenAI final writing instructions discourage validator-facing defensive pr
   assert.match(finalInstructionText, /Use the verified source facts, advisory editorial notes and selected Certifyd Brain together/i);
   assert.match(finalInstructionText, /You own the final thesis/i);
   assert.match(finalInstructionText, /challenge it, deepen it, combine it or replace its proposed thesis/i);
-  assert.match(finalInstructionText, /advisory analysis, not a required thesis, rigid outline or article structure/i);
+  assert.match(finalInstructionText, /Use source-only reasoning as advisory analysis/i);
+  assert.match(finalInstructionText, /only when doing so reinforces the canonical thesis/i);
   assert.match(finalInstructionText, /Distinguish news facts, the first structural interpretation, the deeper architectural change, and supporting operational consequences/i);
   assert.match(finalInstructionText, /After identifying the first structural interpretation, ask what larger change makes that interpretation possible or necessary/i);
   assert.match(finalInstructionText, /Do not confuse operational implications such as metadata, attribution, records, transparency, workflow continuity, release context, settlement, discovery, commerce, permissions, or administrative complexity with the deepest thesis/i);
@@ -1396,6 +1403,62 @@ test('final writing instructions require why-Certifyd architectural need before 
   assert.match(finalInstructionText, /Also weak: “Certifyd maintains catalog context” or “Certifyd supports release records”/i);
   assert.match(finalInstructionText, /rather than only in a platform, distributor, label, PRO, AI product, marketplace or other intermediary system/i);
   assert.match(finalInstructionText, /Avoid generic bridges such as “This is where Certifyd comes in,” “Certifyd solves this,”/i);
+  assert.match(finalInstructionText, /CANONICAL EDITORIAL THESIS/i);
+  assert.match(finalInstructionText, /source-of-truth for the article’s structural claim/i);
+  assert.doesNotMatch(finalInstructionText, /may contain zero Certifyd product references/i);
+  assert.doesNotMatch(finalInstructionText, /source-backed article may contain zero/i);
+});
+
+test('canonical thesis frames Audiomack as centralized creator operating functions, not generic commerce', async () => {
+  const config = await makeConfig();
+  await writeTrendSources(config, [{
+    id: 'source-audiomack-pro',
+    publisher: 'Music Business Worldwide',
+    publishedAt: '2026-09-16T12:00:00.000Z',
+    title: 'Audiomack Pro rolls out globally including Song Pulse feature',
+    summary: 'Audiomack Pro is rolling out globally with Song Pulse analytics, profile verification, promotional tools, monetization access and payout-related features for artists using the streaming service.',
+    articleUrl: 'https://example.test/audiomack-pro',
+    categories: ['Music Business'],
+    certifydRelevanceScore: 13,
+  }]);
+
+  const context = await makeContext(config, {
+    topic: 'Write a Certifyd article about: Audiomack Pro rolls out globally including Song Pulse feature. Use this angle: commerce, receipts and transparent records.',
+    trendSourceItemIds: 'source-audiomack-pro',
+  });
+
+  const thesis = context.editorialBrief.canonicalThesis;
+  assert.equal(thesis.mode, 'centralized-intermediary');
+  assert.match(thesis.industryDevelopment, /Audiomack is moving analytics, promotion, verification and payout access/i);
+  assert.match(thesis.structuralChange, /centralized inside Audiomack/i);
+  assert.match(thesis.dependency, /dependent on infrastructure, rules and relationships controlled by Audiomack/i);
+  assert.match(thesis.architecturalQuestion, /Why must these creator functions require a centralized intermediary/i);
+  assert.match(thesis.certifydRelevance, /opposite architectural direction/i);
+  assert.match(thesis.creatorConsequence, /toward operating part of the infrastructure themselves/i);
+});
+
+test('canonical thesis keeps non-platform rights story source-specific', async () => {
+  const config = await makeConfig();
+  await writeTrendSources(config, [{
+    id: 'source-afm-rights',
+    publisher: 'Music Business Worldwide',
+    publishedAt: '2026-09-14T12:00:00.000Z',
+    title: 'AFM files opposition in Universal and Warner AI licensing dispute',
+    summary: 'A musicians union filing challenges AI licensing arguments involving recordings, permissions, performer terms and alleged commercial exploitation of recorded work.',
+    articleUrl: 'https://example.test/afm-ai-rights',
+    categories: ['Music Rights'],
+    certifydRelevanceScore: 13,
+  }]);
+
+  const context = await makeContext(config, {
+    topic: 'Write a Certifyd article about: AFM files opposition in Universal and Warner AI licensing dispute.',
+    trendSourceItemIds: 'source-afm-rights',
+  });
+
+  const thesis = context.editorialBrief.canonicalThesis;
+  assert.equal(thesis.mode, 'source-specific');
+  assert.match(thesis.architecturalQuestion, /dependency, control problem, or infrastructure gap/i);
+  assert.doesNotMatch(thesis.structuralChange, /centralized inside/i);
 });
 
 test('why-Certifyd validation accepts UMG permission-product architectural need', () => {
@@ -1503,6 +1566,65 @@ test('why-Certifyd validation accepts explicit Certifyd architectural difference
     'That is the practical difference between receiving better tools from a centralized platform and operating infrastructure that the creator can carry into future relationships.',
     'It also changes what the article can responsibly say about the outside company. Audiomack can improve the platform experience without becoming the necessary home for the artist’s identity, catalog context, promotion history or commercial relationships.',
     'The Certifyd argument is narrower and stronger than generic portability: more of the creator operation can begin from infrastructure the creator operates, then connect outward to services instead of being rebuilt inside each one.',
+  ]);
+  assert.doesNotThrow(() => validateGeneratedArticle(article, context));
+});
+
+test('why-Certifyd validation rejects centralized-platform story that only complements the intermediary', () => {
+  const context = whyCertifydContext({
+    title: 'Audiomack Pro expands artist tools',
+    summary: 'The source story says Audiomack Pro adds analytics, promotion, payout access and verification for artists inside the streaming service.',
+    thesis: 'More artist workflow is moving inside centralized platform infrastructure.',
+    concept: 'Creator-operated Core infrastructure',
+    sourceConnection: 'The source facts connect platform tools to analytics, promotion, payouts and artist workflow dependency.',
+    canonicalThesis: {
+      mode: 'centralized-intermediary',
+      industryDevelopment: 'Audiomack is moving analytics, promotion, verification and payout access into its creator-facing operating environment.',
+      structuralChange: 'More creator operating functions are being centralized inside Audiomack.',
+      dependency: 'The creator receives more capability but remains dependent on infrastructure, rules and relationships controlled by Audiomack.',
+      architecturalQuestion: 'Why must these creator functions require a centralized intermediary?',
+      certifydRelevance: 'Certifyd Core takes the opposite architectural direction: creator-operated infrastructure and a network designed to move supported functions away from centralized intermediaries and toward creators.',
+      creatorConsequence: 'The creator moves from being an account inside the operating environment toward operating part of the infrastructure themselves.',
+    },
+  });
+  const article = sourceBackedArticleWithoutFixtureFooter(context, [
+    'Audiomack Pro puts analytics, promotion, payout access and verification inside the platform account.',
+    'That creates a dependency problem because artist workflows can sit inside infrastructure the platform controls.',
+    'Certifyd matters because Certifyd Core supports identity, publishing and commerce infrastructure that gives creators a more durable foundation alongside useful platform tools.',
+    'That foundation can preserve work and relationship context across services while Audiomack continues to improve the artist dashboard.',
+    'The article still has to explain the architectural consequence rather than merely praising the dashboard or naming a creator-controlled layer. Artists can benefit from better reporting, promotion and monetization access while still having the operating environment defined by the service that owns the account.',
+    'If the Certifyd passage only says the creator needs a durable foundation beside the platform, it has not answered the canonical question. The missing argument is whether analytics, verification, payout access and fan context should have to live in the outside account before the creator business becomes legible.',
+    'That distinction matters because the news is not just that one service added useful artist features. The deeper issue is where the operating record lives after those features become normal. A draft can be long enough and still miss the point if it leaves the platform as the permanent center and treats creator-controlled infrastructure as a helpful add-on around the edges.',
+  ]);
+  assert.throws(() => validateGeneratedArticle(article, context), /story-specific architectural need/i);
+});
+
+test('why-Certifyd validation accepts centralized-platform story that answers intermediary displacement thesis', () => {
+  const context = whyCertifydContext({
+    title: 'Audiomack Pro expands artist tools',
+    summary: 'The source story says Audiomack Pro adds analytics, promotion, payout access and verification for artists inside the streaming service.',
+    thesis: 'More artist workflow is moving inside centralized platform infrastructure.',
+    concept: 'Creator-operated Core infrastructure',
+    sourceConnection: 'The source facts connect platform tools to analytics, promotion, payouts and artist workflow dependency.',
+    canonicalThesis: {
+      mode: 'centralized-intermediary',
+      industryDevelopment: 'Audiomack is moving analytics, promotion, verification and payout access into its creator-facing operating environment.',
+      structuralChange: 'More creator operating functions are being centralized inside Audiomack.',
+      dependency: 'The creator receives more capability but remains dependent on infrastructure, rules and relationships controlled by Audiomack.',
+      architecturalQuestion: 'Why must these creator functions require a centralized intermediary?',
+      certifydRelevance: 'Certifyd Core takes the opposite architectural direction: creator-operated infrastructure and a network designed to move supported functions away from centralized intermediaries and toward creators.',
+      creatorConsequence: 'The creator moves from being an account inside the operating environment toward operating part of the infrastructure themselves.',
+    },
+  });
+  const article = sourceBackedArticleWithoutFixtureFooter(context, [
+    'Audiomack Pro puts analytics, promotion, payout access and verification inside the platform account.',
+    'That creates a dependency problem because the artist operating record can sit inside infrastructure the platform controls.',
+    'Certifyd matters to that specific problem because its architecture starts from creator-operated infrastructure rather than treating the platform account as the source of the artist business record.',
+    'That changes the control relationship and makes possible a supported path where creator functions do not have to require a centralized intermediary as the necessary home for the artist business.',
+    'The creator moves toward operating part of the infrastructure themselves, so release context, audience relationships and commercial activity can remain more durable across downstream services.',
+    'That does not claim Audiomack uses Certifyd or that every platform function has already been replaced. It keeps the current and future boundary clear: current Brain-supported Core capabilities can be named, while broader intermediary displacement is described as the architectural direction the article is testing.',
+    'The practical difference is concrete. The artist can use useful services without allowing each service to become the only place where identity, work context, promotion history, payout access and fan relationships are organized. The creator-operated starting point comes first, so later service relationships do not have to become the only record of the artist operation.',
+    'That is why the thesis is not a generic portability sermon. It connects the reported platform bundle to the control question the bundle exposes, then brings in Certifyd analysis only to explain the supported architecture that changes where the artist operation begins.',
   ]);
   assert.doesNotThrow(() => validateGeneratedArticle(article, context));
 });
@@ -1932,8 +2054,9 @@ test('OpenAI analytical vocabulary in reasoning is allowed without becoming Brai
   });
   await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Creator platform changes independent music infrastructure', audience: 'Creators', objective: 'Explain discovery.' }, context);
   assert.match(calls[1].input, /\broyalt(?:y|ies)\b/i);
-  assert.match(calls[1].input, /ALLOWED_BRAIN_SOURCE_IDS:\n\[\]/);
-  assert.match(calls[1].input, /No selected Brain facts supplied/);
+  assert.match(calls[1].input, /ALLOWED_BRAIN_SOURCE_IDS:\n\[\n  "brain:facts\/approved-public-claims"\n\]/);
+  assert.match(calls[1].input, /Approved Public Claims/i);
+  assert.doesNotMatch(calls[1].input, /Royalty context.*sourceConnection/i);
 });
 
 test('OpenAI final writing prompt does not send glossary definitions verbatim', async () => {

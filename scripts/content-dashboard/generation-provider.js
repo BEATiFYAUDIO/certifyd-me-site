@@ -995,6 +995,7 @@ function formatSourceOnlyEditorialBriefForPrompt(brief = {}) {
     `- Creator consequence candidate: ${compact.creatorConsequence || 'None established.'}`,
     `- Thesis candidate: ${compact.possibleThesis || 'None established.'}`,
     `- Thesis test: ${compact.thesisTest?.status || 'UNKNOWN'} — ${compact.thesisTest?.reason || 'No reason supplied.'}`,
+    `- Canonical structural thesis:\n${formatCanonicalEditorialThesisForPrompt(compact.canonicalThesis)}`,
   ].join('\n');
 }
 
@@ -1004,8 +1005,8 @@ function buildArticleSystemInstruction() {
     '',
     'Return only JSON matching the requested schema.',
     'Use the verified source facts, advisory editorial notes and selected Certifyd Brain together as the writing context.',
-    'The private reasoning object is advisory analysis, not a required thesis, rigid outline or article structure.',
-    'You own the final thesis. Use the source-only reasoning when it is strong; challenge it, deepen it, combine it or replace its proposed thesis when the hydrated source material and selected Certifyd Brain support a stronger structural argument.',
+    'The canonical editorial thesis is the source-of-truth for the article’s structural interpretation, Certifyd relevance and image brief.',
+    'You own the final thesis only inside the boundaries of the canonical editorial thesis, which is the source-of-truth. Use source-only reasoning as advisory analysis; challenge it, deepen it, combine it or replace its proposed thesis only when doing so reinforces the canonical thesis instead of replacing it with a generic commerce, provenance, catalog-context or creator-foundation angle.',
     'Distinguish news facts, the first structural interpretation, the deeper architectural change, and supporting operational consequences.',
     'After identifying the first structural interpretation, ask what larger change makes that interpretation possible or necessary.',
     'Do not confuse operational implications such as metadata, attribution, records, transparency, workflow continuity, release context, settlement, discovery, commerce, permissions, or administrative complexity with the deepest thesis.',
@@ -1044,6 +1045,7 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
   const approvedKnowledge = writingContext.approvedKnowledge.map(formatBrainKnowledgeForPrompt).join('\n') || '- No Certifyd Brain records selected for final writing.';
   const brainSources = writingContext.approvedKnowledge.map(formatBrainSourceForPrompt);
   const externalSources = context.externalSourceFacts.map(formatExternalSourceForPrompt).join('\n') || '- No external source material attached.';
+  const canonicalThesis = formatCanonicalEditorialThesisForPrompt(context.editorialBrief?.canonicalThesis);
   const prohibited = context.prohibitedClaims.map((item) => `- ${scrubGenericDefinitionForPrompt(item)}`).join('\n') || '- Avoid unsupported claims.';
   const hasSelectedBrain = writingContext.approvedKnowledge.length > 0;
   const hasMultipleSources = context.externalSourceFacts.length > 1;
@@ -1057,6 +1059,9 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
     '',
     'VERIFIED SOURCE PACKAGE:',
     externalSources,
+    '',
+    'CANONICAL EDITORIAL THESIS:',
+    canonicalThesis,
     '',
     'ADVISORY SOURCE OBSERVATIONS:',
     formatEditorialDirectionForWriter(reasoning),
@@ -1077,6 +1082,7 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
     'EDITORIAL ASSIGNMENT:',
     '- Open by immediately identifying the actual story and primary search entity.',
     '- Identify the strongest idea behind the news from the complete package: hydrated source material, advisory notes and selected Certifyd Brain.',
+    '- Use CANONICAL EDITORIAL THESIS as the source-of-truth for the article’s structural claim. Do not let advisory notes, Brain retrieval or generic Certifyd themes replace it.',
     '- Separate the levels before choosing the thesis: news facts; first structural interpretation; deeper architectural change; supporting operational consequences.',
     '- Distinguish the obvious take from the deeper structural change. After identifying the first structural interpretation, ask what larger change makes that interpretation possible or necessary.',
     '- After the first reasonable structural interpretation, ask one more conceptual “so what?” internally. If the answer merely restates the source workflow, announcement, metadata need, attribution need, recordkeeping need, transparency need, clearer permissions, release context, or administrative complexity, go one conceptual level deeper.',
@@ -1182,7 +1188,7 @@ function buildSystemInstruction() {
     'Never say the external company, article subject, rights holder, investor, label, distributor or platform uses, leverages, integrates with, partners with, is powered by, or benefits from Certifyd unless that exact relationship appears in the supplied context.',
     'CERTIFYD CONNECTION RULE: never state or imply that a source-story company uses, integrates with, partners with, relies on, or will use Certifyd unless SOURCE FACTS explicitly establish that relationship.',
     'Certifyd knowledge may only explain why the development matters to Certifyd, how it relates conceptually to approved capabilities or positioning, and what broader industry problem or direction it illustrates.',
-    'Do not force a Certifyd section into source-backed articles. A source-backed article may contain zero Certifyd product references when the story is better handled as conventional editorial analysis.',
+    'When selected Certifyd Brain is supplied for a source-backed article, include explicit Certifyd analysis that explains the story-specific architectural relevance. When no selected Certifyd Brain is supplied, do not manufacture a Certifyd product connection.',
     'Never invent payment, royalty, licensing or technical mechanics not present in SOURCE FACTS.',
     'For news about companies outside Certifyd, explain only why the news is relevant to Certifyd readers. Do not turn relevance into a relationship or adoption claim.',
     'CURRENT or LIVE Brain claims may be described as existing capabilities. BETA claims must be called beta/testing. PLANNED claims must use future or roadmap language. UNCLEAR or LOW CONFIDENCE claims must not become definitive product claims.',
@@ -1622,6 +1628,14 @@ function buildEditorialBrief(input = {}, externalSourceFacts = []) {
   const possibleThesis = buildPossibleThesis(themes, primary, sourceSupport);
   const conceptSupport = sourceSupport;
   const thesisTest = thesisTestResult(possibleThesis, themes, externalSourceFacts);
+  const canonicalThesis = buildCanonicalEditorialThesis({
+    input,
+    primary,
+    externalSourceFacts,
+    themes,
+    sourceSupport,
+    possibleThesis,
+  });
   return {
     primaryEvent: primary ? cleanSentence(`${primary.publisher || 'A source'} reports: ${primary.title}. ${sourceTextForEditorial(primary)}`) : cleanSentence(input.topic || input.workingTitle || ''),
     verifiedFacts,
@@ -1631,6 +1645,7 @@ function buildEditorialBrief(input = {}, externalSourceFacts = []) {
     creatorConsequence: creatorConsequenceFromThemes(themes, primary, conceptSupport),
     possibleThesis,
     thesisTest,
+    canonicalThesis,
     certifydRelevance: certifydRelevanceFromThemes(themes, conceptSupport),
     competitiveDistinction: competitiveDistinctionFromThemes(themes, conceptSupport),
     selectedCertifydConcepts: selectedCertifydConceptsFromThemes(themes, possibleThesis, conceptSupport),
@@ -1638,6 +1653,82 @@ function buildEditorialBrief(input = {}, externalSourceFacts = []) {
     articleProgression: articleProgressionFromThemes(themes, primary, conceptSupport),
     themes: [...themes],
   };
+}
+
+function buildCanonicalEditorialThesis({ input = {}, primary = null, externalSourceFacts = [], themes = new Set(), sourceSupport = {}, possibleThesis = '' } = {}) {
+  const sourceText = editorialSourceText(externalSourceFacts);
+  const haystack = `${primary?.title || ''} ${sourceText} ${input.topic || ''} ${input.workingTitle || ''}`.toLowerCase();
+  const subject = cleanStorySubject(primary?.title || input.workingTitle || input.topic || 'This story');
+  const platformName = inferCentralIntermediaryName(haystack, subject);
+  const functions = inferCentralizedCreatorFunctions(haystack);
+  const isCentralizedIntermediaryStory = Boolean(
+    functions.length
+    && (themes.has('dependency') || themes.has('commerce') || themes.has('infrastructure') || sourceSupport.infrastructure || /\b(platform|dsp|streaming|subscription|dashboard|account|intermediary|audiomack|spotify|soundcloud|youtube|tiktok|notes\.?fm)\b/i.test(haystack))
+  );
+
+  if (isCentralizedIntermediaryStory) {
+    const functionText = joinReadable(functions);
+    return {
+      mode: 'centralized-intermediary',
+      industryDevelopment: `${platformName} is moving ${functionText} into its creator-facing operating environment.`,
+      structuralChange: `More creator operating functions are being centralized inside ${platformName}.`,
+      dependency: `The creator receives more capability but remains dependent on infrastructure, rules and relationships controlled by ${platformName}.`,
+      architecturalQuestion: 'Why must these creator functions require a centralized intermediary?',
+      certifydRelevance: 'Certifyd Core takes the opposite architectural direction: creator-operated infrastructure and a network designed to move supported functions away from centralized intermediaries and toward creators.',
+      creatorConsequence: 'The creator moves from being an account inside the operating environment toward operating part of the infrastructure themselves.',
+      currentFutureBoundary: 'Only claim current Certifyd Core capabilities supported by selected Brain records. Describe broader intermediary displacement as the architecture Certifyd is building toward, not completed functionality unless Brain explicitly supports it.',
+    };
+  }
+
+  return {
+    mode: 'source-specific',
+    industryDevelopment: possibleThesis || `${subject} creates a concrete creator-business question.`,
+    structuralChange: whatChangedFromThemes(themes, primary, sourceSupport),
+    dependency: creatorConsequenceFromThemes(themes, primary, sourceSupport),
+    architecturalQuestion: 'What dependency, control problem, or infrastructure gap does this source story expose for creators?',
+    certifydRelevance: certifydRelevanceFromThemes(themes, sourceSupport),
+    creatorConsequence: creatorConsequenceFromThemes(themes, primary, sourceSupport),
+    currentFutureBoundary: 'Use selected Certifyd Brain for Certifyd capabilities and status. Do not turn architectural direction into unsupported current functionality.',
+  };
+}
+
+function cleanStorySubject(value = '') {
+  return clampText(cleanSentence(String(value || '').replace(/\s+-\s+.*$/, '')), 140) || 'This story';
+}
+
+function inferCentralIntermediaryName(haystack = '', subject = '') {
+  const named = [
+    ['Audiomack', /\baudiomack\b/],
+    ['Notes.fm', /\bnotes\.?fm\b/],
+    ['Spotify', /\bspotify\b/],
+    ['SoundCloud', /\bsoundcloud\b/],
+    ['YouTube', /\byoutube\b/],
+    ['TikTok', /\btiktok\b/],
+    ['Ticketmaster', /\bticketmaster\b/],
+    ['Meta Muse', /\bmeta muse\b/],
+  ].find(([, pattern]) => pattern.test(haystack));
+  if (named) return named[0];
+  const firstToken = String(subject || '').match(/^[A-Z][A-Za-z0-9.&'-]+(?:\s+[A-Z][A-Za-z0-9.&'-]+)?/);
+  return firstToken ? firstToken[0] : 'the intermediary';
+}
+
+function inferCentralizedCreatorFunctions(haystack = '') {
+  const functions = [];
+  const add = (name, pattern) => { if (pattern.test(haystack)) functions.push(name); };
+  add('analytics', /\b(analytics|data|song pulse|insights?|engagement)\b/);
+  add('promotion', /\b(promotion|promotional|boost|market(?:ing)?|discovery|recommendation|visibility)\b/);
+  add('verification', /\b(verified|verification|badge|profile|identity)\b/);
+  add('payout access', /\b(payout|payouts|payment|payments|monetization|monetisation|revenue|compensation)\b/);
+  add('fan relationship context', /\b(fan|fans|audience|listener|listeners|customer|relationship|community|subscriber|membership)\b/);
+  if (!functions.includes('payout access')) add('commerce', /\b(commerce|transaction|checkout|store|merch|sales?)\b/);
+  return [...new Set(functions)].slice(0, 5);
+}
+
+function joinReadable(items = []) {
+  const values = items.filter(Boolean);
+  if (values.length <= 1) return values[0] || 'creator operating functions';
+  if (values.length === 2) return `${values[0]} and ${values[1]}`;
+  return `${values.slice(0, -1).join(', ')} and ${values[values.length - 1]}`;
 }
 
 function conceptSupportFromSourceFacts(externalSourceFacts = []) {
@@ -1950,6 +2041,7 @@ function compactEditorialBrief(brief = {}) {
       status: clampText(brief.thesisTest?.status || '', 24),
       reason: clampText(brief.thesisTest?.reason || '', 180),
     },
+    canonicalThesis: compactCanonicalEditorialThesis(brief.canonicalThesis),
     certifydRelevance: clampText(brief.certifydRelevance || '', 260),
     competitiveDistinction: clampText(brief.competitiveDistinction || '', 260),
     selectedCertifydConcepts: (brief.selectedCertifydConcepts || []).slice(0, 3).map((item) => ({
@@ -1963,6 +2055,46 @@ function compactEditorialBrief(brief = {}) {
   };
 }
 
+function compactCanonicalEditorialThesis(thesis = {}) {
+  if (!thesis || typeof thesis !== 'object') thesis = {};
+  return {
+    mode: clampText(thesis.mode || '', 40),
+    industryDevelopment: clampText(thesis.industryDevelopment || '', 260),
+    structuralChange: clampText(thesis.structuralChange || '', 260),
+    dependency: clampText(thesis.dependency || '', 260),
+    architecturalQuestion: clampText(thesis.architecturalQuestion || '', 220),
+    certifydRelevance: clampText(thesis.certifydRelevance || '', 280),
+    creatorConsequence: clampText(thesis.creatorConsequence || '', 260),
+    currentFutureBoundary: clampText(thesis.currentFutureBoundary || '', 240),
+  };
+}
+
+function formatCanonicalEditorialThesisForPrompt(thesis = {}) {
+  const clean = compactCanonicalEditorialThesis(thesis);
+  if (!clean.industryDevelopment && !clean.structuralChange) return '- No canonical thesis established.';
+  return [
+    `- Mode: ${clean.mode || 'source-specific'}`,
+    `- Industry development: ${clean.industryDevelopment || 'None established.'}`,
+    `- Structural change: ${clean.structuralChange || 'None established.'}`,
+    `- Dependency/control structure: ${clean.dependency || 'None established.'}`,
+    `- Architectural question: ${clean.architecturalQuestion || 'None established.'}`,
+    `- Certifyd relevance: ${clean.certifydRelevance || 'Use selected Brain only.'}`,
+    `- Creator consequence: ${clean.creatorConsequence || 'None established.'}`,
+    `- Current/future boundary: ${clean.currentFutureBoundary || 'Use selected Brain status.'}`,
+  ].join('\n');
+}
+
+function formatCanonicalEditorialThesisSummary(thesis = {}) {
+  const clean = compactCanonicalEditorialThesis(thesis);
+  if (!clean.industryDevelopment && !clean.structuralChange) return 'No canonical thesis established.';
+  return [
+    clean.mode ? `Mode: ${clean.mode}.` : '',
+    clean.structuralChange || clean.industryDevelopment || '',
+    clean.architecturalQuestion || '',
+    clean.certifydRelevance || '',
+  ].filter(Boolean).join(' ');
+}
+
 function formatEditorialBriefForPrompt(brief = {}) {
   const cleanBrief = compactEditorialBrief(brief);
   return [
@@ -1974,6 +2106,7 @@ function formatEditorialBriefForPrompt(brief = {}) {
     `- Creator consequence: ${cleanBrief.creatorConsequence || 'No concrete creator consequence established.'}`,
     `- Possible thesis: ${cleanBrief.possibleThesis || 'None established.'}`,
     `- Thesis test: ${cleanBrief.thesisTest.status || 'FAIL'}${cleanBrief.thesisTest.reason ? ` — ${cleanBrief.thesisTest.reason}` : ''}`,
+    `- Canonical editorial thesis: ${formatCanonicalEditorialThesisSummary(cleanBrief.canonicalThesis)}`,
     `- Certifyd relevance: ${cleanBrief.certifydRelevance || 'Use only directly relevant Brain records.'}`,
     `- Competitive distinction: ${cleanBrief.competitiveDistinction || 'Do not force a comparison.'}`,
     cleanBrief.selectedCertifydConcepts.length ? `- Selected Certifyd concepts:\n${cleanBrief.selectedCertifydConcepts.map((item) => `  - ${item.concept}: ${item.relevance} Source connection: ${item.sourceConnection}`).join('\n')}` : '- Selected Certifyd concepts: none.',
@@ -2214,6 +2347,11 @@ function assessCertifydNeedConnection(bodyMarkdown, groundedContext = {}) {
     groundedContext.editorialBrief?.whatChanged,
     groundedContext.editorialBrief?.creatorConsequence,
     groundedContext.editorialBrief?.possibleThesis,
+    groundedContext.editorialBrief?.canonicalThesis?.industryDevelopment,
+    groundedContext.editorialBrief?.canonicalThesis?.structuralChange,
+    groundedContext.editorialBrief?.canonicalThesis?.dependency,
+    groundedContext.editorialBrief?.canonicalThesis?.architecturalQuestion,
+    groundedContext.editorialBrief?.canonicalThesis?.creatorConsequence,
     groundedContext.editorialBrief?.sourceFacts?.join(' '),
     ...approvedConcepts.flatMap((concept) => [concept.concept, concept.relevance, concept.sourceConnection]),
   ].filter(Boolean).join(' '));
@@ -2221,19 +2359,22 @@ function assessCertifydNeedConnection(bodyMarkdown, groundedContext = {}) {
   if (!activeFrames.length) return '';
   const articleFrames = storyFramesFromText(text);
   const sharedFrames = activeFrames.filter((frame) => articleFrames.includes(frame));
+  const requiresIntermediaryChallenge = groundedContext.editorialBrief?.canonicalThesis?.mode === 'centralized-intermediary';
   const strongCertifydReasoning = certWindows.some((windowText) => {
     const windowFrames = storyFramesFromText(windowText);
     const windowSharedFrames = activeFrames.filter((frame) => windowFrames.includes(frame));
     const hasDependency = hasCertifydDependencyReasoning(windowText);
     const hasCreatorControl = hasCertifydControlChangeReasoning(windowText);
     const hasOutcome = hasCertifydOutcomeReasoning(windowText);
+    const hasIntermediaryChallenge = !requiresIntermediaryChallenge || hasCertifydIntermediaryChallengeReasoning(windowText);
     const hasCausalBridge = /\b(?:because|as|when|once|if|therefore|that means|which means|creates|exposes|moves|turns|depends|requires|increases the value|becomes|rather than)\b/.test(windowText);
-    return windowSharedFrames.length && hasDependency && hasCreatorControl && hasOutcome && hasCausalBridge && !isGenericCertifydFeatureList(windowText);
+    return windowSharedFrames.length && hasDependency && hasCreatorControl && hasOutcome && hasIntermediaryChallenge && hasCausalBridge && !isGenericCertifydFeatureList(windowText);
   });
   if (sharedFrames.length && strongCertifydReasoning && !genericOnly) return '';
   const missing = [];
   if (!sharedFrames.length) missing.push('no source-story frame is carried into the Certifyd relevance');
   if (!strongCertifydReasoning) missing.push('the Certifyd passage does not explain the dependency, creator-controlled infrastructure need and creator outcome');
+  if (requiresIntermediaryChallenge) missing.push('the Certifyd passage does not answer why the creator function should require a centralized intermediary');
   if (genericOnly) missing.push('Certifyd wording reads as a reusable feature list');
   return `Certifyd relevance is not story-specific enough: ${missing.join('; ')}.`;
 }
@@ -2289,6 +2430,10 @@ function hasCertifydControlChangeReasoning(windowText) {
 
 function hasCertifydOutcomeReasoning(windowText) {
   return /\b(?:makes possible|make possible|what becomes possible|gives|allows|lets|means|becomes|can carry|can enter|can persist|can travel|can participate|can remain|remain usable|remains usable|more durable|more portable|more valuable|portable|persistent|durable|continuity|before those works|before another|before any one|across downstream|across products|across relationships|across systems|rather than treating|rather than starting)\b/.test(windowText);
+}
+
+function hasCertifydIntermediaryChallengeReasoning(windowText) {
+  return /\b(?:intermediary|intermediaries|necessary home|company in the middle|without requiring|does not require|do not have to require|rather than requiring|instead of requiring|away from centralized|toward creators|creator-operated infrastructure|infrastructure the creator operates|operating part of the infrastructure|from the creator rather than from the platform)\b/.test(windowText);
 }
 
 function isGenericCertifydFeatureList(text) {
@@ -2553,7 +2698,15 @@ function attachPostA1CertifydConcepts(reasoning = {}, groundedContext = {}) {
   const approved = Array.isArray(groundedContext.editorialBrief?.selectedCertifydConcepts)
     ? groundedContext.editorialBrief.selectedCertifydConcepts
     : [];
+  const canonical = groundedContext.editorialBrief?.canonicalThesis?.mode === 'centralized-intermediary'
+    ? groundedContext.editorialBrief.canonicalThesis
+    : {};
   const sourceOnlyArgument = [
+    canonical.industryDevelopment,
+    canonical.structuralChange,
+    canonical.dependency,
+    canonical.architecturalQuestion,
+    canonical.creatorConsequence,
     reasoning.eventSummary,
     reasoning.editorialTension,
     reasoning.hiddenQuestion,
@@ -3130,7 +3283,11 @@ function normalizeBlogCoverImage(value, context = {}) {
 
 function selectRelevantSources(sources, input, externalSourceFacts = [], editorialBrief = {}) {
   const sourceQuery = externalSourceFacts.map((source) => `${source.title || ''} ${sourceTextForEditorial(source)} ${(source.categories || []).join(' ')}`).join(' ');
-  const thesisQuery = `${editorialBrief.possibleThesis || ''} ${editorialBrief.editorialTension || ''} ${editorialBrief.certifydRelevance || ''} ${editorialBrief.competitiveDistinction || ''}`;
+  const canonical = editorialBrief.canonicalThesis || {};
+  const canonicalQuery = canonical.mode === 'centralized-intermediary'
+    ? `${canonical.industryDevelopment || ''} ${canonical.structuralChange || ''} ${canonical.dependency || ''} ${canonical.architecturalQuestion || ''} ${canonical.creatorConsequence || ''}`
+    : '';
+  const thesisQuery = `${canonicalQuery} ${editorialBrief.possibleThesis || ''} ${editorialBrief.editorialTension || ''} ${editorialBrief.certifydRelevance || ''} ${editorialBrief.competitiveDistinction || ''}`;
   const query = `${input.topic || ''} ${input.objective || ''} ${input.angle || ''} ${sourceQuery} ${thesisQuery}`.toLowerCase();
   const requestedIds = new Set(parseBrainIdList(input.trendBrainRecordIds, 40));
   const storyThemes = inferStoryThemes(query);
@@ -3173,6 +3330,9 @@ function selectRelevantSources(sources, input, externalSourceFacts = [], editori
       if (/content-agent\/knowledge\/(?:facts\/approved-public-claims|products\/core)\.md$/i.test(item.source.path)) addSelected(item.source);
     }
   }
+  for (const item of ranked) {
+    if (requestedIds.has(item.source.id)) addSelected(item.source);
+  }
   for (const item of ranked) addSelected(item.source);
   return selected;
 
@@ -3207,6 +3367,9 @@ function isAvoidedBrainSource(source, avoidText = '', sourceText = '', selectedC
 function brainSourceMatchesSelectedConcept(source, selectedConceptText = '', storyThemes = new Set()) {
   if (!selectedConceptText) return true;
   const haystack = `${source.id} ${source.path} ${source.title} ${source.excerpt}`.toLowerCase();
+  if (storyThemes.has('rights') || storyThemes.has('derivatives')) {
+    return /right|rights|permission|permissions|access|clearance|license|licensing|provenance|attribution|publishing|release/.test(haystack);
+  }
   if (storyThemes.has('infrastructure')) {
     return /core|infrastructure|network|node|operator|identity|profile|publishing|distribution|discovery|approved-public-claims/.test(haystack);
   }
