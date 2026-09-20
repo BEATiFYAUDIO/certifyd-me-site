@@ -424,6 +424,32 @@ test('source stories are classified, scored and promoted into opportunities with
   assert.ok(Number.isFinite(retainedOnly.certifydRelevanceScore));
 });
 
+test('promotable stories outside the initial retained order still become opportunities', async () => {
+  const agentRoot = await tempAgentRoot();
+  const noisy = Array.from({ length: 90 }, (_, index) => ({
+    title: `Routine office lease update ${index}`,
+    description: 'A regional office landlord renewed a standard lease for administrative workspace. The item is operational real estate coverage with no creator, fan, rights, attribution, publishing, identity, or commerce outcome.',
+    link: `https://example.test/noisy-${index}`,
+    pubDate: new Date().toUTCString(),
+  }));
+  const relevant = {
+    title: 'Independent artists launch direct fan commerce membership platform',
+    description: 'Independent artists launched a creator-owned membership platform for direct fan commerce, portable audience relationships, attribution, publishing context, and verified creator identity.',
+    link: 'https://example.test/artist-direct-fan-commerce',
+    pubDate: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toUTCString(),
+  };
+  const scan = await scanTrendOpportunities(config(agentRoot, {
+    trendResearch: {
+      maxItemsPerSource: 120,
+      recommendationCandidateLimit: 80,
+    },
+  }), { fetchImpl: async () => response(rssFeed([...noisy, relevant])) });
+
+  assert.ok(scan.summary.storiesCollected >= 91);
+  assert.ok(scan.sourceStories.some((item) => item.sourceUrl === relevant.link));
+  assert.ok(scan.items.some((item) => item.sourceUrls.includes(relevant.link)));
+});
+
 test('Certifyd relevance scoring rejects incidental vocabulary false positives', async () => {
   const agentRoot = await tempAgentRoot();
   const feed = rssFeed([

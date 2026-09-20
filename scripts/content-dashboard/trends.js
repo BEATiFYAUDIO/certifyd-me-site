@@ -394,8 +394,11 @@ class RssTrendProvider {
     const evaluated = [];
     const evaluateWithQwen = this.options.evaluateWithQwen === true || this.config.trendResearch?.qwenEvaluationEnabled === true;
     const candidateLimit = Math.max(recommendationCandidateLimit(this.config), recommendationTotalLimit(this.config) * 4);
-    for (const cluster of clusters.slice(0, candidateLimit)) {
-      if (!isPromotableCluster(cluster, this.config)) continue;
+    const candidateClusters = clusters
+      .filter((cluster) => isPromotableCluster(cluster, this.config))
+      .sort((a, b) => trendClusterCandidateScore(b) - trendClusterCandidateScore(a))
+      .slice(0, candidateLimit);
+    for (const cluster of candidateClusters) {
       const coverage = computeBrainCoverage(cluster, brainRecords);
       const qwen = evaluateWithQwen
         ? await evaluateClusterWithQwen(this.config, cluster, coverage, this.options).catch(() => fallbackEvaluation(cluster, coverage))
@@ -1735,6 +1738,13 @@ function isPromotableCluster(cluster, config = {}) {
   const threshold = positiveNumber(config.trendResearch?.promotionRelevanceThreshold, DEFAULT_PROMOTION_RELEVANCE_THRESHOLD);
   if (Number(cluster.certifydRelevanceScore || 0) < threshold) return false;
   return hasCertifydRelevanceEvidence(cluster);
+}
+
+function trendClusterCandidateScore(cluster = {}) {
+  return Number(cluster.certifydRelevanceScore || 0) * 1.15
+    + freshnessScoreForDate(newestDate(cluster.items || []))
+    + eventSpecificityScoreFor({ storyFingerprint: cluster.storyFingerprint })
+    + sourceSupportScoreFor({ sourceCount: cluster.items?.length || 1 });
 }
 
 function withRankingDiagnostics(opportunity, options = {}) {
