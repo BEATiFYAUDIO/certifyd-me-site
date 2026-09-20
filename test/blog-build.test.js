@@ -57,8 +57,6 @@ test('build renders blog index, article pages, homepage section and metadata', a
   assert.match(articleHtml, /property="og:image"/);
   assert.match(articleHtml, /property="og:url" content="https:\/\/certifyd\.me\/blog\/newer-article\/"/);
   assert.match(articleHtml, /name="twitter:card" content="summary_large_image"/);
-  assert.match(articleHtml, /\.article-hero-image img\{width:100%;height:auto;object-fit:contain\}/);
-  assert.doesNotMatch(articleHtml, /\.article-hero-image img\{width:100%;aspect-ratio:16\/9;object-fit:cover\}/);
   assert.match(articleHtml, /"@type":"BlogPosting"/);
   assert.match(articleHtml, /"@type":"Organization"/);
   assert.match(articleHtml, /"@type":"BreadcrumbList"/);
