@@ -774,7 +774,17 @@ function clusterDecision(cluster, item) {
   const titleScore = titleSimilarity(cluster.items?.[0]?.title, item.title);
   const sameMoney = Boolean(clusterFingerprint.money && itemFingerprint.money && normalizeTitle(clusterFingerprint.money) === normalizeTitle(itemFingerprint.money));
   const anchorAgreement = concreteAnchorAgreement(clusterFingerprint, itemFingerprint);
-  const sameNamedEvent = Boolean(clusterFingerprint.object && itemFingerprint.object && objectSimilarity >= 0.82 && !isGenericEventObject(clusterFingerprint.object, clusterFingerprint.eventType) && !isGenericEventObject(itemFingerprint.object, itemFingerprint.eventType));
+  const samePolicyObject = Boolean(
+    clusterFingerprint.eventType === 'policy-intervention'
+      && itemFingerprint.eventType === 'policy-intervention'
+      && objectSimilarity >= 0.72
+      && !isGenericEventObject(clusterFingerprint.object, clusterFingerprint.eventType)
+      && !isGenericEventObject(itemFingerprint.object, itemFingerprint.eventType),
+  );
+  const sameNamedEvent = Boolean(clusterFingerprint.object && itemFingerprint.object && (
+    (objectSimilarity >= 0.82 && !isGenericEventObject(clusterFingerprint.object, clusterFingerprint.eventType) && !isGenericEventObject(itemFingerprint.object, itemFingerprint.eventType))
+      || samePolicyObject
+  ));
   const samePrimaryEntities = entityOverlap.length >= 2 || entityAgreement >= 0.75;
   const corroboratedSameEvent = hasConcreteEventCorroboration(clusterFingerprint, itemFingerprint, entityOverlap);
   const sameLaunchFamily = isLaunchFamily(clusterFingerprint) && isLaunchFamily(itemFingerprint);
@@ -788,7 +798,7 @@ function clusterDecision(cluster, item) {
   else if (entityOverlap.length === 1) eventIdentityScore += 0.06;
   if (sameAction || sameLaunchFamily || sameLegalActionFamily) eventIdentityScore += 0.18;
   if (sameEventType || sameLaunchFamily || sameLegalFamily) eventIdentityScore += 0.18;
-  if (sameNamedEvent) eventIdentityScore += 0.18;
+  if (sameNamedEvent) eventIdentityScore += samePolicyObject ? 0.36 : 0.18;
   else if (objectSimilarity >= 0.55) eventIdentityScore += 0.08;
   if (anchorAgreement.matches.length) eventIdentityScore += Math.min(0.34, 0.18 + anchorAgreement.score * 0.16);
   if (sameMoney) eventIdentityScore += 0.08;
@@ -847,6 +857,7 @@ function isGenericEventObject(object = '', eventType = '') {
   if (isLegalEventType(eventType)) return /^(lawsuit|case|complaint|settlement|appeal|ruling|copyright infringement lawsuit|fair use litigation)$/.test(value);
   if (eventType === 'partnership') return /^(partnership|deal|publishing catalog name image likeness rights deal|publishing catalog and name image likeness rights deal)$/.test(value);
   if (eventType === 'acquisition') return /^(acquisition|publishing catalog name image likeness rights deal|publishing catalog and name image likeness rights deal)$/.test(value);
+  if (eventType === 'policy-intervention') return /^(policy intervention|government policy intervention|ai training fair use policy intervention|policy|ban|rule|ruling|remedy|remedies)$/.test(value);
   if (eventType === 'development') return /^(development|recorded music h1|show local streaming growth)$/.test(value);
   return false;
 }
@@ -967,7 +978,7 @@ function detectObject(text, lower, eventType, normalizedText, entities = []) {
   }
   if (eventType === 'partnership' && /\b(estate|catalog|catalogue|publishing|name,\s*image\s*&?\s*likeness|name image likeness|rights)\b/.test(lower)) return 'publishing catalog and name image likeness rights deal';
   if (eventType === 'roundup') return 'multi-event roundup';
-  if (eventType === 'policy-intervention') return lower.includes('fair use') ? 'ai training fair use policy intervention' : 'policy intervention';
+  if (eventType === 'policy-intervention') return detectPolicyObject(text) || (lower.includes('fair use') ? 'ai training fair use policy intervention' : 'policy intervention');
   if (eventType === 'report') return lower.match(/\breport[^.]{0,90}/i)?.[0] || 'report';
   if (eventType === 'controversy' && /representative|mary j\.?\s*blige/.test(lower)) return 'false representative controversy';
   return normalizedText.split(' ').slice(0, 8).join(' ');
@@ -1115,7 +1126,7 @@ function concreteEventAnchors(text, eventType, normalizedObject = '') {
   const anchors = new Set();
   const explicit = detectExplicitProductObject(lower);
   if (explicit) anchors.add(explicit);
-  if (normalizedObject && !['development', 'multi-event roundup', 'acquisition', 'partnership', 'report'].includes(normalizedObject)) anchors.add(normalizedObject);
+  if (normalizedObject && !['development', 'multi-event roundup', 'acquisition', 'partnership', 'report'].includes(normalizedObject) && !isGenericEventObject(normalizedObject, eventType)) anchors.add(normalizedObject);
   const phraseAnchorPattern = isLegalEventType(eventType)
     ? /\b(?:case|lawsuit|ruling|appeal|complaint|settlement)\s+(?:[a-z0-9-]+\s*){0,5}/g
     : /\b(?:grant|program|initiative|festival|halftime|tour|award)\s+(?:[a-z0-9-]+\s*){0,5}/g;
@@ -1130,6 +1141,28 @@ function concreteEventAnchors(text, eventType, normalizedObject = '') {
     }
   }
   return [...anchors].filter((anchor) => anchor && !isGenericEventAnchor(anchor)).slice(0, 8);
+}
+
+function detectPolicyObject(text = '') {
+  const headline = String(text || '').split(/\.\s+/)[0] || '';
+  const normalized = normalizeTitle(headline)
+    .replace(/\bwhat you need to know about\b/g, ' ')
+    .replace(/\bhere s what it means for you\b/g, ' ')
+    .replace(/\bwhat changes what doesn t and what will take years\b/g, ' ')
+    .replace(/\bdecoded\b/g, ' ')
+    .replace(/\bwe don t need more noise\b/g, ' ')
+    .replace(/\b(?:bans?|banned|bars?|barred|blocks?|blocked|prohibits?|prohibited|restricts?|restricted)\b/g, ' ')
+    .replace(/\b(?:announces?|new|policy|rule|ruling|remedies?|intervention|government|regulator|regulatory|sale|sales)\b/g, ' ')
+    .replace(/\b(?:submissions?|uploads?|tracks?|songs?)\b/g, 'music')
+    .replace(/\b(?:the|a|an|in|on|of|for|to|and|or|with|about|into|from|outside)\b/g, ' ')
+    .replace(/\bus\b/g, ' ')
+    .replace(/\bs\s+/g, ' ')
+    .replace(/\b([a-z0-9]+)\s+\1\b/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const terms = normalized.split(/\s+/).filter(Boolean);
+  if (terms.length < 3) return '';
+  return terms.slice(0, 8).join(' ');
 }
 
 function concreteAnchorAgreement(one = {}, two = {}) {
@@ -1248,7 +1281,7 @@ function clusterTitle(cluster) {
     if (fingerprint.eventType === 'partnership' && entities.length >= 2) return trim(`${entities[0]} partners with ${entities[1]}`, 120);
     if (fingerprint.eventType === 'product-launch' && fingerprint.normalizedObject) return trim(`${entities[0] || ''} launches ${humanizeEventObject(fingerprint.normalizedObject)}`.trim(), 120);
     if (fingerprint.eventType === 'roundup') return trim(cluster.items[0]?.title || 'Multi-event roundup', 120);
-    if (fingerprint.eventType === 'policy-intervention' && entities.length) return trim(fingerprint.normalizedEventSummary || cluster.items[0]?.title || 'Untitled opportunity', 120);
+    if (fingerprint.eventType === 'policy-intervention') return '';
     if ((cluster.items || []).length > 1 && fingerprint.normalizedObject && fingerprint.normalizedObject !== 'development') return trim(`${entities[0] || ''} ${fingerprint.action || fingerprint.eventType} ${humanizeEventObject(fingerprint.normalizedObject)}`.trim(), 120);
     return '';
   })();

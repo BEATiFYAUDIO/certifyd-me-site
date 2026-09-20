@@ -811,6 +811,73 @@ test('Spotify RNB X Live Dallas festival announcement continues to merge', () =>
   assert.ok(decision.concreteAnchorMatches.includes('rnb x live dallas') || decision.concreteAnchorMatches.includes('rnb x live'));
 });
 
+test('generic policy-intervention labels do not merge unrelated real-world events', () => {
+  const submitHub = sourceStory(
+    'SubmitHub Bans AI Music Submissions: We Don’t Need More Noise',
+    'SubmitHub announced a new AI policy that will keep AI music off the platform, building on Spotify recommendation changes.',
+    { publisher: 'Digital Music News', categories: ['Music'] },
+  );
+  const routerBan = sourceStory(
+    'What You Need to Know About the Foreign-Made Router Ban in the US',
+    'The FCC banned the sale of new consumer-grade Wi-Fi routers and mobile hot spots manufactured outside the US.',
+    { publisher: 'WIRED', categories: ['Technology'] },
+  );
+  const googleRemedies = sourceStory(
+    'Google’s ad tech remedies decoded: what changes, what doesn’t and what will take years',
+    'Google proposed restraint. The DOJ proposed surgery. The judge decided compliance.',
+    { publisher: 'Digiday', categories: ['Media'] },
+  );
+
+  const clusters = clusterSourceItems([submitHub, routerBan, googleRemedies]);
+
+  assert.equal(eventClusterDecision(submitHub, routerBan).decision, 'separate-events');
+  assert.equal(eventClusterDecision(submitHub, googleRemedies).decision, 'separate-events');
+  assert.equal(eventClusterDecision(routerBan, googleRemedies).decision, 'separate-events');
+  assert.equal(clusters.length, 3);
+  assert.ok(clusters.every((cluster) => cluster.items.length === 1));
+  assert.ok(clusters.every((cluster) => !/policy-intervention policy intervention/i.test(cluster.title)));
+});
+
+test('same SubmitHub AI music policy coverage can still cluster across wording', () => {
+  const one = sourceStory(
+    'SubmitHub Bans AI Music Submissions: We Don’t Need More Noise',
+    'SubmitHub announced a policy to keep AI music submissions off its platform.',
+    { publisher: 'Digital Music News' },
+  );
+  const two = sourceStory(
+    'SubmitHub blocks AI music submissions under new policy',
+    'SubmitHub will no longer accept AI-generated music submissions from artists.',
+    { publisher: 'Music Ally' },
+  );
+  const clusters = clusterSourceItems([one, two]);
+  const decision = eventClusterDecision(one, two);
+
+  assert.equal(decision.decision, 'same-event');
+  assert.equal(clusters.length, 1);
+  assert.equal(clusters[0].items.length, 2);
+  assert.equal(clusters[0].title, one.title);
+  assert.doesNotMatch(clusters[0].title, /policy-intervention policy intervention/i);
+});
+
+test('shared generic policy terms alone do not establish event identity', () => {
+  const aiPlatformPolicy = sourceStory(
+    'Platform announces new AI content policy',
+    'A platform changed policy language for AI content submissions and recommendations.',
+    { publisher: 'Example A' },
+  );
+  const governmentBan = sourceStory(
+    'Government ban targets unrelated platform conduct',
+    'Officials announced an intervention and policy ban involving a separate platform dispute.',
+    { publisher: 'Example B' },
+  );
+
+  const decision = eventClusterDecision(aiPlatformPolicy, governmentBan);
+
+  assert.equal(decision.decision, 'separate-events');
+  assert.equal(clusterSourceItems([aiPlatformPolicy, governmentBan]).length, 2);
+  assert.equal(decision.concreteAnchorMatches.includes('policy intervention'), false);
+});
+
 test('source-level clustering diagnostics persist with source stories and opportunities', async () => {
   const agentRoot = await tempAgentRoot();
   const feed = rssFeed([
