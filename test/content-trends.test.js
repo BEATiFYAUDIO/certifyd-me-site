@@ -542,6 +542,118 @@ test('Certifyd relevance scoring preserves material true positives', async () =>
   assert.ok(scan.items.length >= 1);
 });
 
+test('incidental track and subscription consumer product does not become Certifyd relevant', async () => {
+  const agentRoot = await tempAgentRoot();
+  const feed = rssFeed([
+    {
+      title: 'AI-powered feeder tracks exactly how much your cat is eating',
+      description: 'Advanced health monitoring for multi-cat homes requires a subscription.',
+      link: 'https://example.test/pet-feeder-tracks-eating',
+    },
+  ]);
+  const scan = await scanTrendOpportunities(config(agentRoot), { fetchImpl: async () => response(feed) });
+  const story = scan.sourceStories.find((item) => item.sourceUrl === 'https://example.test/pet-feeder-tracks-eating');
+
+  assert.ok(story);
+  assert.equal(story.retentionStatus, 'Retained');
+  assert.deepEqual(story.opportunityIds, []);
+  assert.deepEqual(story.certifydRelevanceReasons, []);
+  assert.ok(!scan.items.some((item) => item.sourceUrls.includes('https://example.test/pet-feeder-tracks-eating')));
+});
+
+test('promotional ticket sale does not become recommended from ticket commerce vocabulary', async () => {
+  const agentRoot = await tempAgentRoot();
+  const feed = rssFeed([
+    {
+      title: '6 days left to save $200 on your TechCrunch Disrupt ticket',
+      description: 'Get your ticket before prices increase. Current conference registration pricing ends soon.',
+      link: 'https://example.test/disrupt-ticket-sale',
+    },
+  ]);
+  const scan = await scanTrendOpportunities(config(agentRoot), { fetchImpl: async () => response(feed) });
+  const story = scan.sourceStories.find((item) => item.sourceUrl === 'https://example.test/disrupt-ticket-sale');
+
+  assert.ok(story);
+  assert.equal(story.retentionStatus, 'Retained');
+  assert.deepEqual(story.opportunityIds, []);
+  assert.deepEqual(story.certifydRelevanceReasons, []);
+  assert.ok(!scan.items.some((item) => item.sourceUrls.includes('https://example.test/disrupt-ticket-sale')));
+});
+
+test('legitimate ticketing infrastructure remains structurally relevant', async () => {
+  const agentRoot = await tempAgentRoot();
+  const feed = rssFeed([
+    {
+      title: 'Ticketing platform changes artist fan access and pricing controls',
+      description: 'The ticketing platform now controls concert ticket inventory, checkout, fan access and artist commerce data through a centralized marketplace.',
+      link: 'https://example.test/ticketing-platform-controls-artist-fan-commerce',
+    },
+  ]);
+  const scan = await scanTrendOpportunities(config(agentRoot), { fetchImpl: async () => response(feed) });
+  const story = scan.sourceStories.find((item) => item.sourceUrl === 'https://example.test/ticketing-platform-controls-artist-fan-commerce');
+  const promoted = scan.items.find((item) => item.sourceUrls.includes('https://example.test/ticketing-platform-controls-artist-fan-commerce'));
+
+  assert.ok(story);
+  assert.ok(story.certifydRelevanceReasons.length > 0);
+  assert.ok(story.certifydRelevanceScore >= 8);
+  assert.ok(promoted);
+  assert.match(promoted.whyItMattersToCertifyd, /platform dependency|infrastructure control|intermediary|creator-operated/i);
+});
+
+test('vertically integrated interoperability infrastructure story is promotable', async () => {
+  const agentRoot = await tempAgentRoot();
+  const feed = rssFeed([
+    {
+      title: 'Can advertisers reduce reliance on Google’s vertically integrated ad stack?',
+      description: 'A court order requires the ad tech stack to open to competitors, raising questions about interoperability and platform dependency.',
+      link: 'https://example.test/google-ad-stack-interoperability',
+    },
+  ]);
+  const scan = await scanTrendOpportunities(config(agentRoot), { fetchImpl: async () => response(feed) });
+  const story = scan.sourceStories.find((item) => item.sourceUrl === 'https://example.test/google-ad-stack-interoperability');
+  const promoted = scan.items.find((item) => item.sourceUrls.includes('https://example.test/google-ad-stack-interoperability'));
+
+  assert.ok(story);
+  assert.match(story.certifydRelevanceReasons.join(' '), /infrastructure control|interoperability|platform-dependency/i);
+  assert.ok(story.certifydRelevanceScore >= 8);
+  assert.ok(promoted);
+  assert.match(promoted.whyItMattersToCertifyd, /infrastructure control|interoperability|centralized intermediary/i);
+});
+
+test('platform creator tools prefer operating-infrastructure relevance over receipts copy', async () => {
+  const agentRoot = await tempAgentRoot();
+  const feed = rssFeed([
+    {
+      title: 'Streaming platform adds analytics, promotion, verification and payout access to artist subscription',
+      description: 'The subscription puts release analytics, promotional tools, profile verification and payout-program access inside one centralized artist operating environment.',
+      link: 'https://example.test/streaming-platform-artist-operating-environment',
+    },
+  ]);
+  const scan = await scanTrendOpportunities(config(agentRoot), { fetchImpl: async () => response(feed) });
+  const promoted = scan.items.find((item) => item.sourceUrls.includes('https://example.test/streaming-platform-artist-operating-environment'));
+
+  assert.ok(promoted);
+  assert.match(promoted.whyItMattersToCertifyd, /platform dependency|creator operating functions|centralized services|creator-operated infrastructure/i);
+  assert.doesNotMatch(promoted.whyItMattersToCertifyd, /compensation, receipts, commerce context/i);
+});
+
+test('royalty and release-data story prefers records and attribution context', async () => {
+  const agentRoot = await tempAgentRoot();
+  const feed = rssFeed([
+    {
+      title: 'Royalty collection service finds missing royalties from fragmented credits and release data',
+      description: 'The service helps musicians identify missing royalties caused by fragmented credits, release data, catalog metadata and attribution records.',
+      link: 'https://example.test/royalty-fragmented-release-data',
+    },
+  ]);
+  const scan = await scanTrendOpportunities(config(agentRoot), { fetchImpl: async () => response(feed) });
+  const promoted = scan.items.find((item) => item.sourceUrls.includes('https://example.test/royalty-fragmented-release-data'));
+
+  assert.ok(promoted);
+  assert.match(promoted.whyItMattersToCertifyd, /creator-controlled release, catalog, attribution and royalty records|fragmented downstream data/i);
+  assert.doesNotMatch(promoted.whyItMattersToCertifyd, /direct fan relationships|attention-only music economics/i);
+});
+
 test('seeded scans do not overwrite existing source-backed trend results', async () => {
   const agentRoot = await tempAgentRoot();
   const trendStateDir = path.join(agentRoot, 'dashboard', 'trends');

@@ -1402,6 +1402,16 @@ function scoreCertifydRelevanceStory(item = {}) {
   const text = `${item.title || item.sourceTitle || ''} ${item.summary || ''}`.toLowerCase();
   const reasons = [];
   let score = 0;
+  if (isPromotionalTicketSaleStory(text)) {
+    for (const category of item.categories || []) {
+      if (TRENDING_CATEGORIES.includes(category) && category !== 'Certifyd News') score += 1;
+    }
+    const ageDays = item.publishedAt ? (Date.now() - Date.parse(item.publishedAt)) / (24 * 60 * 60 * 1000) : 3;
+    if (Number.isFinite(ageDays) && ageDays <= 2) score += 2;
+    else if (Number.isFinite(ageDays) && ageDays <= 7) score += 1;
+    score += Math.min(3, Math.floor(Number(item.sourcePriority || 0) / 30));
+    return { score, reasons: [], matched: false };
+  }
   for (const category of item.categories || []) {
     if (TRENDING_CATEGORIES.includes(category) && category !== 'Certifyd News') score += 1;
   }
@@ -1789,12 +1799,16 @@ function certifydRelevanceDimensions(text) {
     if (condition) dimensions.push({ weight, reason });
   };
 
-  const creativeDomain = hasPattern(haystack, /\b(creator(s)?|artist(s)?|musician(s)?|songwriter(s)?|publisher(s)?|label(s)?|rights[-\s]?holder(s)?|rightsholder(s)?|fan(s)?|audience(s)?|music|song(s)?|track(s)?|recording(s)?|catalog|release(s)?|concert(s)?|venue(s)?|ticket(s|ing)?|live[-\s]?event(s)?|spotify|suno|believe|warner music|bmg|universal music|mechanical licensing collective|mlc|dsp(s)?)\b/);
+  const musicTrackDomain = hasPattern(haystack, /\btrack(s)?\b/) && hasPattern(haystack, /\b(music|song(s)?|artist(s)?|album(s)?|release(s)?|recording(s)?|streaming|playlist(s)?|label(s)?|dsp(s)?)\b/);
+  const ticketingDomain = hasPattern(haystack, /\b(ticketing|ticket platform(s)?|ticket marketplace(s)?|ticket pricing|ticket economics|ticket inventory|ticket commerce|fan access|live[-\s]?event commerce|artist ticket(s)?|concert ticket(s)?|venue ticket(s)?)\b/)
+    || (hasPattern(haystack, /\bticket(s)?\b/) && hasPattern(haystack, /\b(artist(s)?|fan(s)?|audience(s)?|creator(s)?|venue(s)?|concert(s)?|tour(s)?|pricing|access|commerce|platform|marketplace|control|intermediat(e|ed|ion)|discovery|checkout|inventory|transaction(s)?)\b/) && !isPromotionalTicketSaleStory(haystack));
+  const creativeDomain = hasPattern(haystack, /\b(creator(s)?|artist(s)?|musician(s)?|songwriter(s)?|publisher(s)?|label(s)?|rights[-\s]?holder(s)?|rightsholder(s)?|fan(s)?|audience(s)?|music|song(s)?|recording(s)?|catalog|release(s)?|concert(s)?|venue(s)?|live[-\s]?event(s)?|spotify|suno|believe|warner music|bmg|universal music|mechanical licensing collective|mlc|dsp(s)?)\b/) || musicTrackDomain || ticketingDomain;
   const creativeContentDomain = creativeDomain || hasPattern(haystack, /\b(creator content|digital content|content authenticity|media rights|authorship|attribution|provenance|synthetic media|generated media|published media)\b/);
   const rightsDomain = hasPattern(haystack, /\b(rights?|licens(e|ing|ed)|royalt(y|ies)|copyright|permission(s)?|clearance|repertoire|publishing catalog|mechanical licensing collective|mlc|rightsholder(s)?|rights[-\s]?holder(s)?)\b/)
     || (hasPattern(haystack, /\b(opt[-\s]?in|consent)\b/) && creativeContentDomain && hasPattern(haystack, /\b(ai|artist(s)?|creator(s)?|music|model(s)?|rights?|licens(e|ing)|permission(s)?|release(s)?|catalog)\b/));
-  const commerceDomain = hasPattern(haystack, /\b(commerce|payment(s)?|payout(s)?|subscription(s)?|membership(s)?|direct[-\s]?to[-\s]?fan|checkout|receipt(s)?|customer(s)?|transaction(s)?|revenue|sale(s)?|storefront(s)?|merch|ticket(s|ing)?)\b/);
+  const commerceDomain = hasPattern(haystack, /\b(commerce|payment(s)?|payout(s)?|subscription(s)?|membership(s)?|direct[-\s]?to[-\s]?fan|checkout|receipt(s)?|customer(s)?|transaction(s)?|revenue|sale(s)?|storefront(s)?|merch)\b/) || ticketingDomain;
   const platformDomain = hasPattern(haystack, /\b(platform dependency|platform distribution|discovery|recommendation(s)?|algorithm(s)?|streaming|distribution|feed(s)?|access|intermediat(e|ed|ion)|marketplace|agent(s)?|assistant(s)?)\b/);
+  const structuralInfrastructureDomain = hasStructuralInfrastructureRelevance(haystack);
   const aiDomain = hasPattern(haystack, /\b(ai|artificial intelligence|generative|synthetic media|training data|deepfake(s)?|model(s)?|agent(s)?|assistant(s)?)\b/);
   const identityDomain = hasPattern(haystack, /\b(identity|profile(s)?|verification|authenticated?|credential(s)?|impersonation|impersonat(e|ed|ing)|likeness|voice|authority|authenticity)\b/);
   const provenanceDomain = hasPattern(haystack, /\b(attribution|authorship|provenance|origin|source record(s)?|credit(s)?|verified|chain of custody|content authenticity)\b/);
@@ -1803,6 +1817,7 @@ function certifydRelevanceDimensions(text) {
   const authenticityMechanism = hasPattern(haystack, /\b(generated media|synthetic media|training data|authorship|creator identity|artist identity|content authenticity|provenance|rights?|licens(e|ing)|attribution|impersonation|deepfake(s)?|publishing|distribution|creator commerce|fan commerce|output(s)?|input(s)?|permission(s)?|opt[-\s]?in|consent)\b/);
 
   add(creativeDomain && creatorBusinessMechanism, 4, 'creator, fan or audience impact');
+  add(structuralInfrastructureDomain, 4, 'infrastructure control, interoperability or platform-dependency relevance');
   add(rightsDomain && creativeContentDomain, 4, 'rights, permissions or licensing pressure');
   add((provenanceDomain || hasPattern(haystack, /\b(authenticity|verified)\b/)) && (creativeContentDomain || hasPattern(haystack, /\b(authorship|attribution|rights?|artist identity|creator identity)\b/)), 4, 'attribution, provenance or verification relevance');
   add(commerceDomain && (creativeDomain || hasPattern(haystack, /\b(creator(s)?|artist(s)?|fan(s)?|audience(s)?|music|media|content|publishing)\b/)), 4, 'direct commerce or payment model relevance');
@@ -1820,6 +1835,24 @@ function hasPattern(text, pattern) {
   return pattern.test(String(text || ''));
 }
 
+function isPromotionalTicketSaleStory(text = '') {
+  const haystack = String(text || '').toLowerCase();
+  const ticketPurchase = /\b(ticket(s)?|registration|register|pass(es)?)\b/.test(haystack);
+  const promoLanguage = /\b(save\s+(?:up to\s+)?\$?\d+|prices?\s+go(?:es)?\s+up|get your .*ticket|buy .*ticket|before prices? (?:increase|go up)|deadline|early[-\s]?bird|sale ends?|discount|promo code|limited time)\b/.test(haystack);
+  const conferenceContext = /\b(disrupt|conference|summit|expo|event|founders?|investors?|attendees?|tech leaders?)\b/.test(haystack);
+  const structuralTicketing = /\b(ticketing platform|ticket marketplace|ticket pricing controversy|ticket economics|ticket inventory|fan access|artist commerce|creator commerce|platform control|intermediary|checkout|transaction layer|discovery layer)\b/.test(haystack);
+  return ticketPurchase && promoLanguage && conferenceContext && !structuralTicketing;
+}
+
+function hasStructuralInfrastructureRelevance(text = '') {
+  const haystack = String(text || '').toLowerCase();
+  const dependency = /\b(reliance|dependency|dependent|lock[-\s]?in|grip|control|controlled|centraliz(e|ed|ing)|intermediar(y|ies)|vertically integrated|closed)\b/.test(haystack);
+  const infrastructure = /\b(infrastructure|stack|platform|ecosystem|marketplace|network|operating layer|operating environment|service|system)\b/.test(haystack);
+  const openness = /\b(interoperab(le|ility)|open(?:ing)? up|open platform|open stack|portab(le|ility)|move away|reduce reliance|loosen its grip)\b/.test(haystack);
+  const creatorOrMarket = /\b(creator(s)?|artist(s)?|fan(s)?|audience(s)?|publisher(s)?|advertiser(s)?|adland|ad tech|commerce|media|music|release(s)?|catalog|rights?|data|records?)\b/.test(haystack);
+  return creatorOrMarket && infrastructure && (dependency || openness) && !isPromotionalTicketSaleStory(haystack);
+}
+
 const GENERIC_CERTIFYD_RELEVANCE_PATTERNS = [
   /\bcertifyd as infrastructure for identity, publishing, discovery and commerce\b/,
   /\bcreator commerce, direct fan relationships and alternatives to attention-only music economics\b/,
@@ -1833,6 +1866,15 @@ const GENERIC_CERTIFYD_RELEVANCE_PATTERNS = [
 function certifydRelevance(category, text) {
   const haystack = String(text || '').toLowerCase();
   if (/\b(bot|fake|fraud|streaming manipulation|click farm|payola)\b/.test(haystack)) return 'This gives Certifyd a direct angle on why paid customer activity is stronger than empty engagement metrics.';
+  if (hasStructuralInfrastructureRelevance(haystack) && /\b(creator(s)?|artist(s)?|music|streaming|analytics|promotion|verification|payout(s)?|subscription(s)?|operating layer|operating environment|release(s)?)\b/.test(haystack)) {
+    return 'This connects to platform dependency: more creator operating functions are moving inside centralized services, while Certifyd points toward creator-operated infrastructure and portable public context.';
+  }
+  if (hasStructuralInfrastructureRelevance(haystack)) {
+    return 'This connects to infrastructure control, interoperability and dependency on centralized intermediary systems rather than portable, user-controlled operating context.';
+  }
+  if (/\b(royalt(y|ies)|credits?|release data|catalog data|metadata|repertoire|missing royalties|source record(s)?|attribution records?)\b/.test(haystack) && /\b(fragment(ed|ation)|missing|identify|collect|collection|records?|data|credits?|release(s)?|catalog|royalt(y|ies))\b/.test(haystack)) {
+    return 'This connects to creator-controlled release, catalog, attribution and royalty records before fragmented downstream data turns into economic leakage.';
+  }
   if (/\b(ai|artificial intelligence|generative|synthetic|training data|model|deepfake)\b/.test(haystack) && /\b(license|licensing|rights?|copyright|permission|clearance|opt[-\s]?in|derivative|output|input|settlement|royalt)/.test(haystack)) {
     return 'This connects to AI-era permissions, rights clearance, attribution, creator opt-in and provenance around inputs, outputs and derivative works.';
   }
