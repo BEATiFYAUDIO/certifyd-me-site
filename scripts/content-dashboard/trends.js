@@ -679,6 +679,9 @@ export function clusterSourceItems(items) {
       match.items.push(itemWithFingerprint);
       match.keywords = [...new Set([...match.keywords, ...(itemWithFingerprint.keywords || [])])];
       match.categories = [...new Set([...match.categories, ...(itemWithFingerprint.categories || [])])];
+      if (Number(itemWithFingerprint.certifydRelevanceScore || 0) > Number(match.certifydRelevanceScore || 0)) {
+        match.certifydRelevanceAssessment = itemWithFingerprint.certifydRelevanceAssessment || null;
+      }
       match.certifydRelevanceScore = Math.max(Number(match.certifydRelevanceScore || 0), Number(itemWithFingerprint.certifydRelevanceScore || 0));
       match.certifydRelevanceReasons = [...new Set([...(match.certifydRelevanceReasons || []), ...(itemWithFingerprint.certifydRelevanceReasons || [])])];
       match.clusterDecisions.push(decision);
@@ -691,6 +694,7 @@ export function clusterSourceItems(items) {
         categories: itemWithFingerprint.categories || [],
         certifydRelevanceScore: Number(itemWithFingerprint.certifydRelevanceScore || 0),
         certifydRelevanceReasons: itemWithFingerprint.certifydRelevanceReasons || [],
+        certifydRelevanceAssessment: itemWithFingerprint.certifydRelevanceAssessment || null,
         storyFingerprint: itemWithFingerprint.storyFingerprint,
         clusterDecisions: [],
         separationDecisions: decisions.map(({ cluster, decision }) => ({
@@ -710,6 +714,7 @@ export function clusterSourceItems(items) {
       summary: clusterSummary(cluster),
       certifydRelevanceScore: score,
       certifydRelevanceReasons: [...new Set(cluster.certifydRelevanceReasons || [])].slice(0, 5),
+      certifydRelevanceAssessment: cluster.certifydRelevanceAssessment || assessCertifydRelevance(cluster.category || primaryCategory(cluster), `${cluster.title || clusterTitle(cluster)} ${cluster.summary || clusterSummary(cluster)}`),
     };
   });
 }
@@ -1388,21 +1393,22 @@ function classifyCategories(text, sourceCategories = []) {
 
 function enrichSourceStoryForPromotion(item) {
   const categories = classifyCategories(`${item.title || item.sourceTitle || ''} ${item.summary || ''} ${(item.keywords || []).join(' ')}`, item.categories || []);
-  const relevance = scoreCertifydRelevanceStory({ ...item, categories });
+  const relevance = assessCertifydRelevanceStory({ ...item, categories });
   return {
     ...item,
     categories,
     certifydRelevanceScore: relevance.score,
     certifydRelevanceReasons: relevance.reasons,
     certifydRelevanceMatched: relevance.matched,
+    certifydRelevanceAssessment: relevance,
   };
 }
 
-function scoreCertifydRelevanceStory(item = {}) {
+function assessCertifydRelevanceStory(item = {}) {
   const text = `${item.title || item.sourceTitle || ''} ${item.summary || ''}`.toLowerCase();
   const reasons = [];
   let score = 0;
-  if (isPromotionalTicketSaleStory(text)) {
+  if (isPromotionalTicketSaleStory(text) || isIncidentalConsumerProductStory(text)) {
     for (const category of item.categories || []) {
       if (TRENDING_CATEGORIES.includes(category) && category !== 'Certifyd News') score += 1;
     }
@@ -1410,7 +1416,13 @@ function scoreCertifydRelevanceStory(item = {}) {
     if (Number.isFinite(ageDays) && ageDays <= 2) score += 2;
     else if (Number.isFinite(ageDays) && ageDays <= 7) score += 1;
     score += Math.min(3, Math.floor(Number(item.sourcePriority || 0) / 30));
-    return { score, reasons: [], matched: false };
+    return {
+      score,
+      reasons: [],
+      matched: false,
+      whyItMatters: '',
+      certifydAngle: '',
+    };
   }
   for (const category of item.categories || []) {
     if (TRENDING_CATEGORIES.includes(category) && category !== 'Certifyd News') score += 1;
@@ -1423,7 +1435,20 @@ function scoreCertifydRelevanceStory(item = {}) {
     score += dimension.weight;
     reasons.push(dimension.reason);
   }
-  return { score, reasons: [...new Set(reasons)].slice(0, 5), matched: reasons.length > 0 };
+  const canonical = assessCertifydRelevance(item.categories?.[0], text);
+  return {
+    score,
+    reasons: [...new Set(reasons)].slice(0, 5),
+    matched: reasons.length > 0,
+    whyItMatters: reasons.length > 0 ? canonical.whyItMatters : '',
+    certifydAngle: reasons.length > 0 ? canonical.certifydAngle : '',
+    dimensions: canonical.dimensions,
+  };
+}
+
+function scoreCertifydRelevanceStory(item = {}) {
+  const relevance = assessCertifydRelevanceStory(item);
+  return { score: relevance.score, reasons: relevance.reasons, matched: relevance.matched };
 }
 
 function scoreCertifydRelevanceCluster(cluster = {}) {
@@ -1679,12 +1704,15 @@ function extractJson(content) {
 }
 
 function fallbackEvaluation(cluster, coverage) {
+  const canonical = cluster.certifydRelevanceAssessment?.matched
+    ? cluster.certifydRelevanceAssessment
+    : assessCertifydRelevance(cluster.category, `${cluster.title} ${cluster.summary}`);
   return {
     recommended: true,
     fallback: true,
     suggestedTitle: cluster.title,
-    whyItMatters: certifydRelevance(cluster.category, `${cluster.title} ${cluster.summary}`),
-    certifydAngle: certifydRelevance(cluster.category, `${cluster.title} ${cluster.summary}`),
+    whyItMatters: canonical.whyItMatters,
+    certifydAngle: canonical.certifydAngle,
     riskFlags: coverage.level === 'Needs source' ? ['Needs external source before article generation'] : [],
   };
 }
@@ -1703,11 +1731,11 @@ function opportunityFromCluster(cluster, coverage, qwen, options = {}) {
     categories: cluster.categories,
     summary: trim(cluster.summary, 360),
     whyTrending: whyTrending(cluster),
-    whyItMattersToCertifyd: qwen.whyItMatters || certifydRelevance(cluster.category, `${cluster.title} ${cluster.summary}`),
-    whyCertifyd: qwen.whyItMatters || certifydRelevance(cluster.category, `${cluster.title} ${cluster.summary}`),
+    whyItMattersToCertifyd: qwen.whyItMatters || cluster.certifydRelevanceAssessment?.whyItMatters || certifydRelevance(cluster.category, `${cluster.title} ${cluster.summary}`),
+    whyCertifyd: qwen.whyItMatters || cluster.certifydRelevanceAssessment?.whyItMatters || certifydRelevance(cluster.category, `${cluster.title} ${cluster.summary}`),
     certifydRelevanceScore: cluster.certifydRelevanceScore,
     certifydRelevanceReasons: cluster.certifydRelevanceReasons,
-    suggestedAngle: qwen.certifydAngle || certifydRelevance(cluster.category, `${cluster.title} ${cluster.summary}`),
+    suggestedAngle: qwen.certifydAngle || cluster.certifydRelevanceAssessment?.certifydAngle || certifydRelevance(cluster.category, `${cluster.title} ${cluster.summary}`),
     sourceItemIds: cluster.items.map((item) => item.id),
     sourceUrls: originalSources.map((source) => source.sourceUrl),
     originalSources,
@@ -1730,7 +1758,7 @@ function opportunityFromCluster(cluster, coverage, qwen, options = {}) {
     coherenceWarnings: cluster.coherenceWarnings || [],
     generatedBy: qwen.recommended === false ? 'source-cluster' : (qwen.fallback ? 'deterministic-story-promotion' : (qwen.certifydAngle ? 'qwen' : 'deterministic-story-promotion')),
     evidenceLabel,
-    topic: `Write a Certifyd article about: ${title}. Use this angle: ${qwen.certifydAngle || certifydRelevance(cluster.category, cluster.summary)}`,
+    topic: `Write a Certifyd article about: ${title}. Use this angle: ${qwen.certifydAngle || cluster.certifydRelevanceAssessment?.certifydAngle || certifydRelevance(cluster.category, cluster.summary)}`,
     sourceType: 'rss',
     sourceLabel: publishers.join(', '),
   };
@@ -1844,6 +1872,14 @@ function isPromotionalTicketSaleStory(text = '') {
   return ticketPurchase && promoLanguage && conferenceContext && !structuralTicketing;
 }
 
+function isIncidentalConsumerProductStory(text = '') {
+  const haystack = String(text || '').toLowerCase();
+  const consumerProduct = /\b(feeder|cat|dog|pet|home appliance|gadget|device|camera|smart home|household|consumer product)\b/.test(haystack);
+  const incidentalSignals = /\b(ai|artificial intelligence|track(s|ing)?|subscription(s)?|product|game changer|monitoring)\b/.test(haystack);
+  const creatorContext = /\b(creator(s)?|artist(s)?|musician(s)?|songwriter(s)?|publisher(s)?|fan(s)?|audience(s)?|music|release(s)?|catalog|rights?|royalt(y|ies)|attribution|provenance|identity|ticketing platform|platform dependency|interoperability)\b/.test(haystack);
+  return consumerProduct && incidentalSignals && !creatorContext;
+}
+
 function hasStructuralInfrastructureRelevance(text = '') {
   const haystack = String(text || '').toLowerCase();
   const dependency = /\b(reliance|dependency|dependent|lock[-\s]?in|grip|control|controlled|centraliz(e|ed|ing)|intermediar(y|ies)|vertically integrated|closed)\b/.test(haystack);
@@ -1864,39 +1900,50 @@ const GENERIC_CERTIFYD_RELEVANCE_PATTERNS = [
 ];
 
 function certifydRelevance(category, text) {
+  return assessCertifydRelevance(category, text).whyItMatters;
+}
+
+function assessCertifydRelevance(category, text) {
   const haystack = String(text || '').toLowerCase();
-  if (/\b(bot|fake|fraud|streaming manipulation|click farm|payola)\b/.test(haystack)) return 'This gives Certifyd a direct angle on why paid customer activity is stronger than empty engagement metrics.';
+  const dimensions = certifydRelevanceDimensions(haystack);
+  const result = (whyItMatters) => ({
+    matched: dimensions.length > 0,
+    dimensions,
+    whyItMatters,
+    certifydAngle: whyItMatters,
+  });
+  if (/\b(bot|fake|fraud|streaming manipulation|click farm|payola)\b/.test(haystack)) return result('This gives Certifyd a direct angle on why paid customer activity is stronger than empty engagement metrics.');
   if (hasStructuralInfrastructureRelevance(haystack) && /\b(creator(s)?|artist(s)?|music|streaming|analytics|promotion|verification|payout(s)?|subscription(s)?|operating layer|operating environment|release(s)?)\b/.test(haystack)) {
-    return 'This connects to platform dependency: more creator operating functions are moving inside centralized services, while Certifyd points toward creator-operated infrastructure and portable public context.';
+    return result('This connects to platform dependency: more creator operating functions are moving inside centralized services, while Certifyd points toward creator-operated infrastructure and portable public context.');
   }
   if (hasStructuralInfrastructureRelevance(haystack)) {
-    return 'This connects to infrastructure control, interoperability and dependency on centralized intermediary systems rather than portable, user-controlled operating context.';
+    return result('This connects to infrastructure control, interoperability and dependency on centralized intermediary systems rather than portable, user-controlled operating context.');
   }
   if (/\b(royalt(y|ies)|credits?|release data|catalog data|metadata|repertoire|missing royalties|source record(s)?|attribution records?)\b/.test(haystack) && /\b(fragment(ed|ation)|missing|identify|collect|collection|records?|data|credits?|release(s)?|catalog|royalt(y|ies))\b/.test(haystack)) {
-    return 'This connects to creator-controlled release, catalog, attribution and royalty records before fragmented downstream data turns into economic leakage.';
+    return result('This connects to creator-controlled release, catalog, attribution and royalty records before fragmented downstream data turns into economic leakage.');
   }
   if (/\b(ai|artificial intelligence|generative|synthetic|training data|model|deepfake)\b/.test(haystack) && /\b(license|licensing|rights?|copyright|permission|clearance|opt[-\s]?in|derivative|output|input|settlement|royalt)/.test(haystack)) {
-    return 'This connects to AI-era permissions, rights clearance, attribution, creator opt-in and provenance around inputs, outputs and derivative works.';
+    return result('This connects to AI-era permissions, rights clearance, attribution, creator opt-in and provenance around inputs, outputs and derivative works.');
   }
   if (/\b(license|licensing|rights?|copyright|permission|clearance|settlement|infringement|royalt|catalog|repertoire)\b/.test(haystack)) {
-    return 'This connects to rights authorization, provenance, attribution and clearer permission records around creative work.';
+    return result('This connects to rights authorization, provenance, attribution and clearer permission records around creative work.');
   }
   if (/\b(counterfeit|unauthorized merch|unauthorized merchandise|fake product|bootleg|piracy|infringement)\b/.test(haystack)) {
-    return 'This connects to authorization, provenance, creator identity and trusted commerce records for official work and merchandise.';
+    return result('This connects to authorization, provenance, creator identity and trusted commerce records for official work and merchandise.');
   }
   if (/\b(platform|spotify|youtube|tiktok|algorithm|demonetization|distribution|streaming)\b/.test(haystack) && /\b(policy|dependency|control|creator|artist|audience|fan)\b/.test(haystack)) {
-    return 'This connects to platform dependency, creator-owned identity, audience relationships and portable distribution context.';
+    return result('This connects to platform dependency, creator-owned identity, audience relationships and portable distribution context.');
   }
   if (/\b(compensation|payment|payout|receipt|royalt|revenue|subscription|membership)\b/.test(haystack)) {
-    return 'This connects to compensation, receipts, commerce context and transparent records around creator business activity.';
+    return result('This connects to compensation, receipts, commerce context and transparent records around creator business activity.');
   }
-  if (category === 'Music') return 'This connects to creator commerce, direct fan relationships and alternatives to attention-only music economics.';
-  if (category === 'AI') return 'This connects to trusted identity, attribution and source context as discovery becomes more machine-assisted.';
-  if (category === 'Creator Economy') return 'This connects to creator-controlled profiles, publishing, discovery and direct commerce.';
-  if (category === 'Digital Identity') return 'This connects to portable identity, attribution and source-of-truth creator profiles.';
-  if (category === 'Creator Commerce') return 'This connects to direct sales, receipts, access and customer relationships around creator businesses.';
-  if (category === 'Media') return 'This connects to public attribution, source context and audience relationships.';
-  return 'This connects to Certifyd as infrastructure for identity, publishing, discovery and commerce.';
+  if (category === 'Music') return result('This connects to creator commerce, direct fan relationships and alternatives to attention-only music economics.');
+  if (category === 'AI') return result('This connects to trusted identity, attribution and source context as discovery becomes more machine-assisted.');
+  if (category === 'Creator Economy') return result('This connects to creator-controlled profiles, publishing, discovery and direct commerce.');
+  if (category === 'Digital Identity') return result('This connects to portable identity, attribution and source-of-truth creator profiles.');
+  if (category === 'Creator Commerce') return result('This connects to direct sales, receipts, access and customer relationships around creator businesses.');
+  if (category === 'Media') return result('This connects to public attribution, source context and audience relationships.');
+  return result('This connects to Certifyd as infrastructure for identity, publishing, discovery and commerce.');
 }
 
 function trendStateResult(state) {

@@ -654,6 +654,72 @@ test('royalty and release-data story prefers records and attribution context', a
   assert.doesNotMatch(promoted.whyItMattersToCertifyd, /direct fan relationships|attention-only music economics/i);
 });
 
+test('production trend scan path suppresses incidental live noise and preserves canonical relevance framing', async () => {
+  const agentRoot = await tempAgentRoot();
+  const feed = rssFeed([
+    {
+      title: 'Petlibro’s new AI-powered feeder is a game changer for multi-cat homes',
+      description: 'The AI camera can track exactly how much your cat is eating, but the health monitoring features will cost you an extra subscription.',
+      link: 'https://example.test/petlibro-ai-cat-feeder',
+    },
+    {
+      title: '6 days left to save up to $200 to TechCrunch Disrupt 2026',
+      description: 'Register now for the conference before prices go up and get your Disrupt ticket today.',
+      link: 'https://example.test/disrupt-save-ticket',
+    },
+    {
+      title: 'Prices go up in 7 days. Get your Disrupt ticket now.',
+      description: 'Buy a conference pass before the deadline for this event registration offer.',
+      link: 'https://example.test/disrupt-prices-ticket',
+    },
+    {
+      title: 'Ticketing platform changes artist fan access and pricing controls',
+      description: 'The ticketing platform now controls concert ticket inventory, checkout, fan access and artist commerce data through a centralized marketplace.',
+      link: 'https://example.test/ticketing-platform-controls-artist-fan-commerce',
+    },
+    {
+      title: 'Can adland realistically reduce its reliance on Google’s vertically integrated ad stack?',
+      description: 'A court order requires the ad tech stack to open to competitors, raising questions about interoperability, open-stack remedies and platform dependency.',
+      link: 'https://example.test/google-ad-stack-interoperability',
+    },
+    {
+      title: 'Audiomack Pro rolls out globally including Song Pulse feature',
+      description: 'The artist subscription bundles analytics, promotion, verification and payout-program access inside one centralized artist operating environment.',
+      link: 'https://example.test/audiomack-pro-song-pulse',
+    },
+    {
+      title: 'Notes.fm raises funding to fix missing royalties from fragmented music data',
+      description: 'The royalty collection service helps artists identify missing royalties caused by fragmented credits, release data, catalog metadata and attribution records.',
+      link: 'https://example.test/notes-fm-royalty-release-data',
+    },
+  ]);
+  const scan = await scanTrendOpportunities(config(agentRoot), { fetchImpl: async () => response(feed) });
+  const urls = (fragment) => scan.items.filter((item) => item.sourceUrls.some((url) => url.includes(fragment)));
+
+  assert.equal(urls('petlibro-ai-cat-feeder').length, 0);
+  assert.equal(urls('disrupt-save-ticket').length, 0);
+  assert.equal(urls('disrupt-prices-ticket').length, 0);
+
+  const ticketing = urls('ticketing-platform-controls-artist-fan-commerce')[0];
+  assert.ok(ticketing);
+  assert.match(ticketing.whyItMattersToCertifyd, /platform dependency|infrastructure control|intermediary|creator-operated/i);
+
+  const infrastructure = urls('google-ad-stack-interoperability')[0];
+  assert.ok(infrastructure);
+  assert.match(infrastructure.certifydRelevanceReasons.join(' '), /infrastructure control|interoperability|platform-dependency/i);
+  assert.match(infrastructure.whyItMattersToCertifyd, /infrastructure control|interoperability|centralized intermediary/i);
+
+  const audiomack = urls('audiomack-pro-song-pulse')[0];
+  assert.ok(audiomack);
+  assert.match(audiomack.whyItMattersToCertifyd, /platform dependency|creator operating functions|centralized services|creator-operated infrastructure/i);
+  assert.doesNotMatch(audiomack.whyItMattersToCertifyd, /compensation, receipts, commerce context/i);
+
+  const notes = urls('notes-fm-royalty-release-data')[0];
+  assert.ok(notes);
+  assert.match(notes.whyItMattersToCertifyd, /creator-controlled release, catalog, attribution and royalty records|fragmented downstream data/i);
+  assert.doesNotMatch(notes.whyItMattersToCertifyd, /direct fan relationships|attention-only music economics/i);
+});
+
 test('seeded scans do not overwrite existing source-backed trend results', async () => {
   const agentRoot = await tempAgentRoot();
   const trendStateDir = path.join(agentRoot, 'dashboard', 'trends');
