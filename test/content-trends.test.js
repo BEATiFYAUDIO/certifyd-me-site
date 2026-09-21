@@ -580,6 +580,25 @@ test('promotional ticket sale does not become recommended from ticket commerce v
   assert.ok(!scan.items.some((item) => item.sourceUrls.includes('https://example.test/disrupt-ticket-sale')));
 });
 
+test('promotional event price ad without ticket wording does not become recommended', async () => {
+  const agentRoot = await tempAgentRoot();
+  const feed = rssFeed([
+    {
+      title: '6 days left to save up to $200 to TechCrunch Disrupt 2026',
+      description: 'Get ahead at the conference before prices go up.',
+      link: 'https://example.test/disrupt-save-without-ticket-word',
+    },
+  ]);
+  const scan = await scanTrendOpportunities(config(agentRoot), { fetchImpl: async () => response(feed) });
+  const story = scan.sourceStories.find((item) => item.sourceUrl === 'https://example.test/disrupt-save-without-ticket-word');
+
+  assert.ok(story);
+  assert.equal(story.retentionStatus, 'Retained');
+  assert.deepEqual(story.opportunityIds, []);
+  assert.deepEqual(story.certifydRelevanceReasons, []);
+  assert.ok(!scan.items.some((item) => item.sourceUrls.includes('https://example.test/disrupt-save-without-ticket-word')));
+});
+
 test('legitimate ticketing infrastructure remains structurally relevant', async () => {
   const agentRoot = await tempAgentRoot();
   const feed = rssFeed([
@@ -652,6 +671,93 @@ test('royalty and release-data story prefers records and attribution context', a
   assert.ok(promoted);
   assert.match(promoted.whyItMattersToCertifyd, /creator-controlled release, catalog, attribution and royalty records|fragmented downstream data/i);
   assert.doesNotMatch(promoted.whyItMattersToCertifyd, /direct fan relationships|attention-only music economics/i);
+});
+
+test('generic consumer shopping safety does not become Certifyd commerce relevance', async () => {
+  const agentRoot = await tempAgentRoot();
+  const feed = rssFeed([
+    {
+      title: 'How to Avoid Scams and Sketchy Products on Amazon (2026)',
+      description: 'Amazon is a murky mess of ads, unknown sellers, misleading sales, and specious information. Stay safe while shopping.',
+      link: 'https://example.test/amazon-shopping-scams-products',
+    },
+  ]);
+  const scan = await scanTrendOpportunities(config(agentRoot), { fetchImpl: async () => response(feed) });
+  const story = scan.sourceStories.find((item) => item.sourceUrl === 'https://example.test/amazon-shopping-scams-products');
+
+  assert.ok(story);
+  assert.deepEqual(story.opportunityIds, []);
+  assert.deepEqual(story.certifydRelevanceReasons, []);
+  assert.ok(!scan.items.some((item) => item.sourceUrls.includes('https://example.test/amazon-shopping-scams-products')));
+  assert.ok(!scan.items.some((item) => /identity, publishing, discovery and commerce/i.test(item.whyItMattersToCertifyd || '')));
+});
+
+test('generic AI extinction and bioweapons risk does not become creative-rights relevance', async () => {
+  const agentRoot = await tempAgentRoot();
+  const feed = rssFeed([
+    {
+      title: 'The Download: AI’s extinction risk and bioweapons threat',
+      description: 'Researchers are debating frontier model safety, national security and whether artificial intelligence could increase bioweapons risk.',
+      link: 'https://example.test/ai-extinction-bioweapons-threat',
+    },
+    {
+      title: 'Could AI really kill us all? Your questions, answered.',
+      description: 'A general explainer about artificial intelligence extinction risk, model capabilities and catastrophic safety debates.',
+      link: 'https://example.test/ai-kill-us-all-questions',
+    },
+  ]);
+  const scan = await scanTrendOpportunities(config(agentRoot), { fetchImpl: async () => response(feed) });
+  const story = scan.sourceStories.find((item) => item.sourceUrl === 'https://example.test/ai-extinction-bioweapons-threat');
+  const questionsStory = scan.sourceStories.find((item) => item.sourceUrl === 'https://example.test/ai-kill-us-all-questions');
+
+  assert.ok(story);
+  assert.deepEqual(story.opportunityIds, []);
+  assert.deepEqual(story.certifydRelevanceReasons, []);
+  assert.ok(questionsStory);
+  assert.deepEqual(questionsStory.opportunityIds, []);
+  assert.deepEqual(questionsStory.certifydRelevanceReasons, []);
+  assert.ok(!scan.items.some((item) => item.sourceUrls.includes('https://example.test/ai-extinction-bioweapons-threat')));
+  assert.ok(!scan.items.some((item) => item.sourceUrls.includes('https://example.test/ai-kill-us-all-questions')));
+  assert.ok(!scan.items.some((item) => /AI-era permissions|rights clearance|creator opt-in|provenance around inputs/i.test(item.whyItMattersToCertifyd || '')));
+});
+
+test('generic corporate subscription revenue does not become creator-commerce relevance', async () => {
+  const agentRoot = await tempAgentRoot();
+  const feed = rssFeed([
+    {
+      title: 'Mag giant Hearst UK returns to revenue growth after three years of decline',
+      description: 'Staff cuts and growing subscriptions revenue help Hearst UK return to revenue growth.',
+      link: 'https://example.test/hearst-uk-revenue-subscriptions',
+    },
+  ]);
+  const scan = await scanTrendOpportunities(config(agentRoot), { fetchImpl: async () => response(feed) });
+  const story = scan.sourceStories.find((item) => item.sourceUrl === 'https://example.test/hearst-uk-revenue-subscriptions');
+
+  assert.ok(story);
+  assert.deepEqual(story.opportunityIds, []);
+  assert.deepEqual(story.certifydRelevanceReasons, []);
+  assert.ok(!scan.items.some((item) => item.sourceUrls.includes('https://example.test/hearst-uk-revenue-subscriptions')));
+  assert.ok(!scan.items.some((item) => /compensation, receipts, commerce context|creator business activity/i.test(item.whyItMattersToCertifyd || '')));
+});
+
+test('creative-work registration and authorship story is rights and provenance relevant', async () => {
+  const agentRoot = await tempAgentRoot();
+  const feed = rssFeed([
+    {
+      title: 'South Korea collecting society withdrew plans to register AI-assisted music',
+      description: 'The collecting society said AI-assisted music could be registered as works if a human made a creative contribution to the lyrics, composition and arrangement.',
+      link: 'https://example.test/ai-assisted-music-registration-authorship',
+    },
+  ]);
+  const scan = await scanTrendOpportunities(config(agentRoot), { fetchImpl: async () => response(feed) });
+  const story = scan.sourceStories.find((item) => item.sourceUrl === 'https://example.test/ai-assisted-music-registration-authorship');
+  const promoted = scan.items.find((item) => item.sourceUrls.includes('https://example.test/ai-assisted-music-registration-authorship'));
+
+  assert.ok(story);
+  assert.match(story.certifydRelevanceReasons.join(' '), /authorship|rights registration|creative-work provenance|rights, permissions|attribution/i);
+  assert.ok(story.certifydRelevanceScore >= 8);
+  assert.ok(promoted);
+  assert.match(promoted.whyItMattersToCertifyd, /authorship|rights registration|attribution|provenance|AI-assisted creative works/i);
 });
 
 test('production trend scan path suppresses incidental live noise and preserves canonical relevance framing', async () => {
