@@ -1444,16 +1444,16 @@ export function classifyDiscoveryCandidate(item = {}) {
     'human-ai-authorship',
     'agent-authorization-identity-commerce',
     'machine-readable-provenance-trust',
-  ].includes(signal)) && hasStrategicBridge(text, item)) {
+  ].includes(signal)) && hasStrategicBridge(text, item) && hasAdjacentEventSubstance(text, adjacent, item)) {
     return discoveryResult('ADJACENT_TEST', adjacentTopicCluster(text, adjacent), adjacentReason(adjacent), [...signals, ...adjacent]);
   }
 
   const core = coreDiscoverySignals(text, item);
-  if (core.length) {
+  if (core.length && hasCoreEventSubstance(text, core, item)) {
     return discoveryResult('CORE', coreTopicCluster(text, item, core), coreReason(core), [...signals, ...core]);
   }
 
-  if (adjacent.length && hasStrategicBridge(text, item)) {
+  if (adjacent.length && hasStrategicBridge(text, item) && hasAdjacentEventSubstance(text, adjacent, item)) {
     return discoveryResult('ADJACENT_TEST', adjacentTopicCluster(text, adjacent), adjacentReason(adjacent), [...signals, ...adjacent]);
   }
 
@@ -1528,10 +1528,13 @@ function discoveryRejectReason(text, item = {}, signals = []) {
   const eventType = item.storyFingerprint?.eventType || '';
   if (isRoyaltyAccountingJobPosting(text)) return 'Job posting or hiring listing, not an editorial market development.';
   if (isRoutineAppointmentStory(text, item)) return 'Routine appointment or executive move without a material creator-control, rights, identity or commerce development.';
+  if (isRoutineOrganizationStory(text)) return 'Organizational reshuffle without a material creator-control, rights, identity or commerce development.';
+  if (isStreamingAchievementStory(text)) return 'Streaming or chart achievement without platform dependency, ownership, commerce, control or attribution stakes.';
   if (isGenericCybersecurityOrSupplyChainStory(text)) return 'Generic security, supply-chain or cybersecurity story without creator ownership, provenance, authorization or commerce relevance.';
   const coreSignals = coreDiscoverySignals(text, item);
   const adjacentSignals = adjacentDiscoverySignals(text, item);
-  if (coreSignals.length || adjacentSignals.length && hasStrategicBridge(text, item)) return '';
+  if (coreSignals.length && hasCoreEventSubstance(text, coreSignals, item)) return '';
+  if (adjacentSignals.length && hasStrategicBridge(text, item) && hasAdjacentEventSubstance(text, adjacentSignals, item)) return '';
   if (isUnrelatedSportsOrMediaStory(text)) return 'Sports or media coverage does not establish a Certifyd-specific creator, rights, trust or commerce connection.';
   if (isGenericAiAgentProductivityStory(text)) return 'Generic AI-agent productivity story without permissions, commerce, identity, authorization or verifiable trust stakes.';
   if (isThinFundingOrFinancialAnnouncement(text)) return 'Funding or financial announcement is too thin without a meaningful Certifyd strategic connection.';
@@ -1553,22 +1556,78 @@ function coreDiscoverySignals(text, item = {}) {
   return signals;
 }
 
+function hasCoreEventSubstance(text, signals = [], item = {}) {
+  if (!signals.length) return false;
+  if (isRoutineAppointmentStory(text, item) || isRoutineOrganizationStory(text) || isStreamingAchievementStory(text)) return false;
+  const eventType = item.storyFingerprint?.eventType || '';
+  if (['partnership', 'product-launch', 'acquisition', 'lawsuit', 'lawsuit-filed', 'ruling', 'settlement', 'policy-intervention', 'controversy'].includes(eventType)
+    && hasPattern(text, /\b(identity|ownership|provenance|authenticity|control|direct relationship(s)?|fan relationship(s)?|authorization|permission(s)?|consent|attribution|rights?|licens(e|ing)|royalt(y|ies)|commerce|checkout|transaction(s)?|platform dependency|interoperab(le|ility)|creator(s)?|artist(s)?|fan(s)?|audience)\b/)) {
+    return true;
+  }
+  if (signals.includes('music-rights-ownership')) {
+    if (hasPattern(text, /\b(rights? deal|licens(e|ing|ed)\s+(deal|agreement|terms|model|framework|workflow(s)?)|permission(s)?\s+(terms|framework|model|policy|workflow(s)?)|licensed\s+.+permission(s)?|catalog\s+(deal|sale|acquisition|partnership|metadata)|publishing\s+(deal|catalog|operation|rights)|royalt(y|ies)\s+(claim|payment|payout|fraud|dispute|settlement|caused|from|data)|missing royalties|fragmented credits|release data|attribution records?|label deals?\s+involving\s+rights|creator permission|copyright\s+(lawsuit|suit|case|settlement|ruling|infringement)|streaming\s+fraud|fake streams?|rights? dispute|ownership\s+(change|stake|transfer|claim|dispute)|false(?:ly)? represented|impersonation)\b/)) return true;
+  }
+  if (signals.includes('music-revenue-economics')) {
+    if (hasPattern(text, /\b(recorded music|music revenue|artist revenue|streaming revenue|royalt(y|ies)|payout(s)?|revenue topped|revenue growth)\b/)
+      && !isStreamingAchievementStory(text)) return true;
+  }
+  if (signals.includes('ai-music-rights-identity-permission')) {
+    if (hasPattern(text, /\b(ai|synthetic|training data|model(s)?|voice|likeness|deepfake|generated)\b/)
+      && hasPattern(text, /\b(consent|permission(s)?|authorization|rights?|licens(e|ing)|copyright|attribution|authorship|provenance|identity|ownership|artist-centered business|artist centered business|fan relationship(s)?|relationships and fans)\b/)) return true;
+  }
+  if (signals.includes('creator-commerce-direct-relationships')) {
+    if (hasPattern(text, /\b(direct[-\s]?to[-\s]?fan|creator commerce|artist commerce|checkout|receipt(s)?|payment(s)?|payout(s)?|membership(s)?|subscription(s)?|storefront|direct sale(s)?|customer relationship(s)?|commercial partnership(s)?)\b/)) return true;
+  }
+  if (signals.includes('platform-dependency-control')) {
+    if (hasPattern(text, /\b(platform dependency|platform control|infrastructure control|centralized (artist )?(operating environment|marketplace|services)|lock[-\s]?in|owned audience|portable|interoperab(le|ility)|open[-\s]?stack remedies|algorithm change|demonetization|policy change|distribution control|controls? .{0,80}(fan access|checkout|commerce data|ticket inventory))\b/)) return true;
+  }
+  if (signals.includes('creator-discovery-platforms')) {
+    if (hasPattern(text, /\b(discovery infrastructure|distribution infrastructure|recommendation system|direct[-\s]?to[-\s]?fan platform|creator discovery|fan transaction(s)?|fan relationship(s)?|audience ownership|audience portability|platform dependency|commercial partnership(s)?|creator(s)?\s+(learn|build|own|control)|artist fan access|checkout|commerce data)\b/)) return true;
+  }
+  if (signals.includes('official-creator-identity-provenance')) {
+    if (hasPattern(text, /\b(official profile(s)?|creator identity|artist identity|verified identity|impersonation|authenticated? creator|source[-\s]?of[-\s]?truth|attribution|provenance|content authenticity)\b/)) return true;
+  }
+  return false;
+}
+
 function adjacentDiscoverySignals(text) {
   const signals = [];
   if (hasPersonalDataControlSignal(text)) signals.push('personal-data-ownership-control');
   if (hasPattern(text, /\b(voice clone|voice cloning|cloned voice|deepfake(s)?|likeness|name image likeness|nil|synthetic voice|ai voice|image rights|persona rights)\b/) && hasPattern(text, /\b(consent|permission|authorization|rights?|artist(s)?|creator(s)?|performer(s)?|identity|impersonation|unauthorized)\b/)) signals.push('voice-likeness-deepfake-consent');
-  if (hasPattern(text, /\b(content authenticity|c2pa|content credential(s)?|provenance standard|authenticity standard|watermark(s|ing)?|metadata standard|source record(s)?|origin)\b/) && hasPattern(text, /\b(standard|credential(s)?|provenance|trust|verify|verified|publisher(s)?|creator(s)?|ai|media|authorship)\b/)) signals.push('content-authenticity-provenance-standard');
+  if (hasPattern(text, /\b(content authenticity|content authenticity credential(s)?|c2pa|content credential(s)?|provenance standard|authenticity standard|watermark(s|ing)?|metadata standard|source record(s)?|origin)\b/) && hasPattern(text, /\b(standard|credential(s)?|provenance|trust|verify|verified|publisher(s)?|creator(s)?|ai|media|authorship)\b/)) signals.push('content-authenticity-provenance-standard');
   if (hasPattern(text, /\b(human authorship|human creative contribution|ai-assisted authorship|ai assisted work|creative contribution|authorship registration|copyright office|registered as work(s)?)\b/)) signals.push('human-ai-authorship');
-  if (hasPattern(text, /\b(ai agent(s)?|agentic|machine identity|non[-\s]?human identity|credential(s)?|authenticat(e|ion)|delegated access)\b/) && hasPattern(text, /\b(permission(s)?|authorization|identity|credential(s)?|commerce|transaction(s)?|payment(s)?|purchase|booking|checkout|trust|verified|access)\b/)) signals.push('agent-authorization-identity-commerce');
+  if (hasPattern(text, /\b(ai agent(s)?|agentic|openai agents?|machine identity|non[-\s]?human identity|credential(s)?|authenticat(e|ion)|delegated access|openid4vp|openid4vci|verifiable presentation(s)?|credential issuance)\b/) && hasPattern(text, /\b(permission(s)?|authorization|identity|credential(s)?|commerce|transaction(s)?|payment(s)?|purchase|booking|checkout|trust|verified|access|posted|publicly|internet|user images?|without (?:the )?(?:lab[’']?s )?knowledge|conformance|self[-\s]?certif(y|ied|ication))\b/)) signals.push('agent-authorization-identity-commerce');
   if (hasPattern(text, /\b(machine[-\s]?readable|verifiable trust|trust framework|signed metadata|verified credential(s)?|credential issuance|verifiable presentation(s)?|openid4vp|openid4vci|webauthn)\b/)) signals.push('machine-readable-provenance-trust');
   return signals;
 }
 
+function hasAdjacentEventSubstance(text, signals = [], item = {}) {
+  if (!signals.length) return false;
+  if (signals.includes('voice-likeness-deepfake-consent')) {
+    return hasPattern(text, /\b(consent|permission(s)?|authorization|unauthorized|rights?|identity|impersonation|name image likeness|nil|likeness rights?|voice clone|synthetic voice|ai voice|ai vocal(s)?|metadata)\b/);
+  }
+  if (signals.includes('content-authenticity-provenance-standard')) {
+    return hasPattern(text, /\b(content authenticity|content authenticity credential(s)?|content credential(s)?|c2pa|provenance standard|metadata standard|source record(s)?|watermark(s|ing)?|verified provenance)\b/);
+  }
+  if (signals.includes('personal-data-ownership-control')) return hasPersonalDataControlSignal(text);
+  if (signals.includes('human-ai-authorship')) {
+    return hasPattern(text, /\b(human authorship|creative contribution|ai-assisted authorship|authorship registration|copyright office|registered as work(s)?)\b/);
+  }
+  if (signals.includes('agent-authorization-identity-commerce')) {
+    return hasPattern(text, /\b(ai agent(s)?|agentic|openai|chatgpt|operator|assistant(s)?|delegated access|openid4vp|openid4vci|verifiable presentation(s)?|credential issuance)\b/)
+      && hasPattern(text, /\b(without authorization|unauthorized|authorization|permission(s)?|consent|credential(s)?|delegated access|publicly|posted|posts?|publishes?|internet|user images?|without (?:the )?(?:lab[’']?s )?knowledge|access|identity|transaction(s)?|commerce|checkout|payment(s)?|conformance|self[-\s]?certif(y|ied|ication))\b/);
+  }
+  if (signals.includes('machine-readable-provenance-trust')) {
+    return hasPattern(text, /\b(credential issuance|verifiable presentation(s)?|verified credential(s)?|openid4vp|openid4vci|webauthn|signed metadata|machine[-\s]?readable|trust framework)\b/);
+  }
+  return false;
+}
+
 function hasStrategicBridge(text, item = {}) {
-  const bridgeChain = hasPattern(text, /\b(identity|ownership|provenance|authenticity|control|direct relationship(s)?|verifiable trust|permission(s)?|authorization|attribution|authorship|registration|creative contribution|consent|verified|credential(s)?|portable|deletion|access|commerce|transaction(s)?)\b/);
+  const bridgeChain = hasPattern(text, /\b(identity|ownership|provenance|authenticity|control|direct relationship(s)?|verifiable trust|permission(s)?|authorization|attribution|authorship|registration|creative contribution|consent|verified|credential(s)?|portable|deletion|access|commerce|transaction(s)?|user images?|user content|publicly|without (?:the )?(?:lab[’']?s )?knowledge|openid4vp|openid4vci|verifiable presentation(s)?|credential issuance|high assurance interoperability profile|haip)\b/);
   const relevance = Number(item.certifydRelevanceScore || 0) >= DEFAULT_PROMOTION_RELEVANCE_THRESHOLD
     || Array.isArray(item.certifydRelevanceReasons) && item.certifydRelevanceReasons.length > 0
-    || hasPattern(text, /\b(creator(s)?|artist(s)?|publisher(s)?|fan(s)?|customer(s)?|audience|rights?|commerce|profile(s)?|public context|source[-\s]?of[-\s]?truth)\b/);
+    || hasPattern(text, /\b(creator(s)?|artist(s)?|publisher(s)?|fan(s)?|customer(s)?|audience|user images?|user content|rights?|commerce|profile(s)?|public context|source[-\s]?of[-\s]?truth|openid4vp|openid4vci|verifiable presentation(s)?|credential issuance|verified credential(s)?|high assurance interoperability profile|haip)\b/);
   return bridgeChain && relevance;
 }
 
@@ -1629,8 +1688,21 @@ function isRoutineAppointmentStory(text, item = {}) {
   const eventType = item.storyFingerprint?.eventType || '';
   const appointment = eventType === 'appointment' || hasPattern(text, /\b(appointed|named|hires?|joins? as|promoted to|senior vice president|managing director|chief|head of)\b/);
   if (!appointment) return false;
-  const materialDevelopment = hasPattern(text, /\b(product launch|launch(es|ed)?|rights? deal|licens(e|ing)|permission(s)?|authorization|consent|direct[-\s]?to[-\s]?fan platform|creator commerce|payment(s)?|checkout|platform dependency|catalog|provenance|identity standard|content authenticity|metadata standard|interoperable metadata|ddex|ai vocal(s)?)\b/);
+  const materialDevelopment = hasPattern(text, /\b(product launch|launch(es|ed)?|rights? deal|licens(e|ing)\s+(deal|agreement|framework|terms|model)|permission(s)?\s+(framework|terms|model)|authorization\s+(framework|standard|protocol|metadata)|consent\s+(framework|standard|metadata)|direct[-\s]?to[-\s]?fan platform|creator commerce|payment(s)?|checkout|platform dependency|catalog\s+(deal|sale|acquisition|partnership)|provenance\s+(standard|framework|credential)|identity standard|content authenticity|metadata standard|interoperable metadata|ddex|ai vocal(s)?)\b/);
   return !materialDevelopment;
+}
+
+function isRoutineOrganizationStory(text) {
+  const organizationChange = hasPattern(text, /\b(reorgani[sz](es?|ation|ed|ing)|reshuffle(s|d)?|restructur(es?|ing|ed)|overhaul(s|ed|ing)?|leadership changes?|executive changes?|management shake[-\s]?up|organizational structure|division restructure|regional operations)\b/);
+  if (!organizationChange) return false;
+  return !hasPattern(text, /\b(rights? deal|licens(e|ing)\s+(deal|agreement|framework|terms|model)|catalog\s+(deal|sale|acquisition|partnership)|creator commerce|direct[-\s]?to[-\s]?fan|permission(s)?\s+(framework|terms|model)|authorization\s+(framework|standard|protocol)|provenance\s+(standard|credential)|identity standard|content authenticity|platform dependency|owned audience|portable audience|royalt(y|ies)\s+(payment|payout|dispute|settlement))\b/);
+}
+
+function isStreamingAchievementStory(text) {
+  const achievement = hasPattern(text, /\b(sets?|breaks?|hits?|reaches?|tops?|passes?|surpasses?)\b[^.]{0,80}\b(streaming record|spotify record|chart record|streams?|monthly listeners?|billboard chart|hot 100|album chart)\b/)
+    || hasPattern(text, /\b(streaming record|spotify record|chart achievement|chart milestone|most streamed|number one|no\.?\s*1)\b/);
+  if (!achievement) return false;
+  return !hasPattern(text, /\b(streaming fraud|fake streams?|royalt(y|ies)\s+(payment|payout|fraud|dispute)|platform dependency|platform control|owned audience|audience portability|direct[-\s]?to[-\s]?fan|creator commerce|rights? dispute|licens(e|ing)\s+(deal|agreement)|permission(s)?\s+(framework|terms)|authorization|attribution|provenance|identity)\b/);
 }
 
 function isGenericCybersecurityOrSupplyChainStory(text) {

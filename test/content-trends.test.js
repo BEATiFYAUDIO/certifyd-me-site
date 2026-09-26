@@ -242,6 +242,48 @@ test('discovery classification rejects job postings and routine appointment nois
   assert.match(appointment.strategicRelevanceReason, /appointment/i);
 });
 
+test('discovery classification gates on event substance, not ambient industry vocabulary', () => {
+  const warnerReorg = classifyDiscoveryCandidate(sourceStory(
+    'Warner Music reorganizes recorded music leadership structure',
+    'The company reshuffled executives and regional operations across its recorded music division.',
+    { categories: ['Music'], certifydRelevanceScore: 14 },
+  ));
+  assert.notEqual(warnerReorg.classification, 'CORE');
+  assert.match(warnerReorg.strategicRelevanceReason, /organizational|reshuffle/i);
+
+  const ascapAppointment = classifyDiscoveryCandidate(sourceStory(
+    'ASCAP names Jackson Wagener as Senior Vice President and Head of General Licensing',
+    'The performing rights organization appointed an executive to oversee the general licensing department.',
+    { categories: ['Music'], certifydRelevanceScore: 14 },
+  ));
+  assert.notEqual(ascapAppointment.classification, 'CORE');
+  assert.match(ascapAppointment.strategicRelevanceReason, /appointment/i);
+
+  const spotifyRecord = classifyDiscoveryCandidate(sourceStory(
+    'Taylor Swift sets new Spotify streaming record',
+    'The artist became the most streamed act on Spotify after a release-week chart milestone.',
+    { categories: ['Music'], certifydRelevanceScore: 14 },
+  ));
+  assert.notEqual(spotifyRecord.classification, 'CORE');
+  assert.match(spotifyRecord.strategicRelevanceReason, /streaming|chart/i);
+
+  const openAiAgentAuth = classifyDiscoveryCandidate(sourceStory(
+    'OpenAI agent posts users’ images publicly without authorization',
+    'The AI agent took action on a person’s content without permission, raising authorization, consent, access and identity-control questions.',
+    { categories: ['AI', 'Digital Identity'], certifydRelevanceScore: 12 },
+  ));
+  assert.equal(openAiAgentAuth.classification, 'ADJACENT_TEST');
+  assert.equal(openAiAgentAuth.topicCluster, 'agent-authorization-identity-commerce');
+
+  const musicAiIdentity = classifyDiscoveryCandidate(sourceStory(
+    'A Tale of Two Industries: Music AI 2.0',
+    'AI music is separating into a synthetic economy and an artist-centered business built around identity, ownership, relationships and fans.',
+    { categories: ['Music', 'AI', 'Creator Economy'], certifydRelevanceScore: 13 },
+  ));
+  assert.equal(musicAiIdentity.classification, 'CORE');
+  assert.equal(musicAiIdentity.topicCluster, 'ai-music-rights-identity');
+});
+
 test('discovery classification rejects generic security, sports and AI productivity false positives', () => {
   const security = classifyDiscoveryCandidate(sourceStory(
     'Appeals Court Lets the Pentagon Designate Anthropic a Supply-Chain Risk',
