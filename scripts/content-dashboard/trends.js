@@ -22,6 +22,8 @@ export const DEFAULT_RECOMMENDATION_CATEGORY_LIMIT = 5;
 export const DEFAULT_RECOMMENDATION_CANDIDATE_LIMIT = 80;
 export const DEFAULT_PROMOTION_RELEVANCE_THRESHOLD = 8;
 export const DEFAULT_RETAINED_SOURCE_FRACTION = 0.5;
+export const DISCOVERY_CLASSES = ['CORE', 'ADJACENT_TEST', 'HOLD', 'REJECT'];
+export const DEFAULT_ADJACENT_TEST_RECOMMENDATION_LIMIT = 3;
 
 export const CATEGORY_DEFINITIONS = {
   Music: ['music industry', 'artist revenue', 'streaming', 'royalties', 'labels', 'independent artists', 'music rights', 'music distribution', 'fan membership', 'ticketing', 'creator ownership'],
@@ -387,7 +389,7 @@ class RssTrendProvider {
     void settled;
     const recentItems = filterRecentItems(allItems, maxAgeDays);
     const uniqueItems = dedupeSourceItems(recentItems);
-    const deduped = retainSourceStories(recentItems, this.config).map(enrichSourceStoryForPromotion).map(addSourceClusterDiagnostics);
+    const deduped = retainSourceStories(recentItems, this.config).map(enrichSourceStoryForPromotion).map(addSourceClusterDiagnostics).map(withDiscoveryClassification);
     const clusters = clusterSourceItems(deduped);
     const brainRecords = await loadApprovedBrainRecords(this.config);
     const recentCoverage = await loadRecentCoverageIndex(this.config);
@@ -396,6 +398,7 @@ class RssTrendProvider {
     const candidateLimit = Math.max(recommendationCandidateLimit(this.config), recommendationTotalLimit(this.config) * 4);
     const candidateClusters = clusters
       .filter((cluster) => isPromotableCluster(cluster, this.config))
+      .filter((cluster) => classifyDiscoveryCandidate(cluster).classification !== 'REJECT')
       .sort((a, b) => trendClusterCandidateScore(b) - trendClusterCandidateScore(a))
       .slice(0, candidateLimit);
     for (const cluster of candidateClusters) {
@@ -445,34 +448,55 @@ export function recommendationCandidateLimit(config = {}) {
   return positiveNumber(config.trendResearch?.recommendationCandidateLimit, DEFAULT_RECOMMENDATION_CANDIDATE_LIMIT);
 }
 
+export function adjacentTestRecommendationLimit(config = {}) {
+  return nonNegativeNumber(config.trendResearch?.adjacentTestRecommendationLimit, DEFAULT_ADJACENT_TEST_RECOMMENDATION_LIMIT);
+}
+
 export function selectRecommendedOpportunities(opportunities = [], config = {}) {
   const totalLimit = recommendationTotalLimit(config);
   const categoryLimit = recommendationCategoryLimit(config);
-  const scored = opportunities.map((opportunity) => opportunity.rankingDiagnostics ? opportunity : withRankingDiagnostics(opportunity, {
-    recentCoverage: config.trendResearch?.recentCoverageSubjects || config.trendResearch?.recentCoverage || [],
-  }));
+  const adjacentLimit = adjacentTestRecommendationLimit(config);
+  const scored = opportunities
+    .map((opportunity) => withDiscoveryClassification(opportunity))
+    .map((opportunity) => opportunity.rankingDiagnostics ? opportunity : withRankingDiagnostics(opportunity, {
+      recentCoverage: config.trendResearch?.recentCoverageSubjects || config.trendResearch?.recentCoverage || [],
+    }))
+    .filter((opportunity) => recommendationEligibleDiscoveryClass(opportunity.discoveryClass));
   const sorted = [...scored].sort((a, b) => scoreOpportunity(b) - scoreOpportunity(a));
   const grouped = new Map();
   for (const opportunity of sorted) {
-    const category = opportunity.category || 'Uncategorized';
+    const category = opportunity.discoveryClass === 'ADJACENT_TEST' ? 'Adjacent Test' : opportunity.category || 'Uncategorized';
     const group = grouped.get(category) || [];
     if (group.length < categoryLimit) group.push(opportunity);
     grouped.set(category, group);
   }
   const categories = [...grouped.keys()].sort((a, b) => scoreOpportunity(grouped.get(b)?.[0]) - scoreOpportunity(grouped.get(a)?.[0]));
   const selected = [];
+  let adjacentSelected = 0;
   let madeProgress = true;
   while (selected.length < totalLimit && madeProgress) {
     madeProgress = false;
     for (const category of categories) {
       if (selected.length >= totalLimit) break;
-      const next = grouped.get(category)?.shift();
+      const group = grouped.get(category) || [];
+      let next = null;
+      while (group.length) {
+        const candidate = group.shift();
+        if (candidate.discoveryClass === 'ADJACENT_TEST' && adjacentSelected >= adjacentLimit) continue;
+        next = candidate;
+        break;
+      }
       if (!next) continue;
+      if (next.discoveryClass === 'ADJACENT_TEST') adjacentSelected += 1;
       selected.push(next);
       madeProgress = true;
     }
   }
   return selected.sort((a, b) => scoreOpportunity(b) - scoreOpportunity(a));
+}
+
+function recommendationEligibleDiscoveryClass(value) {
+  return value === 'CORE' || value === 'ADJACENT_TEST';
 }
 
 function positiveNumber(value, fallback) {
@@ -1404,6 +1428,238 @@ function enrichSourceStoryForPromotion(item) {
   };
 }
 
+export function classifyDiscoveryCandidate(item = {}) {
+  const text = discoveryText(item);
+  const signals = discoverySignals(text, item);
+  const rejectReason = discoveryRejectReason(text, item, signals);
+  if (rejectReason) {
+    return discoveryResult('REJECT', 'not-certifyd-relevant', rejectReason, signals);
+  }
+
+  const adjacent = adjacentDiscoverySignals(text, item);
+  if (adjacent.some((signal) => [
+    'personal-data-ownership-control',
+    'voice-likeness-deepfake-consent',
+    'content-authenticity-provenance-standard',
+    'human-ai-authorship',
+    'agent-authorization-identity-commerce',
+    'machine-readable-provenance-trust',
+  ].includes(signal)) && hasStrategicBridge(text, item)) {
+    return discoveryResult('ADJACENT_TEST', adjacentTopicCluster(text, adjacent), adjacentReason(adjacent), [...signals, ...adjacent]);
+  }
+
+  const core = coreDiscoverySignals(text, item);
+  if (core.length) {
+    return discoveryResult('CORE', coreTopicCluster(text, item, core), coreReason(core), [...signals, ...core]);
+  }
+
+  if (adjacent.length && hasStrategicBridge(text, item)) {
+    return discoveryResult('ADJACENT_TEST', adjacentTopicCluster(text, adjacent), adjacentReason(adjacent), [...signals, ...adjacent]);
+  }
+
+  if (!Object.prototype.hasOwnProperty.call(item, 'certifydRelevanceScore') && TRENDING_CATEGORIES.includes(item.category)) {
+    return discoveryResult('CORE', String(item.category || 'core-certifyd-territory').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'core-certifyd-territory', 'Prequalified opportunity inside an existing Certifyd trend category.', signals);
+  }
+
+  const relevanceScore = Number(item.certifydRelevanceScore || 0);
+  const hasRelevanceReason = Array.isArray(item.certifydRelevanceReasons) && item.certifydRelevanceReasons.length > 0;
+  if (relevanceScore >= DEFAULT_PROMOTION_RELEVANCE_THRESHOLD || hasRelevanceReason || adjacent.length) {
+    return discoveryResult('HOLD', adjacentTopicCluster(text, adjacent) || 'needs-editorial-review', 'Potentially relevant, but source evidence does not establish a strong enough Certifyd-specific strategic connection.', [...signals, ...adjacent]);
+  }
+
+  return discoveryResult('REJECT', 'not-certifyd-relevant', 'No meaningful Certifyd strategic signal was found beyond broad topic vocabulary.', signals);
+}
+
+function withDiscoveryClassification(item = {}) {
+  const diagnostics = classifyDiscoveryCandidate(item);
+  return {
+    ...item,
+    discoveryClass: diagnostics.classification,
+    topicCluster: diagnostics.topicCluster,
+    strategicRelevanceReason: diagnostics.strategicRelevanceReason,
+    discoverySignals: diagnostics.signals,
+    discoveryDiagnostics: diagnostics,
+  };
+}
+
+function discoveryResult(classification, topicCluster, strategicRelevanceReason, signals = []) {
+  return {
+    classification,
+    topicCluster,
+    strategicRelevanceReason,
+    signals: [...new Set(signals.filter(Boolean))].slice(0, 12),
+  };
+}
+
+function discoveryText(item = {}) {
+  const fingerprint = item.storyFingerprint || {};
+  const sourceBackedText = Array.isArray(item.originalSources) && item.originalSources.length
+    ? item.originalSources.flatMap((source) => [source.sourceTitle, source.title, source.summary, source.publisher])
+    : [];
+  const generatedOpportunityText = sourceBackedText.length
+    ? []
+    : [item.whyTrending, item.whyItMattersToCertifyd, item.suggestedAngle];
+  return [
+    item.title,
+    item.sourceTitle,
+    item.summary,
+    item.description,
+    ...sourceBackedText,
+    ...generatedOpportunityText,
+    ...(item.keywords || []),
+    fingerprint.eventType,
+    fingerprint.normalizedObject,
+    fingerprint.object,
+    fingerprint.normalizedEventSummary,
+  ].filter(Boolean).join(' ').toLowerCase();
+}
+
+function discoverySignals(text, item = {}) {
+  const signals = [];
+  if (Number(item.sourceCount || item.originalSources?.length || 0) > 1) signals.push('multi-source-source-support');
+  if (item.brainCoverage === 'Strong') signals.push('strong-brain-coverage');
+  if (item.brainCoverage === 'Partial') signals.push('partial-brain-coverage');
+  if (Number(item.certifydRelevanceScore || 0) >= DEFAULT_PROMOTION_RELEVANCE_THRESHOLD) signals.push('passes-relevance-threshold');
+  if (hasPattern(text, /\b(identity|ownership|provenance|authenticity|control|direct relationship(s)?|verifiable trust|verified|permission(s)?|authorization|attribution)\b/)) signals.push('strategic-vocabulary-present');
+  return signals;
+}
+
+function discoveryRejectReason(text, item = {}, signals = []) {
+  const eventType = item.storyFingerprint?.eventType || '';
+  if (isRoyaltyAccountingJobPosting(text)) return 'Job posting or hiring listing, not an editorial market development.';
+  if (isRoutineAppointmentStory(text, item)) return 'Routine appointment or executive move without a material creator-control, rights, identity or commerce development.';
+  if (isGenericCybersecurityOrSupplyChainStory(text)) return 'Generic security, supply-chain or cybersecurity story without creator ownership, provenance, authorization or commerce relevance.';
+  const coreSignals = coreDiscoverySignals(text, item);
+  const adjacentSignals = adjacentDiscoverySignals(text, item);
+  if (coreSignals.length || adjacentSignals.length && hasStrategicBridge(text, item)) return '';
+  if (isUnrelatedSportsOrMediaStory(text)) return 'Sports or media coverage does not establish a Certifyd-specific creator, rights, trust or commerce connection.';
+  if (isGenericAiAgentProductivityStory(text)) return 'Generic AI-agent productivity story without permissions, commerce, identity, authorization or verifiable trust stakes.';
+  if (isThinFundingOrFinancialAnnouncement(text)) return 'Funding or financial announcement is too thin without a meaningful Certifyd strategic connection.';
+  if (isGenericPrivacyStory(text) && !hasPersonalDataControlSignal(text)) return 'Generic privacy story without data ownership, deletion, portability, identity or direct-relationship stakes.';
+  if (signals.length === 0 && Number(item.certifydRelevanceScore || 0) < DEFAULT_PROMOTION_RELEVANCE_THRESHOLD) return 'Insufficient Certifyd relevance evidence.';
+  return '';
+}
+
+function coreDiscoverySignals(text, item = {}) {
+  const signals = [];
+  const creativeDomain = hasPattern(text, /\b(music|artist(s)?|musician(s)?|songwriter(s)?|label(s)?|creator(s)?|fan(s)?|audience|catalog|release(s)?|recording(s)?|composition(s)?|lyrics?|publishing|streaming|suno|spotify|tunecore|umg|warner|bmg|mlc|socan)\b/);
+  if (creativeDomain && hasPattern(text, /\b(rights?|ownership|licens(e|ing|ed)|permission(s)?|clearance|royalt(y|ies)|copyright|repertoire|catalog|publishing|settlement|infringement)\b/)) signals.push('music-rights-ownership');
+  if (creativeDomain && hasPattern(text, /\b(recorded music|music revenue|artist revenue|streaming revenue|royalt(y|ies)|payout(s)?|revenue topped|revenue growth)\b/)) signals.push('music-revenue-economics');
+  if (creativeDomain && hasPattern(text, /\b(ai|synthetic|training data|model(s)?|voice|likeness|deepfake|generated)\b/) && hasPattern(text, /\b(rights?|identity|permission(s)?|consent|attribution|authorship|licens(e|ing)|copyright|provenance)\b/)) signals.push('ai-music-rights-identity-permission');
+  if (hasPattern(text, /\b(creator commerce|artist commerce|direct[-\s]?to[-\s]?fan|fan relationship(s)?|customer relationship(s)?|membership(s)?|subscription(s)?|checkout|receipt(s)?|payment(s)?|payout(s)?|storefront|direct sale(s)?)\b/)) signals.push('creator-commerce-direct-relationships');
+  if (hasPattern(text, /\b(platform dependency|platform control|lock[-\s]?in|centraliz(e|ed|ing)|intermediar(y|ies)|owned audience|portable|interoperab(le|ility))\b/) && hasPattern(text, /\b(creator(s)?|artist(s)?|publisher(s)?|fan(s)?|audience|music|media|commerce|distribution|discovery)\b/)) signals.push('platform-dependency-control');
+  if (hasPattern(text, /\b(platform(s)?|discovery|recommendation(s)?|distribution)\b/) && hasPattern(text, /\b(creator(s)?|artist(s)?|fan(s)?|audience)\b/)) signals.push('creator-discovery-platforms');
+  if (hasPattern(text, /\b(official profile(s)?|creator identity|artist identity|verified identity|impersonation|authenticated? creator|source[-\s]?of[-\s]?truth|attribution|provenance|content authenticity)\b/) && creativeDomain) signals.push('official-creator-identity-provenance');
+  return signals;
+}
+
+function adjacentDiscoverySignals(text) {
+  const signals = [];
+  if (hasPersonalDataControlSignal(text)) signals.push('personal-data-ownership-control');
+  if (hasPattern(text, /\b(voice clone|voice cloning|cloned voice|deepfake(s)?|likeness|name image likeness|nil|synthetic voice|ai voice|image rights|persona rights)\b/) && hasPattern(text, /\b(consent|permission|authorization|rights?|artist(s)?|creator(s)?|performer(s)?|identity|impersonation|unauthorized)\b/)) signals.push('voice-likeness-deepfake-consent');
+  if (hasPattern(text, /\b(content authenticity|c2pa|content credential(s)?|provenance standard|authenticity standard|watermark(s|ing)?|metadata standard|source record(s)?|origin)\b/) && hasPattern(text, /\b(standard|credential(s)?|provenance|trust|verify|verified|publisher(s)?|creator(s)?|ai|media|authorship)\b/)) signals.push('content-authenticity-provenance-standard');
+  if (hasPattern(text, /\b(human authorship|human creative contribution|ai-assisted authorship|ai assisted work|creative contribution|authorship registration|copyright office|registered as work(s)?)\b/)) signals.push('human-ai-authorship');
+  if (hasPattern(text, /\b(ai agent(s)?|agentic|machine identity|non[-\s]?human identity|credential(s)?|authenticat(e|ion)|delegated access)\b/) && hasPattern(text, /\b(permission(s)?|authorization|identity|credential(s)?|commerce|transaction(s)?|payment(s)?|purchase|booking|checkout|trust|verified|access)\b/)) signals.push('agent-authorization-identity-commerce');
+  if (hasPattern(text, /\b(machine[-\s]?readable|verifiable trust|trust framework|signed metadata|verified credential(s)?|credential issuance|verifiable presentation(s)?|openid4vp|openid4vci|webauthn)\b/)) signals.push('machine-readable-provenance-trust');
+  return signals;
+}
+
+function hasStrategicBridge(text, item = {}) {
+  const bridgeChain = hasPattern(text, /\b(identity|ownership|provenance|authenticity|control|direct relationship(s)?|verifiable trust|permission(s)?|authorization|attribution|authorship|registration|creative contribution|consent|verified|credential(s)?|portable|deletion|access|commerce|transaction(s)?)\b/);
+  const relevance = Number(item.certifydRelevanceScore || 0) >= DEFAULT_PROMOTION_RELEVANCE_THRESHOLD
+    || Array.isArray(item.certifydRelevanceReasons) && item.certifydRelevanceReasons.length > 0
+    || hasPattern(text, /\b(creator(s)?|artist(s)?|publisher(s)?|fan(s)?|customer(s)?|audience|rights?|commerce|profile(s)?|public context|source[-\s]?of[-\s]?truth)\b/);
+  return bridgeChain && relevance;
+}
+
+function coreTopicCluster(text, item = {}, signals = []) {
+  if (signals.includes('ai-music-rights-identity-permission')) return 'ai-music-rights-identity';
+  if (signals.includes('music-rights-ownership')) return 'music-rights-ownership';
+  if (signals.includes('music-revenue-economics')) return 'music-revenue-economics';
+  if (signals.includes('creator-commerce-direct-relationships')) return 'creator-commerce-direct-relationships';
+  if (signals.includes('platform-dependency-control')) return 'platform-dependency-control';
+  if (signals.includes('creator-discovery-platforms')) return 'creator-discovery-platforms';
+  if (signals.includes('official-creator-identity-provenance')) return 'official-creator-identity-provenance';
+  return String(item.category || 'core-certifyd-territory').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'core-certifyd-territory';
+}
+
+function adjacentTopicCluster(text, signals = []) {
+  if (signals.includes('personal-data-ownership-control')) return 'personal-data-ownership-control';
+  if (signals.includes('voice-likeness-deepfake-consent')) return 'voice-likeness-deepfake-consent';
+  if (signals.includes('content-authenticity-provenance-standard')) return 'content-authenticity-provenance-standard';
+  if (signals.includes('human-ai-authorship')) return 'human-ai-authorship';
+  if (signals.includes('agent-authorization-identity-commerce')) return 'agent-authorization-identity-commerce';
+  if (signals.includes('machine-readable-provenance-trust')) return 'machine-readable-provenance-trust';
+  return '';
+}
+
+function coreReason(signals) {
+  if (signals.includes('music-rights-ownership')) return 'Source evidence connects creative work, rights, ownership, licensing, royalties or catalog control to proven Certifyd territory.';
+  if (signals.includes('music-revenue-economics')) return 'Music revenue coverage connects to creator compensation, royalties, streaming economics or artist business infrastructure.';
+  if (signals.includes('ai-music-rights-identity-permission')) return 'AI music coverage has rights, identity, permission, attribution or provenance stakes.';
+  if (signals.includes('creator-commerce-direct-relationships')) return 'Story is about direct creator commerce, direct fan/customer relationships, receipts, payments or owned audience infrastructure.';
+  if (signals.includes('platform-dependency-control')) return 'Story exposes platform dependency, control, portability or intermediary infrastructure for creators.';
+  if (signals.includes('creator-discovery-platforms')) return 'Story connects creator discovery, distribution, fans or audience access to existing Certifyd editorial territory.';
+  if (signals.includes('official-creator-identity-provenance')) return 'Story connects official creator identity, attribution, provenance or authenticity to a creative domain.';
+  return 'Story falls inside existing Certifyd editorial territory.';
+}
+
+function adjacentReason(signals) {
+  if (signals.includes('personal-data-ownership-control')) return 'Adjacent test: personal data control has ownership, portability, deletion, identity or direct-relationship stakes.';
+  if (signals.includes('voice-likeness-deepfake-consent')) return 'Adjacent test: AI voice, likeness or deepfake coverage turns on consent, identity, authorization or creator rights.';
+  if (signals.includes('content-authenticity-provenance-standard')) return 'Adjacent test: content authenticity or provenance standards connect to verifiable source context and trust.';
+  if (signals.includes('human-ai-authorship')) return 'Adjacent test: human versus AI-assisted authorship turns on attribution, rights registration or creative-work provenance.';
+  if (signals.includes('agent-authorization-identity-commerce')) return 'Adjacent test: AI-agent identity or authorization affects permissions, commerce, access or verifiable trust.';
+  if (signals.includes('machine-readable-provenance-trust')) return 'Adjacent test: machine-readable trust or credential infrastructure connects to identity, provenance or authorization.';
+  return 'Adjacent test with a defensible Certifyd bridge.';
+}
+
+function hasPersonalDataControlSignal(text) {
+  return hasPattern(text, /\b(personal data|user data|customer data|data ownership|data portability|data deletion|deletion notice(s)?|delete my data|access request(s)?|subject access|data export|data control|privacy request(s)?)\b/)
+    && hasPattern(text, /\b(ownership|control|access|deletion|delete|portable|portability|export|identity|customer relationship(s)?|direct relationship(s)?|creator(s)?|platform(s)?|permission(s)?|consent)\b/);
+}
+
+function isRoyaltyAccountingJobPosting(text) {
+  return hasPattern(text, /\b(assistant|coordinator|manager|director|vp|senior vice president|head of)\b/)
+    && hasPattern(text, /\b(job|jobs|career(s)?|hiring|vacancy|role|position|london|remote|apply|applicant(s)?|salary|accounting assistant|royalty accounting)\b/)
+    && !hasPattern(text, /\b(launch(es|ed)?|lawsuit|sues?|ruling|settlement|deal|partnership|acquires?|rights? deal|licens(e|ing)|policy|standard|product)\b/);
+}
+
+function isRoutineAppointmentStory(text, item = {}) {
+  const eventType = item.storyFingerprint?.eventType || '';
+  const appointment = eventType === 'appointment' || hasPattern(text, /\b(appointed|named|hires?|joins? as|promoted to|senior vice president|managing director|chief|head of)\b/);
+  if (!appointment) return false;
+  const materialDevelopment = hasPattern(text, /\b(product launch|launch(es|ed)?|rights? deal|licens(e|ing)|permission(s)?|authorization|consent|direct[-\s]?to[-\s]?fan platform|creator commerce|payment(s)?|checkout|platform dependency|catalog|provenance|identity standard|content authenticity|metadata standard|interoperable metadata|ddex|ai vocal(s)?)\b/);
+  return !materialDevelopment;
+}
+
+function isGenericCybersecurityOrSupplyChainStory(text) {
+  return hasPattern(text, /\b(cybersecurity|security|supply[-\s]?chain risk|pentagon|national security|threat actor(s)?|hackers?|malware|vulnerability|data breach|attack(s)?)\b/)
+    && !hasPattern(text, /\b(creator(s)?|artist(s)?|publisher(s)?|rights?|licens(e|ing)|commerce|payment(s)?|identity|authorization|provenance|content authenticity|official profile|customer relationship(s)?)\b/);
+}
+
+function isUnrelatedSportsOrMediaStory(text) {
+  const sports = hasPattern(text, /\b(nfl|nba|mlb|nhl|ncaa|college sports|basketball|football|team|league|season|halftime|lsu)\b/);
+  const media = hasPattern(text, /\b(comment section|classroom|audience reach|website traffic|news uk|digitalbox|personalization|ad tech)\b/)
+    || (hasPattern(text, /\bpublishers?\b/) && hasPattern(text, /\b(ad tech|personalization|newsletter(s)?|traffic|reader(s)?|audience reach)\b/));
+  const bridge = hasPattern(text, /\b(creator commerce|athlete-owned|direct fan|fan membership|media rights|ticketing commerce|identity|provenance|authenticity|direct relationship(s)?|platform dependency|non-human traffic|bot(s)?|fraud)\b/);
+  return (sports || media) && !bridge;
+}
+
+function isGenericAiAgentProductivityStory(text) {
+  return hasPattern(text, /\b(ai agent(s)?|agentic|assistant(s)?|automation|productivity|workflow|enterprise ai|office|copilot)\b/)
+    && !hasPattern(text, /\b(permission(s)?|authorization|identity|credential(s)?|commerce|transaction(s)?|checkout|payment(s)?|purchase|booking|trust|verified|creator(s)?|artist(s)?|customer relationship(s)?|provenance|authenticity)\b/);
+}
+
+function isThinFundingOrFinancialAnnouncement(text) {
+  return hasPattern(text, /\b(funding round|raises? \$|raised \$|valuation|revenue topped|revenue growth|earnings|share buyback|stock|financial results)\b/)
+    && !hasPattern(text, /\b(creator(s)?|artist(s)?|rights?|royalt(y|ies)|licens(e|ing)|customer relationship(s)?|direct[-\s]?to[-\s]?fan|ownership|provenance|identity|platform dependency|payment(s)?|commerce|data ownership|recorded music|music revenue)\b/);
+}
+
+function isGenericPrivacyStory(text) {
+  return hasPattern(text, /\b(privacy|personal data|user data|data protection|data broker|tracking|cookie(s)?|surveillance)\b/);
+}
+
 function assessCertifydRelevanceStory(item = {}) {
   const text = `${item.title || item.sourceTitle || ''} ${item.summary || ''}`.toLowerCase();
   const reasons = [];
@@ -1724,6 +1980,7 @@ function opportunityFromCluster(cluster, coverage, qwen, options = {}) {
   const evidenceLabel = sourceCount > 2 ? 'Repeated coverage' : sourceCount > 1 ? `Appearing across ${sourceCount} sources` : 'Recent source';
   const title = qwen.suggestedTitle || cluster.title;
   const originalSources = cluster.items.map(normalizeOriginalSourceRecord).filter((source) => source.sourceUrl);
+  const discoveryDiagnostics = classifyDiscoveryCandidate({ ...cluster, title, whyItMattersToCertifyd: qwen.whyItMatters, suggestedAngle: qwen.certifydAngle });
   const opportunity = {
     id: `opp-${hashText(cluster.items.map((item) => item.id).join('|')).slice(0, 14)}`,
     title: trim(title, 120),
@@ -1756,6 +2013,11 @@ function opportunityFromCluster(cluster, coverage, qwen, options = {}) {
     clusterDecisions: cluster.clusterDecisions || [],
     separationDecisions: cluster.separationDecisions || [],
     coherenceWarnings: cluster.coherenceWarnings || [],
+    discoveryClass: discoveryDiagnostics.classification,
+    topicCluster: discoveryDiagnostics.topicCluster,
+    strategicRelevanceReason: discoveryDiagnostics.strategicRelevanceReason,
+    discoverySignals: discoveryDiagnostics.signals,
+    discoveryDiagnostics,
     generatedBy: qwen.recommended === false ? 'source-cluster' : (qwen.fallback ? 'deterministic-story-promotion' : (qwen.certifydAngle ? 'qwen' : 'deterministic-story-promotion')),
     evidenceLabel,
     topic: `Write a Certifyd article about: ${title}. Use this angle: ${qwen.certifydAngle || cluster.certifydRelevanceAssessment?.certifydAngle || certifydRelevance(cluster.category, cluster.summary)}`,
@@ -2053,6 +2315,11 @@ function normalizeSourceStories(sourceItems, opportunities = []) {
       retentionReason,
       certifydRelevanceScore: Number(item.certifydRelevanceScore || 0),
       certifydRelevanceReasons: Array.isArray(item.certifydRelevanceReasons) ? item.certifydRelevanceReasons : [],
+      discoveryClass: item.discoveryClass || item.discoveryDiagnostics?.classification || classifyDiscoveryCandidate(item).classification,
+      topicCluster: item.topicCluster || item.discoveryDiagnostics?.topicCluster || classifyDiscoveryCandidate(item).topicCluster,
+      strategicRelevanceReason: item.strategicRelevanceReason || item.discoveryDiagnostics?.strategicRelevanceReason || classifyDiscoveryCandidate(item).strategicRelevanceReason,
+      discoverySignals: Array.isArray(item.discoverySignals) ? item.discoverySignals : (item.discoveryDiagnostics?.signals || classifyDiscoveryCandidate(item).signals),
+      discoveryDiagnostics: item.discoveryDiagnostics || classifyDiscoveryCandidate(item),
       storyFingerprint: item.storyFingerprint || storyFingerprint(item),
       clusterDiagnostics: item.clusterDiagnostics || addSourceClusterDiagnostics(item).clusterDiagnostics,
       opportunityIds: linked.map((opportunity) => opportunity.id).filter(Boolean),
@@ -2317,6 +2584,11 @@ async function readJsonFile(file, fallback = {}) {
 
 function roundScore(value) {
   return Number((Number(value) || 0).toFixed(2));
+}
+
+function nonNegativeNumber(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : fallback;
 }
 
 function newestDate(items) {

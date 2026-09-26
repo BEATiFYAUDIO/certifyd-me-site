@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {
   buildSourceRegistry,
+  classifyDiscoveryCandidate,
   clusterSourceItems,
   computeNextScanDelayMs,
   DEFAULT_SOURCE_REGISTRY,
@@ -210,6 +211,117 @@ test('recommendation selection returns fewer than twenty when credible candidate
   const selected = selectRecommendedOpportunities(opportunities, { trendResearch: { recommendationTotalLimit: 20, recommendationCategoryLimit: 5 } });
   assert.equal(selected.length, 5);
   assert.ok(selected.every((item) => item.category === 'Music'));
+});
+
+test('discovery classification protects core music-rights territory', () => {
+  const result = classifyDiscoveryCandidate(sourceStory(
+    'Suno signs licensed AI music rights deal with label partners',
+    'The AI music company announced licensing, permission and attribution terms for artists, labels and recordings.',
+    { categories: ['Music', 'AI'], certifydRelevanceScore: 16 },
+  ));
+  assert.equal(result.classification, 'CORE');
+  assert.equal(result.topicCluster, 'ai-music-rights-identity');
+  assert.ok(result.signals.includes('ai-music-rights-identity-permission'));
+});
+
+test('discovery classification rejects job postings and routine appointment noise', () => {
+  const job = classifyDiscoveryCandidate(sourceStory(
+    'Assistant – Royalty Accounting – Y Royalties – London',
+    'A music company posted a royalty accounting assistant position in London.',
+    { categories: ['Music'], certifydRelevanceScore: 23 },
+  ));
+  assert.equal(job.classification, 'REJECT');
+  assert.match(job.strategicRelevanceReason, /job posting/i);
+
+  const appointment = classifyDiscoveryCandidate(sourceStory(
+    'Warner Music names new Managing Director for Eastern Europe',
+    'The label appointed a new executive to oversee regional operations.',
+    { categories: ['Music'], certifydRelevanceScore: 12 },
+  ));
+  assert.equal(appointment.classification, 'REJECT');
+  assert.match(appointment.strategicRelevanceReason, /appointment/i);
+});
+
+test('discovery classification rejects generic security, sports and AI productivity false positives', () => {
+  const security = classifyDiscoveryCandidate(sourceStory(
+    'Appeals Court Lets the Pentagon Designate Anthropic a Supply-Chain Risk',
+    'The case concerns national security and supply-chain risk rules for an AI company.',
+    { categories: ['Technology', 'AI'], certifydRelevanceScore: 12 },
+  ));
+  assert.equal(security.classification, 'REJECT');
+  assert.match(security.strategicRelevanceReason, /security|supply-chain/i);
+
+  const sports = classifyDiscoveryCandidate(sourceStory(
+    'The Biggest Question for LSU Men’s Basketball: Who Is on the Team?',
+    'The college basketball roster remains uncertain before the season.',
+    { categories: ['Sports', 'Media'], certifydRelevanceScore: 13 },
+  ));
+  assert.equal(sports.classification, 'REJECT');
+  assert.match(sports.strategicRelevanceReason, /sports/i);
+
+  const productivity = classifyDiscoveryCandidate(sourceStory(
+    'AI agents promise to automate office productivity workflows',
+    'Enterprise assistants can summarize meetings and manage task lists.',
+    { categories: ['AI', 'Technology'], certifydRelevanceScore: 10 },
+  ));
+  assert.match(['REJECT', 'HOLD'].join('|'), new RegExp(productivity.classification));
+  assert.notEqual(productivity.classification, 'ADJACENT_TEST');
+});
+
+test('discovery classification admits adjacent tests only with defensible strategic bridges', () => {
+  const voiceClone = classifyDiscoveryCandidate(sourceStory(
+    'Artist sues after unauthorized AI voice clone appears in ads',
+    'The dispute centers on consent, likeness rights, impersonation and permission for a performer’s synthetic voice.',
+    { categories: ['AI', 'Digital Identity'], certifydRelevanceScore: 12 },
+  ));
+  assert.equal(voiceClone.classification, 'ADJACENT_TEST');
+  assert.equal(voiceClone.topicCluster, 'voice-likeness-deepfake-consent');
+
+  const dataDeletion = classifyDiscoveryCandidate(sourceStory(
+    'Users ask platforms to delete personal data and receive deletion notices instead',
+    'The report raises personal data ownership, access, deletion, portability and customer data control questions.',
+    { categories: ['Technology', 'Digital Identity'], certifydRelevanceScore: 12 },
+  ));
+  assert.equal(dataDeletion.classification, 'ADJACENT_TEST');
+  assert.equal(dataDeletion.topicCluster, 'personal-data-ownership-control');
+
+  const provenanceStandard = classifyDiscoveryCandidate(sourceStory(
+    'Publishers adopt content authenticity credentials for AI-era provenance',
+    'The standard adds machine-readable content credentials, source records and verified provenance for media and creators.',
+    { categories: ['Technology', 'Media'], certifydRelevanceScore: 12 },
+  ));
+  assert.equal(provenanceStandard.classification, 'ADJACENT_TEST');
+  assert.equal(provenanceStandard.topicCluster, 'content-authenticity-provenance-standard');
+
+  const agentAuth = classifyDiscoveryCandidate(sourceStory(
+    'AI agent authorization standard adds verified credentials for commerce',
+    'The identity framework governs delegated access, permissions, credential issuance, transactions and checkout authorization.',
+    { categories: ['AI', 'Digital Identity', 'Creator Commerce'], certifydRelevanceScore: 12 },
+  ));
+  assert.equal(agentAuth.classification, 'ADJACENT_TEST');
+  assert.equal(agentAuth.topicCluster, 'agent-authorization-identity-commerce');
+});
+
+test('recommendation selection caps adjacent tests without crowding out core opportunities', () => {
+  const core = Array.from({ length: 4 }, (_, index) => opportunity(`Music rights deal ${index}`, {
+    category: 'Music',
+    summary: 'A music rights licensing and ownership deal changes artist catalog control, royalties, permission and attribution.',
+    certifydRelevanceScore: 18 - index,
+  }));
+  const adjacent = Array.from({ length: 4 }, (_, index) => opportunity(`AI agent authorization standard ${index}`, {
+    category: 'Technology',
+    summary: 'AI agent authorization standard adds verified credentials, permissions and commerce checkout trust.',
+    certifydRelevanceScore: 14,
+  }));
+  const selected = selectRecommendedOpportunities([...adjacent, ...core], {
+    trendResearch: {
+      recommendationTotalLimit: 20,
+      recommendationCategoryLimit: 5,
+      adjacentTestRecommendationLimit: 1,
+    },
+  });
+  assert.equal(selected.filter((item) => item.discoveryClass === 'ADJACENT_TEST').length, 1);
+  assert.ok(selected.filter((item) => item.discoveryClass === 'CORE').length >= 4);
 });
 
 test('fresh specific partnership outranks older generic AI commentary', () => {

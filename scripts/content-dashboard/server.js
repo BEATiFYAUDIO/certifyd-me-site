@@ -325,16 +325,18 @@ function opportunityCard(item, csrf, canCreate) {
     'Do not claim live web research beyond the attached source summaries.'
   ].join(' ');
   return `<article class="opportunity-card">
-    <div class="meta-row"><span class="pill warn">${escapeHtml(item.category)}</span>${brainCoveragePill(item.brainCoverage)}<span class="pill">${escapeHtml(item.evidenceLabel || item.sourceLabel || 'Source-backed')}</span>${item.saved ? '<span class="pill good">Saved</span>' : ''}</div>
+    <div class="meta-row"><span class="pill warn">${escapeHtml(item.category)}</span>${discoveryClassPill(item.discoveryClass)}${brainCoveragePill(item.brainCoverage)}<span class="pill">${escapeHtml(item.evidenceLabel || item.sourceLabel || 'Source-backed')}</span>${item.saved ? '<span class="pill good">Saved</span>' : ''}</div>
     <h3>${escapeHtml(item.title)}</h3>
     <p>${escapeHtml(item.summary || item.suggestedAngle || '')}</p>
     <dl>
       <dt>Why it is trending</dt><dd>${escapeHtml(item.whyTrending || 'Source activity detected.')}</dd>
       <dt>Why it matters to Certifyd</dt><dd>${escapeHtml(item.whyItMattersToCertifyd || item.whyCertifyd || '')}</dd>
+      <dt>Discovery classification</dt><dd>${escapeHtml(discoverySummary(item))}</dd>
       <dt>Evidence</dt><dd>${escapeHtml(sourceCount ? `${sourceCount} source item${sourceCount === 1 ? '' : 's'} · ${publishers}` : publishers)}${item.newestSourceDate ? ` · ${escapeHtml(formatDashboardDate(item.newestSourceDate))}` : ''}</dd>
       <dt>Original source${originalLinks.length === 1 ? '' : 's'}</dt><dd>${originalLinks.length ? originalLinks.map((source) => `<a href="${escapeHtml(source.url)}" rel="noreferrer" target="_blank">Read original ↗</a>`).join(' · ') : '<span class="muted">No original source URL supplied.</span>'}</dd>
       <dt>Risk</dt><dd>${riskFlags.length ? riskFlags.map((flag) => `<span class="pill bad">${escapeHtml(flag)}</span>`).join(' ') : '<span class="pill good">No source risk flagged</span>'}</dd>
     </dl>
+    ${discoveryDetails(item)}
     <div class="opportunity-actions">
       ${canCreate ? quickGenerateForm({ csrf, label: 'Generate Article', topic: trendOpportunityTopicForIntake(item), className: 'primary', extraFields: { trendOpportunityId: item.id || '', trendSourceItemIds: sourceIds, trendBrainRecordIds: brainIds, sourceRestrictions: restrictions } }) : '<p class="muted">Generation unavailable for this role.</p>'}
       ${sourceIds ? `<a class="ghost" href="/app/content/trends/${encodeURIComponent(item.id || '')}/sources">View Sources</a>` : ''}
@@ -405,6 +407,31 @@ function brainCoveragePill(value) {
   const normalized = String(value || '').toLowerCase();
   const tone = normalized.includes('strong') ? 'good' : normalized.includes('needs') ? 'bad' : 'warn';
   return `<span class="pill ${tone}">Brain: ${escapeHtml(value || 'Unknown')}</span>`;
+}
+
+function discoveryClassPill(value) {
+  const normalized = String(value || 'HOLD').toUpperCase();
+  const tone = normalized === 'CORE' ? 'good' : normalized === 'ADJACENT_TEST' ? 'warn' : normalized === 'REJECT' ? 'bad' : '';
+  return `<span class="pill ${tone}">${escapeHtml(normalized)}</span>`;
+}
+
+function discoverySummary(item = {}) {
+  const classification = String(item.discoveryClass || item.discoveryDiagnostics?.classification || 'HOLD').toUpperCase();
+  const cluster = item.topicCluster || item.discoveryDiagnostics?.topicCluster || 'needs-editorial-review';
+  const reason = item.strategicRelevanceReason || item.discoveryDiagnostics?.strategicRelevanceReason || 'Private classification needs reviewer verification.';
+  return `${classification} · ${cluster}: ${reason}`;
+}
+
+function discoveryDetails(item = {}) {
+  const signals = Array.isArray(item.discoverySignals) ? item.discoverySignals : (item.discoveryDiagnostics?.signals || []);
+  if (!signals.length && !item.discoveryDiagnostics) return '';
+  const diagnostics = {
+    classification: item.discoveryClass || item.discoveryDiagnostics?.classification || 'HOLD',
+    topicCluster: item.topicCluster || item.discoveryDiagnostics?.topicCluster || '',
+    strategicRelevanceReason: item.strategicRelevanceReason || item.discoveryDiagnostics?.strategicRelevanceReason || '',
+    signals,
+  };
+  return `<details><summary class="ghost">Discovery diagnostics</summary><pre>${escapeHtml(JSON.stringify(diagnostics, null, 2))}</pre></details>`;
 }
 
 function quickGenerateForm({ csrf, label, topic, className = 'example-chip', extraFields = {} }) {
@@ -579,7 +606,7 @@ function sourceStoryCard(story, csrf = '', canCreate = false, sourceDraftIndex =
   const actions = existing
     ? `<div class="source-story-actions"><button class="primary" type="button" disabled>Generate Article</button><span class="pill good">Draft exists</span><a class="ghost" href="/app/content/articles/${encodeURIComponent(existing.runId)}">Open draft</a>${readOriginal}</div>`
     : `<div class="source-story-actions">${canCreate ? quickGenerateForm({ csrf, label: 'Generate Article', topic: `Write a Certifyd article about: ${story.sourceTitle || story.title}`, className: 'primary', extraFields: { trendSourceItemIds: story.id || '', sourceRestrictions, contentType: 'article' } }) : '<p class="muted">Generation unavailable for this role.</p>'}${readOriginal}</div>`;
-  return `<article class="source-story-card"><div><div class="meta-row"><span class="pill warn">${escapeHtml(story.publisher || 'Source')}</span><span class="pill ${story.retentionStatus === 'Recommended' ? 'good' : ''}">${escapeHtml(story.retentionStatus || story.status || 'Retained')}</span>${story.publishedAt ? `<span class="pill">${escapeHtml(formatDashboardDateTime(story.publishedAt))}</span><span class="pill">${escapeHtml(relativeDayLabel(new Date(story.publishedAt)))}</span>` : '<span class="pill">No source publication date</span>'}${(story.categories || []).map((category) => `<span class="pill">${escapeHtml(category)}</span>`).join('')}</div><h3>${escapeHtml(story.sourceTitle || story.title || 'Untitled source story')}</h3><p>${escapeHtml(story.summary || '')}</p><div class="meta-row">${opportunity}</div>${warning}<p class="muted"><strong>Original URL:</strong> ${story.sourceUrl ? `<a href="${escapeHtml(story.sourceUrl)}" rel="noreferrer" target="_blank">${escapeHtml(story.sourceUrl)}</a>` : 'No original source URL supplied.'}</p><p class="muted"><strong>Retention:</strong> ${escapeHtml(story.retentionReason || 'Retained source story.')}</p><p class="muted">Source publication time is separate from fetched time${story.fetchedAt ? ` · fetched ${escapeHtml(formatDashboardDateTime(story.fetchedAt))}` : ''}${story.firstDetectedAt ? ` · first detected ${escapeHtml(formatDashboardDateTime(story.firstDetectedAt))}` : ''}</p></div>${actions}</article>`;
+  return `<article class="source-story-card"><div><div class="meta-row"><span class="pill warn">${escapeHtml(story.publisher || 'Source')}</span><span class="pill ${story.retentionStatus === 'Recommended' ? 'good' : ''}">${escapeHtml(story.retentionStatus || story.status || 'Retained')}</span>${discoveryClassPill(story.discoveryClass)}${story.publishedAt ? `<span class="pill">${escapeHtml(formatDashboardDateTime(story.publishedAt))}</span><span class="pill">${escapeHtml(relativeDayLabel(new Date(story.publishedAt)))}</span>` : '<span class="pill">No source publication date</span>'}${(story.categories || []).map((category) => `<span class="pill">${escapeHtml(category)}</span>`).join('')}</div><h3>${escapeHtml(story.sourceTitle || story.title || 'Untitled source story')}</h3><p>${escapeHtml(story.summary || '')}</p><div class="meta-row">${opportunity}</div>${warning}<p class="muted"><strong>Discovery:</strong> ${escapeHtml(discoverySummary(story))}</p>${discoveryDetails(story)}<p class="muted"><strong>Original URL:</strong> ${story.sourceUrl ? `<a href="${escapeHtml(story.sourceUrl)}" rel="noreferrer" target="_blank">${escapeHtml(story.sourceUrl)}</a>` : 'No original source URL supplied.'}</p><p class="muted"><strong>Retention:</strong> ${escapeHtml(story.retentionReason || 'Retained source story.')}</p><p class="muted">Source publication time is separate from fetched time${story.fetchedAt ? ` · fetched ${escapeHtml(formatDashboardDateTime(story.fetchedAt))}` : ''}${story.firstDetectedAt ? ` · first detected ${escapeHtml(formatDashboardDateTime(story.firstDetectedAt))}` : ''}</p></div>${actions}</article>`;
 }
 
 function newestSourceStory(stories) {

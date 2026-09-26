@@ -141,6 +141,7 @@ export function getDashboardConfig(env = process.env) {
       recommendationTotalLimit: positiveInt(env.CONTENT_TREND_RECOMMENDATION_TOTAL_LIMIT, 20, 1),
       recommendationCategoryLimit: positiveInt(env.CONTENT_TREND_RECOMMENDATION_CATEGORY_LIMIT, 5, 1),
       recommendationCandidateLimit: positiveInt(env.CONTENT_TREND_RECOMMENDATION_CANDIDATE_LIMIT, 80, 1),
+      adjacentTestRecommendationLimit: positiveInt(env.CONTENT_TREND_ADJACENT_TEST_RECOMMENDATION_LIMIT, 3, 0),
     },
     trendResearchProvider: env.CONTENT_TREND_PROVIDER || env.CONTENT_TREND_RESEARCH_PROVIDER || 'composite',
     founderEmails: parseList(env.CONTENT_DASHBOARD_FOUNDER_EMAILS),
