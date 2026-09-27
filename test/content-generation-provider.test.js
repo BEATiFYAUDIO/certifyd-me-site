@@ -1756,7 +1756,7 @@ test('why-Certifyd validation accepts EVEN direct-to-fan story with concrete Cor
   assert.doesNotThrow(() => validateGeneratedArticle(article, context));
 });
 
-test('why-Certifyd validation rejects EVEN passage that relies on internal funding qualifiers', () => {
+test('why-Certifyd validation repairs EVEN passage that relies on internal funding qualifiers', () => {
   const context = whyCertifydContext({
     title: 'EVEN appoints Josh Remsberg to expand music operations',
     summary: 'The source story says EVEN is expanding direct-to-fan music commerce operations, including artist storefronts, fan purchases and customer relationships that can otherwise sit inside a commerce intermediary.',
@@ -1766,10 +1766,14 @@ test('why-Certifyd validation rejects EVEN passage that relies on internal fundi
   });
   const article = whyCertifydArticle(context, [
     'EVEN’s appointment signals direct-to-fan commerce moving deeper into music operations rather than remaining a campaign add-on.',
+    'The source story matters because commercial partnerships can pull artist storefronts, fan purchase paths and customer relationships closer to a service account that the artist does not operate.',
     'Certifyd’s relevance is that partner integrations are planned or funding-dependent unless individually verified, so the article should treat them as architectural direction, not a claim that those functions have already been replaced.',
     'That internal qualifier tries to avoid overclaiming, but it does not give readers a concrete explanation of how Certifyd Core changes the creator’s relationship to identity, publishing context, direct commerce or customer records.',
+    'The public article should instead explain the operating-layer question in ordinary reader language: where the artist’s business records live, who controls the customer relationship, and how creator-operated infrastructure changes the dependency.',
   ]);
-  assert.throws(() => validateGeneratedArticle(article, context), /internal governance language leaked into article/i);
+  const validated = validateGeneratedArticle(article, context, { preserveCertifydNeedFailure: true });
+  assert.doesNotMatch(validated.bodyMarkdown, /planned or funding-dependent|unless individually verified|architectural direction, not a claim/i);
+  assert.match(validated.bodyMarkdown, /not generally available unless specifically verified/i);
 });
 
 test('why-Certifyd validation rejects centralized-platform story that only complements the intermediary', () => {
@@ -3855,7 +3859,7 @@ test('generation validation rejects leaked editorial reasoning step headings', a
   );
 });
 
-test('generation validation rejects internal governance phrasing in public article body', async () => {
+test('generation validation repairs internal governance phrasing in public article body', async () => {
   const config = await makeConfig();
   const context = await makeContext(config);
   const sourceId = context.sourceRecords[0].id;
@@ -3876,10 +3880,10 @@ test('generation validation rejects internal governance phrasing in public artic
       ].join('\n'),
     })),
   });
-  await assert.rejects(
-    () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Leak test', audience: 'Creators', objective: 'Test validation.' }, context),
-    /internal governance language leaked into article/,
-  );
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Leak test', audience: 'Creators', objective: 'Test validation.' }, context);
+  assert.doesNotMatch(article.bodyMarkdown, /Brain-supported|claim-governance|the architecture the article is testing/i);
+  assert.match(article.bodyMarkdown, /Current Certifyd Core capabilities/i);
+  assert.match(article.bodyMarkdown, /review boundary/i);
 });
 
 test('generation validation repairs boilerplate headings without blocking usable drafts', async () => {

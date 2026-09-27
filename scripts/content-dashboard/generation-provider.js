@@ -693,6 +693,7 @@ export function validateGeneratedArticle(value, groundedContext, options = {}) {
   if (value.coverImage && typeof value.coverImage !== 'string') throw new GenerationValidationError('Generated coverImage is malformed.');
   if (value.bodyMarkdown.length > 18000) throw new GenerationValidationError('Generated article is too long.');
   value.bodyMarkdown = repairInternalContextHeadings(value.bodyMarkdown);
+  value.bodyMarkdown = repairInternalGovernanceLanguage(value.bodyMarkdown);
   if (detectInternalContextLeak(value.bodyMarkdown).length) {
     throw new GenerationValidationError('Generation failed validation — internal context leaked into article.');
   }
@@ -3792,6 +3793,22 @@ function detectInternalGovernanceLeak(bodyMarkdown) {
     }
   }
   return [...new Set(hits)].slice(0, 8);
+}
+
+function repairInternalGovernanceLanguage(bodyMarkdown) {
+  return String(bodyMarkdown || '')
+    .replace(/\bcurrent Brain-supported\b/gi, 'current Certifyd')
+    .replace(/\bBrain-supported\b/gi, 'Certifyd')
+    .replace(/\bapproved Brain\b/gi, 'approved Certifyd context')
+    .replace(/\bclaim[-\s]?discipline\b/gi, 'review discipline')
+    .replace(/\bclaim[-\s]?governance\b/gi, 'review boundary')
+    .replace(/\bplanned or funding-dependent\b[^.!?]{0,180}\bunless individually verified\b/gi, 'not generally available unless specifically verified')
+    .replace(/\bunless individually verified\b/gi, 'unless specifically verified')
+    .replace(/\bfunding-dependent\b/gi, 'planned or implementation-specific')
+    .replace(/\barchitectural direction,?\s+not a claim\b/gi, 'direction rather than a claim')
+    .replace(/\bnot a claim that those functions have already been replaced\b/gi, 'not evidence that those functions have already been replaced')
+    .replace(/\bbroader intermediary displacement is described as the architectural direction\b/gi, 'broader intermediary displacement is framed as a longer-term direction')
+    .replace(/\bthe architecture the article is testing\b/gi, 'the argument this article is examining');
 }
 
 function detectBlockingInternalContextLeak(bodyMarkdown) {
