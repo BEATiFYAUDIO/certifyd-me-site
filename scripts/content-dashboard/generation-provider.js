@@ -4005,7 +4005,7 @@ function hasDanglingMetadataEnding(value) {
   if (!clean) return true;
   if (/[,:;–—-]$/.test(clean)) return true;
   const tail = clean.toLowerCase().match(/\b([a-z][a-z'-]*)[.!?]?$/)?.[1] || '';
-  return new Set([
+  if (new Set([
     'a',
     'an',
     'and',
@@ -4036,7 +4036,33 @@ function hasDanglingMetadataEnding(value) {
     'why',
     'with',
     'without',
-  ]).has(tail);
+  ]).has(tail)) {
+    return true;
+  }
+  return hasDanglingCoordinatedMetadataTail(clean);
+}
+
+function hasDanglingCoordinatedMetadataTail(value) {
+  const clean = String(value || '').replace(/[.!?]+$/g, '').trim().toLowerCase();
+  const match = clean.match(/\b(?:and|or)\s+([a-z][a-z'-]*)$/);
+  if (!match) return false;
+  const tail = match[1];
+  const completeBareSingulars = new Set([
+    'access',
+    'authenticity',
+    'commerce',
+    'context',
+    'control',
+    'discovery',
+    'identity',
+    'ownership',
+    'permission',
+    'provenance',
+    'trust',
+  ]);
+  if (completeBareSingulars.has(tail)) return false;
+  if (tail.endsWith('s') && !tail.endsWith('ss')) return false;
+  return true;
 }
 
 function cleanMetadataEnding(value) {

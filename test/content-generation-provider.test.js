@@ -548,6 +548,41 @@ test('generated seoDescription repairs dangling truncated metadata', async () =>
   assert.doesNotMatch(article.seoDescription, /\bof$/i);
 });
 
+test('generated seoDescription repairs structurally dangling coordinated metadata', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const excerpt = 'EVEN’s appointment of Josh Remsberg points to direct-to-fan infrastructure pressure across music businesses.';
+  const cases = [
+    'EVEN’s appointment of Josh Remsberg signals a deeper push to connect direct-to-fan activity with labels, distributors, managers, merchandise partners and industry',
+    'A source-backed article about audience ownership, direct relationships and creator',
+    'A source-backed article about direct commerce with labels and',
+    'A source-backed article about creator relationships with',
+  ];
+
+  for (const seoDescription of cases) {
+    const article = validateGeneratedArticle(validArticle(sourceId, { excerpt, seoDescription }), context);
+    assert.equal(article.seoDescription, excerpt, seoDescription);
+  }
+});
+
+test('generated seoDescription keeps complete unpunctuated metadata', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const completeDescriptions = [
+    'A source-backed article about creator identity and ownership',
+    'A source-backed article about creators and fans',
+    'A source-backed article about provenance and trust',
+    'A source-backed article about creator control',
+  ];
+
+  for (const seoDescription of completeDescriptions) {
+    const article = validateGeneratedArticle(validArticle(sourceId, { seoDescription }), context);
+    assert.equal(article.seoDescription, seoDescription, seoDescription);
+  }
+});
+
 test('generated metadata already within limits is unchanged', async () => {
   const config = await makeConfig();
   const context = await makeContext(config);
