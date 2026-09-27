@@ -405,8 +405,9 @@ function originalSourceLinks(item = {}) {
 
 function brainCoveragePill(value) {
   const normalized = String(value || '').toLowerCase();
+  const display = normalized === 'conflict' ? 'Guardrails' : (value || 'Unknown');
   const tone = normalized.includes('strong') ? 'good' : normalized.includes('needs') ? 'bad' : 'warn';
-  return `<span class="pill ${tone}">Brain: ${escapeHtml(value || 'Unknown')}</span>`;
+  return `<span class="pill ${tone}">Brain: ${escapeHtml(display)}</span>`;
 }
 
 function discoveryClassPill(value) {

@@ -7,6 +7,7 @@ import {
   buildSourceRegistry,
   classifyDiscoveryCandidate,
   clusterSourceItems,
+  computeBrainCoverage,
   computeNextScanDelayMs,
   DEFAULT_SOURCE_REGISTRY,
   dedupeSourceItems,
@@ -211,6 +212,53 @@ test('recommendation selection returns fewer than twenty when credible candidate
   const selected = selectRecommendedOpportunities(opportunities, { trendResearch: { recommendationTotalLimit: 20, recommendationCategoryLimit: 5 } });
   assert.equal(selected.length, 5);
   assert.ok(selected.every((item) => item.category === 'Music'));
+});
+
+test('Brain coverage treats cautionary claim guardrails as coverage rather than conflict', () => {
+  const coverage = computeBrainCoverage({
+    title: 'Michael Smith streaming fraud shows why real customer activity matters',
+    category: 'Music',
+    keywords: ['streaming', 'fraud', 'customer', 'commerce'],
+  }, [
+    {
+      id: 'brain:facts/approved-public-claims',
+      title: 'Approved Public Claims',
+      path: 'content-agent/knowledge/facts/approved-public-claims.md',
+      text: 'Certifyd supports creator identity, receipts and direct commerce. Ownership language can be risky and needs founder decision before absolute claims.',
+    },
+    {
+      id: 'brain:investors/business-model',
+      title: 'Business Model',
+      path: 'content-agent/knowledge/investors/business-model.md',
+      text: 'Direct customer commerce and paid customer activity are core business signals.',
+    },
+    {
+      id: 'brain:founder-decisions',
+      title: 'Founder Decisions',
+      path: 'content-agent/knowledge/founder-decisions.md',
+      text: 'Streaming fraud is useful only when framed around real customer activity and review-safe anti-fraud commentary.',
+    },
+  ]);
+
+  assert.equal(coverage.level, 'Strong');
+  assert.match(coverage.explanation, /claim guardrails/i);
+});
+
+test('Brain coverage still flags explicit blocking conflicts', () => {
+  const coverage = computeBrainCoverage({
+    title: 'Creator commerce claim',
+    category: 'Creator Commerce',
+    keywords: ['commerce', 'claim'],
+  }, [
+    {
+      id: 'brain:blocked-claim',
+      title: 'Blocked Claim',
+      path: 'content-agent/knowledge/blocked-claim.md',
+      text: 'This commerce claim contradicts approved public claims and must not be used.',
+    },
+  ]);
+
+  assert.equal(coverage.level, 'Conflict');
 });
 
 test('discovery classification protects core music-rights territory', () => {

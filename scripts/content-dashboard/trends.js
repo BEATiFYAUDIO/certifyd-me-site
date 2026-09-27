@@ -1934,12 +1934,16 @@ async function walkMarkdown(dir, callback) {
   }
 }
 
-function computeBrainCoverage(cluster, brainRecords) {
+export function computeBrainCoverage(cluster, brainRecords) {
   const terms = new Set([...cluster.keywords, cluster.category.toLowerCase(), ...String(cluster.title).toLowerCase().split(/\W+/).filter((word) => word.length > 4)]);
   const relevant = brainRecords.map((record) => ({ record, score: scoreBrainRecord(record, terms) })).filter((item) => item.score > 0).sort((a, b) => b.score - a.score).slice(0, 5);
-  const conflict = relevant.some(({ record }) => /prohibited|risky|ambiguous|needs founder decision/i.test(record.text));
+  const conflict = relevant.some(({ record }) => hasBlockingBrainConflict(record.text));
+  const guardrails = relevant.some(({ record }) => /prohibited|risky|ambiguous|needs founder decision/i.test(record.text));
   const level = conflict ? 'Conflict' : relevant.length >= 3 ? 'Strong' : relevant.length ? 'Partial' : 'Needs source';
-  return { level, records: relevant.map(({ record }) => record), explanation: relevant.length ? `Matched ${relevant.length} approved Brain record${relevant.length === 1 ? '' : 's'}.` : 'No relevant approved Brain record was found.' };
+  const explanation = relevant.length
+    ? `Matched ${relevant.length} approved Brain record${relevant.length === 1 ? '' : 's'}${guardrails && !conflict ? ' with claim guardrails.' : ''}.`
+    : 'No relevant approved Brain record was found.';
+  return { level, records: relevant.map(({ record }) => record), explanation };
 }
 
 function scoreBrainRecord(record, terms) {
@@ -1947,6 +1951,10 @@ function scoreBrainRecord(record, terms) {
   let score = 0;
   for (const term of terms) if (term && text.includes(term)) score += term.includes(' ') ? 2 : 1;
   return score;
+}
+
+function hasBlockingBrainConflict(text) {
+  return /\b(?:conflicts? with|contradicts?|incompatible with|must not be used|do not use|blocked|deprecated|obsolete|rejected)\b/i.test(String(text || ''));
 }
 
 async function evaluateClusterWithQwen(config, cluster, coverage, options = {}) {
