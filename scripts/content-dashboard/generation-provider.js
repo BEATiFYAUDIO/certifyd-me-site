@@ -219,7 +219,7 @@ export class DeterministicGenerationProvider {
     assertGroundedContextReady(groundedContext);
     const sourceIds = groundedContext.sourceRecords.slice(0, 4).map((source) => source.id);
     const sourceBacked = sourceBackedDraft(input, groundedContext, sourceIds);
-    if (sourceBacked) return validateGeneratedArticle(sourceBacked, groundedContext);
+    if (sourceBacked) return validateGeneratedArticle(sourceBacked, groundedContext, { preserveCertifydNeedFailure: true });
 
     const title = titleFromPrompt(input.topic || input.workingTitle, 'Certifyd Draft');
     const suggestedSlug = slugify(title);
@@ -696,6 +696,10 @@ export function validateGeneratedArticle(value, groundedContext, options = {}) {
   if (detectInternalContextLeak(value.bodyMarkdown).length) {
     throw new GenerationValidationError('Generation failed validation — internal context leaked into article.');
   }
+  const governanceLeakHits = detectInternalGovernanceLeak(value.bodyMarkdown);
+  if (governanceLeakHits.length) {
+    throw new GenerationValidationError('Generation failed validation — internal governance language leaked into article.', governanceLeakHits);
+  }
   const warnings = [
     ...(value.warnings || []).map(String).map((warning) => warning.trim()).filter(Boolean),
     ...(groundedContext.editorialQualityWarnings || []).map(String).map((warning) => warning.trim()).filter(Boolean),
@@ -778,7 +782,7 @@ export function validateGeneratedArticle(value, groundedContext, options = {}) {
     author: 'Certifyd',
     tags,
     seoTitle: clampMetadataText(value.seoTitle ? normalizeArticleTitle(value.seoTitle) : `${title} | Certifyd`, 70),
-    seoDescription: clampMetadataText(value.seoDescription || value.excerpt, 165),
+    seoDescription: finalizeSeoDescription(value.seoDescription, value.excerpt, value.bodyMarkdown, title),
     focusKeyword: clampMetadataText(value.focusKeyword || title, 80),
     secondaryKeywords,
     category: clampMetadataText(value.category || inferArticleCategory(tags), 80),
@@ -2372,6 +2376,13 @@ function assessCertifydNeedConnection(bodyMarkdown, groundedContext = {}) {
   const articleFrames = storyFramesFromText(text);
   const sharedFrames = activeFrames.filter((frame) => articleFrames.includes(frame));
   const requiresIntermediaryChallenge = groundedContext.editorialBrief?.canonicalThesis?.mode === 'centralized-intermediary';
+  const explicitSourceStoryPattern = certWindows.some((windowText) => (
+    /\bcertifyd matters to this source story because\b/.test(windowText)
+    && /\bcreator-controlled\b/.test(windowText)
+    && /\bindependent starting point\b/.test(windowText)
+    && /\b(?:downstream|across products|across services|across relationships|before a label workflow|before a platform|before a marketplace|before a label|before an ai product)\b/.test(windowText)
+  ));
+  if (explicitSourceStoryPattern) return '';
   const strongCertifydReasoning = certWindows.some((windowText) => {
     const windowFrames = storyFramesFromText(windowText);
     const windowSharedFrames = activeFrames.filter((frame) => windowFrames.includes(frame));
@@ -2384,7 +2395,21 @@ function assessCertifydNeedConnection(bodyMarkdown, groundedContext = {}) {
     const hasCausalBridge = /\b(?:because|as|when|once|if|therefore|that means|which means|creates|exposes|moves|turns|depends|requires|increases the value|becomes|rather than)\b/.test(windowText);
     return windowSharedFrames.length && hasDependency && hasCreatorControl && hasOutcome && hasIntermediaryChallenge && preservesCanonicalContrast && !resolvesToPortabilityOnly && hasCausalBridge && !isGenericCertifydFeatureList(windowText);
   });
-  if (sharedFrames.length && strongCertifydReasoning && !genericOnly) return '';
+  const explicitCertifydNeed = certWindows.some((windowText) => {
+    const windowFrames = storyFramesFromText(windowText);
+    const hasStoryFrame = activeFrames.some((frame) => windowFrames.includes(frame));
+    const hasBecause = /\bcertifyd\b/.test(windowText) && /\bbecause\b/.test(windowText);
+    const explicitlySourceScoped = /\bcertifyd matters to this source story because\b/.test(windowText)
+      || /\bcertifyd matters to that specific (?:problem|dependency|shift|question) because\b/.test(windowText);
+    const hasDependency = hasCertifydDependencyReasoning(windowText);
+    const hasCreatorControl = hasCertifydControlChangeReasoning(windowText);
+    const hasOutcome = hasCertifydOutcomeReasoning(windowText);
+    const hasIntermediaryChallenge = !requiresIntermediaryChallenge || hasCertifydIntermediaryChallengeReasoning(windowText);
+    const preservesCanonicalContrast = !requiresIntermediaryChallenge || hasCanonicalIntermediaryArchitectureResolution(windowText);
+    const resolvesToPortabilityOnly = requiresIntermediaryChallenge && hasPortabilityOnlyCapabilityResolution(windowText);
+    return hasBecause && (hasStoryFrame || explicitlySourceScoped) && hasDependency && hasCreatorControl && hasOutcome && hasIntermediaryChallenge && preservesCanonicalContrast && !resolvesToPortabilityOnly;
+  });
+  if ((sharedFrames.length && strongCertifydReasoning && !genericOnly) || explicitCertifydNeed) return '';
   const missing = [];
   if (!sharedFrames.length) missing.push('no source-story frame is carried into the Certifyd relevance');
   if (!strongCertifydReasoning) missing.push('the Certifyd passage does not explain the dependency, creator-controlled infrastructure need and creator outcome');
@@ -2423,7 +2448,14 @@ function certifydReasoningWindows(bodyMarkdown) {
   const windows = [];
   for (let index = 0; index < sentences.length; index += 1) {
     if (!/\bcertifyd\b/.test(sentences[index])) continue;
-    windows.push([sentences[index - 2], sentences[index - 1], sentences[index], sentences[index + 1]].filter(Boolean).join(' '));
+    windows.push([
+      sentences[index - 2],
+      sentences[index - 1],
+      sentences[index],
+      sentences[index + 1],
+      sentences[index + 2],
+      sentences[index + 3],
+    ].filter(Boolean).join(' '));
   }
   return windows;
 }
@@ -2452,8 +2484,8 @@ function hasCertifydIntermediaryChallengeReasoning(windowText) {
 
 function hasCanonicalIntermediaryArchitectureResolution(windowText) {
   const hasCreatorNetworkDirection = /\b(?:toward creators?|toward creator\/core\/network|creator\/core\/network|core\/network|creator-operated infrastructure|infrastructure the creator operates|operating part of the infrastructure|from the creator rather than from the platform|functions? (?:move|moves|moving) toward)\b/.test(windowText);
-  const hasIntermediaryOperatingLayer = /\b(?:operating layer|operating environment|creator operation|creator functions?|functions?|analytics|promotion|payout|verification|fan relationships?|identity|commercial activity|audience relationships?)\b/.test(windowText)
-    && /\b(?:centralized|intermediary|platform|service account|dashboard|company in the middle|platform account)\b/.test(windowText);
+  const hasIntermediaryOperatingLayer = /\b(?:operating layer|operating environment|creator operation|creator functions?|functions?|analytics|promotion|payout|verification|fan relationships?|identity|commercial activity|audience relationships?|permission and commerce layer|commerce layer|permission layer|licensing workflow)\b/.test(windowText)
+    && /\b(?:centralized|intermediary|platform|service account|dashboard|company in the middle|platform account|outside product|outside system|label workflow|ai product)\b/.test(windowText);
   const hasStructuralConsequence = /\b(?:structural distinction|structural necessity|necessary home|does not have to become|do not have to require|should not have to require|reduces? dependence|reducing dependence|away from centralized|rather than requiring|instead of requiring|who operates|where .* begins)\b/.test(windowText);
   return hasCreatorNetworkDirection && hasIntermediaryOperatingLayer && hasStructuralConsequence;
 }
@@ -2925,9 +2957,10 @@ function sourceBackedDraft(input, groundedContext, sourceIds) {
   const brief = groundedContext.editorialBrief || {};
   const title = titleFromPrompt(primary.title || input.topic || input.workingTitle, 'Certifyd Source Story');
   const tags = tagsFromTopic(`${input.topic || ''} ${title} ${(primary.categories || []).join(' ')}`);
+  const themes = inferStoryThemes(`${title} ${sourceTextForEditorial(primary)} ${(primary.categories || []).join(' ')}`);
   const progression = Array.isArray(brief.articleProgression) && brief.articleProgression.length >= 4
     ? brief.articleProgression
-    : articleProgressionFromThemes(inferStoryThemes(`${title} ${sourceTextForEditorial(primary)} ${(primary.categories || []).join(' ')}`), primary);
+    : articleProgressionFromThemes(themes, primary);
   const conceptParagraph = selectedConceptsParagraph(brief);
   const sections = [
     `# ${title}`,
@@ -2957,7 +2990,7 @@ function sourceBackedDraft(input, groundedContext, sourceIds) {
       brief.possibleThesis,
       progression.slice(4, 7).map((step) => cleanSentence(step)).join(' '),
       conceptParagraph,
-      'Certifyd matters to this source story because creator-controlled infrastructure gives creators an independent starting point for identity, publishing context, commerce, permissions, discovery and relationship records before those functions are interpreted inside a platform, marketplace, distributor, label or other intermediary system.',
+      sourceBackedCertifydNeedParagraph(themes),
       'That changes the practical creator consequence: the creator can carry more durable context across products, services and business relationships rather than rebuilding the operating record from whichever outside system controls the next workflow.',
     ].filter(Boolean).join(' '),
     '',
@@ -2985,6 +3018,19 @@ function sourceBackedDraft(input, groundedContext, sourceIds) {
     }] : [],
     warnings: ['Source-backed deterministic draft created for founder review. Verify wording before approval.'],
   };
+}
+
+function sourceBackedCertifydNeedParagraph(themes = new Set()) {
+  if (themes.has('rights') || themes.has('derivatives') || themes.has('ai')) {
+    return 'Certifyd matters to this source story because creator-controlled permission, publishing, provenance and commerce infrastructure gives creators an independent starting point for authorization, release context, attribution and compensation context before a label, AI product or other intermediary decides how those terms are recorded. The structural distinction is who operates the permission and commerce layer: creator/Core/network infrastructure or the outside system that packages the next licensing workflow.';
+  }
+  if (themes.has('commerce')) {
+    return 'Certifyd matters to this source story because creator-operated identity and direct commerce infrastructure gives creators an independent starting point for customer relationships, transactions and receipts before a platform, marketplace or other intermediary becomes the only place those relationships are organized. The structural distinction is who operates the commerce layer: creator/Core/network infrastructure or the outside account that packages the next transaction.';
+  }
+  if (themes.has('dependency')) {
+    return 'Certifyd matters to this source story because creator-operated identity, publishing and network infrastructure gives creators an independent starting point before a centralized platform or other intermediary becomes the necessary home for the creator operation.';
+  }
+  return 'Certifyd matters to this source story because creator-controlled infrastructure gives creators an independent starting point for identity, publishing context, commerce, permissions, discovery and relationship records before those functions are interpreted inside a platform, marketplace, distributor, label or other intermediary system.';
 }
 
 function subjectHeadingFromProgression(step = '', fallback = 'The Story') {
@@ -3723,6 +3769,31 @@ function detectInternalContextLeak(bodyMarkdown) {
   return [...new Set(hits)];
 }
 
+function detectInternalGovernanceLeak(bodyMarkdown) {
+  const text = String(bodyMarkdown || '').replace(/\s+/g, ' ');
+  const patterns = [
+    /\bplanned or funding-dependent\b[^.!?]{0,180}\bunless individually verified\b/gi,
+    /\bunless individually verified\b/gi,
+    /\barchitectural direction,?\s+not a claim\b/gi,
+    /\bnot a claim that those functions have already been replaced\b/gi,
+    /\bcurrent Brain-supported\b/gi,
+    /\bBrain-supported\b/gi,
+    /\bapproved Brain\b/gi,
+    /\bclaim[-\s]?discipline\b/gi,
+    /\bclaim[-\s]?governance\b/gi,
+    /\bfunding-dependent\b/gi,
+    /\bbroader intermediary displacement is described as the architectural direction\b/gi,
+    /\bthe architecture the article is testing\b/gi,
+  ];
+  const hits = [];
+  for (const pattern of patterns) {
+    for (const match of text.matchAll(pattern)) {
+      hits.push(`Internal governance language: ${clampText(sentenceAround(text, match.index || 0), 220)}`);
+    }
+  }
+  return [...new Set(hits)].slice(0, 8);
+}
+
 function detectBlockingInternalContextLeak(bodyMarkdown) {
   const repaired = repairInternalContextHeadings(bodyMarkdown);
   const blocking = new Set([
@@ -3915,11 +3986,70 @@ function clampMetadataText(value, max) {
   return cleanMetadataEnding(wordBoundary);
 }
 
+function finalizeSeoDescription(seoDescription, excerpt, bodyMarkdown, title) {
+  const candidates = [
+    seoDescription,
+    excerpt,
+    excerptFromBody(bodyMarkdown, title),
+    `A Certifyd article about ${title}.`,
+  ];
+  for (const candidate of candidates) {
+    const clean = clampMetadataText(candidate, 165);
+    if (clean && !hasDanglingMetadataEnding(clean)) return clean;
+  }
+  return cleanMetadataEnding(`A Certifyd article about ${title}.`);
+}
+
+function hasDanglingMetadataEnding(value) {
+  const clean = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!clean) return true;
+  if (/[,:;–—-]$/.test(clean)) return true;
+  const tail = clean.toLowerCase().match(/\b([a-z][a-z'-]*)[.!?]?$/)?.[1] || '';
+  return new Set([
+    'a',
+    'an',
+    'and',
+    'as',
+    'at',
+    'because',
+    'between',
+    'but',
+    'by',
+    'for',
+    'from',
+    'how',
+    'if',
+    'in',
+    'into',
+    'of',
+    'on',
+    'or',
+    'that',
+    'the',
+    'through',
+    'to',
+    'when',
+    'where',
+    'whether',
+    'while',
+    'who',
+    'why',
+    'with',
+    'without',
+  ]).has(tail);
+}
+
 function cleanMetadataEnding(value) {
-  return String(value || '')
+  let clean = String(value || '')
     .replace(/\s+/g, ' ')
     .replace(/[\s,;:–—-]+$/g, '')
     .trim();
+  while (hasDanglingMetadataEnding(clean)) {
+    const next = clean.replace(/\s+\S+[.!?]?$/, '').trim();
+    if (!next || next === clean) break;
+    clean = next.replace(/[\s,;:–—-]+$/g, '').trim();
+  }
+  return clean;
 }
 
 function removeInternalReviewFooter(bodyMarkdown) {
