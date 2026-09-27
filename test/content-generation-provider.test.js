@@ -977,7 +977,7 @@ test('OpenAI final writing receives no Brain context when source-only reasoning 
   });
   await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
   assert.match(calls[1].input, /RELEVANT CERTIFYD BRAIN/);
-  assert.match(calls[1].input, /No selected Brain facts supplied/i);
+  assert.match(calls[1].input, /No selected publishable Brain facts supplied/i);
   assert.doesNotMatch(calls[1].input, /A payout is the movement of allocated earnings/i);
   assert.doesNotMatch(calls[1].input, /Certifyd profiles describe creator-controlled identity/i);
   assert.match(calls[1].input, /Because no meaningful Certifyd Brain was selected, do not manufacture a Certifyd product connection/i);
@@ -1051,6 +1051,85 @@ test('OpenAI Brain context can reach final writing only after source-only reason
   assert.match(calls[1].input, /Because relevant Certifyd Brain was selected, develop a real Certifyd perspective/i);
   assert.match(calls[1].input, /must never be used as evidence for the external event/i);
   assert.deepEqual(context.allowedBrainSourceIds, ['brain:capabilities/profiles']);
+});
+
+test('OpenAI final writing separates publishable Brain facts from silent governance constraints', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  const file = path.join(config.siteRoot, 'content-agent/knowledge/capabilities/partner-integrations.md');
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  await fs.writeFile(file, [
+    '# Partner Integrations',
+    '',
+    '## Current Status',
+    'BETA',
+    '',
+    '## Supported Current Claims',
+    '',
+    '- Certifyd Core supports creator identity and direct commerce context for operator workflows.',
+    '',
+    '## Qualified Claims',
+    '',
+    '- Certifyd’s partner integrations are planned or funding-dependent unless individually verified.',
+    '',
+    '## Prohibited Claims',
+    '',
+    '- Certifyd has no approved public claim for analytics and reporting capabilities today.',
+  ].join('\n'));
+  await writeTrendSources(config, [{
+    id: 'partner-commerce-story',
+    publisher: 'Example Music',
+    publishedAt: '2026-09-09T09:00:00.000Z',
+    title: 'Creator commerce platform changes operator workflow',
+    summary: 'A source story reports a creator commerce platform update involving operator workflow, identity context and direct customer relationships.',
+    articleUrl: 'https://example.test/partner-commerce-story',
+    categories: ['Music', 'Commerce'],
+    certifydRelevanceScore: 12,
+  }]);
+  const context = await makeContext(config, {
+    topic: 'Creator commerce platform changes operator workflow',
+    trendSourceItemIds: 'partner-commerce-story',
+  });
+  completeEditorialGate(context, {
+    selectedCertifydConcepts: [{
+      concept: 'Partner integrations identity direct commerce',
+      relevance: 'Relevant because the source-only thesis turns on operator workflow, identity context and direct customer relationships.',
+      sourceConnection: 'The source facts identify a creator commerce platform update involving operator workflow and direct customer relationships.',
+    }],
+  });
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({
+      calls,
+      reasoning: validReasoning({
+        eventSummary: 'A source story reports a creator commerce platform update.',
+        editorialTension: 'The story turns on where creator commerce and customer context are operated.',
+        hiddenQuestion: 'Who controls the operating records around creator commerce?',
+        whatThisReveals: 'Creator commerce depends on identity context and direct customer relationships.',
+        editorialIdea: 'The source facts support a narrow operating-records argument.',
+        editorialIdeaSupport: [{ idea: 'The story turns on commerce and identity context.', factIds: ['partner-commerce-story'] }],
+        creatorConsequence: 'Creators need durable context around commerce and customer relationships.',
+        thesis: 'A creator commerce platform update shows why operator-controlled context matters.',
+      }),
+      article: validArticle(context.sourceRecords[0].id),
+    }),
+  });
+  await provider.generateArticle({
+    actorEmail: 'writer@example.test',
+    topic: 'Creator commerce platform changes operator workflow',
+    audience: 'Creators',
+    objective: 'Explain the source facts.',
+    trendSourceItemIds: 'partner-commerce-story',
+  }, context);
+  const finalPrompt = calls[1].input;
+  assert.match(finalPrompt, /RELEVANT CERTIFYD BRAIN/);
+  assert.match(finalPrompt, /Certifyd Core supports creator identity and direct commerce context/i);
+  assert.match(finalPrompt, /SILENT CERTIFYD CLAIM CONSTRAINTS/);
+  assert.match(finalPrompt, /Use this record's status and claim limits silently/i);
+  assert.doesNotMatch(finalPrompt, /planned or funding-dependent/i);
+  assert.doesNotMatch(finalPrompt, /unless individually verified/i);
+  assert.doesNotMatch(finalPrompt, /no approved public claim/i);
+  assert.doesNotMatch(finalPrompt, /\bQualified:/i);
+  assert.doesNotMatch(finalPrompt, /\bProhibited:/i);
 });
 
 test('OpenAI final writing receives source facts editorial direction and relevant Brain together', async () => {
@@ -1756,7 +1835,7 @@ test('why-Certifyd validation accepts EVEN direct-to-fan story with concrete Cor
   assert.doesNotThrow(() => validateGeneratedArticle(article, context));
 });
 
-test('why-Certifyd validation repairs EVEN passage that relies on internal funding qualifiers', () => {
+test('why-Certifyd validation rejects EVEN passage that relies on internal funding qualifiers', () => {
   const context = whyCertifydContext({
     title: 'EVEN appoints Josh Remsberg to expand music operations',
     summary: 'The source story says EVEN is expanding direct-to-fan music commerce operations, including artist storefronts, fan purchases and customer relationships that can otherwise sit inside a commerce intermediary.',
@@ -1771,9 +1850,10 @@ test('why-Certifyd validation repairs EVEN passage that relies on internal fundi
     'That internal qualifier tries to avoid overclaiming, but it does not give readers a concrete explanation of how Certifyd Core changes the creator’s relationship to identity, publishing context, direct commerce or customer records.',
     'The public article should instead explain the operating-layer question in ordinary reader language: where the artist’s business records live, who controls the customer relationship, and how creator-operated infrastructure changes the dependency.',
   ]);
-  const validated = validateGeneratedArticle(article, context, { preserveCertifydNeedFailure: true });
-  assert.doesNotMatch(validated.bodyMarkdown, /planned or funding-dependent|unless individually verified|architectural direction, not a claim/i);
-  assert.match(validated.bodyMarkdown, /not generally available unless specifically verified/i);
+  assert.throws(
+    () => validateGeneratedArticle(article, context, { preserveCertifydNeedFailure: true }),
+    /internal governance language leaked into article/i,
+  );
 });
 
 test('why-Certifyd validation rejects centralized-platform story that only complements the intermediary', () => {
@@ -3859,12 +3939,19 @@ test('generation validation rejects leaked editorial reasoning step headings', a
   );
 });
 
-test('generation validation repairs internal governance phrasing in public article body', async () => {
+test('generation validation rejects internal governance narration in public article body', async () => {
   const config = await makeConfig();
   const context = await makeContext(config);
   const sourceId = context.sourceRecords[0].id;
-  const provider = new OllamaQwenGenerationProvider(config, {
-    fetchImpl: makeOllamaFetch(validArticle(sourceId, {
+  const leakedParagraphs = [
+    'Certifyd’s partner integrations are planned or funding-dependent unless individually verified. The broader aim of reducing dependence on centralized intermediaries is an architectural direction, not a claim that those functions have already been replaced.',
+    'Certifyd is designed to support partner and operator participation, though partner integrations are not generally available unless specifically verified. That distinction matters. The goal is not to claim that every commercial relationship has already moved out of centralized services.',
+    'Analytics and reporting alone would not fix that control problem; Certifyd has no approved public claim for those capabilities today.',
+    'Current Brain-supported Core capabilities can be named, while broader intermediary displacement is described as the architectural direction the article is testing.',
+    'That is an internal claim-governance boundary, not public article language.',
+  ];
+  for (const paragraph of leakedParagraphs) {
+    const article = validArticle(sourceId, {
       title: 'Internal Governance Leak Draft',
       suggestedSlug: 'internal-governance-leak-draft',
       bodyMarkdown: [
@@ -3874,16 +3961,41 @@ test('generation validation repairs internal governance phrasing in public artic
         '',
         'Certifyd matters because creator-controlled infrastructure gives creators a more durable starting point for identity, publishing context and direct commerce before those records enter an intermediary system.',
         '',
-        'Current Brain-supported Core capabilities can be named, while broader intermediary displacement is described as the architectural direction the article is testing.',
+        paragraph,
         '',
-        'That is an internal claim-governance boundary, not public article language.',
+        'The public article should explain the operating-layer question in ordinary reader language: where the artist’s business records live, who controls the customer relationship, and how creator-operated infrastructure changes the dependency.',
       ].join('\n'),
-    })),
+    });
+    assert.throws(
+      () => validateGeneratedArticle(article, context, { preserveCertifydNeedFailure: true }),
+      /internal governance language leaked into article/i,
+      paragraph,
+    );
+  }
+});
+
+test('generation validation allows reader-facing product status without claim-governance narration', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const sourceId = context.sourceRecords[0].id;
+  const article = validArticle(sourceId, {
+    title: 'Public Product Status Draft',
+    suggestedSlug: 'public-product-status-draft',
+    bodyMarkdown: [
+      '# Public Product Status Draft',
+      '',
+      'A source story describes a platform moving more creator commerce and audience relationship work into one service account.',
+      '',
+      'Certifyd Core is currently in beta.',
+      '',
+      'Certifyd is building toward a network where creators can operate more of the infrastructure around their work.',
+      '',
+      'Certifyd does not currently replace label, distribution or licensing services.',
+      '',
+      'That limitation is useful for readers because it keeps the product discussion grounded while still explaining the operating-layer question: where the artist’s business records live, who controls the customer relationship, and how creator-operated infrastructure changes the dependency.',
+    ].join('\n'),
   });
-  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Leak test', audience: 'Creators', objective: 'Test validation.' }, context);
-  assert.doesNotMatch(article.bodyMarkdown, /Brain-supported|claim-governance|the architecture the article is testing/i);
-  assert.match(article.bodyMarkdown, /Current Certifyd Core capabilities/i);
-  assert.match(article.bodyMarkdown, /review boundary/i);
+  assert.doesNotThrow(() => validateGeneratedArticle(article, context, { preserveCertifydNeedFailure: true }));
 });
 
 test('generation validation repairs boilerplate headings without blocking usable drafts', async () => {

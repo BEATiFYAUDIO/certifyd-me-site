@@ -693,7 +693,6 @@ export function validateGeneratedArticle(value, groundedContext, options = {}) {
   if (value.coverImage && typeof value.coverImage !== 'string') throw new GenerationValidationError('Generated coverImage is malformed.');
   if (value.bodyMarkdown.length > 18000) throw new GenerationValidationError('Generated article is too long.');
   value.bodyMarkdown = repairInternalContextHeadings(value.bodyMarkdown);
-  value.bodyMarkdown = repairInternalGovernanceLanguage(value.bodyMarkdown);
   if (detectInternalContextLeak(value.bodyMarkdown).length) {
     throw new GenerationValidationError('Generation failed validation — internal context leaked into article.');
   }
@@ -1046,12 +1045,12 @@ function buildArticleSystemInstruction() {
 
 function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
   const context = compactGroundedContextForModel({ ...groundedContext, approvedKnowledge: writingContext.approvedKnowledge });
-  const selectedBrainFacts = writingContext.approvedKnowledge.map(formatSelectedBrainFactsForPrompt).filter(Boolean).join('\n') || '- No selected Brain facts supplied.';
-  const approvedKnowledge = writingContext.approvedKnowledge.map(formatBrainKnowledgeForPrompt).join('\n') || '- No Certifyd Brain records selected for final writing.';
+  const selectedBrainFacts = writingContext.approvedKnowledge.map(formatSelectedBrainFactsForPrompt).filter(Boolean).join('\n') || '- No selected publishable Brain facts supplied.';
+  const approvedKnowledge = writingContext.approvedKnowledge.map(formatBrainKnowledgeForPrompt).filter(Boolean).join('\n') || '- No publishable Certifyd Brain facts selected for final writing.';
+  const silentConstraints = formatSilentBrainConstraints(writingContext.approvedKnowledge, context.prohibitedClaims);
   const brainSources = writingContext.approvedKnowledge.map(formatBrainSourceForPrompt);
   const externalSources = context.externalSourceFacts.map(formatExternalSourceForPrompt).join('\n') || '- No external source material attached.';
   const canonicalThesis = formatCanonicalEditorialThesisForPrompt(context.editorialBrief?.canonicalThesis);
-  const prohibited = context.prohibitedClaims.map((item) => `- ${scrubGenericDefinitionForPrompt(item)}`).join('\n') || '- Avoid unsupported claims.';
   const hasSelectedBrain = writingContext.approvedKnowledge.length > 0;
   const hasMultipleSources = context.externalSourceFacts.length > 1;
   const depthGuidance = hasMultipleSources
@@ -1081,8 +1080,8 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
     selectedBrainFacts,
     approvedKnowledge,
     '',
-    'DO NOT CLAIM:',
-    prohibited,
+    'SILENT CERTIFYD CLAIM CONSTRAINTS:',
+    silentConstraints,
     '',
     'EDITORIAL ASSIGNMENT:',
     '- Open by immediately identifying the actual story and primary search entity.',
@@ -1124,13 +1123,13 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
       ? '- Do not default to conclusions such as “the future needs both useful services and durable creator-controlled infrastructure,” “platforms and Certifyd can work together,” or “Certifyd complements these tools.” Those may be true in some stories, but they must not replace the architectural question: why does this function need a centralized company in the middle at all?'
       : '',
     hasSelectedBrain
-      ? '- For centralized-intermediary canonical theses, carry the same canonical argument into the Certifyd answer: identify the function concentrated in the intermediary, state Certifyd’s opposite creator-operated architectural direction, name only currently supported Core capabilities from Brain, describe broader intermediary-dependency reduction as architectural direction rather than completed replacement, and explain what changes if supported functions move toward creator/Core/network control.'
+      ? '- For centralized-intermediary canonical theses, carry the same canonical argument into the Certifyd answer: identify the function concentrated in the intermediary, state Certifyd’s opposite creator-operated direction, name only currently supported Core capabilities from Brain, avoid implying completed replacement of unsupported outside-platform functions, and explain what changes if supported functions move toward creator/Core/network control.'
       : '',
     hasSelectedBrain
       ? '- Treat selected Brain capability records as current factual evidence, not as the editorial answer. A narrower capability such as release records, catalog context, attribution context or portable records must support the canonical thesis; it must not replace, narrow or redefine the thesis into “creators can carry durable context between services.”'
       : '',
     hasSelectedBrain
-      ? '- Do not insert defensive complementarity language merely because current Brain does not prove Certifyd replaces every outside-platform function. Current/future claim discipline is enough; the conclusion should still preserve the canonical contrast between a platform-operated creator layer and functions moving toward creator/Core/network infrastructure.'
+      ? '- Do not insert defensive complementarity language merely because current Brain does not prove Certifyd replaces every outside-platform function. Obey current/future capability limits silently; the conclusion should still preserve the canonical contrast between a platform-operated creator layer and functions moving toward creator/Core/network infrastructure.'
       : '',
     hasSelectedBrain
       ? '- For centralized creator platforms or intermediaries, identify what part of the creator operation is being pulled into the service: identity, catalog context, publishing, analytics, promotion, payout access, commerce, permissions, discovery, fan relationships, or operating records.'
@@ -1226,7 +1225,8 @@ function buildUserPrompt(input, groundedContext) {
   const guardrails = buildTopicGuardrails(input).map((item) => `- ${item}`).join('\n');
   const claims = context.approvedClaims.map((item) => `- ${item}`).join('\n') || '- No approved claims selected.';
   const productFacts = context.productFacts.map((item) => `- ${item}`).join('\n') || '- No product facts selected.';
-  const approvedKnowledge = context.approvedKnowledge.map(formatBrainKnowledgeForPrompt).join('\n') || '- No additional approved Certifyd knowledge selected.';
+  const approvedKnowledge = context.approvedKnowledge.map(formatBrainKnowledgeForPrompt).filter(Boolean).join('\n') || '- No additional publishable Certifyd knowledge selected.';
+  const silentConstraints = formatSilentBrainConstraints(context.approvedKnowledge, context.prohibitedClaims);
   const externalSources = context.externalSourceFacts.map(formatExternalSourceForPrompt).join('\n') || '- No external source material attached.';
   const editorialBrief = formatEditorialBriefForPrompt(context.editorialBrief);
   const prohibited = context.prohibitedClaims.map((item) => `- ${item}`).join('\n') || '- Avoid unsupported claims.';
@@ -1257,13 +1257,13 @@ function buildUserPrompt(input, groundedContext) {
     editorialBrief,
     '',
     'Approved Certifyd context:',
-    'Claims about Certifyd selected after the editorial brief. Respect status and confidence qualifiers.',
+    'Publishable Certifyd facts selected after the editorial brief. Use these as public evidence.',
     claims,
     approvedKnowledge,
     productFacts,
     '',
-    'Do not claim:',
-    prohibited,
+    'Silent Certifyd claim constraints:',
+    silentConstraints,
     '',
     'Editorial angle:',
     hasExternalSources
@@ -1341,26 +1341,17 @@ function formatExternalSourceForPrompt(item = {}) {
 }
 
 function formatBrainKnowledgeForPrompt(item) {
+  const facts = publishableBrainFacts(item).slice(0, 6);
+  if (!facts.length) return '';
   const lines = [
-    `- [${item.id}] ${item.theme}${item.currentStatus ? ` — status: ${item.currentStatus}` : ''}${item.confidence ? `; confidence: ${item.confidence}` : ''}`,
+    `- [${item.id}] ${item.theme}${publicStatusLabel(item.currentStatus) ? ` — ${publicStatusLabel(item.currentStatus)}` : ''}`,
   ];
-  for (const claim of item.supportedClaims || []) lines.push(`  Supported: ${scrubGenericDefinitionForPrompt(claim)}`);
-  for (const claim of item.qualifiedClaims || []) lines.push(`  Qualified: ${scrubGenericDefinitionForPrompt(claim)}`);
-  for (const claim of item.safeWording || []) lines.push(`  Safe wording: ${scrubGenericDefinitionForPrompt(claim)}`);
-  for (const claim of item.prohibitedClaims || []) lines.push(`  Prohibited: ${scrubGenericDefinitionForPrompt(claim)}`);
-  if (!(item.supportedClaims || []).length && !(item.qualifiedClaims || []).length && !(item.safeWording || []).length) {
-    lines.push(`  Context: ${scrubGenericDefinitionForPrompt(item.excerpt)}`);
-  }
+  for (const fact of facts) lines.push(`  Fact: ${scrubGenericDefinitionForPrompt(fact)}`);
   return lines.join('\n');
 }
 
 function formatSelectedBrainFactsForPrompt(item) {
-  const facts = [
-    ...(item.supportedClaims || []),
-    ...(item.qualifiedClaims || []),
-    ...(item.safeWording || []),
-  ].map((claim) => String(claim || '').trim()).filter(Boolean).slice(0, 6);
-  if (!facts.length && item.excerpt) facts.push(String(item.excerpt).slice(0, 420));
+  const facts = publishableBrainFacts(item).slice(0, 6);
   if (!facts.length) return '';
   return [`- [${item.id}] ${item.theme || item.title || 'Selected Brain record'}`, ...facts.map((fact) => `  ${scrubGenericDefinitionForPrompt(fact)}`)].join('\n');
 }
@@ -1371,12 +1362,50 @@ function formatBrainSourceForPrompt(item) {
     title: item.title || item.theme || 'Selected Brain record',
     status: item.currentStatus || '',
     confidence: item.confidence || '',
-    relevantFacts: [
-      ...(item.supportedClaims || []),
-      ...(item.qualifiedClaims || []),
-      ...(item.safeWording || []),
-    ].map(scrubGenericDefinitionForPrompt).filter(Boolean).slice(0, 6),
+    relevantFacts: publishableBrainFacts(item).map(scrubGenericDefinitionForPrompt).filter(Boolean).slice(0, 6),
   };
+}
+
+function publishableBrainFacts(item = {}) {
+  const claims = [
+    ...(item.supportedClaims || []),
+    ...(item.safeWording || []),
+  ].map((claim) => String(claim || '').trim()).filter(Boolean);
+  const facts = claims.filter(isPublishableBrainFact);
+  if (!facts.length && item.excerpt && isPublishableBrainFact(item.excerpt)) facts.push(String(item.excerpt).slice(0, 420));
+  return facts;
+}
+
+function publicStatusLabel(value) {
+  const status = String(value || '').trim().toUpperCase();
+  if (status === 'BETA') return 'currently in beta';
+  if (status === 'CURRENT' || status === 'APPROVED' || status === 'LIVE') return 'current';
+  if (status === 'PLANNED') return 'planned';
+  return '';
+}
+
+function isPublishableBrainFact(value) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!text) return false;
+  return !isInternalGovernanceSentence(text);
+}
+
+function formatSilentBrainConstraints(knowledge = [], prohibitedClaims = []) {
+  const constraints = [];
+  for (const item of knowledge || []) {
+    const controlText = [
+      ...(item.qualifiedClaims || []),
+      ...(item.prohibitedClaims || []),
+      ...[item.excerpt].filter(Boolean).filter((value) => !isPublishableBrainFact(value)),
+    ].join(' ');
+    if (controlText || /planned|unclear|low|qualified/i.test(String(item.currentStatus || item.confidence || ''))) {
+      constraints.push(`- [${item.id}] Use this record's status and claim limits silently. Do not claim unsupported, unavailable, unverified or prohibited capabilities; do not explain these internal limits to readers.`);
+    }
+  }
+  if (prohibitedClaims.length) {
+    constraints.push('- Additional prohibited-claim records exist. Obey them silently as claim boundaries; do not quote, paraphrase, or narrate those boundaries in the article.');
+  }
+  return constraints.length ? [...new Set(constraints)].join('\n') : '- No additional silent Certifyd claim constraints.';
 }
 
 function scrubGenericDefinitionForPrompt(value) {
@@ -3244,7 +3273,7 @@ function bodyFromMalformedOutput(text, title, input) {
     '',
     'The local AI provider returned malformed JSON, so the dashboard preserved the usable text and marked the draft for founder review.',
     '',
-    'Use the Certifyd Brain evidence and editorial review before publishing.',
+    'Review the source evidence before publishing.',
   ].join('\n');
 }
 
@@ -3774,17 +3803,26 @@ function detectInternalGovernanceLeak(bodyMarkdown) {
   const text = String(bodyMarkdown || '').replace(/\s+/g, ' ');
   const patterns = [
     /\bplanned or funding-dependent\b[^.!?]{0,180}\bunless individually verified\b/gi,
+    /\bnot generally available\b[^.!?]{0,180}\bunless (?:specifically|individually|separately) verified\b/gi,
     /\bunless individually verified\b/gi,
+    /\bunless specifically verified\b/gi,
+    /\bunless separately verified\b/gi,
+    /\bno approved public claim\b/gi,
+    /\bhas no approved public claim\b/gi,
     /\barchitectural direction,?\s+not a claim\b/gi,
+    /\bdirection rather than a claim\b/gi,
     /\bnot a claim that those functions have already been replaced\b/gi,
+    /\bnot evidence that those functions have already been replaced\b/gi,
     /\bcurrent Brain-supported\b/gi,
     /\bBrain-supported\b/gi,
     /\bapproved Brain\b/gi,
+    /\bBrain evidence\b/gi,
     /\bclaim[-\s]?discipline\b/gi,
     /\bclaim[-\s]?governance\b/gi,
     /\bfunding-dependent\b/gi,
     /\bbroader intermediary displacement is described as the architectural direction\b/gi,
     /\bthe architecture the article is testing\b/gi,
+    /\b(?:goal|aim|purpose)\s+is\s+not\s+to\s+claim\b/gi,
   ];
   const hits = [];
   for (const pattern of patterns) {
@@ -3792,23 +3830,27 @@ function detectInternalGovernanceLeak(bodyMarkdown) {
       hits.push(`Internal governance language: ${clampText(sentenceAround(text, match.index || 0), 220)}`);
     }
   }
+  const sentences = text.match(/[^.!?]+[.!?]?/g) || [text];
+  for (const sentence of sentences) {
+    if (isInternalGovernanceSentence(sentence)) {
+      hits.push(`Internal governance language: ${clampText(sentence.trim(), 220)}`);
+    }
+  }
   return [...new Set(hits)].slice(0, 8);
 }
 
-function repairInternalGovernanceLanguage(bodyMarkdown) {
-  return String(bodyMarkdown || '')
-    .replace(/\bcurrent Brain-supported\b/gi, 'current Certifyd')
-    .replace(/\bBrain-supported\b/gi, 'Certifyd')
-    .replace(/\bapproved Brain\b/gi, 'approved Certifyd context')
-    .replace(/\bclaim[-\s]?discipline\b/gi, 'review discipline')
-    .replace(/\bclaim[-\s]?governance\b/gi, 'review boundary')
-    .replace(/\bplanned or funding-dependent\b[^.!?]{0,180}\bunless individually verified\b/gi, 'not generally available unless specifically verified')
-    .replace(/\bunless individually verified\b/gi, 'unless specifically verified')
-    .replace(/\bfunding-dependent\b/gi, 'planned or implementation-specific')
-    .replace(/\barchitectural direction,?\s+not a claim\b/gi, 'direction rather than a claim')
-    .replace(/\bnot a claim that those functions have already been replaced\b/gi, 'not evidence that those functions have already been replaced')
-    .replace(/\bbroader intermediary displacement is described as the architectural direction\b/gi, 'broader intermediary displacement is framed as a longer-term direction')
-    .replace(/\bthe architecture the article is testing\b/gi, 'the argument this article is examining');
+function isInternalGovernanceSentence(value) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  if (!text) return false;
+  const claimGovernance = /\b(?:approved claim|approved claims|approved public claim|approved public claims|claim boundary|claim boundaries|claim governance|claim-governance|claim discipline|brain|evidence status|source-support|validation|validator)\b/.test(text);
+  const controlAction = /\b(?:allowed to|may not|must not|cannot|can not|should not|not claiming|not claim|claim that|state that|say that|describe as|approved as|supported as|verified as)\b/.test(text);
+  if (claimGovernance && controlAction) return true;
+  if (/\b(?:no|not an?|without an?)\s+approved public claim\b/.test(text)) return true;
+  if (/\b(?:has|have)\s+no\s+approved public claim\b/.test(text)) return true;
+  if (/\b(?:not generally available|planned|funding-dependent|implementation-specific)\b[^.!?]{0,140}\bunless\s+(?:specifically|individually|separately)\s+verified\b/.test(text)) return true;
+  if (/\b(?:the|this|that)\s+(?:goal|aim|purpose)\s+is\s+not\s+to\s+claim\b/.test(text)) return true;
+  if (/\bnot evidence that\b[^.!?]{0,120}\b(?:has|have)\s+already\b/.test(text)) return true;
+  return false;
 }
 
 function detectBlockingInternalContextLeak(bodyMarkdown) {
