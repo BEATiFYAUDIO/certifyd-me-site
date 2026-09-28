@@ -34,7 +34,7 @@ function article({ title, slug, date, status = 'published', excerpt = 'Sample ex
   return `---\ntitle: "${title}"\nslug: "${slug}"\ndate: "${date}"\nupdated: "${date}"\nauthor: "Certifyd"\nexcerpt: "${excerpt}"\ncoverImage: "${coverImage}"\ntags:\n  - sample\nstatus: "${status}"\n${noindex ? 'noindex: true\n' : ''}---\n\n# ${title}\n\nBody.\n`;
 }
 
-test('build renders blog index, article pages, homepage section and metadata', async () => {
+test('build renders blog index, article pages, and metadata without publishing posts to the homepage', async () => {
   const root = await makeFixture({
     'older.md': article({ title: 'Older Article', slug: 'older-article', date: '2026-07-20', excerpt: 'Unique older article description.' }),
     'newer.md': article({ title: 'Newer Article', slug: 'newer-article', date: '2026-07-26', excerpt: 'Unique newer article description.' }),
@@ -71,8 +71,10 @@ test('build renders blog index, article pages, homepage section and metadata', a
   assert.match(ansolasRedirect, /http-equiv="refresh" content="0; url=https:\/\/certifyd\.me\/blog\/ansolas-building-what-he-wishes-existed\/"/);
 
   const home = await fs.readFile(path.join(root, 'index.html'), 'utf8');
-  assert.match(home, /Ideas for the Creator-Owned Economy/);
-  assert.match(home, /View all articles/);
+  assert.match(home, /<main>Home<\/main>/);
+  assert.doesNotMatch(home, /Ideas for the Creator-Owned Economy/);
+  assert.doesNotMatch(home, /View all articles/);
+  assert.doesNotMatch(home, /Newer Article/);
   assert.doesNotMatch(home, /Draft Article/);
 
   const sitemap = await fs.readFile(path.join(root, 'sitemap.xml'), 'utf8');
@@ -96,6 +98,49 @@ test('build renders blog index, article pages, homepage section and metadata', a
   const seo = spawnSync(process.execPath, [SEO_VALIDATE_SCRIPT], { cwd: root, encoding: 'utf8' });
   assert.equal(seo.status, 0, seo.stderr);
   assert.match(seo.stdout, /SEO validation passed/);
+});
+
+test('build removes legacy homepage blog injection markers without affecting the blog', async () => {
+  const root = await makeFixture({
+    'article.md': article({ title: 'Homepage Cleanup Article', slug: 'homepage-cleanup-article', date: '2026-07-26' }),
+  });
+  await fs.writeFile(path.join(root, 'index.html'), `<!doctype html>
+<html>
+<head>
+  <title>Certifyd</title>
+  <meta name="description" content="Certifyd test homepage.">
+  <link rel="canonical" href="https://certifyd.me/">
+  <meta property="og:url" content="https://certifyd.me/">
+  <style>
+/* BLOG_STYLES_START */
+.blog-home-section{display:block}
+/* BLOG_STYLES_END */
+  </style>
+</head>
+<body>
+  <main>Home</main>
+<!-- BLOG_RECENT_START -->
+  <section class="wrap blog-home-section">
+    <h2>Ideas for the Creator-Owned Economy.</h2>
+    <article>Homepage Cleanup Article</article>
+  </section>
+<!-- BLOG_RECENT_END -->
+  <!-- Lightboxes -->
+</body>
+</html>`);
+
+  const result = runBuild(root);
+  assert.equal(result.status, 0, result.stderr);
+
+  const home = await fs.readFile(path.join(root, 'index.html'), 'utf8');
+  assert.match(home, /<main>Home<\/main>/);
+  assert.doesNotMatch(home, /BLOG_STYLES_START|BLOG_RECENT_START|blog-home-section/);
+  assert.doesNotMatch(home, /Homepage Cleanup Article/);
+
+  const blogIndex = await fs.readFile(path.join(root, 'blog', 'index.html'), 'utf8');
+  assert.match(blogIndex, /Homepage Cleanup Article/);
+  const articleHtml = await fs.readFile(path.join(root, 'blog', 'homepage-cleanup-article', 'index.html'), 'utf8');
+  assert.match(articleHtml, /<h1>Homepage Cleanup Article<\/h1>/);
 });
 
 test('build keeps branded SVG cover visible but uses raster social image metadata', async () => {

@@ -531,62 +531,6 @@ async function writeArticle(article, template) {
   await fs.writeFile(path.join(outDir, 'index.html'), html);
 }
 
-function renderHomepageArticleCard(article) {
-  return `
-        <article class="home-blog-card">
-          <a class="home-blog-media" href="${localArticlePath(article)}" aria-label="Read ${escapeHtml(article.title)}">
-            <img src="${escapeHtml(article.coverImage)}" alt="${escapeHtml(article.coverImageAlt)}" loading="lazy" decoding="async" onerror="this.src='${DEFAULT_IMAGE}'" />
-          </a>
-          <div class="home-blog-body">
-            <p class="home-blog-meta">${escapeHtml(formatDisplayDate(article.date))} · ${escapeHtml(article.author)}</p>
-            <h3><a href="${localArticlePath(article)}">${escapeHtml(article.title)}</a></h3>
-            <p>${escapeHtml(article.excerpt)}</p>
-          </div>
-        </article>`;
-}
-
-function homepageStyles() {
-  return `${HOME_CSS_START}
-    .blog-home-section{margin-top:clamp(30px,5vw,64px)}
-    .blog-home-panel{border:1px solid var(--border);border-radius:32px;background:linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.025)),rgba(5,24,38,.34);box-shadow:var(--shadow);padding:clamp(22px,4vw,42px)}
-    .blog-home-head{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-bottom:24px}
-    .blog-home-head h2{margin:0;font-size:clamp(34px,5vw,74px);line-height:.9;letter-spacing:-.065em;color:var(--certifyd-text)}
-    .blog-home-head p{max-width:620px;margin:12px 0 0;color:var(--text-secondary);font-size:clamp(16px,1.5vw,20px)}
-    .blog-home-head .btn{flex:0 0 auto;white-space:nowrap;min-width:max-content;min-height:52px;padding:12px 20px;border-radius:18px}
-    .blog-home-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
-    .home-blog-card{overflow:hidden;border:1px solid var(--glass-border);border-radius:24px;background:rgba(2,12,22,.42);min-height:100%;display:flex;flex-direction:column}
-    .home-blog-media{display:block;aspect-ratio:16/9;background:#071421;overflow:hidden}
-    .home-blog-media img{width:100%;height:100%;object-fit:cover;object-position:top center;transform-origin:center top;transition:transform .25s ease}
-    .home-blog-card:hover .home-blog-media img{transform:scale(1.02)}
-    .home-blog-body{padding:18px;display:flex;flex-direction:column;gap:10px;flex:1}
-    .home-blog-meta{margin:0;color:var(--certifyd-orange);font-size:12px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
-    .home-blog-body h3{margin:0;font-size:clamp(21px,2vw,28px);line-height:1;letter-spacing:-.04em;color:#fff}
-    .home-blog-body p{margin:0;color:var(--text-secondary)}
-    .blog-home-empty{margin:0;color:var(--text-secondary)}
-    @media (max-width:860px){.blog-home-panel{border-radius:24px}.blog-home-head{align-items:start;flex-direction:column}.blog-home-grid{grid-template-columns:1fr}.home-blog-body{padding:16px}}
-${HOME_CSS_END}`;
-}
-
-function homepageSection(articles) {
-  const latest = articles.slice(0, 3);
-  const body = latest.length ? `<div class="blog-home-grid">${latest.map(renderHomepageArticleCard).join('\n')}</div>` : '<p class="blog-home-empty">No published articles yet.</p>';
-  return `${HOME_SECTION_START}
-    <section class="wrap blog-home-section" aria-labelledby="blog-home-heading">
-      <div class="blog-home-panel">
-        <div class="blog-home-head">
-          <div>
-            <p class="live-profile-eyebrow">CERTIFYD INTELLIGENCE</p>
-            <h2 id="blog-home-heading">Ideas for the Creator-Owned Economy.</h2>
-            <p>News, research, strategy, and perspective for creators building identity, ownership, commerce, and lasting value around their work.</p>
-          </div>
-          <a class="btn primary" href="/blog/">View all articles</a>
-        </div>
-        ${body}
-      </div>
-    </section>
-${HOME_SECTION_END}`;
-}
-
 function replaceBetween(source, start, end, replacement) {
   const startIndex = source.indexOf(start);
   const endIndex = source.indexOf(end);
@@ -594,22 +538,18 @@ function replaceBetween(source, start, end, replacement) {
   return `${source.slice(0, startIndex)}${replacement}${source.slice(endIndex + end.length)}`;
 }
 
-async function updateHomepage(articles) {
+async function updateHomepage() {
   let html = await fs.readFile(HOME_FILE, 'utf8').catch((error) => {
     if (error.code === 'ENOENT') return '';
     throw error;
   });
   if (!html) return;
 
-  const styles = homepageStyles();
-  const section = homepageSection(articles);
-  const replacedStyles = replaceBetween(html, HOME_CSS_START, HOME_CSS_END, styles);
-  if (replacedStyles) html = replacedStyles;
-  else html = html.replace('  </style>', `\n${styles}\n  </style>`);
+  const withoutStyles = replaceBetween(html, HOME_CSS_START, HOME_CSS_END, '');
+  if (withoutStyles) html = withoutStyles;
 
-  const replacedSection = replaceBetween(html, HOME_SECTION_START, HOME_SECTION_END, section);
-  if (replacedSection) html = replacedSection;
-  else html = html.replace('<!-- Lightboxes -->', `${section}\n\n    <!-- Lightboxes -->`);
+  const withoutSection = replaceBetween(html, HOME_SECTION_START, HOME_SECTION_END, '');
+  if (withoutSection) html = withoutSection;
 
   await fs.writeFile(HOME_FILE, html);
 }
