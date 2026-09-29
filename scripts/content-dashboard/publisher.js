@@ -295,7 +295,6 @@ export class GitHubPullRequestPublisher {
         'feed.xml',
         'robots.txt',
         'sitemap.xml',
-        'index.html',
       ];
       const indexNowFile = indexNowKeyFileName();
       if (indexNowFile) paths.push(indexNowFile);
@@ -560,26 +559,16 @@ async function getRepositoryDirectoryEntries({ config, token, branchName, dirPat
   return Array.isArray(json) ? json : [];
 }
 
-async function filesForMirror({ files, mirror = {}, token, branchName }) {
+async function filesForMirror({ files, mirror = {} }) {
   const sourceOrigin = mirror.sourceOrigin || 'https://certifyd.me';
   const targetOrigin = mirror.publicUrl || '';
   const exclude = new Set(['index.html', ...(mirror.excludePaths || [])]);
-  const mirrorFiles = files
+  return files
     .filter((file) => !exclude.has(file.path))
     .map((file) => ({
       path: file.path,
       content: rewriteMirrorContent(file.content, sourceOrigin, targetOrigin),
     }));
-  if (mirror.preserveIndexBlogSection !== false) {
-    const sourceIndex = files.find((file) => file.path === 'index.html' && !Buffer.isBuffer(file.content));
-    const blogSection = extractBlogRecentSection(sourceIndex?.content || '');
-    if (blogSection) {
-      const currentIndex = await getRepositoryFileContent({ config: mirror, token, branchName, filePath: 'index.html' });
-      const patchedIndex = replaceBlogRecentSection(currentIndex, rewriteMirrorContent(blogSection, sourceOrigin, targetOrigin));
-      if (patchedIndex) mirrorFiles.push({ path: 'index.html', content: patchedIndex });
-    }
-  }
-  return mirrorFiles;
 }
 
 function rewriteMirrorContent(content, sourceOrigin, targetOrigin) {
@@ -609,40 +598,6 @@ async function getRepositoryFileContent({ config, token, branchName, filePath })
   }
   const json = await response.json();
   return Buffer.from(String(json.content || ''), 'base64').toString('utf8');
-}
-
-function extractBlogRecentSection(indexHtml) {
-  const value = String(indexHtml || '');
-  const markerStart = '<!-- BLOG_RECENT_START -->';
-  const markerEnd = '<!-- BLOG_RECENT_END -->';
-  const start = value.indexOf(markerStart);
-  const end = value.indexOf(markerEnd, start);
-  if (start !== -1 && end !== -1) return value.slice(start, end + markerEnd.length);
-  const sectionStart = value.indexOf('<section class="wrap blog-home-section"');
-  if (sectionStart === -1) return '';
-  const sectionEnd = value.indexOf('\n  </main>', sectionStart);
-  if (sectionEnd === -1) return '';
-  return value.slice(sectionStart, sectionEnd).trim();
-}
-
-function replaceBlogRecentSection(indexHtml, blogSection) {
-  const value = String(indexHtml || '');
-  if (!value || !blogSection) return '';
-  const markerStart = '<!-- BLOG_RECENT_START -->';
-  const markerEnd = '<!-- BLOG_RECENT_END -->';
-  const markedStart = value.indexOf(markerStart);
-  const markedEnd = value.indexOf(markerEnd, markedStart);
-  if (markedStart !== -1 && markedEnd !== -1) {
-    return `${value.slice(0, markedStart)}${blogSection}${value.slice(markedEnd + markerEnd.length)}`;
-  }
-  const sectionStart = value.indexOf('<section class="wrap blog-home-section"');
-  const mainEnd = value.indexOf('\n  </main>', sectionStart);
-  if (sectionStart !== -1 && mainEnd !== -1) {
-    return `${value.slice(0, sectionStart)}${blogSection}${value.slice(mainEnd)}`;
-  }
-  const fallbackMainEnd = value.indexOf('\n  </main>');
-  if (fallbackMainEnd !== -1) return `${value.slice(0, fallbackMainEnd)}\n\n${blogSection}${value.slice(fallbackMainEnd)}`;
-  return '';
 }
 
 async function deleteRepositoryFileIfExists({ config, token, branchName, filePath, message }) {

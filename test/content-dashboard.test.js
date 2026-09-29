@@ -1543,10 +1543,100 @@ test('20bbb direct publishing writes generated files as one atomic GitHub commit
     assert.equal(treePosts.length, 1);
     assert.equal(commitPosts.length, 1);
     assert.equal(refPatches.length, 1);
-    assert.ok(treePosts[0].body.tree.some((entry) => entry.path === 'index.html'));
+    assert.ok(treePosts[0].body.tree.every((entry) => entry.path !== 'index.html'));
     assert.ok(treePosts[0].body.tree.some((entry) => entry.path === 'blog/index.html'));
     assert.ok(treePosts[0].body.tree.some((entry) => entry.path === 'content/blog/atomic-publish-test.md'));
     assert.ok(treePosts[0].body.tree.every((entry) => entry.sha));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('20bbba direct publishing mirrors blog files without writing preview homepage', async () => {
+  const tmpSiteRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-publisher-mirror-'));
+  await fs.mkdir(path.join(tmpSiteRoot, 'content', 'blog'), { recursive: true });
+  await fs.mkdir(path.join(tmpSiteRoot, 'scripts'), { recursive: true });
+  await fs.symlink(path.join(process.cwd(), 'node_modules'), path.join(tmpSiteRoot, 'node_modules'), 'dir');
+  await fs.cp(path.join(process.cwd(), 'templates'), path.join(tmpSiteRoot, 'templates'), { recursive: true });
+  await fs.copyFile(path.join(process.cwd(), 'scripts', 'build-blog.js'), path.join(tmpSiteRoot, 'scripts', 'build-blog.js'));
+  await fs.writeFile(path.join(tmpSiteRoot, 'index.html'), [
+    '<main>',
+    '<!-- BLOG_RECENT_START -->',
+    '<!-- BLOG_RECENT_END -->',
+    '</main>',
+  ].join('\n'));
+
+  const outputDir = path.join(tmpSiteRoot, 'engine', 'outputs');
+  const runId = 'mirror-publish-001';
+  const runDir = path.join(outputDir, runId);
+  await createMinimalRun(runDir, {
+    title: 'Mirror Publish Test',
+    slug: 'mirror-publish-test',
+    status: 'READY_TO_PUBLISH',
+    publishability: 'READY_TO_PUBLISH',
+    markdown: '# Mirror Publish Test\n\nBody.',
+    summary: 'Mirror publish test excerpt for generated blog output.',
+  });
+
+  const calls = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options = {}) => {
+    const raw = String(url);
+    const method = String(options?.method || 'GET').toUpperCase();
+    calls.push({ method, url: raw, body: options?.body ? JSON.parse(String(options.body)) : null });
+    if (raw.includes('/contents/content/blog?')) return new Response(JSON.stringify([]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    if (raw.includes('/git/ref/heads/main') && method === 'GET') {
+      return new Response(JSON.stringify({ object: { sha: raw.includes('certifyd-me-site-preview') ? 'mirror-base-commit-sha' : 'base-commit-sha' } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (raw.includes('/git/commits/base-commit-sha') && method === 'GET') {
+      return new Response(JSON.stringify({ tree: { sha: 'base-tree-sha' } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (raw.includes('/git/commits/mirror-base-commit-sha') && method === 'GET') {
+      return new Response(JSON.stringify({ tree: { sha: 'mirror-base-tree-sha' } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (raw.endsWith('/git/blobs') && method === 'POST') {
+      return new Response(JSON.stringify({ sha: `blob-${calls.filter((call) => call.method === 'POST' && call.url.endsWith('/git/blobs')).length}` }), { status: 201, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (raw.endsWith('/git/trees') && method === 'POST') {
+      return new Response(JSON.stringify({ sha: raw.includes('certifyd-me-site-preview') ? 'mirror-next-tree-sha' : 'next-tree-sha' }), { status: 201, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (raw.endsWith('/git/commits') && method === 'POST') {
+      return new Response(JSON.stringify({ sha: raw.includes('certifyd-me-site-preview') ? 'mirror-next-commit-sha' : 'next-commit-sha', html_url: 'https://github.test/commit/next' }), { status: 201, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (raw.includes('/git/refs/heads/main') && method === 'PATCH') {
+      return new Response(JSON.stringify({ object: { sha: raw.includes('certifyd-me-site-preview') ? 'mirror-next-commit-sha' : 'next-commit-sha' } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    return new Response('{}', { status: 404, headers: { 'Content-Type': 'application/json' } });
+  };
+  try {
+    const actions = new ContentDashboardActions(getDashboardConfig({
+      ...env,
+      CONTENT_AGENT_ROOT: tmpSiteRoot,
+      CONTENT_AGENT_OUTPUT_DIR: outputDir,
+      CONTENT_DASHBOARD_DB_PATH: ':memory:',
+      CONTENT_DASHBOARD_GITHUB_PUBLISHING_ENABLED: 'true',
+      CONTENT_DASHBOARD_GITHUB_OWNER: 'BEATiFYAUDIO',
+      CONTENT_DASHBOARD_GITHUB_REPO: 'certifyd-me-site',
+      CONTENT_DASHBOARD_GITHUB_TOKEN: 'test-token',
+      CONTENT_DASHBOARD_GITHUB_MIRROR_ENABLED: 'true',
+      CONTENT_DASHBOARD_GITHUB_MIRROR_REPO: 'certifyd-me-site-preview',
+      CONTENT_DASHBOARD_GITHUB_MIRROR_PUBLIC_URL: 'https://vassal.certifyd.me/',
+    }));
+    const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+    await actions.preparePublishing({ actor, runId });
+    const result = await actions.publishToCertifyd({ actor, runId, version: 'v1' });
+    assert.match(result.output, /Published directly to main/);
+    assert.match(result.output, /Mirrored to BEATiFYAUDIO\/certifyd-me-site-preview@main/);
+
+    const treePosts = calls.filter((call) => call.method === 'POST' && call.url.endsWith('/git/trees'));
+    const primaryTree = treePosts.find((call) => call.url.includes('/repos/BEATiFYAUDIO/certifyd-me-site/'));
+    const mirrorTree = treePosts.find((call) => call.url.includes('/repos/BEATiFYAUDIO/certifyd-me-site-preview/'));
+    assert.ok(primaryTree);
+    assert.ok(mirrorTree);
+    assert.ok(primaryTree.body.tree.every((entry) => entry.path !== 'index.html'));
+    assert.ok(mirrorTree.body.tree.every((entry) => entry.path !== 'index.html'));
+    assert.ok(mirrorTree.body.tree.some((entry) => entry.path === 'blog/index.html'));
+    assert.ok(mirrorTree.body.tree.some((entry) => entry.path === 'content/blog/mirror-publish-test.md'));
   } finally {
     globalThis.fetch = originalFetch;
   }
