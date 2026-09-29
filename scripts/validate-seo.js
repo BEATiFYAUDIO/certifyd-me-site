@@ -11,6 +11,7 @@ const STATIC_PAGES = [
   { file: 'index.html', canonical: `${BASE_URL}/` },
   { file: 'profile/index.html', canonical: `${BASE_URL}/profile/` },
   { file: 'join/index.html', canonical: `${BASE_URL}/join/` },
+  { file: 'downloads/index.html', canonical: `${BASE_URL}/downloads/` },
   { file: 'network.html', canonical: `${BASE_URL}/network.html` },
   { file: 'retail-partners/index.html', canonical: `${BASE_URL}/retail-partners/` },
   { file: 'media-promotion/index.html', canonical: `${BASE_URL}/media-promotion/` },
@@ -169,7 +170,7 @@ function validateSitemap(locs, published, excluded) {
     if (seen.has(loc)) fail(`sitemap.xml has duplicate URL: ${loc}`);
     seen.add(loc);
     if (/\/blog\/[a-z0-9-]+$/.test(loc)) fail(`sitemap.xml URL missing trailing slash: ${loc}`);
-    if (/^https:\/\/certifyd\.me\/(?:profile|join|retail-partners|media-promotion|services)$/.test(loc)) fail(`sitemap.xml static URL missing trailing slash: ${loc}`);
+    if (/^https:\/\/certifyd\.me\/(?:profile|join|downloads|retail-partners|media-promotion|services)$/.test(loc)) fail(`sitemap.xml static URL missing trailing slash: ${loc}`);
   }
   for (const slug of published.keys()) {
     const loc = `${BASE_URL}/blog/${slug}/`;
