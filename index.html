@@ -2749,6 +2749,11 @@ section[id]{
     .home-section-title{margin:0;font-size:clamp(34px,6vw,86px);line-height:.88;letter-spacing:-.075em;color:var(--certifyd-text);text-wrap:balance}
     .home-copy{max-width:880px;margin:16px 0 0;color:var(--text-secondary);font-size:clamp(17px,1.55vw,22px);line-height:1.55}
     .home-copy strong{color:#fff}.home-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px}.hero-copy{max-width:890px;margin:16px 0 0;color:#d8ecf8;font-size:clamp(18px,1.7vw,24px);line-height:1.5}.hero-support{margin:18px 0 0;color:#fff;font-weight:950;letter-spacing:-.02em}.lifecycle-panel{text-align:center}.lifecycle-flow{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:22px;color:#fff;font-size:clamp(34px,5.6vw,78px);line-height:.95;font-weight:950;letter-spacing:-.06em}.lifecycle-flow span{display:inline-flex}.lifecycle-flow .flow-arrow{color:var(--certifyd-orange);letter-spacing:0}.pathway-grid,.category-grid,.distribution-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:26px}.marketplace-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:26px}.marketplace-card-secondary{grid-column:1/-1;background:rgba(2,12,22,.30)}.step-grid,.model-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:24px}.model-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.pathway-card,.role-card,.distribution-card{border:1px solid var(--glass-border);border-radius:24px;background:rgba(2,12,22,.42);padding:clamp(18px,2.4vw,26px);display:flex;flex-direction:column;gap:14px;min-height:100%}.marketplace-card-primary{background:linear-gradient(145deg,rgba(255,255,255,.08),rgba(255,255,255,.035)),rgba(2,12,22,.48)}.pathway-card h3,.role-card h3,.distribution-card h3{margin:0;color:#fff;font-size:clamp(22px,2vw,30px);line-height:1;letter-spacing:-.045em}.pathway-card .outcome{margin:0;color:#fff;font-weight:950;font-size:clamp(1rem,1.15vw,1.16rem);line-height:1.24}.pricing-label,.step-number{margin:0;color:var(--certifyd-orange);font-weight:950;letter-spacing:.08em;text-transform:uppercase}.pathway-card p,.role-card p,.distribution-card p{margin:0;color:var(--text-secondary);line-height:1.5}.pathway-card .btn,.role-card .btn{align-self:flex-start;margin-top:auto}.ownership-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:24px 0 0;padding:0;list-style:none}.ownership-list li{border:1px solid var(--glass-border);border-radius:18px;background:rgba(255,255,255,.045);padding:14px;color:#fff;font-weight:950}.commerce-grid,.ip-grid,.profile-proof-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.8fr);gap:22px;align-items:center}.commerce-grid figure,.ip-grid figure{margin:0}.brief-list{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0 0;padding:0;list-style:none}.brief-list li{border:1px solid var(--glass-border);border-radius:999px;background:rgba(255,255,255,.06);padding:8px 12px;color:#fff;font-weight:900}.role-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:24px}.home-final{margin-bottom:clamp(24px,5vw,64px)}
+    .insiders-compact{margin-top:clamp(20px,3vw,38px)}
+    .insiders-compact .home-section-panel{padding:clamp(20px,3vw,34px)}
+    .insiders-compact .home-section-title{font-size:clamp(30px,4.2vw,54px);line-height:1;letter-spacing:-.055em}
+    .insiders-compact .home-copy{max-width:720px;font-size:clamp(16px,1.25vw,19px);margin-top:10px}
+    .insiders-compact .home-actions{margin-top:16px}
     @media(max-width:980px){.pathway-grid,.role-grid,.category-grid,.step-grid,.model-grid{grid-template-columns:1fr 1fr}.marketplace-grid{grid-template-columns:1fr}.marketplace-card-secondary{grid-column:auto}.commerce-grid,.ip-grid,.profile-proof-grid{grid-template-columns:1fr}.ownership-list{grid-template-columns:1fr 1fr}}
     @media(max-width:720px){.home-section-panel{border-radius:24px}.home-section-title,.home-copy,.pathway-card p,.role-card p,.distribution-card p{overflow-wrap:anywhere}.pathway-grid,.role-grid,.category-grid,.distribution-grid,.step-grid,.model-grid,.ownership-list{grid-template-columns:1fr}.home-actions .btn,.pathway-card .btn,.role-card .btn{width:100%}.lifecycle-flow{display:grid;grid-template-columns:1fr;justify-items:center;text-align:center;gap:6px;margin-top:8px;font-size:clamp(46px,14vw,64px);line-height:.9}.lifecycle-flow .flow-arrow{display:none}.lifecycle-panel .home-copy{text-align:center}.commerce-grid,.ip-grid,.profile-proof-grid{gap:16px}}
     /* HOMEPAGE_REFRESH_END */
@@ -2939,81 +2944,11 @@ section[id]{
     </section>
 
     <!-- JOIN NETWORK -->
-    <section id="early-access" class="wrap home-section" aria-label="Certifyd Insiders Club application form">
-      <div class="card">
-          <p class="home-eyebrow">CERTIFYD INSIDERS CLUB</p>
-          <h2 class="home-section-title">Join the Certifyd Insiders Club</h2>
-          <p class="home-copy">Be first in line for new features, special promotions, product updates, and behind-the-scenes insights from the Certifyd network.</p>
-          <ul class="brief-list" aria-label="Insiders Club benefits"><li>Early access to new features</li><li>Special offers and promotions</li><li>Product and network updates</li><li>Insider insights and behind-the-scenes news</li></ul>
-          <p class="home-copy">Join the mailing list to be considered for early access to new features, private betas, special promotions, and other Insiders-only opportunities.</p>
-          <form class="ea-form" id="early-access-form" action="#" method="post" data-endpoint="https://script.google.com/macros/s/AKfycbxO8lMdZTsPWvtEuTInZ1jRtuW854X_hde4gBSYXa1PktcT9bAuAhFR3Bwl_9lVqWENpw/exec">
-            <div class="ea-grid">
-              <label class="ea-field">
-                <span class="ea-label">Name</span>
-                <input class="ea-input" type="text" name="name" autocomplete="name" />
-              </label>
-              <label class="ea-field">
-                <span class="ea-label">Email</span>
-                <input class="ea-input" type="email" name="email" autocomplete="email" />
-              </label>
-            </div>
-
-            <label class="ea-field">
-              <span class="ea-label">Website / Domain</span>
-              <input class="ea-input" type="url" name="website" placeholder="https://yourdomain.com" />
-            </label>
-
-            <div class="ea-grid">
-              <label class="ea-field">
-                <span class="ea-label">Role</span>
-                <select class="ea-select" name="role">
-                  <option>Musician</option>
-                  <option>Artist</option>
-                  <option>Producer</option>
-                  <option>Podcaster</option>
-                  <option>Filmmaker</option>
-                  <option>Photographer</option>
-                  <option>Writer / Author</option>
-                  <option>Publisher</option>
-                  <option>Label</option>
-                  <option>Manager</option>
-                  <option>Educator</option>
-                  <option>Developer</option>
-                  <option>Professional / Business</option>
-                  <option>Creative Team</option>
-                  <option>Other</option>
-                </select>
-              </label>
-              <label class="ea-field">
-                <span class="ea-label">Do you run a Bitcoin / Lightning node?</span>
-                <select class="ea-select" name="node_status">
-                  <option>Yes — Bitcoin Core + LND</option>
-                  <option>Yes — another Lightning implementation</option>
-                  <option>No but interested</option>
-                  <option>No</option>
-                </select>
-              </label>
-            </div>
-
-            <label class="ea-field">
-              <span class="ea-label">Are you comfortable testing new Certifyd features?</span>
-              <select class="ea-select" name="testing_comfort">
-                <option>Yes</option>
-                <option>Somewhat</option>
-                <option>No</option>
-              </select>
-            </label>
-
-            <label class="ea-field">
-              <span class="ea-label">What do you want to publish with Certifyd?</span>
-              <textarea class="ea-textarea" name="publish_goals"></textarea>
-            </label>
-
-            <div class="form-cta">
-              <button class="btn primary" type="submit">Apply for the Insiders Club</button>
-            </div>
-            <div id="early-access-status" class="ea-status" role="status" aria-live="polite"></div>
-          </form>
+    <section id="early-access" class="wrap home-section insiders-compact" aria-labelledby="insiders-heading">
+      <div class="home-section-panel">
+          <h2 id="insiders-heading" class="home-section-title">Join the Certifyd Insiders Club</h2>
+          <p class="home-copy">Early features. Private betas. Special promotions. A closer look at what we're building.</p>
+          <div class="home-actions"><a class="btn primary" href="/join/#early-access">Apply for the Insiders Club</a></div>
       </div>
     </section>
 
