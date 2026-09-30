@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Join the Certifyd Network | Certifyd</title>
-  <meta name="description" content="Join Certifyd as a creator, partner, commerce provider, operator, or builder." />
+  <title>Join the Certifyd Insiders Club | Certifyd</title>
+  <meta name="description" content="Apply for the Certifyd Insiders Club to be considered for new features, private betas, special promotions, and product updates." />
   <link rel="canonical" href="https://certifyd.me/join/" />
-  <meta property="og:title" content="Join the Certifyd Network | Certifyd" />
-  <meta property="og:description" content="Join Certifyd as a creator, partner, commerce provider, operator, or builder." />
+  <meta property="og:title" content="Join the Certifyd Insiders Club | Certifyd" />
+  <meta property="og:description" content="Apply for the Certifyd Insiders Club to be considered for new features, private betas, special promotions, and product updates." />
   <meta property="og:url" content="https://certifyd.me/join/" />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -2800,17 +2800,20 @@ section[id]{
   <main id="main">
     <section class="wrap home-section" aria-labelledby="join-heading">
       <div class="home-section-panel">
-        <p class="home-eyebrow">JOIN CERTIFYD</p>
-        <h1 id="join-heading" class="home-section-title">Join the Certifyd Network.</h1>
-        <p class="home-copy">Start with your official creator profile or tell us how you want to participate as a creator, partner, commerce provider, operator, or builder.</p>
+        <p class="home-eyebrow">CERTIFYD INSIDERS CLUB</p>
+        <h1 id="join-heading" class="home-section-title">Join the Certifyd Insiders Club</h1>
+        <p class="home-copy">Be first in line for new features, special promotions, product updates, and behind-the-scenes insights from the Certifyd network.</p>
         <div class="home-actions">
-          <a class="btn primary" href="#early-access">Join Network</a>
+          <a class="btn primary" href="#early-access">Apply for the Insiders Club</a>
           <a class="btn" href="/network.html">Register a Node</a>
         </div>
       </div>
     </section>
-    <section id="early-access" class="wrap home-section" aria-label="Join Network intake form">
+    <section id="early-access" class="wrap home-section" aria-label="Certifyd Insiders Club application form">
       <div class="card">
+          <p class="home-eyebrow">INSIDERS CLUB BENEFITS</p>
+          <ul class="brief-list" aria-label="Insiders Club benefits"><li>Early access to new features</li><li>Special offers and promotions</li><li>Product and network updates</li><li>Insider insights and behind-the-scenes news</li></ul>
+          <p class="home-copy">Join the mailing list to be considered for early access to new features, private betas, special promotions, and other Insiders-only opportunities.</p>
           <form class="ea-form" id="early-access-form" action="#" method="post" data-endpoint="https://script.google.com/macros/s/AKfycbxO8lMdZTsPWvtEuTInZ1jRtuW854X_hde4gBSYXa1PktcT9bAuAhFR3Bwl_9lVqWENpw/exec">
             <div class="ea-grid">
               <label class="ea-field">
@@ -2854,7 +2857,7 @@ section[id]{
             </div>
 
             <label class="ea-field">
-              <span class="ea-label">Are you comfortable testing early software?</span>
+              <span class="ea-label">Are you comfortable testing new Certifyd features?</span>
               <select class="ea-select" name="testing_comfort">
                 <option>Yes</option>
                 <option>Somewhat</option>
@@ -2868,7 +2871,7 @@ section[id]{
             </label>
 
             <div class="form-cta">
-              <button class="btn primary" type="submit">Join Network</button>
+              <button class="btn primary" type="submit">Apply for the Insiders Club</button>
             </div>
             <div id="early-access-status" class="ea-status" role="status" aria-live="polite"></div>
           </form>
@@ -2962,7 +2965,7 @@ section[id]{
             if (!res.ok || (data && data.ok === false)) throw new Error((data && data.error) || "Submission failed");
           }
 
-          setStatus("success", "Thanks. Your Join Network application was submitted.");
+          setStatus("success", "Thanks. Your Insiders Club application was submitted.");
           form.reset();
         } catch (err) {
           setStatus("error", "Could not submit right now. Please try again in a moment.");

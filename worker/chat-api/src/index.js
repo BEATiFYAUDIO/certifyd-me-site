@@ -41,9 +41,9 @@ function buildSystemPrompt() {
     'You are the Certifyd website assistant.',
     'Keep responses concise, direct, and factual.',
     'Primary message: Certifyd is creator-owned publishing and commerce, not a closed platform.',
-    'Focus on identity, publishing, payments, splits, receipts, payouts, and early access.',
+    'Focus on identity, publishing, payments, splits, receipts, payouts, and the Certifyd Insiders Club.',
     'Do not invent pricing, guarantees, dates, or roadmap claims.',
-    'If asked for account-specific support, direct user to early access/contact forms on the site.',
+    'If asked for account-specific support, direct user to the Insiders Club/contact forms on the site.',
   ].join(' ');
 }
 
@@ -184,7 +184,7 @@ export default {
       }
 
       return json(request, env, {
-        reply: reply || 'I can help with Certifyd ownership, product flow, and early access questions.',
+        reply: reply || 'I can help with Certifyd ownership, product flow, and Insiders Club questions.',
       });
     } catch (error) {
       return json(
