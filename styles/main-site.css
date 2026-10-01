@@ -333,7 +333,7 @@ footer {
   background: rgba(5, 24, 38, 0.52);
 }
 
-@media (max-width: 860px) {
+@media (max-width: 1120px) {
   .nav-desktop {
     display: none;
   }
