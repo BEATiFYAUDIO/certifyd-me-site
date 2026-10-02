@@ -1,5 +1,5 @@
 ---
-title: "B.B. King. The Montreux Years. Executive produced by Vassal Benford, Montreux Jazz on Sony BMG."
+title: "B.B. King. The Montreux Years. Executive produced by Vassal Benford, Montreux Jazz on Sony/BMG."
 slug: "bb-king-the-montreux-years"
 author: "Certifyd"
 date: "2026-10-02"
