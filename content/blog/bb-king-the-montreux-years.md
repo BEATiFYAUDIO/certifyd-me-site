@@ -1,9 +1,9 @@
 ---
-title: "B.B. King. Lucille. Montreux. The King of the Blues Returns."
+title: "B.B. King. The Montreux Years, executive produced by Vassal Benford. Montraux Jazz on Sony BMG."
 slug: "bb-king-the-montreux-years"
 author: "Certifyd"
-date: "2026-10-01"
-updated: "2026-10-01"
+date: "2026-10-02"
+updated: "2026-10-02"
 excerpt: "B.B. King: The Montreux Years arrives November 20 with rare live performances from 1982–2000. Hear the first single now and preorder the collection."
 coverImage: "/images/blog/bb-king-the-montreux-years-1790861067247.png"
 coverImageAlt: ""
