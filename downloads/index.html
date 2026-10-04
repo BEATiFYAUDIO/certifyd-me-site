@@ -23,7 +23,7 @@
     :root{
       --bg:#146f95;--bg-elevated:#1a86b0;--panel:rgba(8,55,78,0.58);--panel2:rgba(12,70,98,0.66);--border:rgba(205,238,255,0.28);--border2:#3a4554;--text:#e8ecf1;--text-secondary:#b4bdc8;--muted:#8a95a3;--certifyd-orange:#ff8a00;--certifyd-gold:var(--certifyd-orange);--certifyd-sapphire:#5f9fff;--certifyd-blue:var(--certifyd-sapphire);--certifyd-bg:#147dab;--glass-surface:rgba(255,255,255,0.042);--glass-border:rgba(255,255,255,0.08);--glass-blur:16px;--focus:rgba(95,159,255,0.42);--brand:var(--certifyd-orange);--brand-hover:#ff9f2a;--success:#4fa078;--warning:var(--certifyd-orange);--danger:#c35f5f;--radius:20px;--wrap:1560px;--pad:clamp(16px,4vw,48px);--shadow:0 30px 90px rgba(0,0,0,0.65)
     }
-    *{box-sizing:border-box}html{font-size:clamp(16px,1.02vw,18px);background:var(--certifyd-bg);scroll-behavior:smooth;scroll-padding-top:110px;overflow-x:hidden}body{position:relative;isolation:isolate;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:linear-gradient(180deg,rgba(42,149,188,0.82),rgba(20,104,140,0.86)),radial-gradient(1100px 720px at 10% -8%,rgba(184,238,255,0.36),transparent 60%),radial-gradient(980px 660px at 88% 6%,rgba(82,207,250,0.30),transparent 62%),radial-gradient(720px 460px at 84% 78%,rgba(255,160,20,0.14),transparent 70%),var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden;text-rendering:optimizeLegibility}body::after{content:"";position:fixed;inset:-20%;z-index:-1;pointer-events:none;opacity:.82;background:radial-gradient(760px 500px at 16% 12%,rgba(208,246,255,0.36),transparent 66%),radial-gradient(700px 460px at 78% 18%,rgba(78,214,255,0.30),transparent 64%),radial-gradient(620px 400px at 72% 78%,rgba(255,143,0,0.08),transparent 70%);filter:blur(12px)}a{color:inherit;text-decoration:none}img{display:block;max-width:100%}:focus-visible{outline:3px solid var(--certifyd-blue);box-shadow:0 0 0 4px var(--focus);outline-offset:3px;border-radius:10px}.wrap{width:100%;max-width:var(--wrap);margin:0 auto;padding-inline:var(--pad)}.skip-link{position:absolute;left:12px;top:12px;padding:12px 14px;background:#000;color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:12px;transform:translateY(-220%);z-index:2000}.skip-link:focus{transform:translateY(0)}.site-header{position:sticky;top:0;z-index:1600;background:linear-gradient(180deg,rgba(8,10,13,.82),rgba(8,10,13,.68));backdrop-filter:blur(var(--glass-blur));-webkit-backdrop-filter:blur(var(--glass-blur));border-bottom:1px solid var(--glass-border);box-shadow:0 18px 70px rgba(0,0,0,.30)}.header-rail{position:relative;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.008));overflow:visible}.header-inner{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;min-height:82px;padding:6px 0}.brand{display:flex;align-items:center;height:64px;overflow:visible;min-width:0}.brand img{height:56px;width:auto;object-fit:contain;filter:drop-shadow(0 12px 28px rgba(0,0,0,.45))}.nav-desktop{justify-self:stretch;width:100%;display:flex;justify-content:space-evenly;gap:0;align-items:center;white-space:nowrap}.nav-desktop a{padding:10px 7px;font-size:.86rem;border-radius:12px;min-height:44px;display:flex;align-items:center;justify-content:center;text-align:center;border:1px solid transparent;transition:background 210ms ease,border-color 210ms ease,color 210ms ease,box-shadow 210ms ease}.nav-desktop a:hover,.nav-desktop a[aria-current="page"]{background:var(--glass-surface);border-color:var(--glass-border);box-shadow:0 12px 30px rgba(0,0,0,.18)}.nav-mobile{display:none;position:relative;justify-self:end;z-index:1700}.nav-mobile summary{list-style:none;cursor:pointer;padding:8px 10px;border-radius:12px;border:1px solid var(--glass-border);background:var(--glass-surface);min-height:40px;width:50px;display:flex;align-items:center;justify-content:center;box-shadow:0 14px 40px rgba(0,0,0,.25)}.nav-mobile summary::-webkit-details-marker{display:none}.burger{display:inline-block;width:22px;height:14px;position:relative}.burger::before,.burger::after,.burger span{content:"";position:absolute;left:0;right:0;height:2px;background:#d9e0ea;border-radius:999px}.burger::before{top:0}.burger::after{bottom:0}.burger span{top:6px}.nav-drawer{position:absolute;right:0;top:calc(100% + 12px);min-width:260px;padding:10px;border-radius:18px;border:1px solid var(--glass-border);background:rgba(8,10,13,.82);backdrop-filter:blur(var(--glass-blur));-webkit-backdrop-filter:blur(var(--glass-blur));display:grid;gap:6px;box-shadow:var(--shadow);z-index:1800}.nav-drawer a{padding:12px;border-radius:14px;min-height:44px;display:flex;align-items:center}.nav-drawer a:hover,.nav-drawer a[aria-current="page"]{background:var(--glass-surface)}main{padding:clamp(28px,5vw,64px) 0 72px}.hero,.panel,.download-card{border:1px solid var(--border);border-radius:28px;background:linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.025)),rgba(5,24,38,.34);box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.08)}.hero{padding:clamp(24px,5vw,54px)}.eyebrow{margin:0 0 10px;color:var(--certifyd-orange);font-size:.78rem;font-weight:900;letter-spacing:.22em;text-transform:uppercase}.hero h1{margin:0;font-size:clamp(3.8rem,10vw,8rem);line-height:.86;letter-spacing:-.08em;text-wrap:balance}.hero h2{margin:16px 0 0;max-width:980px;font-size:clamp(1.55rem,3.2vw,3.2rem);line-height:.98;letter-spacing:-.055em;text-wrap:balance}.lede{max-width:900px;margin:18px 0 0;color:#d8ecf8;font-size:clamp(1.04rem,1.7vw,1.28rem)}.hero-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 16px;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,.07);color:#fff;font:inherit;font-weight:900;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}.btn:hover{background:rgba(255,255,255,.11)}.btn.primary{background:linear-gradient(135deg,#ffd978,#ff8a00);border-color:transparent;color:#111418}.btn.secondary{border-color:rgba(255,255,255,.22)}.section{margin-top:24px}.panel{padding:clamp(20px,2.4vw,34px)}.section-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:18px}.section-head h2,.panel h2{margin:0;font-size:clamp(1.65rem,3vw,2.5rem);line-height:1;letter-spacing:-.05em}.section-head p,.muted{margin:8px 0 0;color:var(--text-secondary)}.platform-guidance{margin:0 0 18px;border:1px solid rgba(255,138,0,.34);border-radius:16px;background:rgba(255,138,0,.10);padding:12px 14px;color:#ffe3bd;font-weight:800}.platform-guidance[hidden]{display:none}.download-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(390px,100%),1fr));gap:16px}.download-card{position:relative;padding:20px;display:flex;flex-direction:column;gap:14px;background:rgba(2,12,22,.34);box-shadow:none}.download-card.is-recommended{border-color:rgba(255,138,0,.76);box-shadow:0 26px 70px rgba(255,138,0,.12),inset 0 1px 0 rgba(255,255,255,.08)}.download-card.is-family-match:not(.is-recommended){border-color:rgba(255,138,0,.44);box-shadow:0 18px 48px rgba(255,138,0,.08),inset 0 1px 0 rgba(255,255,255,.08)}.download-card h3{margin:0;font-size:1.45rem;line-height:1.05;letter-spacing:-.035em}.download-card p{margin:0;color:var(--text-secondary)}.meta-row{display:flex;gap:8px;flex-wrap:wrap}.status-pill{display:inline-flex;align-items:center;min-height:32px;border:1px solid var(--border);border-radius:999px;padding:5px 10px;background:rgba(255,255,255,.06);font-weight:900;font-size:.82rem}.status-pill.warn{border-color:rgba(255,138,0,.46);background:rgba(255,138,0,.12);color:#ffe3bd}.status-pill.recommended{display:none;position:absolute;right:18px;top:18px;background:linear-gradient(135deg,#ffd978,#ff8a00);border-color:transparent;color:#111418}.download-card.is-recommended .status-pill.recommended{display:inline-flex}.download-details{display:grid;gap:8px;margin:0;padding:0;list-style:none}.download-details li{display:grid;grid-template-columns:112px minmax(0,1fr);gap:10px;align-items:start;border-top:1px solid rgba(205,238,255,.16);padding-top:8px;color:#d8ecf8}.download-details strong{color:#fff}.hash{display:block;max-width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.78rem;line-height:1.45;overflow-wrap:anywhere;color:#d8ecf8}.install-note{border:1px solid rgba(205,238,255,.20);border-radius:18px;background:rgba(2,12,22,.30);padding:12px;color:#d8ecf8}.card-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:auto}.notice{border:1px solid rgba(255,138,0,.32);border-radius:20px;padding:16px;background:rgba(255,138,0,.10);color:#ffe3bd}.info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:16px}.info-card{border:1px solid rgba(205,238,255,.20);border-radius:20px;background:rgba(2,12,22,.34);padding:18px}.info-card h3{margin:0 0 8px;font-size:1.12rem}.info-card p{margin:0;color:#d8ecf8}.code-lines{display:grid;gap:8px;margin-top:12px}.code-lines code{display:block;overflow-wrap:anywhere;border:1px solid rgba(205,238,255,.18);border-radius:14px;background:rgba(0,0,0,.22);padding:10px;color:#d8ecf8;font-size:.84rem}footer{position:relative;z-index:1;padding:24px 0 34px;border-top:1px solid var(--border);color:#d8ecf8;background:rgba(6,35,55,.34)}@media(max-width:1120px){.nav-desktop a{font-size:.8rem;padding-inline:5px}}@media(max-width:860px){.nav-desktop{display:none}.nav-mobile{display:block}.header-inner{min-height:96px;padding:8px var(--pad)}}@media(max-width:720px){.wrap{padding-inline:clamp(14px,5vw,24px)}.hero h1{font-size:clamp(2.95rem,15vw,4.9rem);letter-spacing:-.055em;overflow-wrap:anywhere}.hero h2{font-size:clamp(1.45rem,7vw,2rem);letter-spacing:-.035em;overflow-wrap:anywhere}.lede,.section-head p,.download-card h3,.download-card p{overflow-wrap:anywhere}.hero,.panel,.download-card{border-radius:24px}.download-details li{grid-template-columns:1fr;gap:2px}.card-actions .btn,.hero-actions .btn{width:100%}.brand img{height:62px;max-width:min(70vw,410px)}}@media(max-width:380px){.nav-mobile{position:static}.nav-drawer{position:fixed;right:var(--pad);left:var(--pad);top:92px;min-width:0}}
+    *{box-sizing:border-box}html{font-size:clamp(16px,1.02vw,18px);background:var(--certifyd-bg);scroll-behavior:smooth;scroll-padding-top:110px;overflow-x:hidden}body{position:relative;isolation:isolate;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:linear-gradient(180deg,rgba(42,149,188,0.82),rgba(20,104,140,0.86)),radial-gradient(1100px 720px at 10% -8%,rgba(184,238,255,0.36),transparent 60%),radial-gradient(980px 660px at 88% 6%,rgba(82,207,250,0.30),transparent 62%),radial-gradient(720px 460px at 84% 78%,rgba(255,160,20,0.14),transparent 70%),var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden;text-rendering:optimizeLegibility}body::after{content:"";position:fixed;inset:-20%;z-index:-1;pointer-events:none;opacity:.82;background:radial-gradient(760px 500px at 16% 12%,rgba(208,246,255,0.36),transparent 66%),radial-gradient(700px 460px at 78% 18%,rgba(78,214,255,0.30),transparent 64%),radial-gradient(620px 400px at 72% 78%,rgba(255,143,0,0.08),transparent 70%);filter:blur(12px)}a{color:inherit;text-decoration:none}img{display:block;max-width:100%}:focus-visible{outline:3px solid var(--certifyd-blue);box-shadow:0 0 0 4px var(--focus);outline-offset:3px;border-radius:10px}.wrap{width:100%;max-width:var(--wrap);margin:0 auto;padding-inline:var(--pad)}.skip-link{position:absolute;left:12px;top:12px;padding:12px 14px;background:#000;color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:12px;transform:translateY(-220%);z-index:2000}.skip-link:focus{transform:translateY(0)}.site-header{position:sticky;top:0;z-index:1600;background:linear-gradient(180deg,rgba(8,10,13,.82),rgba(8,10,13,.68));backdrop-filter:blur(var(--glass-blur));-webkit-backdrop-filter:blur(var(--glass-blur));border-bottom:1px solid var(--glass-border);box-shadow:0 18px 70px rgba(0,0,0,.30)}.header-rail{position:relative;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.008));overflow:visible}.header-inner{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;min-height:82px;padding:6px 0}.brand{display:flex;align-items:center;height:64px;overflow:visible;min-width:0}.brand img{height:56px;width:auto;object-fit:contain;filter:drop-shadow(0 12px 28px rgba(0,0,0,.45))}.nav-desktop{justify-self:stretch;width:100%;display:flex;justify-content:space-evenly;gap:0;align-items:center;white-space:nowrap}.nav-desktop a{padding:10px 7px;font-size:.86rem;border-radius:12px;min-height:44px;display:flex;align-items:center;justify-content:center;text-align:center;border:1px solid transparent;transition:background 210ms ease,border-color 210ms ease,color 210ms ease,box-shadow 210ms ease}.nav-desktop a:hover,.nav-desktop a[aria-current="page"]{background:var(--glass-surface);border-color:var(--glass-border);box-shadow:0 12px 30px rgba(0,0,0,.18)}.nav-mobile{display:none;position:relative;justify-self:end;z-index:1700}.nav-mobile summary{list-style:none;cursor:pointer;padding:8px 10px;border-radius:12px;border:1px solid var(--glass-border);background:var(--glass-surface);min-height:40px;width:50px;display:flex;align-items:center;justify-content:center;box-shadow:0 14px 40px rgba(0,0,0,.25)}.nav-mobile summary::-webkit-details-marker{display:none}.burger{display:inline-block;width:22px;height:14px;position:relative}.burger::before,.burger::after,.burger span{content:"";position:absolute;left:0;right:0;height:2px;background:#d9e0ea;border-radius:999px}.burger::before{top:0}.burger::after{bottom:0}.burger span{top:6px}.nav-drawer{position:absolute;right:0;top:calc(100% + 12px);min-width:260px;padding:10px;border-radius:18px;border:1px solid var(--glass-border);background:rgba(8,10,13,.82);backdrop-filter:blur(var(--glass-blur));-webkit-backdrop-filter:blur(var(--glass-blur));display:grid;gap:6px;box-shadow:var(--shadow);z-index:1800}.nav-drawer a{padding:12px;border-radius:14px;min-height:44px;display:flex;align-items:center}.nav-drawer a:hover,.nav-drawer a[aria-current="page"]{background:var(--glass-surface)}main{padding:clamp(28px,5vw,64px) 0 72px}.hero,.panel,.product-card,.download-card,.browser-card,.advanced-downloads{border:1px solid var(--border);border-radius:28px;background:linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.025)),rgba(5,24,38,.34);box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.08)}.hero{padding:clamp(24px,5vw,54px)}.eyebrow{margin:0 0 10px;color:var(--certifyd-orange);font-size:.78rem;font-weight:900;letter-spacing:.22em;text-transform:uppercase}.hero h1{margin:0;font-size:clamp(3.8rem,10vw,8rem);line-height:.86;letter-spacing:-.08em;text-wrap:balance}.hero h2{margin:16px 0 0;max-width:980px;font-size:clamp(1.55rem,3.2vw,3.2rem);line-height:.98;letter-spacing:-.055em;text-wrap:balance}.lede{max-width:900px;margin:18px 0 0;color:#d8ecf8;font-size:clamp(1.04rem,1.7vw,1.28rem)}.hero-actions,.card-actions,.platform-choices,.browser-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 16px;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,.07);color:#fff;font:inherit;font-weight:900;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}.btn:hover{background:rgba(255,255,255,.11)}.btn.primary{background:linear-gradient(135deg,#ffd978,#ff8a00);border-color:transparent;color:#111418}.btn.secondary{border-color:rgba(255,255,255,.22)}.btn[aria-disabled="true"]{opacity:.68;cursor:not-allowed}.section{margin-top:24px}.panel,.product-card{padding:clamp(20px,2.4vw,34px)}.section-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:18px}.section-head h2,.panel h2,.product-card h2{margin:0;font-size:clamp(1.65rem,3vw,2.5rem);line-height:1;letter-spacing:-.05em}.section-head p,.muted{margin:8px 0 0;color:var(--text-secondary)}.product-card{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(280px,.75fr);gap:clamp(20px,4vw,52px);align-items:center}.product-card h3{margin:0;font-size:clamp(2rem,4vw,4rem);line-height:.95;letter-spacing:-.065em}.product-card p{margin:12px 0 0;color:#d8ecf8}.recommended-card{border:1px solid rgba(255,138,0,.35);border-radius:24px;background:rgba(2,12,22,.34);padding:18px}.recommended-card h4{margin:0;font-size:1.1rem}.recommended-card .btn{width:100%;margin-top:14px}.recommended-meta{margin:10px 0 0;color:#d8ecf8;font-size:.92rem}.platform-choices{margin-top:14px}.platform-choices .btn{min-height:38px;padding:7px 13px}.notice{border:1px solid rgba(255,138,0,.32);border-radius:20px;padding:16px;background:rgba(255,138,0,.10);color:#ffe3bd}.notice h2,.notice h3{margin:0 0 6px}.notice p{margin:0}.advanced-downloads{padding:0;overflow:hidden}.advanced-downloads summary{cursor:pointer;list-style:none;padding:18px clamp(18px,2.4vw,30px);font-weight:950;font-size:1.1rem;display:flex;justify-content:space-between;gap:16px;align-items:center}.advanced-downloads summary::-webkit-details-marker{display:none}.advanced-downloads summary::after{content:"+";font-size:1.4rem;line-height:1}.advanced-downloads[open] summary::after{content:"−"}.advanced-body{border-top:1px solid rgba(205,238,255,.16);padding:clamp(18px,2.4vw,30px)}.platform-guidance{margin:0 0 18px;border:1px solid rgba(255,138,0,.34);border-radius:16px;background:rgba(255,138,0,.10);padding:12px 14px;color:#ffe3bd;font-weight:800}.platform-guidance[hidden]{display:none}.download-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(390px,100%),1fr));gap:16px}.download-card,.browser-card{position:relative;padding:20px;display:flex;flex-direction:column;gap:14px;background:rgba(2,12,22,.34);box-shadow:none}.download-card.is-recommended{border-color:rgba(255,138,0,.76);box-shadow:0 26px 70px rgba(255,138,0,.12),inset 0 1px 0 rgba(255,255,255,.08)}.download-card.is-family-match:not(.is-recommended){border-color:rgba(255,138,0,.44);box-shadow:0 18px 48px rgba(255,138,0,.08),inset 0 1px 0 rgba(255,255,255,.08)}.download-card h3,.browser-card h3{margin:0;font-size:1.35rem;line-height:1.05;letter-spacing:-.035em}.download-card p,.browser-card p{margin:0;color:var(--text-secondary)}.meta-row{display:flex;gap:8px;flex-wrap:wrap}.status-pill{display:inline-flex;align-items:center;min-height:32px;border:1px solid var(--border);border-radius:999px;padding:5px 10px;background:rgba(255,255,255,.06);font-weight:900;font-size:.82rem}.status-pill.warn{border-color:rgba(255,138,0,.46);background:rgba(255,138,0,.12);color:#ffe3bd}.status-pill.recommended{display:none;position:absolute;right:18px;top:18px;background:linear-gradient(135deg,#ffd978,#ff8a00);border-color:transparent;color:#111418}.download-card.is-recommended .status-pill.recommended{display:inline-flex}.download-details{display:grid;gap:8px;margin:0;padding:0;list-style:none}.download-details li{display:grid;grid-template-columns:112px minmax(0,1fr);gap:10px;align-items:start;border-top:1px solid rgba(205,238,255,.16);padding-top:8px;color:#d8ecf8}.download-details strong{color:#fff}.hash{display:block;max-width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.78rem;line-height:1.45;overflow-wrap:anywhere;color:#d8ecf8}.install-note{border:1px solid rgba(205,238,255,.20);border-radius:18px;background:rgba(2,12,22,.30);padding:12px;color:#d8ecf8}.card-actions{margin-top:auto}.info-grid,.browser-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:16px}.info-card{border:1px solid rgba(205,238,255,.20);border-radius:20px;background:rgba(2,12,22,.34);padding:18px}.info-card h3{margin:0 0 8px;font-size:1.12rem}.info-card p{margin:0;color:#d8ecf8}.code-lines{display:grid;gap:8px;margin-top:12px}.code-lines code{display:block;overflow-wrap:anywhere;border:1px solid rgba(205,238,255,.18);border-radius:14px;background:rgba(0,0,0,.22);padding:10px;color:#d8ecf8;font-size:.84rem}.browser-card .status-pill{width:max-content}.browser-actions{margin-top:auto}.browser-actions .btn{width:100%}footer{position:relative;z-index:1;padding:24px 0 34px;border-top:1px solid var(--border);color:#d8ecf8;background:rgba(6,35,55,.34)}@media(max-width:1120px){.nav-desktop a{font-size:.8rem;padding-inline:5px}.product-card{grid-template-columns:1fr}}@media(max-width:860px){.nav-desktop{display:none}.nav-mobile{display:block}.header-inner{min-height:96px;padding:8px var(--pad)}}@media(max-width:720px){.wrap{padding-inline:clamp(14px,5vw,24px)}.hero h1{font-size:clamp(2.95rem,15vw,4.9rem);letter-spacing:-.055em;overflow-wrap:anywhere}.hero h2{font-size:clamp(1.45rem,7vw,2rem);letter-spacing:-.035em;overflow-wrap:anywhere}.lede,.section-head p,.download-card h3,.download-card p,.product-card h3,.product-card p{overflow-wrap:anywhere}.hero,.panel,.product-card,.download-card,.browser-card,.advanced-downloads{border-radius:24px}.download-details li{grid-template-columns:1fr;gap:2px}.card-actions .btn,.hero-actions .btn,.platform-choices .btn{width:100%}.brand img{height:62px;max-width:min(70vw,410px)}}@media(max-width:380px){.nav-mobile{position:static}.nav-drawer{position:fixed;right:var(--pad);left:var(--pad);top:92px;min-width:0}}
   </style>
   <link rel="stylesheet" href="/styles/main-site.css" />
 </head>
@@ -65,60 +65,87 @@
 
   <main id="main">
     <section class="wrap hero" aria-labelledby="downloads-title">
-      <p class="eyebrow">Certifyd Core Beta</p>
-      <h1 id="downloads-title">Download Certifyd Core</h1>
-      <h2>Run Certifyd from your own device.</h2>
-      <p class="lede">Certifyd Core gives you a local way to run your Certifyd identity, content records, proofs and commerce infrastructure without depending on Git, Node, npm, Prisma, a terminal setup, or AI-assisted installation.</p>
+      <p class="eyebrow">Certifyd Downloads</p>
+      <h1 id="downloads-title">Certifyd Downloads</h1>
+      <h2>Install Certifyd Core and get the browser extension.</h2>
+      <p class="lede">Start with Certifyd Core, then add the browser extension when you want Certifyd identity and creator context directly on supported websites.</p>
       <div class="hero-actions">
-        <a class="btn primary" href="#platform-downloads">Choose your platform</a>
-        <a class="btn secondary" href="#developer-install">Developer install</a>
+        <a class="btn primary" href="#certifyd-core">Download Certifyd Core</a>
+        <a class="btn secondary" href="#browser-extension">Browser extension</a>
       </div>
     </section>
 
-    <section class="wrap section" id="platform-downloads" aria-labelledby="platform-downloads-title">
-      <div class="panel">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Platform Downloads</p>
-            <h2 id="platform-downloads-title">Validated beta packages</h2>
-            <p>Choose the build for your device. Other platforms remain visible even when your browser suggests a likely match.</p>
+    <section class="wrap section" id="certifyd-core" aria-labelledby="core-title">
+      <div class="product-card">
+        <div>
+          <p class="eyebrow">Certifyd Core</p>
+          <h2 id="core-title">Certifyd Core</h2>
+          <h3>Run your own Certifyd node.</h3>
+          <p>Install the local Certifyd foundation for identity, creator profiles, proof records and creator-operated infrastructure.</p>
+          <div class="platform-choices" aria-label="Choose an operating system">
+            <button class="btn secondary" type="button" data-platform-choice="windows">Windows</button>
+            <button class="btn secondary" type="button" data-platform-choice="mac">macOS</button>
+            <button class="btn secondary" type="button" data-platform-choice="linux">Linux</button>
           </div>
         </div>
-        <p class="platform-guidance" id="platform-guidance" hidden></p>
-        <div class="download-grid" id="download-grid"></div>
+        <div class="recommended-card" id="recommended-download" aria-live="polite">
+          <h4>Recommended download</h4>
+          <p class="recommended-meta">Detecting your platform…</p>
+          <a class="btn primary" href="#advanced-core-downloads">Choose your download</a>
+        </div>
       </div>
     </section>
 
     <section class="wrap section" aria-labelledby="beta-notice-title">
-      <div class="panel">
-        <div class="notice">
-          <h2 id="beta-notice-title">Beta notice</h2>
-          <p>Certifyd Core is currently in beta. Back up important data and expect occasional updates as we continue testing across platforms.</p>
-        </div>
+      <div class="notice">
+        <h2 id="beta-notice-title">Beta notice</h2>
+        <p>Certifyd Core is currently in beta. Back up important data and expect occasional updates as we continue testing across platforms.</p>
       </div>
     </section>
 
-    <section class="wrap section" id="verify-download" aria-labelledby="verify-title">
+    <section class="wrap section" aria-labelledby="advanced-title">
+      <details class="advanced-downloads" id="advanced-core-downloads">
+        <summary id="advanced-title">Other downloads / Advanced</summary>
+        <div class="advanced-body">
+          <p class="muted">Architecture-specific installers, release details and SHA-256 hashes for advanced users.</p>
+          <p class="platform-guidance" id="platform-guidance" hidden></p>
+          <div class="download-grid" id="download-grid"></div>
+
+          <section class="section" id="verify-download" aria-labelledby="verify-title">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Optional Verification</p>
+                <h2 id="verify-title">Verify a download</h2>
+                <p>SHA-256 checksums are for advanced users who want to verify that a downloaded file matches the validated build. Normal installation does not require this step.</p>
+              </div>
+            </div>
+            <div class="info-grid">
+              <article class="info-card">
+                <h3>Windows</h3>
+                <p>In PowerShell, compare the hash with the SHA-256 value listed on the platform card.</p>
+                <div class="code-lines"><code>Get-FileHash .\Certifyd-Core-Setup-0.1.0-beta.10-win-x64.exe -Algorithm SHA256</code></div>
+              </article>
+              <article class="info-card">
+                <h3>macOS or Linux</h3>
+                <p>In Terminal, compare the output with the SHA-256 value listed on the platform card.</p>
+                <div class="code-lines"><code>shasum -a 256 ./Certifyd-Core-0.1.0-beta.10-macos-arm64.dmg</code><code>sha256sum ./Certifyd-Core-0.1.0-beta.10-linux-x64.tar.gz</code></div>
+              </article>
+            </div>
+          </section>
+        </div>
+      </details>
+    </section>
+
+    <section class="wrap section" id="browser-extension" aria-labelledby="extension-title">
       <div class="panel">
         <div class="section-head">
           <div>
-            <p class="eyebrow">Optional Verification</p>
-            <h2 id="verify-title">Verify a download</h2>
-            <p>SHA-256 checksums are for advanced users who want to verify that a downloaded file matches the validated build. Normal installation does not require this step.</p>
+            <p class="eyebrow">Certifyd Browser Extension</p>
+            <h2 id="extension-title">Certifyd Browser Extension</h2>
+            <p>See verified Certifyd identities and creator information directly on supported websites.</p>
           </div>
         </div>
-        <div class="info-grid">
-          <article class="info-card">
-            <h3>Windows</h3>
-            <p>In PowerShell, compare the hash with the SHA-256 value listed on the platform card.</p>
-            <div class="code-lines"><code>Get-FileHash .\Certifyd-Core-Setup-0.1.0-beta.10-win-x64.exe -Algorithm SHA256</code></div>
-          </article>
-          <article class="info-card">
-            <h3>macOS or Linux</h3>
-            <p>In Terminal, compare the output with the SHA-256 value listed on the platform card.</p>
-            <div class="code-lines"><code>shasum -a 256 ./Certifyd-Core-0.1.0-beta.10-macos-arm64.dmg</code><code>sha256sum ./Certifyd-Core-0.1.0-beta.10-linux-x64.tar.gz</code></div>
-          </article>
-        </div>
+        <div class="browser-grid" id="browser-grid"></div>
       </div>
     </section>
 
@@ -139,10 +166,12 @@
   <footer><div class="wrap">No banks. No platforms. No lock-in.<br />Take your audience. Take your income.</div></footer>
 
   <script>
-    const DOWNLOADS = [
+    const CORE_DOWNLOADS = [
       {
         id: 'windows-x64',
         platform: 'Windows x64',
+        family: 'windows',
+        label: 'Windows',
         architecture: 'Windows x64',
         status: 'Validated beta',
         version: '0.1.0-beta.10',
@@ -156,6 +185,8 @@
       {
         id: 'linux-x64',
         platform: 'Linux x64',
+        family: 'linux',
+        label: 'Linux',
         architecture: 'Linux x64',
         status: 'Validated beta',
         version: '0.1.0-beta.10',
@@ -169,6 +200,8 @@
       {
         id: 'linux-arm64',
         platform: 'Linux ARM64 / Raspberry Pi 64-bit',
+        family: 'linux',
+        label: 'Linux',
         architecture: 'Linux ARM64',
         status: 'Validated beta',
         version: '0.1.0-beta.10',
@@ -182,6 +215,8 @@
       {
         id: 'macos-arm64',
         platform: 'macOS Apple Silicon',
+        family: 'mac',
+        label: 'macOS',
         architecture: 'macOS ARM64',
         status: 'Unsigned beta',
         version: '0.1.0-beta.10',
@@ -195,6 +230,8 @@
       {
         id: 'macos-x64',
         platform: 'macOS Intel',
+        family: 'mac',
+        label: 'macOS',
         architecture: 'macOS x64',
         status: 'Unsigned beta',
         version: '0.1.0-beta.10',
@@ -204,6 +241,33 @@
         url: 'https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.10/Certifyd-Core-0.1.0-beta.10-macos-x64.dmg',
         note: 'Runtime has been validated on native Intel macOS. This beta is not signed or notarized, so macOS Gatekeeper may require Finder -> right-click -> Open.',
         tags: ['mac']
+      }
+    ];
+
+    const EXTENSION_DOWNLOADS = [
+      {
+        id: 'chrome-chromium',
+        browser: 'Chrome / Chromium',
+        status: 'Beta',
+        note: 'Manual install is available for local testing. A public store listing is not live yet.'
+      },
+      {
+        id: 'edge',
+        browser: 'Microsoft Edge',
+        status: 'Beta',
+        note: 'Uses the same Chromium extension foundation. A public Edge listing is not live yet.'
+      },
+      {
+        id: 'firefox',
+        browser: 'Firefox',
+        status: 'Coming soon',
+        note: 'Planned after the WebExtension foundation is stabilized.'
+      },
+      {
+        id: 'safari',
+        browser: 'Safari',
+        status: 'Coming soon',
+        note: 'Planned for Safari Web Extensions after the browser extension beta matures.'
       }
     ];
 
@@ -277,7 +341,53 @@
       return { osFamily: '', recommendedId: '' };
     }
 
-    function renderDownloads(detection = {}) {
+    function downloadsForFamily(family) {
+      return CORE_DOWNLOADS.filter(item => item.family === family);
+    }
+
+    function primaryDownloadForFamily(family) {
+      if (family === 'windows') return CORE_DOWNLOADS.find(item => item.id === 'windows-x64');
+      return null;
+    }
+
+    function renderRecommendedDownload(detection = {}) {
+      const card = document.getElementById('recommended-download');
+      if (!card) return;
+      const item = CORE_DOWNLOADS.find(download => download.id === detection.recommendedId) || primaryDownloadForFamily(detection.osFamily);
+      const familyDownloads = downloadsForFamily(detection.osFamily);
+      if (item) {
+        card.innerHTML = `
+          <h4>Recommended download</h4>
+          <p class="recommended-meta">Recommended for ${item.label}. Version ${item.version}.</p>
+          <a class="btn primary" href="${item.url}" download>Download for ${item.label}</a>
+        `;
+        return;
+      }
+      if (familyDownloads.length) {
+        const label = familyDownloads[0].label;
+        card.innerHTML = `
+          <h4>Choose your ${label} download</h4>
+          <p class="recommended-meta">${PLATFORM_GUIDANCE[detection.osFamily] || 'Select the build that matches your device.'}</p>
+          <a class="btn primary" href="#advanced-core-downloads">Download for ${label}</a>
+        `;
+        return;
+      }
+      card.innerHTML = `
+        <h4>Choose your download</h4>
+        <p class="recommended-meta">Select Windows, macOS or Linux below.</p>
+        <a class="btn primary" href="#advanced-core-downloads">Choose your download</a>
+      `;
+    }
+
+    function openAdvancedForFamily(family) {
+      const advanced = document.getElementById('advanced-core-downloads');
+      const target = downloadsForFamily(family)[0] || null;
+      if (advanced) advanced.open = true;
+      if (target) document.getElementById(target.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      else advanced?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function renderCoreDownloads(detection = {}) {
       const grid = document.getElementById('download-grid');
       const guidance = document.getElementById('platform-guidance');
       const recommended = detection.recommendedId || '';
@@ -287,7 +397,7 @@
         guidance.textContent = message || '';
         guidance.hidden = !message;
       }
-      grid.innerHTML = DOWNLOADS.map(item => {
+      grid.innerHTML = CORE_DOWNLOADS.map(item => {
         const statusClass = item.status.toLowerCase().includes('unsigned') ? ' warn' : '';
         const isRecommended = item.id === recommended;
         const isFamilyMatch = !isRecommended && !recommended && family && item.tags.includes(family);
@@ -314,7 +424,33 @@
       }).join('');
     }
 
-    detectClientPlatform().then(renderDownloads).catch(() => renderDownloads());
+    function renderExtensionDownloads() {
+      const grid = document.getElementById('browser-grid');
+      if (!grid) return;
+      grid.innerHTML = EXTENSION_DOWNLOADS.map(item => `
+        <article class="browser-card" id="${item.id}">
+          <div class="meta-row"><span class="status-pill${item.status === 'Coming soon' ? ' warn' : ''}">${item.status}</span></div>
+          <h3>${item.browser}</h3>
+          <p>${item.note}</p>
+          <div class="browser-actions">
+            <span class="btn secondary" aria-disabled="true">${item.status}</span>
+          </div>
+        </article>
+      `).join('');
+    }
+
+    document.querySelectorAll('[data-platform-choice]').forEach(button => {
+      button.addEventListener('click', () => openAdvancedForFamily(button.dataset.platformChoice));
+    });
+
+    detectClientPlatform().then(detection => {
+      renderRecommendedDownload(detection);
+      renderCoreDownloads(detection);
+    }).catch(() => {
+      renderRecommendedDownload();
+      renderCoreDownloads();
+    });
+    renderExtensionDownloads();
 
     const menu = document.querySelector('.nav-mobile');
     if (menu) {
