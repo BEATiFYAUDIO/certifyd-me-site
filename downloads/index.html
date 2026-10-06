@@ -123,12 +123,12 @@
               <article class="info-card">
                 <h3>Windows</h3>
                 <p>In PowerShell, compare the hash with the SHA-256 value listed on the platform card.</p>
-                <div class="code-lines"><code>Get-FileHash .\Certifyd-Core-Setup-0.1.0-beta.11-win-x64.exe -Algorithm SHA256</code></div>
+                <div class="code-lines"><code>Get-FileHash .\Certifyd-Core-Setup-0.1.0-beta.12-win-x64.exe -Algorithm SHA256</code></div>
               </article>
               <article class="info-card">
                 <h3>macOS or Linux</h3>
                 <p>In Terminal, compare the output with the SHA-256 value listed on the platform card.</p>
-                <div class="code-lines"><code>shasum -a 256 ./Certifyd-Core-0.1.0-beta.11-macos-arm64.dmg</code><code>sha256sum ./Certifyd-Core-0.1.0-beta.11-linux-x64.tar.gz</code></div>
+                <div class="code-lines"><code>shasum -a 256 ./Certifyd-Core-0.1.0-beta.12-macos-arm64.dmg</code><code>sha256sum ./Certifyd-Core-0.1.0-beta.12-linux-x64.tar.gz</code></div>
               </article>
             </div>
           </section>
@@ -182,11 +182,11 @@
         label: 'Windows',
         architecture: 'Windows x64',
         status: 'Validated beta',
-        version: '0.1.0-beta.11',
-        filename: 'Certifyd-Core-Setup-0.1.0-beta.11-win-x64.exe',
-        size: '91,442,891 bytes',
-        sha256: 'c79c9ec402bd99e8f7481cf8cdbefdb29054b0052eeb99bbad30451cae0080b9',
-        url: 'https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.11/Certifyd-Core-Setup-0.1.0-beta.11-win-x64.exe',
+        version: '0.1.0-beta.12',
+        filename: 'Certifyd-Core-Setup-0.1.0-beta.12-win-x64.exe',
+        size: '91,443,435 bytes',
+        sha256: '972c81d75805f3d026d3b4e93dacf1441cdb6b9f74f8705701a8c54cdfdcb1c1',
+        url: 'https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.12/Certifyd-Core-Setup-0.1.0-beta.12-win-x64.exe',
         note: 'Download the installer, run it, then launch Certifyd Core from your desktop or Start Menu.',
         tags: ['windows']
       },
@@ -197,11 +197,11 @@
         label: 'Linux',
         architecture: 'Linux x64',
         status: 'Validated beta',
-        version: '0.1.0-beta.11',
-        filename: 'Certifyd-Core-0.1.0-beta.11-linux-x64.tar.gz',
-        size: '162,504,892 bytes',
-        sha256: 'b78c6ae32ca7e5aeb23f6b433943a2519f72ed684e38a07567737baa7b68aec9',
-        url: 'https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.11/Certifyd-Core-0.1.0-beta.11-linux-x64.tar.gz',
+        version: '0.1.0-beta.12',
+        filename: 'Certifyd-Core-0.1.0-beta.12-linux-x64.tar.gz',
+        size: '162,510,892 bytes',
+        sha256: '2420498437772353f6025994c8759e6423d878d9ad61c5352a2e3f72a36ab023',
+        url: 'https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.12/Certifyd-Core-0.1.0-beta.12-linux-x64.tar.gz',
         note: 'Download, extract the archive, then run ./start.sh from the extracted folder.',
         tags: ['linux']
       },
@@ -212,11 +212,11 @@
         label: 'Linux',
         architecture: 'Linux ARM64',
         status: 'Validated beta',
-        version: '0.1.0-beta.11',
-        filename: 'Certifyd-Core-0.1.0-beta.11-linux-arm64.tar.gz',
-        size: '160,056,738 bytes',
-        sha256: '1da9a1787ae8412e656ca397c7c3eb237c22f03d33672baec1dca5fb9fbc3046',
-        url: 'https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.11/Certifyd-Core-0.1.0-beta.11-linux-arm64.tar.gz',
+        version: '0.1.0-beta.12',
+        filename: 'Certifyd-Core-0.1.0-beta.12-linux-arm64.tar.gz',
+        size: '160,057,052 bytes',
+        sha256: '5658b1856926643fa471b56ca1e8c8ace36436dabfb6b58b253b433e5918e382',
+        url: 'https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.12/Certifyd-Core-0.1.0-beta.12-linux-arm64.tar.gz',
         note: 'Native ARM64 build/runtime has been verified. It is compatible by runtime requirements with 64-bit Debian/ARM64-class systems; physical Raspberry Pi hardware validation is separate.',
         tags: ['linux', 'arm']
       },
@@ -226,13 +226,13 @@
         family: 'mac',
         label: 'macOS',
         architecture: 'macOS ARM64',
-        status: 'Unsigned beta',
-        version: '0.1.0-beta.11',
-        filename: 'Certifyd-Core-0.1.0-beta.11-macos-arm64.dmg',
-        size: '266,370,486 bytes',
-        sha256: '4ab4b8fdd61cb6e14d4e75c420229e206f8c425bebbd6c17c0ba6b05973c2775',
-        url: 'https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.11/Certifyd-Core-0.1.0-beta.11-macos-arm64.dmg',
-        note: 'Runtime has been validated on native Apple Silicon. This beta is not signed or notarized, so macOS Gatekeeper may require Finder -> right-click -> Open.',
+        status: 'Signed and notarized beta',
+        version: '0.1.0-beta.12',
+        filename: 'Certifyd-Core-0.1.0-beta.12-macos-arm64.dmg',
+        size: '267,414,316 bytes',
+        sha256: 'bea9106545602abb54bb98964ad07585893957aec9256a3b9e6f5f0a342d0924',
+        url: 'https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.12/Certifyd-Core-0.1.0-beta.12-macos-arm64.dmg',
+        note: 'Developer ID signed, Apple notarized and stapled. Gatekeeper and runtime validation passed on native Apple Silicon.',
         tags: ['mac', 'arm']
       },
       {
@@ -241,13 +241,13 @@
         family: 'mac',
         label: 'macOS',
         architecture: 'macOS x64',
-        status: 'Unsigned beta',
-        version: '0.1.0-beta.11',
-        filename: 'Certifyd-Core-0.1.0-beta.11-macos-x64.dmg',
-        size: '272,981,432 bytes',
-        sha256: '88677bafc5b45ee8f7e746424aab16653fc6c5802dbc541d8936d9a2e5e86836',
-        url: 'https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.11/Certifyd-Core-0.1.0-beta.11-macos-x64.dmg',
-        note: 'Runtime has been validated on native Intel macOS. This beta is not signed or notarized, so macOS Gatekeeper may require Finder -> right-click -> Open.',
+        status: 'Signed and notarized beta',
+        version: '0.1.0-beta.12',
+        filename: 'Certifyd-Core-0.1.0-beta.12-macos-x64.dmg',
+        size: '275,159,354 bytes',
+        sha256: 'c00c19e9f70c7e0fe8e37f38db1a496f66610804b26edd2ddf34d7e9a610ec29',
+        url: 'https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.12/Certifyd-Core-0.1.0-beta.12-macos-x64.dmg',
+        note: 'Developer ID signed, Apple notarized and stapled. Gatekeeper and runtime validation passed on native Intel macOS.',
         tags: ['mac']
       }
     ];
