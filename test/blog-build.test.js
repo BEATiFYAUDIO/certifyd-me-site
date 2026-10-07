@@ -65,6 +65,9 @@ test('build renders blog index, article pages, and metadata without publishing p
   const jsonLd = [...articleHtml.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((match) => JSON.parse(match[1]));
   assert.equal(jsonLd.find((item) => item['@type'] === 'BlogPosting').mainEntityOfPage['@id'], 'https://certifyd.me/blog/newer-article/');
   assert.equal(jsonLd.find((item) => item['@type'] === 'BreadcrumbList').itemListElement[1].item, 'https://certifyd.me/blog/');
+  assert.equal(jsonLd.find((item) => item['@type'] === 'Organization').email, 'hello@certifyd.me');
+  assert.match(articleHtml, /<footer>[\s\S]*href="mailto:hello@certifyd\.me"/);
+  assert.match(await fs.readFile(path.join(root, 'blog', 'index.html'), 'utf8'), /<footer>[\s\S]*href="mailto:hello@certifyd\.me"/);
 
   const ansolasRedirect = await fs.readFile(path.join(root, 'blog', 'meet-ansolas-musician-building-his-own-tools', 'index.html'), 'utf8');
   assert.match(ansolasRedirect, /<link rel="canonical" href="https:\/\/certifyd\.me\/blog\/ansolas-building-what-he-wishes-existed\/"/);

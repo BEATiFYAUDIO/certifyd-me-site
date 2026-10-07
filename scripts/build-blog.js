@@ -19,6 +19,7 @@ const SOCIAL_IMAGE_HEIGHT = 630;
 const SOCIAL_IMAGE_BACKGROUND = '#071421';
 const ORGANIZATION = {
   name: 'Certifyd',
+  email: 'hello@certifyd.me',
   url: BASE_URL,
   logo: `${BASE_URL}/images/certifyd-tab-icon.svg`,
   description: 'Certifyd provides creator-owned publishing, identity, attribution and direct commerce infrastructure.',
@@ -416,6 +417,7 @@ function organizationJsonLd() {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: ORGANIZATION.name,
+    email: ORGANIZATION.email,
     url: ORGANIZATION.url,
     logo: {
       '@type': 'ImageObject',

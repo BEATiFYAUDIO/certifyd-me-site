@@ -18,7 +18,7 @@
   <meta property="og:description" content="Certifyd is peer-to-peer infrastructure for digital identity, publishing, provenance and commerce. Publish, prove and sell digital work on infrastructure you can control." />
   <meta property="og:url" content="https://certifyd.me/" />
   <meta property="og:site_name" content="Certifyd" />
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"Certifyd","url":"https://certifyd.me","logo":{"@type":"ImageObject","url":"https://certifyd.me/images/certifyd-tab-icon.svg"},"description":"Certifyd provides creator-owned publishing, identity, attribution and direct commerce infrastructure."}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"Certifyd","url":"https://certifyd.me","logo":{"@type":"ImageObject","url":"https://certifyd.me/images/certifyd-tab-icon.svg"},"description":"Certifyd provides creator-owned publishing, identity, attribution and direct commerce infrastructure.","email":"hello@certifyd.me"}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Certifyd","url":"https://certifyd.me","description":"Peer-to-peer infrastructure for digital identity, publishing, provenance and commerce."}</script>
   <!-- pages-cache-bust: 2026-06-01T11:38:00 -->
 
@@ -2758,6 +2758,7 @@ section[id]{
     @media(max-width:720px){.home-section-panel{border-radius:24px}.home-section-title,.home-copy,.pathway-card p,.role-card p,.distribution-card p{overflow-wrap:anywhere}.pathway-grid,.role-grid,.category-grid,.distribution-grid,.step-grid,.model-grid,.ownership-list{grid-template-columns:1fr}.home-actions .btn,.pathway-card .btn,.role-card .btn{width:100%}.lifecycle-flow{display:grid;grid-template-columns:1fr;justify-items:center;text-align:center;gap:6px;margin-top:8px;font-size:clamp(46px,14vw,64px);line-height:.9}.lifecycle-flow .flow-arrow{display:none}.lifecycle-panel .home-copy{text-align:center}.commerce-grid,.ip-grid,.profile-proof-grid{gap:16px}}
     /* HOMEPAGE_REFRESH_END */
 
+    @media(max-width:720px){footer{padding-bottom:calc(100px + env(safe-area-inset-bottom, 0px))}}
   </style>
 </head>
 
@@ -2911,6 +2912,7 @@ section[id]{
         <p class="home-eyebrow">TRUSTED PARTNER DISCOVERY</p>
         <h2 id="partner-categories-heading" class="home-section-title">Find the Partners Your Business Needs.</h2>
         <p class="home-copy">Discover trusted partners for publishing, distribution, commerce, professional services and growth.</p>
+        <p class="home-copy"><small>Founder &amp; strategic inquiries — Darryl Hillock: <a href="mailto:darryl@certifyd.me">darryl@certifyd.me</a>.</small></p>
         <div class="category-grid">
           <article class="role-card"><h3>Promotion &amp; Media</h3><p>Promoters, publicists, agencies.</p></article>
           <article class="role-card"><h3>Production</h3><p>Producers, designers, videographers.</p></article>
@@ -3015,6 +3017,7 @@ section[id]{
               <button class="btn primary" type="submit">Apply for the Insiders Club</button>
             </div>
             <div id="early-access-status" class="ea-status" role="status" aria-live="polite"></div>
+            <p>Questions or trouble applying? Contact <a href="mailto:hello@certifyd.me">hello@certifyd.me</a>.</p>
           </form>
       </div>
     </section>
@@ -3078,6 +3081,8 @@ section[id]{
       Own your work. Own your relationships.
       <br />
       Built for trusted discovery, direct commerce, and independently operated infrastructure.
+
+      <p class="company-contact">Contact Certifyd: <a href="mailto:hello@certifyd.me">hello@certifyd.me</a></p>
     </div>
   </footer>
 
@@ -3354,6 +3359,10 @@ section[id]{
         }
 
         const faq = [
+          {
+            patterns: ["contact", "support", "help", "email", "customer service"],
+            answer: "For Certifyd company inquiries, support, or beta questions, email hello@certifyd.me. To apply for the Insiders Club, use the Join page."
+          },
           {
             patterns: ["what is certifyd", "what's certifyd", "what is certfiyd", "certifyd"],
             answer: "Certifyd is peer-to-peer infrastructure for digital identity, work, trusted discovery and commerce. People and businesses can publish and prove digital work, establish an official identity, connect directly and participate in commerce without depending entirely on centralized platforms."

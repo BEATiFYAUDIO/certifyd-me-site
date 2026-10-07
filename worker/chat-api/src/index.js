@@ -43,7 +43,7 @@ function buildSystemPrompt() {
     'Primary message: Certifyd is creator-owned publishing and commerce, not a closed platform.',
     'Focus on identity, publishing, payments, splits, receipts, payouts, and the Certifyd Insiders Club.',
     'Do not invent pricing, guarantees, dates, or roadmap claims.',
-    'If asked for account-specific support, direct user to the Insiders Club/contact forms on the site.',
+    'For general company inquiries, account-specific support, or beta questions, direct users to hello@certifyd.me. For Insiders Club applications, direct users to the Join page.',
   ].join(' ');
 }
 
