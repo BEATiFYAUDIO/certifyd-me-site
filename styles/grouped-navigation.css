@@ -1,0 +1,77 @@
+/* Shared desktop dropdown presentation for self-contained and shared-style pages. */
+.nav-desktop .nav-group {
+  position: relative;
+  flex: none;
+}
+
+.nav-desktop .nav-group summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 8px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: inherit;
+}
+
+.nav-desktop .nav-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.nav-desktop .nav-group summary::after {
+  content: "\25be";
+  display: inline-block;
+  margin-left: 0.35em;
+  font-size: 0.75em;
+  transition: transform 140ms ease;
+}
+
+.nav-desktop .nav-group[open] > summary::after {
+  transform: rotate(180deg);
+}
+
+.nav-desktop .nav-group summary:hover,
+.nav-desktop .nav-group[open] > summary,
+.nav-desktop .nav-group.is-current > summary {
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+}
+
+.nav-desktop .nav-group summary:focus-visible,
+.nav-desktop .nav-group-menu a:focus-visible {
+  outline: 2px solid #80ddf8;
+  outline-offset: 2px;
+}
+
+.nav-desktop .nav-group-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 1800;
+  display: grid;
+  gap: 6px;
+  min-width: 184px;
+  padding: 8px;
+  border: 1px solid rgba(205, 238, 255, 0.24);
+  border-radius: 16px;
+  background: rgba(8, 22, 32, 0.97);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.46);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  white-space: nowrap;
+}
+
+.nav-desktop .nav-group-menu a {
+  display: block;
+  padding: 10px 12px;
+  border: 1px solid rgba(205, 238, 255, 0.12);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.nav-desktop .nav-group-menu a:hover,
+.nav-desktop .nav-group-menu a[aria-current="page"] {
+  border-color: rgba(205, 238, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
