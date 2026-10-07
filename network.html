@@ -116,7 +116,22 @@
       .btn{width:100%}
       .actions{flex-direction:column;align-items:stretch}
     }
-  </style>
+
+/* Keep the original flat navigation at the existing narrow layout. */
+.nav-links-desktop .nav-group { position: relative; }
+.nav-links-desktop .nav-group summary { list-style: none; cursor: pointer; padding: 8px 10px; border-radius: 10px; color: inherit; }
+.nav-links-desktop .nav-group summary::-webkit-details-marker { display: none; }
+.nav-links-desktop .nav-group summary::after { content: "\25be"; margin-left: .35em; font-size: .75em; }
+.nav-links-desktop .nav-group summary:hover,
+.nav-links-desktop .nav-group[open] > summary,
+.nav-links-desktop .nav-group.is-current > summary { background: rgba(255,255,255,.09); color: #fff; }
+.nav-links-desktop .nav-group summary:focus-visible,
+.nav-links-desktop .nav-group-menu a:focus-visible { outline: 2px solid #80ddf8; outline-offset: 2px; }
+.nav-links-desktop .nav-group-menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 100; display: grid; min-width: 170px; padding: 6px; border: 1px solid rgba(205,238,255,.24); border-radius: 12px; background: #092238; box-shadow: 0 20px 50px rgba(0,0,0,.4); }
+.nav-links-desktop .nav-group-menu a { padding: 9px 12px; white-space: nowrap; }
+.nav-links-mobile { display: none !important; flex-wrap: wrap; }
+@media (max-width: 900px) { .nav-links-desktop { display: none !important; } .nav-links-mobile { display: flex !important; } }
+</style>
 </head>
 <body>
   <header>
@@ -124,7 +139,15 @@
       <a class="brand" href="/">
         <img src="/images/certifyd_logo_transparent.svg" alt="Certifyd Creator logo" />
       </a>
-      <nav class="nav-links" aria-label="Primary navigation">
+      <nav class="nav-links nav-links-desktop" aria-label="Primary navigation">
+          <details class="nav-group"><summary>About</summary><div class="nav-group-menu"><a href="/profile/">Profile</a><a href="https://awards.certifyd.me" target="_blank" rel="noreferrer">Awards</a></div></details>
+          <details class="nav-group"><summary>Explore</summary><div class="nav-group-menu"><a href="https://fan.certifyd.me" target="_blank" rel="noreferrer">Discover</a><a href="/blog/">Blog</a></div></details>
+          <details class="nav-group"><summary>Work With Us</summary><div class="nav-group-menu"><a href="/retail-partners/">Partners</a><a href="/services/">Checkout</a></div></details>
+          <a href="/downloads/">Downloads</a>
+          <a href="/join/">Join Network</a>
+          <a href="https://investor.certifyd.me/">Invest</a>
+        </nav>
+        <nav class="nav-links nav-links-mobile" aria-label="Primary navigation on narrow screens">
         <a href="/profile/">Profile</a>
         <a href="/downloads/">Downloads</a>
         <a href="/retail-partners/">Partners</a>
