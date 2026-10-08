@@ -20,8 +20,8 @@
     .layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:25px;margin-top:30px}.side{position:sticky;top:20px;align-self:start;background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}.side strong{font-size:13px;letter-spacing:.08em;color:var(--muted)}.side nav{display:grid;margin-top:10px}.side a{padding:10px 8px;border-radius:8px;text-decoration:none;color:#40515b;font-size:14px}.side a:hover,.side a.active{background:var(--light);color:#095c83}.progress{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px;margin-top:12px}
     .topic{background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px;margin-bottom:16px;scroll-margin-top:24px}.topic-head{display:flex;justify-content:space-between;gap:14px;align-items:start}.topic .number{font-size:12px;color:var(--blue);font-weight:800;letter-spacing:.09em}.topic p{color:#4f5a63}.topic ol{padding-left:23px;margin:13px 0 20px}.topic li{padding-left:5px;margin:9px 0}.topic .note{background:var(--light);border-left:3px solid var(--blue);padding:12px 14px;border-radius:5px;color:#24516a;font-size:14px}.topic .note a{font-weight:650}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}.action{display:inline-flex;align-items:center;justify-content:center;padding:10px 15px;border:1px solid #bdd4e0;border-radius:9px;text-decoration:none;font-size:14px;font-weight:650}.action:hover{background:var(--light)}.mark{display:flex;align-items:center;gap:8px;font-size:13px;white-space:nowrap;color:#46545d}.mark input{width:17px;height:17px;accent-color:var(--blue)}.choice{display:flex;flex-wrap:wrap;gap:8px;margin:15px 0}.choice button{border:1px solid #b9d0da;background:#fff;border-radius:8px;padding:8px 12px;color:#205269}.choice button[aria-pressed=true]{background:var(--blue);color:#fff;border-color:var(--blue)}.choice-detail{background:#f7fafb;padding:13px 16px;border-radius:9px}
     .footer{color:var(--muted);font-size:13px;margin-top:20px}code{background:#f0f3f5;padding:2px 5px;border-radius:4px}body.guided .topic{display:none}body.guided .topic.current{display:block}body.guided.searching .topic{display:none}body.guided.searching .topic.match{display:block}
-    .step-actions{border-top:1px solid var(--line);padding-top:20px;margin-top:22px;display:flex;justify-content:space-between;gap:12px}.step-actions button{border:1px solid #bdd4e0;border-radius:9px;background:#fff;color:#24516a;padding:10px 15px;font-weight:650}.step-actions button.next{background:var(--blue);color:#fff;border-color:var(--blue)}.step-actions button:disabled{opacity:.35}.side a.active{font-weight:700}
-    @media(max-width:800px){.layout{grid-template-columns:1fr}.side{position:static}.side nav{grid-template-columns:repeat(2,minmax(0,1fr))}.topic{padding:21px}}@media(max-width:520px){.top nav{font-size:12px;gap:12px}.top-inner{padding:12px 16px}.brand{font-size:18px}.brand img{width:30px}.side nav{grid-template-columns:1fr 1fr}.topic-head{display:block}.mark{margin:10px 0}.search-wrap{margin-top:20px}main{padding:28px 16px 60px}}
+    .step-actions{border-top:1px solid var(--line);padding-top:20px;margin-top:22px;display:flex;justify-content:space-between;gap:12px}.step-actions button{border:1px solid #bdd4e0;border-radius:9px;background:#fff;color:#24516a;padding:10px 15px;font-weight:650}.step-actions button.next{background:var(--blue);color:#fff;border-color:var(--blue)}.step-actions button:disabled{opacity:.35}.side a.active{font-weight:700}.nav-label{font-size:11px;color:#75838b;letter-spacing:.11em;font-weight:750;padding:17px 8px 3px}.nav-label:first-child{padding-top:4px}
+    @media(max-width:800px){.layout{grid-template-columns:1fr}.side{position:static}.side nav{grid-template-columns:repeat(2,minmax(0,1fr));max-height:140px;overflow-y:auto}.topic{padding:21px}}@media(max-width:520px){.top nav{font-size:12px;gap:12px}.top-inner{padding:12px 16px}.brand{font-size:18px}.brand img{width:30px}.side nav{grid-template-columns:1fr 1fr}.topic-head{display:block}.mark{margin:10px 0}.search-wrap{margin-top:20px}main{padding:28px 16px 60px}}
   </style>
 </head>
 <body>
@@ -73,49 +73,93 @@
           <p><b>Works</b> is your catalog workspace. It separates <b>Certifyd Works</b>, made and managed in Core, from <b>Legacy</b> references connected from outside catalogs. Use it to create drafts, attach files and details, and manage releases.</p>
           <p class="note">Connecting a Legacy reference does not turn it into a native Certifyd Work or verify ownership.</p>
         </section>
+        <section class="topic" id="rights" data-search="rights holders connect work legacy profile proof spotify apple music youtube isrc identifier verify source">
+          <div class="topic-head"><div><div class="number">08 · LEGACY WORK</div><h2>What is Rights Holders?</h2></div><label class="mark"><input type="checkbox" data-done="rights">Done</label></div>
+          <p>For now, <b>Rights Holders</b> contains <b>Connect Work</b>. The standalone registry for people, publishers, labels, organizations, and collecting societies is described in Core as future work.</p>
+          <ol><li>First prove the legacy social or platform profile that is the source of the work.</li><li>Open <b>Rights Holders → Connect Work</b>. Paste a Spotify, Apple Music, or YouTube URL, or choose an industry identifier such as ISRC.</li><li>Press <b>Discover</b> and review the metadata. <b>Connect</b> becomes available only when Core reports the source account verified.</li><li>Connect to create a private Legacy reference in your Works catalog.</li></ol>
+          <p class="note">Source-account control is not proof of copyright or other rights ownership. A Legacy reference stays separate from a native Certifyd Work.</p>
+        </section>
         <section class="topic" id="library" data-search="library tab what i own authored purchased shared splits derivatives songs videos books files">
-          <div class="topic-head"><div><div class="number">08 · FIND YOUR WAY</div><h2>What is Library?</h2></div><label class="mark"><input type="checkbox" data-done="library">Done</label></div>
+          <div class="topic-head"><div><div class="number">09 · FIND YOUR WAY</div><h2>What is Library?</h2></div><label class="mark"><input type="checkbox" data-done="library">Done</label></div>
           <p><b>Library</b> is the view of works you can access. It can include your authored work, purchases, and work shared through splits or derivatives. Filter it by type or relationship to find something you can view or play.</p>
           <p class="note">Think of <b>Works</b> as managing your catalog and <b>Library</b> as accessing the work available to you. A Library item does not by itself say you created that work.</p>
         </section>
         <section class="topic" id="public" data-search="public link quick temporary tunnel named durable hostname cloudflare dns 4010">
-          <div class="topic-head"><div><div class="number">09 · SHARING</div><h2>Choose how people reach Core</h2></div><label class="mark"><input type="checkbox" data-done="public">Done</label></div>
+          <div class="topic-head"><div><div class="number">10 · SHARING</div><h2>Choose how people reach Core</h2></div><label class="mark"><input type="checkbox" data-done="public">Done</label></div>
           <p><b>Temporary link:</b> a short test or sharing path with no DNS setup. You start and stop it in Core; the address can change.</p>
           <p><b>Named tunnel:</b> a stable custom hostname with a persistent Cloudflare identity. It has a separate guided setup.</p>
           <div class="actions"><a class="action" href="/core/tunnel-setup/">Open interactive tunnel guide</a></div>
           <p class="note">Core does not automatically turn a temporary link into a named tunnel. Both public paths target <code>http://127.0.0.1:4010</code>.</p>
         </section>
         <section class="topic" id="named" data-search="named tunnel permanent durable hostname domain dns cloudflare exact tunnel identity service">
-          <div class="topic-head"><div><div class="number">10 · PERMANENT ADDRESS</div><h2>Get a named tunnel</h2></div><label class="mark"><input type="checkbox" data-done="named">Done</label></div>
-          <p>A named tunnel gives your Core a stable public hostname. You need a Cloudflare account and a domain on Cloudflare. The guide checks whether you already have a tunnel, hostname, or running service before it suggests commands.</p>
+          <div class="topic-head"><div><div class="number">11 · PERMANENT ADDRESS</div><h2>Get a named tunnel</h2></div><label class="mark"><input type="checkbox" data-done="named">Done</label></div>
+          <p>A named tunnel gives your Core a stable public hostname. You need a domain you control, with its DNS on Cloudflare, plus a Cloudflare account. The guide checks whether you already have a tunnel, hostname, or running service before it suggests commands.</p>
           <ol><li>Open the tunnel guide and choose <b>I want a permanent custom hostname</b>, or the option for your existing tunnel or service.</li><li>Follow the steps for your current setup. Confirm the exact tunnel name or UUID and point its public route to <code>http://127.0.0.1:4010</code>.</li><li>Check that Core reports the configured public origin and a durable-ready state before relying on buyer links.</li></ol>
           <div class="actions"><a class="action" href="/core/tunnel-setup/">Start named-tunnel setup</a></div>
           <p class="note">More than one Cloudflare tunnel on your computer is fine. Do not stop or replace an unrelated tunnel merely because Certifyd shows another one.</p>
         </section>
         <section class="topic" id="provider" data-search="payment node provider connect commerce delegated invoice network provider url node id public key trusted">
-          <div class="topic-head"><div><div class="number">11 · PAYMENTS</div><h2>Connect a payment provider node</h2></div><label class="mark"><input type="checkbox" data-done="provider">Done</label></div>
+          <div class="topic-head"><div><div class="number">12 · PAYMENTS</div><h2>Connect a payment provider node</h2></div><label class="mark"><input type="checkbox" data-done="provider">Done</label></div>
           <p>For provider-backed commerce, a trusted node supplies payment services while your Core remains the creator's storefront. This is separate from configuring your own Lightning node.</p>
-          <ol><li>Bring your durable named public origin online first. In Basic mode, provider configuration is hidden.</li><li>Open <b>Network → Provider Configuration</b> in Core. Enter the provider's exact Node ID, public key, and URL supplied by its operator.</li><li>Save the provider and use Core's <b>Connect provider</b> guided setup. Check its verification and Network Status messages; a saved URL alone does not make it trusted or ready.</li></ol>
+          <ol><li>First get a working named tunnel on a domain you control. A temporary Quick Tunnel does not satisfy this payment setup prerequisite.</li><li>On <a href="https://network.certifyd.me/" target="_blank" rel="noreferrer">the Certifyd Network map</a>, choose a provisionable payment node, open <b>Review provider details</b>, and use <b>Copy provider details</b>.</li><li>In Core, open <b>Network → Provider Configuration</b>. Paste the exact <b>Provider URL</b> and <b>Provider Node ID</b>. The map also supplies a public key and profile ID for the optional fields.</li><li>Enable and <b>Save provider</b>, then use Core's <b>Connect provider</b> guided setup. Check its verification and Network Status messages; a saved URL alone does not make it trusted or ready.</li></ol>
           <p class="note">If you intend to run your own payment stack instead, use <b>Node Settings · Lightning</b> for your LND connection and readiness test. A named tunnel alone does not enable paid commerce.</p>
         </section>
+        <section class="topic" id="lightning" data-search="lightning lnd local node node settings rest url macaroon tls certificate auto detect test save operator">
+          <div class="topic-head"><div><div class="number">13 · NODE OPERATOR</div><h2>What is Lightning?</h2></div><label class="mark"><input type="checkbox" data-done="lightning">Done</label></div>
+          <p><b>Lightning</b> is the node settings area for connecting your own LND payment infrastructure. Most creators following the provider-node route do not need to configure it.</p>
+          <ol><li>If you operate your own LND, open <b>Node → Lightning</b>.</li><li>Review the LND REST URL, network, macaroon, and TLS certificate fields. Use <b>Auto-detect</b> if Core can find a local candidate.</li><li>Press <b>Test</b>, resolve the reported readiness issue if any, then <b>Save</b> in Core.</li></ol>
+          <p class="note">Keep macaroon and certificate material inside Core’s private operator setup. This public guide never asks for or stores those credentials.</p>
+        </section>
+        <section class="topic" id="console" data-search="provider console node operator lan delegated creators creator scope revenue diagnostics settlement payout treasury">
+          <div class="topic-head"><div><div class="number">14 · NODE OPERATOR</div><h2>What is Provider Console?</h2></div><label class="mark"><input type="checkbox" data-done="console">Done</label></div>
+          <p><b>Provider Console</b> is for an operator running a provider node in LAN posture. It shows delegated creator scope, provider fees, sales and payout execution, and node health. Ordinary creator onboarding does not require this tab.</p>
+          <p class="note">If you do not see Provider Console, Core has not identified your node as eligible for that operator role. Do not change posture just to reveal a menu item.</p>
+        </section>
         <section class="topic" id="advanced" data-search="unlock menu show advanced hide advanced node operator configuration diagnostics revenue commerce locked">
-          <div class="topic-head"><div><div class="number">12 · MORE CONTROLS</div><h2>Show the advanced menu</h2></div><label class="mark"><input type="checkbox" data-done="advanced">Done</label></div>
+          <div class="topic-head"><div><div class="number">15 · MORE CONTROLS</div><h2>Show the advanced menu</h2></div><label class="mark"><input type="checkbox" data-done="advanced">Done</label></div>
           <ol><li>At the bottom of Core's left sidebar, press <b>Show Advanced</b>.</li><li>The additional operator section includes <b>Configuration</b> and <b>Diagnostics</b>; Revenue may also become visible.</li><li>If a commerce item is still disabled, read its reason in Core. Showing the menu does not grant payment or split capabilities.</li></ol>
           <p class="note">Core may show advanced navigation automatically for an Advanced or LAN posture, unless you previously chose a menu preference.</p>
         </section>
+        <section class="topic" id="configuration" data-search="configuration node tunnel routing public link hostname quick named 4010 origin consent">
+          <div class="topic-head"><div><div class="number">16 · NODE SETTINGS</div><h2>What is Configuration?</h2></div><label class="mark"><input type="checkbox" data-done="configuration">Done</label></div>
+          <p><b>Configuration</b> is the private operator area for public link and tunnel settings, node routing, and related setup. For a first public link or named hostname, use the detailed tunnel walkthrough rather than guessing values.</p>
+          <div class="actions"><a class="action" href="/core/tunnel-setup/">Open tunnel setup</a></div>
+          <p class="note">Public Cloudflare routes must use Core’s allowlisted listener at <code>http://127.0.0.1:4010</code>. The private dashboard on port 4000 is for the operator.</p>
+        </section>
+        <section class="topic" id="diagnostics" data-search="diagnostics health connectivity public hostname backups run backup recovery">
+          <div class="topic-head"><div><div class="number">17 · NODE HEALTH</div><h2>What is Diagnostics?</h2></div><label class="mark"><input type="checkbox" data-done="diagnostics">Done</label></div>
+          <p><b>Diagnostics</b> checks public-host connectivity and shows local backup status. Use its tests when a public link or hostname seems offline; the results help separate Core, tunnel, and reachability problems.</p>
+          <ol><li>Open <b>Node (Operator) → Diagnostics</b> and run the relevant connectivity check.</li><li>Read the specific failed check before changing tunnel settings.</li><li>In <b>Backups (local)</b>, check whether backups are enabled and review the backup list. An operator can run a backup from here.</li></ol>
+          <p class="note">A diagnostic check does not change DNS. Keep backup files and restore instructions private.</p>
+        </section>
         <section class="topic" id="splits" data-search="split edit splits manage splits participants percentages 100 draft lock version advanced lan commerce">
-          <div class="topic-head"><div><div class="number">13 · COLLABORATION</div><h2>Edit a split</h2></div><label class="mark"><input type="checkbox" data-done="splits">Done</label></div>
+          <div class="topic-head"><div><div class="number">18 · COLLABORATION</div><h2>Edit a split</h2></div><label class="mark"><input type="checkbox" data-done="splits">Done</label></div>
           <p>A split records who participates in a work and in what percentages. Core requires the appropriate Advanced or LAN and commerce capabilities for split controls.</p>
           <ol><li>In <b>Works</b>, choose a Certifyd Work and press <b>Edit splits</b>, or open <b>Manage Splits</b> and choose the work.</li><li>In a draft split, add collaborators, roles, and percentages. Review the totals and resolve any participant Core flags.</li><li>Save the draft. Lock only when everyone and every share is correct. A locked version cannot be edited; changes require a new version.</li></ol>
           <p class="note">If <b>Edit splits</b> is unavailable, the capability message in Core is the source of truth. Turning on <b>Show Advanced</b> does not bypass it.</p>
         </section>
         <section class="topic" id="release" data-search="draft upload primary file publish content release visibility direct link discoverable">
-          <div class="topic-head"><div><div class="number">14 · PUBLISHING</div><h2>Publish your first work</h2></div><label class="mark"><input type="checkbox" data-done="release">Done</label></div>
+          <div class="topic-head"><div><div class="number">19 · PUBLISHING</div><h2>Publish your first work</h2></div><label class="mark"><input type="checkbox" data-done="release">Done</label></div>
           <ol><li>Create a draft in <b>Works → Certifyd Works</b>.</li><li>Add its details and primary file, then review visibility and the available publishing readiness messages.</li><li>Publish when the details are ready. A published release is immutable; updated media uses a new version.</li></ol>
           <p class="note">Publishing and public reachability are separate decisions. Check the work's actual public URL after publishing rather than assuming a temporary link is a durable buyer address.</p>
         </section>
+        <section class="topic" id="audience" data-search="audience views purchases conversion per content metrics engagement">
+          <div class="topic-head"><div><div class="number">20 · ACTIVITY</div><h2>Read the Audience tab</h2></div><label class="mark"><input type="checkbox" data-done="audience">Done</label></div>
+          <p><b>Audience</b> shows view activity for your content and a per-work breakdown. When commerce metrics are available, it also shows purchases and conversion. Use <b>Refresh</b> to load the latest numbers.</p>
+          <p class="note">In Basic mode, Core shows local view activity. Purchase and conversion metrics depend on a connected provider or node; an empty number does not by itself mean your work is broken.</p>
+        </section>
+        <section class="topic" id="revenue" data-search="revenue overview sales earnings payouts content intelligence payment status stages">
+          <div class="topic-head"><div><div class="number">21 · MONEY VIEWS</div><h2>Understand Revenue</h2></div><label class="mark"><input type="checkbox" data-done="revenue">Done</label></div>
+          <p><b>Revenue</b> separates the money journey into views: Overview for status; Sales for buyer payments and seller-of-record; Content Intelligence for work-level analysis; Earnings for what you are entitled to across works; and Payouts for execution and payment status.</p>
+          <p class="note">A sale, an earning, and a payout are different events. The tab can remain locked until Core has commerce authority. Do not treat a payment as paid out just because it appears in Sales.</p>
+        </section>
+        <section class="topic" id="royalties" data-search="royalties participation owned works shared splits collaborators remote relationships derivative links">
+          <div class="topic-head"><div><div class="number">22 · PARTICIPATION</div><h2>Understand Royalties</h2></div><label class="mark"><input type="checkbox" data-done="royalties">Done</label></div>
+          <p><b>Royalties</b> shows how you participate in works: your own catalog, collaborations with a shared split, accepted remote relationships, and upstream derivatives. It is a relationship view, separate from Revenue’s payout status.</p>
+          <p class="note">Seeing a participation link does not mean a payout has happened. Use Revenue for sale, earning, and payout records when commerce is available.</p>
+        </section>
         <section class="topic" id="next" data-search="advanced commerce buyer payout splits proofs diagnostics backup update recovery help">
-          <div class="topic-head"><div><div class="number">15 · NEXT STEPS</div><h2>Keep exploring</h2></div><label class="mark"><input type="checkbox" data-done="next">Done</label></div>
+          <div class="topic-head"><div><div class="number">23 · NEXT STEPS</div><h2>Keep exploring</h2></div><label class="mark"><input type="checkbox" data-done="next">Done</label></div>
           <p>Core also has audience, royalties, payout, and diagnostics views. Follow their in-app status and readiness messages as you add more of your catalog and connections.</p>
           <p class="note">This walkthrough explains the Beta 13 product; it does not change your node or perform actions for you.</p>
         </section>
@@ -126,12 +170,18 @@
   <script>
     const topics=[...document.querySelectorAll('.topic')];
     const nav=document.querySelector('#topic-nav');
-    nav.innerHTML=topics.map(t=>'<a href="#'+t.id+'">'+t.querySelector('h2').textContent+'</a>').join('');
+    const groups=[
+      {label:'START & PUBLISH',ids:['install','owner','profile','picture','proof','works','public','named','provider','advanced','splits','release','next']},
+      {label:'EXPLORE THE TABS',ids:['works-tab','rights','library','audience','revenue','royalties','configuration','diagnostics']},
+      {label:'NODE OPERATORS',ids:['lightning','console']}
+    ];
+    nav.innerHTML=groups.map(g=>'<div class="nav-label">'+g.label+'</div>'+g.ids.map(id=>{const t=topics.find(x=>x.id===id);return '<a href="#'+id+'">'+t.querySelector('h2').textContent+'</a>'}).join('')).join('');
+    groups.forEach(g=>g.ids.forEach((id,i)=>{const label=topics.find(t=>t.id===id).querySelector('.number');label.textContent=String(i+1).padStart(2,'0')+label.textContent.replace(/^\d+/, '')}));
     const saved=(()=>{try{return JSON.parse(localStorage.getItem('certifyd-core-walkthrough-v1')||'{}')}catch{return {}}})();
     function save(){try{localStorage.setItem('certifyd-core-walkthrough-v1',JSON.stringify(saved))}catch{}}
-    function progress(){document.querySelector('#progress').textContent=topics.filter(t=>saved[t.id]).length+' of '+topics.length+' done · saved on this device'}
+    function progress(){const ids=groups[0].ids;document.querySelector('#progress').textContent=ids.filter(id=>saved[id]).length+' of '+ids.length+' main steps done · saved on this device'}
     document.querySelectorAll('[data-done]').forEach(box=>{box.checked=!!saved[box.dataset.done];box.addEventListener('change',()=>{saved[box.dataset.done]=box.checked;save();progress()})});progress();
-    topics.forEach((topic,i)=>{const controls=document.createElement('div');controls.className='step-actions';controls.innerHTML='<button type="button" class="previous" '+(i===0?'disabled':'')+'>Previous</button><button type="button" class="next" '+(i===topics.length-1?'disabled':'')+'>'+(i===topics.length-1?'You’re at the end':'Next step')+'</button>';topic.append(controls);controls.querySelector('.previous').addEventListener('click',()=>select(topics[i-1]?.id));controls.querySelector('.next').addEventListener('click',()=>select(topics[i+1]?.id))});
+    topics.forEach(topic=>{const group=groups.find(g=>g.ids.includes(topic.id)),i=group.ids.indexOf(topic.id),controls=document.createElement('div');controls.className='step-actions';controls.innerHTML='<button type="button" class="previous" '+(i===0?'disabled':'')+'>Previous</button><button type="button" class="next" '+(i===group.ids.length-1?'disabled':'')+'>'+(i===group.ids.length-1?'End of section':'Next step')+'</button>';topic.append(controls);controls.querySelector('.previous').addEventListener('click',()=>select(group.ids[i-1]));controls.querySelector('.next').addEventListener('click',()=>select(group.ids[i+1]))});
     let current=topics.some(t=>t.id===location.hash.slice(1))?location.hash.slice(1):'install';
     function select(id,scroll=true){if(!topics.some(t=>t.id===id))return;current=id;document.body.classList.add('guided');topics.forEach(t=>t.classList.toggle('current',t.id===id));nav.querySelectorAll('a').forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+id));history.replaceState(null,'','#'+id);if(scroll)document.querySelector('#topics').scrollIntoView({behavior:'smooth',block:'start'})}
     nav.addEventListener('click',e=>{const a=e.target.closest('a');if(a){e.preventDefault();input.value='';search();select(a.hash.slice(1))}});select(current,false);
@@ -143,7 +193,7 @@
     });
     choose('[data-work]','work',document.querySelector('#work-detail'),{
       native:'Choose <b>Certifyd Works</b> to create and manage a native work in Core. Start a draft, add its details and primary file, then review it before publishing.',
-      legacy:'Choose <b>Legacy → Connect Work</b>. Enter an ISRC, UPC, ISWC, DOI, ISBN, EIDR, or supported Spotify, Apple Music, or YouTube URL. Review the retrieved metadata before saving the connected reference.'
+      legacy:'First prove the source platform profile. Then open <b>Rights Holders → Connect Work</b>, discover the work by URL or identifier, and connect it after Core confirms the source account is verified.'
     });
     const input=document.querySelector('#search'),results=document.querySelector('#search-results');
     function search(){const q=input.value.trim().toLowerCase();document.body.classList.toggle('searching',!!q);const matches=q?topics.filter(t=>(t.dataset.search+' '+t.textContent).toLowerCase().includes(q)):[];topics.forEach(t=>t.classList.toggle('match',matches.includes(t)));results.classList.toggle('open',!!q);results.innerHTML=q?(matches.length?matches.map(t=>'<a href="#'+t.id+'">'+t.querySelector('h2').textContent+'<small>'+t.querySelector('.number').textContent+'</small></a>').join(''):'<p>No match yet. Try a shorter term, such as “works” or “link”.</p>'):''}
