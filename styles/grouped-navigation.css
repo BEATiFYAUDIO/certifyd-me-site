@@ -1,18 +1,15 @@
 /* Shared desktop dropdown presentation for self-contained and shared-style pages. */
+.nav-desktop {
+  justify-content: space-between;
+}
+
 .nav-desktop .nav-group {
   position: relative;
-  flex: 1 1 0;
-  min-width: 0;
+  flex: 0 0 auto;
 }
 
 .nav-desktop > a {
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-.nav-desktop > a:last-child {
-  justify-content: flex-end;
-  padding-right: 0;
+  flex: 0 0 auto;
 }
 
 .nav-desktop .nav-group summary {
