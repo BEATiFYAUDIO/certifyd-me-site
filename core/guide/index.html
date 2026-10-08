@@ -83,9 +83,9 @@
         </section>
         <section class="topic" id="works-tab" data-search="works tab works catalog certifyd legacy drafts releases metadata upload">
           <div class="topic-head"><div><div class="number">07 · FIND YOUR WAY</div><h2>What is the Works tab?</h2></div><label class="mark"><input type="checkbox" data-done="works-tab">Done</label></div>
-          <p><b>Works</b> is your catalog workspace. It separates <b>Certifyd Works</b>, made and managed in Core, from <b>Legacy</b> references connected from outside catalogs. Use it to create drafts, attach files and details, and manage releases.</p>
+          <p><b>Works</b> is your catalog workspace. Use <b>Certifyd Works</b> to create drafts, attach files and details, and manage releases.<span class="sovereign-only"> The <b>Legacy</b> area holds references connected from outside catalogs after the named tunnel and source-proof requirements are met.</span></p>
           <p>Under <b>Your Works</b>, choose <b>Certifyd Works</b> and press <b>Show details</b> on a work. The expanded panel shows playback, its local Git-backed <b>Repo</b> and tracked files, split status, access settings, and a <b>Share → Public Link</b> section with <b>Open</b> and <b>Copy link</b>. On an eligible work, <b>Buy links</b> are shown separately. The work's share link is here; the profile link is in Core's top bar.</p>
-          <p class="note">Connecting a Legacy reference does not turn it into a native Certifyd Work or verify ownership.</p>
+          <p class="note sovereign-only">Connecting a Legacy reference does not turn it into a native Certifyd Work or verify ownership.</p>
         </section>
         <section class="topic" id="rights" data-search="rights holders connect work legacy profile proof spotify apple music youtube isrc identifier verify source">
           <div class="topic-head"><div><div class="number">08 · LEGACY WORK</div><h2>What is Rights Holders?</h2></div><label class="mark"><input type="checkbox" data-done="rights">Done</label></div>
@@ -95,9 +95,14 @@
         </section>
         <section class="topic" id="library" data-search="library tab what i own authored purchased shared splits derivatives songs videos books files">
           <div class="topic-head"><div><div class="number">09 · FIND YOUR WAY</div><h2>What is Library?</h2></div><label class="mark"><input type="checkbox" data-done="library">Done</label></div>
-          <p><b>Library</b> is the view of works you can access. It can include your authored work, purchases, and work shared through splits or derivatives. Filter it by type or relationship to find something you can view or play.</p>
-          <p>When a work’s split is locked and the owner publishes the work from <b>Works</b>, it appears in the accepted split participants’ Libraries. Those participants can then share the work to their own profiles.</p>
+          <p><b>Library</b> is the view of works you can access. It includes your authored work<span class="sovereign-only">, purchases, and work shared through splits or derivatives</span>. Filter it by type or relationship to find something you can view or play.</p>
+          <p class="sovereign-only">When a work’s split is locked and the owner publishes the work from <b>Works</b>, it appears in the accepted split participants’ Libraries. Those participants can then share the work to their own profiles.</p>
           <p class="note">Think of <b>Works</b> as managing your catalog and <b>Library</b> as accessing the work available to you. A Library item does not by itself say you created that work.</p>
+        </section>
+        <section class="topic" id="network-tab" data-search="network tab identity reachability links provider configuration status">
+          <div class="topic-head"><div><div class="number">NETWORK · FIND YOUR WAY</div><h2>What is the Network tab?</h2></div><label class="mark"><input type="checkbox" data-done="network-tab">Done</label></div>
+          <p><b>Network</b> brings together your Core’s identity, public reachability, and connection status. In Basic, use it to understand your temporary link and status. <span class="sovereign-only">For a Sovereign Creator, <b>Provider Configuration</b> is where you connect a commerce node after your named tunnel is ready.</span></p>
+          <p class="note">A visible Network tab does not mean a payment provider is connected or commerce is ready. Follow Core’s status and capability messages.</p>
         </section>
         <section class="topic" id="named" data-search="named tunnel permanent durable hostname domain dns cloudflare exact tunnel identity service">
           <div class="topic-head"><div><div class="number">11 · PERMANENT ADDRESS</div><h2>Get a named tunnel</h2></div><label class="mark"><input type="checkbox" data-done="named">Done</label></div>
@@ -148,7 +153,7 @@
         </section>
         <section class="topic" id="release" data-search="draft upload primary file publish content release visibility direct link discoverable">
           <div class="topic-head"><div><div class="number">19 · PUBLISHING</div><h2>Publish your first work</h2></div><label class="mark"><input type="checkbox" data-done="release">Done</label></div>
-          <ol><li>Create a draft in <b>Works → New Certifyd Work</b>.</li><li>Use <b>Save media</b> and <b>Save cover</b>, then open <b>Show details</b>. Add the available details you want, such as delivery, topic, existing industry identifiers, and credits. Review Core’s readiness messages.</li><li class="sovereign-only">For a paid or collaborative work, review access, price, and visibility. If using splits, open <b>Edit splits</b>, add participant IDs or emails, roles, and percentages, then <b>Save</b>. Share the generated invites. When all required participants have accepted and the active total reaches 100%, <b>Lock</b> the split.</li><li>When your chosen details and any applicable locked split are ready, press <b>Publish</b> on the work. A published release is immutable; updated media uses a new version.<span class="sovereign-only"> A published split work appears in the accepted participants’ Libraries, so they can share it to their profiles.</span></li><li>To share the work, press <b>Show details</b>, scroll to <b>Share → Public Link</b>, and use <b>Open</b> or <b>Copy link</b>.<span class="sovereign-only"> Check <b>Network Visibility</b>: <b>Hidden</b> is not reachable through public routes; <b>Direct Link</b> is reachable by link without discovery listing; <b>Discoverable</b> can appear on discovery surfaces.</span></li></ol>
+          <ol><li>Create a draft in <b>Works → New Certifyd Work</b>.</li><li>Use <b>Save media</b> and <b>Save cover</b>, then open <b>Show details</b>. Add the available details you want, such as delivery, topic, existing industry identifiers, and credits. Review Core’s readiness messages.</li><li class="sovereign-only">For a paid or collaborative work, review access, price, and visibility. If using splits, open <b>Edit splits</b>, add participant IDs or emails, roles, and percentages, then <b>Save</b>. Share the generated invites. When all required participants have accepted and the active total reaches 100%, <b>Lock</b> the split.</li><li>When your chosen details<span class="sovereign-only"> and any applicable locked split</span> are ready, press <b>Publish</b> on the work. A published release is immutable; updated media uses a new version.<span class="sovereign-only"> A published split work appears in the accepted participants’ Libraries, so they can share it to their profiles.</span></li><li>To share the work, press <b>Show details</b>, scroll to <b>Share → Public Link</b>, and use <b>Open</b> or <b>Copy link</b>.<span class="sovereign-only"> Check <b>Network Visibility</b>: <b>Hidden</b> is not reachable through public routes; <b>Direct Link</b> is reachable by link without discovery listing; <b>Discoverable</b> can appear on discovery surfaces.</span></li></ol>
           <p class="note">Publishing and public reachability are separate decisions. Check the work's actual public URL after publishing rather than assuming a temporary link is a durable buyer address.</p>
         </section>
         <section class="topic" id="commerce-gate" data-search="commerce unavailable basic audience revenue royalties rights holders manage splits locked upgrade sovereign named tunnel provider">
@@ -186,15 +191,15 @@
     const paths={
       basic:[
         {label:'START & PUBLISH',ids:['install','owner','public','profile','picture','proof','works','release','next']},
-        {label:'EXPLORE THE TABS',ids:['works-tab','library','commerce-gate','configuration','diagnostics']}
+        {label:'EXPLORE THE TABS',ids:['works-tab','library','network-tab','commerce-gate','configuration','diagnostics']}
       ],
       creator:[
         {label:'START & PUBLISH',ids:['install','owner','public','profile','picture','proof','works','named','provider','advanced','splits','release','next']},
-        {label:'EXPLORE THE TABS',ids:['works-tab','rights','library','audience','revenue','royalties','configuration','diagnostics']}
+        {label:'EXPLORE THE TABS',ids:['works-tab','rights','library','network-tab','audience','revenue','royalties','configuration','diagnostics']}
       ],
       node:[
         {label:'START & PUBLISH',ids:['install','owner','public','profile','picture','proof','works','named','lightning','advanced','console','splits','release','next']},
-        {label:'EXPLORE THE TABS',ids:['works-tab','rights','library','audience','revenue','royalties','configuration','diagnostics']}
+        {label:'EXPLORE THE TABS',ids:['works-tab','rights','library','network-tab','audience','revenue','royalties','configuration','diagnostics']}
       ]
     };
     const saved=(()=>{try{return JSON.parse(localStorage.getItem('certifyd-core-walkthrough-v1')||'{}')}catch{return {}}})();
