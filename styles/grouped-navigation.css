@@ -1,6 +1,13 @@
 /* Shared desktop dropdown presentation for self-contained and shared-style pages. */
-.nav-desktop {
-  justify-content: space-between;
+@media (min-width: 1121px) {
+  .header-inner {
+    grid-template-columns: repeat(7, max-content);
+    justify-content: space-between;
+  }
+
+  .nav-desktop {
+    display: contents;
+  }
 }
 
 .nav-desktop .nav-group {
