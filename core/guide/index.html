@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Certifyd Core walkthrough</title>
+  <meta name="description" content="A searchable, step-by-step walkthrough for getting started with Certifyd Core Beta 13.">
+  <link rel="icon" type="image/svg+xml" href="/images/certifyd-tab-icon.svg">
+  <style>
+    :root{--ink:#292b32;--muted:#666b78;--line:#e3e7eb;--blue:#147dab;--light:#e9f5fa;--paper:#f5f7f8}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif}
+    a{color:var(--blue)}button,input{font:inherit}button{cursor:pointer}a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #69bce1;outline-offset:3px}
+    .top{background:#fff;border-bottom:1px solid var(--line)}.top-inner{max-width:1150px;margin:auto;padding:15px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+    .brand{display:flex;align-items:center;gap:9px;color:#263038;text-decoration:none;font-weight:750;font-size:22px;letter-spacing:-.04em}.brand img{width:34px;height:34px}.top nav{display:flex;gap:20px;font-size:14px}
+    main{max-width:1150px;margin:auto;padding:36px 24px 80px}.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--blue);font-weight:750}
+    h1{font-size:clamp(2rem,5vw,3.5rem);letter-spacing:-.055em;line-height:1.1;margin:9px 0 14px}h2{font-size:1.4rem;letter-spacing:-.025em;margin:0 0 8px}p{margin:0 0 16px}.intro{max-width:740px;color:var(--muted)}
+    .search-wrap{max-width:760px;margin:26px 0 12px;position:relative}.search-wrap label{display:block;font-size:14px;font-weight:650;margin-bottom:8px}.search-wrap input{width:100%;border:1px solid #bfcbd1;background:#fff;border-radius:12px;padding:15px 18px;color:var(--ink);font-size:17px}
+    .search-results{display:none;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 35px #152b351c;position:absolute;top:100%;left:0;right:0;margin-top:5px;z-index:5;max-height:320px;overflow:auto}
+    .search-results.open{display:block}.search-results a{display:block;padding:12px 16px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink)}.search-results a:hover{background:var(--light)}.search-results small{display:block;color:var(--muted)}.search-results p{padding:14px 16px;margin:0;color:var(--muted)}
+    .layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:25px;margin-top:30px}.side{position:sticky;top:20px;align-self:start;background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}.side strong{font-size:13px;letter-spacing:.08em;color:var(--muted)}.side nav{display:grid;margin-top:10px}.side a{padding:10px 8px;border-radius:8px;text-decoration:none;color:#40515b;font-size:14px}.side a:hover,.side a.active{background:var(--light);color:#095c83}.progress{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px;margin-top:12px}
+    .topic{background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px;margin-bottom:16px;scroll-margin-top:24px}.topic-head{display:flex;justify-content:space-between;gap:14px;align-items:start}.topic .number{font-size:12px;color:var(--blue);font-weight:800;letter-spacing:.09em}.topic p{color:#4f5a63}.topic ol{padding-left:23px;margin:13px 0 20px}.topic li{padding-left:5px;margin:9px 0}.topic .note{background:var(--light);border-left:3px solid var(--blue);padding:12px 14px;border-radius:5px;color:#24516a;font-size:14px}.topic .note a{font-weight:650}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}.action{display:inline-flex;align-items:center;justify-content:center;padding:10px 15px;border:1px solid #bdd4e0;border-radius:9px;text-decoration:none;font-size:14px;font-weight:650}.action:hover{background:var(--light)}.mark{display:flex;align-items:center;gap:8px;font-size:13px;white-space:nowrap;color:#46545d}.mark input{width:17px;height:17px;accent-color:var(--blue)}.choice{display:flex;flex-wrap:wrap;gap:8px;margin:15px 0}.choice button{border:1px solid #b9d0da;background:#fff;border-radius:8px;padding:8px 12px;color:#205269}.choice button[aria-pressed=true]{background:var(--blue);color:#fff;border-color:var(--blue)}.choice-detail{background:#f7fafb;padding:13px 16px;border-radius:9px}
+    .footer{color:var(--muted);font-size:13px;margin-top:20px}code{background:#f0f3f5;padding:2px 5px;border-radius:4px}body.searching .topic{display:none}body.searching .topic.match{display:block}
+    @media(max-width:800px){.layout{grid-template-columns:1fr}.side{position:static}.side nav{grid-template-columns:repeat(2,minmax(0,1fr))}.topic{padding:21px}}@media(max-width:520px){.top nav{font-size:12px;gap:12px}.top-inner{padding:12px 16px}.brand{font-size:18px}.brand img{width:30px}.side nav{grid-template-columns:1fr 1fr}.topic-head{display:block}.mark{margin:10px 0}.search-wrap{margin-top:20px}main{padding:28px 16px 60px}}
+  </style>
+</head>
+<body>
+  <header class="top"><div class="top-inner"><a class="brand" href="https://certifyd.me/" aria-label="Certifyd home"><img src="/images/certifyd-tab-icon.svg" alt="">certifyd</a><nav aria-label="Related pages"><a href="/downloads/">Downloads</a><a href="/core/tunnel-setup/">Tunnel guide</a></nav></div></header>
+  <main>
+    <div class="eyebrow">Certifyd Core · Beta 13</div>
+    <h1>Get comfortable with your Core.</h1>
+    <p class="intro">Start with installation, then follow the parts you need. Each step is short. You can search for a task and keep track of what you have done on this device.</p>
+    <div class="search-wrap"><label for="search">What are you trying to do?</label><input id="search" type="search" placeholder="Try “profile”, “Spotify”, or “temporary link”" autocomplete="off" aria-controls="search-results"><div class="search-results" id="search-results" role="status" aria-live="polite"></div></div>
+    <div class="layout">
+      <aside class="side"><strong>WALKTHROUGH</strong><nav id="topic-nav" aria-label="Walkthrough sections"></nav><div class="progress" id="progress">0 of 7 done · saved on this device</div></aside>
+      <div id="topics">
+        <section class="topic" id="install" data-search="download install windows macos apple silicon intel linux arm64 raspberry pi first run">
+          <div class="topic-head"><div><div class="number">01 · START HERE</div><h2>Install and open Core</h2></div><label class="mark"><input type="checkbox" data-done="install">Done</label></div>
+          <p>Core runs on your own computer. The normal package includes its runtime, so you do not need Git, Node.js, npm, or database commands.</p>
+          <div class="choice" role="group" aria-label="Choose your operating system"><button type="button" data-os="windows" aria-pressed="false">Windows</button><button type="button" data-os="mac" aria-pressed="false">macOS</button><button type="button" data-os="linux" aria-pressed="false">Linux / Pi</button></div>
+          <div id="install-detail" class="choice-detail">Choose your operating system to see the right launch steps.</div>
+          <div class="actions"><a class="action" href="/downloads/">Get Certifyd Core Beta 13</a></div>
+        </section>
+        <section class="topic" id="owner" data-search="first run owner create account sign in recovery key password local dashboard">
+          <div class="topic-head"><div><div class="number">02 · FIRST RUN</div><h2>Create the first owner</h2></div><label class="mark"><input type="checkbox" data-done="owner">Done</label></div>
+          <ol><li>Open Core's local dashboard at <code>http://127.0.0.1:4000</code> if it did not open for you.</li><li>On <b>Create owner (first-run setup)</b>, make your owner account.</li><li>Save the recovery key when Core shows it. It is shown once.</li></ol>
+          <p class="note">The dashboard on port 4000 is private operator access. Public tunnels use a separate, allowlisted listener on port 4010.</p>
+        </section>
+        <section class="topic" id="profile" data-search="profile identity display name bio avatar public profile theme handle">
+          <div class="topic-head"><div><div class="number">03 · IDENTITY</div><h2>Make your profile yours</h2></div><label class="mark"><input type="checkbox" data-done="profile">Done</label></div>
+          <ol><li>In Core, open <b>Profile</b>.</li><li>Add the display name, bio, and profile image you want people to see.</li><li>Review the public profile and its presentation settings before sharing its link.</li></ol>
+          <p class="note">Your local account and its public profile are related, but opening the private dashboard does not put your profile on the internet.</p>
+        </section>
+        <section class="topic" id="works" data-search="works catalog certifyd works legacy connect work spotify apple music youtube isrc upc iswc doi isbn eidr">
+          <div class="topic-head"><div><div class="number">04 · CATALOG</div><h2>Put a work in your catalog</h2></div><label class="mark"><input type="checkbox" data-done="works">Done</label></div>
+          <p>In <b>Works catalog</b>, choose the path that fits your work:</p>
+          <div class="choice" role="group" aria-label="Choose work type"><button type="button" data-work="native" aria-pressed="false">A new Certifyd Work</button><button type="button" data-work="legacy" aria-pressed="false">An existing work elsewhere</button></div>
+          <div id="work-detail" class="choice-detail">Choose a work type to see the next step.</div>
+          <p class="note">A connected Legacy work is a catalog reference, not proof that you own or control the outside account or rights.</p>
+        </section>
+        <section class="topic" id="release" data-search="draft upload primary file publish content release visibility direct link discoverable">
+          <div class="topic-head"><div><div class="number">05 · PUBLISHING</div><h2>Prepare a Certifyd Work</h2></div><label class="mark"><input type="checkbox" data-done="release">Done</label></div>
+          <ol><li>Create a draft in <b>Works catalog → Certifyd Works</b>.</li><li>Add its details and primary file, then review the preview and visibility choices.</li><li>Publish only when the details are ready. A published release is immutable; updates use a new version.</li></ol>
+          <p class="note">Publishing a work and making Core reachable are separate decisions. A fresh Core install starts private.</p>
+        </section>
+        <section class="topic" id="public" data-search="public link quick temporary tunnel named durable hostname cloudflare dns 4010">
+          <div class="topic-head"><div><div class="number">06 · SHARING</div><h2>Choose how people reach Core</h2></div><label class="mark"><input type="checkbox" data-done="public">Done</label></div>
+          <p><b>Temporary link:</b> a short test or sharing path with no DNS setup. You start and stop it in Core; the address can change.</p>
+          <p><b>Named tunnel:</b> a stable custom hostname with a persistent Cloudflare identity. It has a separate guided setup.</p>
+          <div class="actions"><a class="action" href="/core/tunnel-setup/">Open interactive tunnel guide</a></div>
+          <p class="note">Core does not automatically turn a temporary link into a named tunnel. Both public paths target <code>http://127.0.0.1:4010</code>.</p>
+        </section>
+        <section class="topic" id="next" data-search="advanced commerce buyer payout splits proofs diagnostics backup update recovery help">
+          <div class="topic-head"><div><div class="number">07 · NEXT STEPS</div><h2>Explore when you are ready</h2></div><label class="mark"><input type="checkbox" data-done="next">Done</label></div>
+          <p>Core also has proof, split, commerce, and diagnostics workflows. Their availability and requirements depend on the work and Core's current state. Open those sections in the dashboard and follow their readiness messages before making a public or buyer-facing promise.</p>
+          <p class="note">This walkthrough covers the first Core journey. It does not change your node or perform an action for you.</p>
+        </section>
+        <p class="footer">Based on Certifyd Core <code>v0.1.0-beta.13</code>. Progress and choices stay in this browser. <a href="/core/tunnel-setup/">Detailed public-link guide</a>.</p>
+      </div>
+    </div>
+  </main>
+  <script>
+    const topics=[...document.querySelectorAll('.topic')];
+    const nav=document.querySelector('#topic-nav');
+    nav.innerHTML=topics.map(t=>'<a href="#'+t.id+'">'+t.querySelector('h2').textContent+'</a>').join('');
+    const saved=(()=>{try{return JSON.parse(localStorage.getItem('certifyd-core-walkthrough-v1')||'{}')}catch{return {}}})();
+    function save(){try{localStorage.setItem('certifyd-core-walkthrough-v1',JSON.stringify(saved))}catch{}}
+    function progress(){document.querySelector('#progress').textContent=Object.values(saved).filter(Boolean).length+' of '+topics.length+' done · saved on this device'}
+    document.querySelectorAll('[data-done]').forEach(box=>{box.checked=!!saved[box.dataset.done];box.addEventListener('change',()=>{saved[box.dataset.done]=box.checked;save();progress()})});progress();
+    function choose(selector,key,details,copy){document.querySelectorAll(selector).forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll(selector).forEach(b=>b.setAttribute('aria-pressed',String(b===button)));details.innerHTML=copy[button.dataset[key]]}))}
+    choose('[data-os]','os',document.querySelector('#install-detail'),{
+      windows:'Download the Windows x64 installer, run it, then launch <b>Certifyd Core</b> from the Start Menu or desktop.',
+      mac:'Download the DMG for your Mac (Apple Silicon or Intel), open it, drag <b>Certifyd Core.app</b> to Applications, then open the app.',
+      linux:'Download the archive for your processor (x64 or ARM64), extract it, then run <code>./start.sh</code> in the extracted folder. The ARM64 build is for 64-bit ARM systems, including compatible Raspberry Pi systems.'
+    });
+    choose('[data-work]','work',document.querySelector('#work-detail'),{
+      native:'Choose <b>Certifyd Works</b> to create and manage a native work in Core. Start a draft, add its details and primary file, then review it before publishing.',
+      legacy:'Choose <b>Legacy → Connect Work</b>. Enter an ISRC, UPC, ISWC, DOI, ISBN, EIDR, or supported Spotify, Apple Music, or YouTube URL. Review the retrieved metadata before saving the connected reference.'
+    });
+    const input=document.querySelector('#search'),results=document.querySelector('#search-results');
+    function search(){const q=input.value.trim().toLowerCase();document.body.classList.toggle('searching',!!q);const matches=q?topics.filter(t=>(t.dataset.search+' '+t.textContent).toLowerCase().includes(q)):[];topics.forEach(t=>t.classList.toggle('match',matches.includes(t)));results.classList.toggle('open',!!q);results.innerHTML=q?(matches.length?matches.map(t=>'<a href="#'+t.id+'">'+t.querySelector('h2').textContent+'<small>'+t.querySelector('.number').textContent+'</small></a>').join(''):'<p>No match yet. Try a shorter term, such as “works” or “link”.</p>'):''}
+    input.addEventListener('input',search);results.addEventListener('click',e=>{if(e.target.closest('a')){input.value='';search()}});document.addEventListener('keydown',e=>{if(e.key==='Escape'){input.value='';search();input.blur()}});
+  </script>
+</body>
+</html>
