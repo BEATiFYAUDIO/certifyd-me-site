@@ -1,10 +1,21 @@
 /* Shared desktop dropdown presentation for self-contained and shared-style pages. */
 .nav-desktop .nav-group {
   position: relative;
-  flex: none;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.nav-desktop > a {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .nav-desktop .nav-group summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
   list-style: none;
   cursor: pointer;
   padding: 10px 8px;
@@ -12,6 +23,7 @@
   font-size: 0.95rem;
   line-height: 1.6;
   color: inherit;
+  text-align: center;
 }
 
 .nav-desktop .nav-group summary::-webkit-details-marker {
