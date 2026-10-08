@@ -19,7 +19,8 @@
     .search-results.open{display:block}.search-results a{display:block;padding:12px 16px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink)}.search-results a:hover{background:var(--light)}.search-results small{display:block;color:var(--muted)}.search-results p{padding:14px 16px;margin:0;color:var(--muted)}
     .layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:25px;margin-top:30px}.side{position:sticky;top:20px;align-self:start;background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}.side strong{font-size:13px;letter-spacing:.08em;color:var(--muted)}.side nav{display:grid;margin-top:10px}.side a{padding:10px 8px;border-radius:8px;text-decoration:none;color:#40515b;font-size:14px}.side a:hover,.side a.active{background:var(--light);color:#095c83}.progress{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px;margin-top:12px}
     .topic{background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px;margin-bottom:16px;scroll-margin-top:24px}.topic-head{display:flex;justify-content:space-between;gap:14px;align-items:start}.topic .number{font-size:12px;color:var(--blue);font-weight:800;letter-spacing:.09em}.topic p{color:#4f5a63}.topic ol{padding-left:23px;margin:13px 0 20px}.topic li{padding-left:5px;margin:9px 0}.topic .note{background:var(--light);border-left:3px solid var(--blue);padding:12px 14px;border-radius:5px;color:#24516a;font-size:14px}.topic .note a{font-weight:650}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}.action{display:inline-flex;align-items:center;justify-content:center;padding:10px 15px;border:1px solid #bdd4e0;border-radius:9px;text-decoration:none;font-size:14px;font-weight:650}.action:hover{background:var(--light)}.mark{display:flex;align-items:center;gap:8px;font-size:13px;white-space:nowrap;color:#46545d}.mark input{width:17px;height:17px;accent-color:var(--blue)}.choice{display:flex;flex-wrap:wrap;gap:8px;margin:15px 0}.choice button{border:1px solid #b9d0da;background:#fff;border-radius:8px;padding:8px 12px;color:#205269}.choice button[aria-pressed=true]{background:var(--blue);color:#fff;border-color:var(--blue)}.choice-detail{background:#f7fafb;padding:13px 16px;border-radius:9px}
-    .footer{color:var(--muted);font-size:13px;margin-top:20px}code{background:#f0f3f5;padding:2px 5px;border-radius:4px}body.searching .topic{display:none}body.searching .topic.match{display:block}
+    .footer{color:var(--muted);font-size:13px;margin-top:20px}code{background:#f0f3f5;padding:2px 5px;border-radius:4px}body.guided .topic{display:none}body.guided .topic.current{display:block}body.guided.searching .topic{display:none}body.guided.searching .topic.match{display:block}
+    .step-actions{border-top:1px solid var(--line);padding-top:20px;margin-top:22px;display:flex;justify-content:space-between;gap:12px}.step-actions button{border:1px solid #bdd4e0;border-radius:9px;background:#fff;color:#24516a;padding:10px 15px;font-weight:650}.step-actions button.next{background:var(--blue);color:#fff;border-color:var(--blue)}.step-actions button:disabled{opacity:.35}.side a.active{font-weight:700}
     @media(max-width:800px){.layout{grid-template-columns:1fr}.side{position:static}.side nav{grid-template-columns:repeat(2,minmax(0,1fr))}.topic{padding:21px}}@media(max-width:520px){.top nav{font-size:12px;gap:12px}.top-inner{padding:12px 16px}.brand{font-size:18px}.brand img{width:30px}.side nav{grid-template-columns:1fr 1fr}.topic-head{display:block}.mark{margin:10px 0}.search-wrap{margin-top:20px}main{padding:28px 16px 60px}}
   </style>
 </head>
@@ -31,7 +32,7 @@
     <p class="intro">Start with installation, then follow the parts you need. Each step is short. You can search for a task and keep track of what you have done on this device.</p>
     <div class="search-wrap"><label for="search">What are you trying to do?</label><input id="search" type="search" placeholder="Try “profile”, “Spotify”, or “temporary link”" autocomplete="off" aria-controls="search-results"><div class="search-results" id="search-results" role="status" aria-live="polite"></div></div>
     <div class="layout">
-      <aside class="side"><strong>WALKTHROUGH</strong><nav id="topic-nav" aria-label="Walkthrough sections"></nav><div class="progress" id="progress">0 of 7 done · saved on this device</div></aside>
+      <aside class="side"><strong>WALKTHROUGH</strong><nav id="topic-nav" aria-label="Walkthrough sections"></nav><div class="progress" id="progress">Progress saved on this device</div></aside>
       <div id="topics">
         <section class="topic" id="install" data-search="download install windows macos apple silicon intel linux arm64 raspberry pi first run">
           <div class="topic-head"><div><div class="number">01 · START HERE</div><h2>Install and open Core</h2></div><label class="mark"><input type="checkbox" data-done="install">Done</label></div>
@@ -47,32 +48,76 @@
         </section>
         <section class="topic" id="profile" data-search="profile identity display name bio avatar public profile theme handle">
           <div class="topic-head"><div><div class="number">03 · IDENTITY</div><h2>Make your profile yours</h2></div><label class="mark"><input type="checkbox" data-done="profile">Done</label></div>
-          <ol><li>In Core, open <b>Profile</b>.</li><li>Add the display name, bio, and profile image you want people to see.</li><li>Review the public profile and its presentation settings before sharing its link.</li></ol>
+          <ol><li>In Core, open <b>Profile → Public Profile (Presentation)</b>.</li><li>Enter your display name and a short bio, then press <b>Save</b>.</li><li>Review how the public profile looks before sharing its link.</li></ol>
           <p class="note">Your local account and its public profile are related, but opening the private dashboard does not put your profile on the internet.</p>
         </section>
+        <section class="topic" id="picture" data-search="avatar profile photo picture upload image 2mb jpg jpeg png webp gif avif">
+          <div class="topic-head"><div><div class="number">04 · PROFILE IMAGE</div><h2>Add a profile picture</h2></div><label class="mark"><input type="checkbox" data-done="picture">Done</label></div>
+          <ol><li>Stay in <b>Profile → Public Profile (Presentation)</b> and find <b>Profile image</b>.</li><li>Choose <b>Upload image</b> and select a picture up to 2 MB. Core also accepts an image URL in that field.</li><li>Check the small preview. Core reports when the upload succeeds.</li></ol>
+          <p class="note">The picture is for your public presentation. It does not change who owns your local node.</p>
+        </section>
+        <section class="topic" id="proof" data-search="proof verification creator identity social platform github youtube tiktok spotify domain challenge verify">
+          <div class="topic-head"><div><div class="number">05 · VERIFICATION</div><h2>Create your first proof</h2></div><label class="mark"><input type="checkbox" data-done="proof">Done</label></div>
+          <ol><li>In <b>Profile</b>, create your <b>Creator Identity</b> if Core prompts you. Proofs are unavailable until this identity exists.</li><li>Under <b>Verification Proofs → Creator Platforms</b>, choose <b>Add / Verify platform</b> and select a platform you control.</li><li>Enter your account or profile URL and press <b>Create Social Challenge</b>. Copy the exact text Core gives you to the public location it specifies.</li><li>Paste that public location back into Core and press <b>Verify Social Proof</b>. Wait for Core's verified result before calling the proof complete.</li></ol>
+          <p class="note">For a first proof, GitHub uses a public Gist; YouTube uses the channel About section; TikTok uses a public profile bio. Use the location shown by Core for the platform you chose. A private profile may not be verifiable.</p>
+        </section>
         <section class="topic" id="works" data-search="works catalog certifyd works legacy connect work spotify apple music youtube isrc upc iswc doi isbn eidr">
-          <div class="topic-head"><div><div class="number">04 · CATALOG</div><h2>Put a work in your catalog</h2></div><label class="mark"><input type="checkbox" data-done="works">Done</label></div>
+          <div class="topic-head"><div><div class="number">06 · CATALOG</div><h2>Create your first work</h2></div><label class="mark"><input type="checkbox" data-done="works">Done</label></div>
           <p>In <b>Works catalog</b>, choose the path that fits your work:</p>
           <div class="choice" role="group" aria-label="Choose work type"><button type="button" data-work="native" aria-pressed="false">A new Certifyd Work</button><button type="button" data-work="legacy" aria-pressed="false">An existing work elsewhere</button></div>
           <div id="work-detail" class="choice-detail">Choose a work type to see the next step.</div>
           <p class="note">A connected Legacy work is a catalog reference, not proof that you own or control the outside account or rights.</p>
         </section>
-        <section class="topic" id="release" data-search="draft upload primary file publish content release visibility direct link discoverable">
-          <div class="topic-head"><div><div class="number">05 · PUBLISHING</div><h2>Prepare a Certifyd Work</h2></div><label class="mark"><input type="checkbox" data-done="release">Done</label></div>
-          <ol><li>Create a draft in <b>Works catalog → Certifyd Works</b>.</li><li>Add its details and primary file, then review the preview and visibility choices.</li><li>Publish only when the details are ready. A published release is immutable; updates use a new version.</li></ol>
-          <p class="note">Publishing a work and making Core reachable are separate decisions. A fresh Core install starts private.</p>
+        <section class="topic" id="works-tab" data-search="works tab works catalog certifyd legacy drafts releases metadata upload">
+          <div class="topic-head"><div><div class="number">07 · FIND YOUR WAY</div><h2>What is the Works tab?</h2></div><label class="mark"><input type="checkbox" data-done="works-tab">Done</label></div>
+          <p><b>Works</b> is your catalog workspace. It separates <b>Certifyd Works</b>, made and managed in Core, from <b>Legacy</b> references connected from outside catalogs. Use it to create drafts, attach files and details, and manage releases.</p>
+          <p class="note">Connecting a Legacy reference does not turn it into a native Certifyd Work or verify ownership.</p>
+        </section>
+        <section class="topic" id="library" data-search="library tab what i own authored purchased shared splits derivatives songs videos books files">
+          <div class="topic-head"><div><div class="number">08 · FIND YOUR WAY</div><h2>What is Library?</h2></div><label class="mark"><input type="checkbox" data-done="library">Done</label></div>
+          <p><b>Library</b> is the view of works you can access. It can include your authored work, purchases, and work shared through splits or derivatives. Filter it by type or relationship to find something you can view or play.</p>
+          <p class="note">Think of <b>Works</b> as managing your catalog and <b>Library</b> as accessing the work available to you. A Library item does not by itself say you created that work.</p>
         </section>
         <section class="topic" id="public" data-search="public link quick temporary tunnel named durable hostname cloudflare dns 4010">
-          <div class="topic-head"><div><div class="number">06 · SHARING</div><h2>Choose how people reach Core</h2></div><label class="mark"><input type="checkbox" data-done="public">Done</label></div>
+          <div class="topic-head"><div><div class="number">09 · SHARING</div><h2>Choose how people reach Core</h2></div><label class="mark"><input type="checkbox" data-done="public">Done</label></div>
           <p><b>Temporary link:</b> a short test or sharing path with no DNS setup. You start and stop it in Core; the address can change.</p>
           <p><b>Named tunnel:</b> a stable custom hostname with a persistent Cloudflare identity. It has a separate guided setup.</p>
           <div class="actions"><a class="action" href="/core/tunnel-setup/">Open interactive tunnel guide</a></div>
           <p class="note">Core does not automatically turn a temporary link into a named tunnel. Both public paths target <code>http://127.0.0.1:4010</code>.</p>
         </section>
+        <section class="topic" id="named" data-search="named tunnel permanent durable hostname domain dns cloudflare exact tunnel identity service">
+          <div class="topic-head"><div><div class="number">10 · PERMANENT ADDRESS</div><h2>Get a named tunnel</h2></div><label class="mark"><input type="checkbox" data-done="named">Done</label></div>
+          <p>A named tunnel gives your Core a stable public hostname. You need a Cloudflare account and a domain on Cloudflare. The guide checks whether you already have a tunnel, hostname, or running service before it suggests commands.</p>
+          <ol><li>Open the tunnel guide and choose <b>I want a permanent custom hostname</b>, or the option for your existing tunnel or service.</li><li>Follow the steps for your current setup. Confirm the exact tunnel name or UUID and point its public route to <code>http://127.0.0.1:4010</code>.</li><li>Check that Core reports the configured public origin and a durable-ready state before relying on buyer links.</li></ol>
+          <div class="actions"><a class="action" href="/core/tunnel-setup/">Start named-tunnel setup</a></div>
+          <p class="note">More than one Cloudflare tunnel on your computer is fine. Do not stop or replace an unrelated tunnel merely because Certifyd shows another one.</p>
+        </section>
+        <section class="topic" id="provider" data-search="payment node provider connect commerce delegated invoice network provider url node id public key trusted">
+          <div class="topic-head"><div><div class="number">11 · PAYMENTS</div><h2>Connect a payment provider node</h2></div><label class="mark"><input type="checkbox" data-done="provider">Done</label></div>
+          <p>For provider-backed commerce, a trusted node supplies payment services while your Core remains the creator's storefront. This is separate from configuring your own Lightning node.</p>
+          <ol><li>Bring your durable named public origin online first. In Basic mode, provider configuration is hidden.</li><li>Open <b>Network → Provider Configuration</b> in Core. Enter the provider's exact Node ID, public key, and URL supplied by its operator.</li><li>Save the provider and use Core's <b>Connect provider</b> guided setup. Check its verification and Network Status messages; a saved URL alone does not make it trusted or ready.</li></ol>
+          <p class="note">If you intend to run your own payment stack instead, use <b>Node Settings · Lightning</b> for your LND connection and readiness test. A named tunnel alone does not enable paid commerce.</p>
+        </section>
+        <section class="topic" id="advanced" data-search="unlock menu show advanced hide advanced node operator configuration diagnostics revenue commerce locked">
+          <div class="topic-head"><div><div class="number">12 · MORE CONTROLS</div><h2>Show the advanced menu</h2></div><label class="mark"><input type="checkbox" data-done="advanced">Done</label></div>
+          <ol><li>At the bottom of Core's left sidebar, press <b>Show Advanced</b>.</li><li>The additional operator section includes <b>Configuration</b> and <b>Diagnostics</b>; Revenue may also become visible.</li><li>If a commerce item is still disabled, read its reason in Core. Showing the menu does not grant payment or split capabilities.</li></ol>
+          <p class="note">Core may show advanced navigation automatically for an Advanced or LAN posture, unless you previously chose a menu preference.</p>
+        </section>
+        <section class="topic" id="splits" data-search="split edit splits manage splits participants percentages 100 draft lock version advanced lan commerce">
+          <div class="topic-head"><div><div class="number">13 · COLLABORATION</div><h2>Edit a split</h2></div><label class="mark"><input type="checkbox" data-done="splits">Done</label></div>
+          <p>A split records who participates in a work and in what percentages. Core requires the appropriate Advanced or LAN and commerce capabilities for split controls.</p>
+          <ol><li>In <b>Works</b>, choose a Certifyd Work and press <b>Edit splits</b>, or open <b>Manage Splits</b> and choose the work.</li><li>In a draft split, add collaborators, roles, and percentages. Review the totals and resolve any participant Core flags.</li><li>Save the draft. Lock only when everyone and every share is correct. A locked version cannot be edited; changes require a new version.</li></ol>
+          <p class="note">If <b>Edit splits</b> is unavailable, the capability message in Core is the source of truth. Turning on <b>Show Advanced</b> does not bypass it.</p>
+        </section>
+        <section class="topic" id="release" data-search="draft upload primary file publish content release visibility direct link discoverable">
+          <div class="topic-head"><div><div class="number">14 · PUBLISHING</div><h2>Publish your first work</h2></div><label class="mark"><input type="checkbox" data-done="release">Done</label></div>
+          <ol><li>Create a draft in <b>Works → Certifyd Works</b>.</li><li>Add its details and primary file, then review visibility and the available publishing readiness messages.</li><li>Publish when the details are ready. A published release is immutable; updated media uses a new version.</li></ol>
+          <p class="note">Publishing and public reachability are separate decisions. Check the work's actual public URL after publishing rather than assuming a temporary link is a durable buyer address.</p>
+        </section>
         <section class="topic" id="next" data-search="advanced commerce buyer payout splits proofs diagnostics backup update recovery help">
-          <div class="topic-head"><div><div class="number">07 · NEXT STEPS</div><h2>Explore when you are ready</h2></div><label class="mark"><input type="checkbox" data-done="next">Done</label></div>
-          <p>Core also has proof, split, commerce, and diagnostics workflows. Their availability and requirements depend on the work and Core's current state. Open those sections in the dashboard and follow their readiness messages before making a public or buyer-facing promise.</p>
-          <p class="note">This walkthrough covers the first Core journey. It does not change your node or perform an action for you.</p>
+          <div class="topic-head"><div><div class="number">15 · NEXT STEPS</div><h2>Keep exploring</h2></div><label class="mark"><input type="checkbox" data-done="next">Done</label></div>
+          <p>Core also has audience, royalties, payout, and diagnostics views. Follow their in-app status and readiness messages as you add more of your catalog and connections.</p>
+          <p class="note">This walkthrough explains the Beta 13 product; it does not change your node or perform actions for you.</p>
         </section>
         <p class="footer">Based on Certifyd Core <code>v0.1.0-beta.13</code>. Progress and choices stay in this browser. <a href="/core/tunnel-setup/">Detailed public-link guide</a>.</p>
       </div>
@@ -84,8 +129,12 @@
     nav.innerHTML=topics.map(t=>'<a href="#'+t.id+'">'+t.querySelector('h2').textContent+'</a>').join('');
     const saved=(()=>{try{return JSON.parse(localStorage.getItem('certifyd-core-walkthrough-v1')||'{}')}catch{return {}}})();
     function save(){try{localStorage.setItem('certifyd-core-walkthrough-v1',JSON.stringify(saved))}catch{}}
-    function progress(){document.querySelector('#progress').textContent=Object.values(saved).filter(Boolean).length+' of '+topics.length+' done · saved on this device'}
+    function progress(){document.querySelector('#progress').textContent=topics.filter(t=>saved[t.id]).length+' of '+topics.length+' done · saved on this device'}
     document.querySelectorAll('[data-done]').forEach(box=>{box.checked=!!saved[box.dataset.done];box.addEventListener('change',()=>{saved[box.dataset.done]=box.checked;save();progress()})});progress();
+    topics.forEach((topic,i)=>{const controls=document.createElement('div');controls.className='step-actions';controls.innerHTML='<button type="button" class="previous" '+(i===0?'disabled':'')+'>Previous</button><button type="button" class="next" '+(i===topics.length-1?'disabled':'')+'>'+(i===topics.length-1?'You’re at the end':'Next step')+'</button>';topic.append(controls);controls.querySelector('.previous').addEventListener('click',()=>select(topics[i-1]?.id));controls.querySelector('.next').addEventListener('click',()=>select(topics[i+1]?.id))});
+    let current=topics.some(t=>t.id===location.hash.slice(1))?location.hash.slice(1):'install';
+    function select(id,scroll=true){if(!topics.some(t=>t.id===id))return;current=id;document.body.classList.add('guided');topics.forEach(t=>t.classList.toggle('current',t.id===id));nav.querySelectorAll('a').forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+id));history.replaceState(null,'','#'+id);if(scroll)document.querySelector('#topics').scrollIntoView({behavior:'smooth',block:'start'})}
+    nav.addEventListener('click',e=>{const a=e.target.closest('a');if(a){e.preventDefault();input.value='';search();select(a.hash.slice(1))}});select(current,false);
     function choose(selector,key,details,copy){document.querySelectorAll(selector).forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll(selector).forEach(b=>b.setAttribute('aria-pressed',String(b===button)));details.innerHTML=copy[button.dataset[key]]}))}
     choose('[data-os]','os',document.querySelector('#install-detail'),{
       windows:'Download the Windows x64 installer, run it, then launch <b>Certifyd Core</b> from the Start Menu or desktop.',
@@ -98,7 +147,7 @@
     });
     const input=document.querySelector('#search'),results=document.querySelector('#search-results');
     function search(){const q=input.value.trim().toLowerCase();document.body.classList.toggle('searching',!!q);const matches=q?topics.filter(t=>(t.dataset.search+' '+t.textContent).toLowerCase().includes(q)):[];topics.forEach(t=>t.classList.toggle('match',matches.includes(t)));results.classList.toggle('open',!!q);results.innerHTML=q?(matches.length?matches.map(t=>'<a href="#'+t.id+'">'+t.querySelector('h2').textContent+'<small>'+t.querySelector('.number').textContent+'</small></a>').join(''):'<p>No match yet. Try a shorter term, such as “works” or “link”.</p>'):''}
-    input.addEventListener('input',search);results.addEventListener('click',e=>{if(e.target.closest('a')){input.value='';search()}});document.addEventListener('keydown',e=>{if(e.key==='Escape'){input.value='';search();input.blur()}});
+    input.addEventListener('input',search);results.addEventListener('click',e=>{const a=e.target.closest('a');if(a){e.preventDefault();input.value='';search();select(a.hash.slice(1))}});document.addEventListener('keydown',e=>{if(e.key==='Escape'){input.value='';search();input.blur()}});
   </script>
 </body>
 </html>
