@@ -46,10 +46,17 @@
           <ol><li>Open Core's local dashboard at <code>http://127.0.0.1:4000</code> if it did not open for you.</li><li>On <b>Create owner (first-run setup)</b>, make your owner account.</li><li>Save the recovery key when Core shows it. It is shown once.</li></ol>
           <p class="note">The dashboard on port 4000 is private operator access. Public tunnels use a separate, allowlisted listener on port 4010.</p>
         </section>
+        <section class="topic" id="public" data-search="start temporary link quick tunnel configuration tunnel routing public link cloudflare 4010">
+          <div class="topic-head"><div><div class="number">03 · PUBLIC LINK</div><h2>Start a temporary tunnel</h2></div><label class="mark"><input type="checkbox" data-done="public">Done</label></div>
+          <p>Core starts private. After creating the owner, you can explicitly open a temporary public link. It requires no domain or DNS setup.</p>
+          <ol><li>In Core, open <b>Configuration → Tunnel &amp; routing</b> and choose <b>Start temporary link</b>.</li><li>Wait for Core to report the generated <code>https://…trycloudflare.com</code> address. Copy the URL shown by Core; a stray address in an error message is not your link.</li><li>Open that address to check the public view, then return to Core and continue with your profile.</li></ol>
+          <div class="actions"><a class="action" href="/core/tunnel-setup/">Help with a temporary link</a></div>
+          <p class="note">Starting the link makes Core’s public routes reachable on the internet through <code>127.0.0.1:4010</code>. It stays in Basic posture and is not a permanent buyer or commerce address. <b>Stop</b> closes the temporary link; it does not stop unrelated Cloudflare services. Core does not automatically turn it into a named tunnel later.</p>
+        </section>
         <section class="topic" id="profile" data-search="profile identity display name bio avatar public profile theme handle">
           <div class="topic-head"><div><div class="number">03 · IDENTITY</div><h2>Make your profile yours</h2></div><label class="mark"><input type="checkbox" data-done="profile">Done</label></div>
           <ol><li>Open the <b>Profile</b> tab. The <b>Node Account (Local)</b> card identifies who controls this Core; your public-facing details are in <b>Public Profile (Presentation)</b> below it.</li><li>Enter a <b>Display name</b> and <b>Bio</b>. Press <b>Save</b> beside the display name.</li><li>If you want a public location, use the <b>Public Location</b> fields and choose how precise it should be. Save it separately with <b>Save approximate public location</b>.</li></ol>
-          <p class="note">The location is optional. Use an approximate area, not a street address or private location. The public profile changes its presentation; it does not change ownership of your node or put a private Core on the internet.</p>
+          <p class="note">The location is optional. Use an approximate area, not a street address or private location. The public profile changes its presentation; it does not change ownership of your node.</p>
         </section>
         <section class="topic" id="picture" data-search="avatar profile photo picture upload image 2mb jpg jpeg png webp gif avif">
           <div class="topic-head"><div><div class="number">04 · PROFILE IMAGE</div><h2>Add a profile picture</h2></div><label class="mark"><input type="checkbox" data-done="picture">Done</label></div>
@@ -84,13 +91,6 @@
           <div class="topic-head"><div><div class="number">09 · FIND YOUR WAY</div><h2>What is Library?</h2></div><label class="mark"><input type="checkbox" data-done="library">Done</label></div>
           <p><b>Library</b> is the view of works you can access. It can include your authored work, purchases, and work shared through splits or derivatives. Filter it by type or relationship to find something you can view or play.</p>
           <p class="note">Think of <b>Works</b> as managing your catalog and <b>Library</b> as accessing the work available to you. A Library item does not by itself say you created that work.</p>
-        </section>
-        <section class="topic" id="public" data-search="public link quick temporary tunnel named durable hostname cloudflare dns 4010">
-          <div class="topic-head"><div><div class="number">10 · SHARING</div><h2>Choose how people reach Core</h2></div><label class="mark"><input type="checkbox" data-done="public">Done</label></div>
-          <p><b>Temporary link:</b> a short test or sharing path with no DNS setup. You start and stop it in Core; the address can change.</p>
-          <p><b>Named tunnel:</b> a stable custom hostname with a persistent Cloudflare identity. It has a separate guided setup.</p>
-          <div class="actions"><a class="action" href="/core/tunnel-setup/">Open interactive tunnel guide</a></div>
-          <p class="note">Core does not automatically turn a temporary link into a named tunnel. Both public paths target <code>http://127.0.0.1:4010</code>.</p>
         </section>
         <section class="topic" id="named" data-search="named tunnel permanent durable hostname domain dns cloudflare exact tunnel identity service">
           <div class="topic-head"><div><div class="number">11 · PERMANENT ADDRESS</div><h2>Get a named tunnel</h2></div><label class="mark"><input type="checkbox" data-done="named">Done</label></div>
@@ -172,7 +172,7 @@
     const topics=[...document.querySelectorAll('.topic')];
     const nav=document.querySelector('#topic-nav');
     const groups=[
-      {label:'START & PUBLISH',ids:['install','owner','profile','picture','proof','works','public','named','provider','advanced','splits','release','next']},
+      {label:'START & PUBLISH',ids:['install','owner','public','profile','picture','proof','works','named','provider','advanced','splits','release','next']},
       {label:'EXPLORE THE TABS',ids:['works-tab','rights','library','audience','revenue','royalties','configuration','diagnostics']},
       {label:'NODE OPERATORS',ids:['lightning','console']}
     ];
