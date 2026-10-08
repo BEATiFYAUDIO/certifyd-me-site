@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="referrer" content="no-referrer">
+  <meta name="description" content="An interactive setup guide for Certifyd Core public links and named tunnels.">
+  <title>Get connected · Certifyd Core</title>
+  <link rel="icon" type="image/svg+xml" href="/images/certifyd-tab-icon.svg">
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="/" aria-label="Certifyd home"><span class="brand-mark" aria-hidden="true"><img src="/images/certifyd-tab-icon.svg" alt="" width="35" height="39"></span><span>certifyd<span class="brand-core">CORE</span></span></a><div class="top-actions"><span class="private-badge"><span aria-hidden="true">⌑</span> Beta 13 guide</span><button class="text-btn" id="help-button">Help & terms <span aria-hidden="true">↗</span></button></div></header>
+  <main>
+    <section class="intro"><div><div class="eyebrow"><span class="tiny-line"></span> YOUR NODE. YOUR CONNECTION.</div><h1>A clear path<br>to <em>getting connected.</em></h1><p>Bring your Certifyd Core node online, one small step at a time.<br class="desktop-br"> Just the instructions you need. Nothing to memorize.</p></div><div class="connection-art" aria-hidden="true"><div class="art-orbit"></div><div class="art-node"><span class="node-glyph">▤</span><small>Your Core</small></div><div class="art-line"><i></i><i></i><i></i></div><div class="art-globe">◎<small>Your audience</small></div><span class="art-caption">A tunnel connects the two.</span></div></section>
+    <section class="workspace" aria-label="Interactive setup guide">
+      <aside class="journey"><div class="journey-heading">YOUR SETUP <span id="percent">0%</span></div><div class="progress-track"><div id="progress-bar"></div></div><nav id="stages" aria-label="Setup progress"></nav><div class="saved-note"><span class="saved-dot"></span><div id="saved-label">Progress stays on this device<small>You can leave and come back.</small></div></div><button class="text-btn restart" id="reset-button">Start over</button></aside>
+      <div class="guide-panel"><div class="step-top"><span id="step-label">LET’S FIND YOUR PATH</span><span class="step-chip" id="path-chip">Setup guide</span></div><div id="step-content"></div><div class="step-footer" id="step-footer"></div></div>
+      <aside class="context"><div class="context-icon" aria-hidden="true">✧</div><div class="eyebrow">A LITTLE CONTEXT</div><h3 id="context-title">Your computer is the home base.</h3><p id="context-body">Core runs on your device. A tunnel gives people a way to reach its public pages over the internet.</p><div class="context-rule"></div><div class="context-small"><span aria-hidden="true">◈</span><p>This guide only gives instructions. You choose when to make changes in Core or Cloudflare.</p></div><button class="text-btn" id="context-help">Unfamiliar word? <span aria-hidden="true">→</span></button></aside>
+    </section>
+    <footer class="page-footer"><span>Made for a first connection, and the next one.</span><span>Certifyd Core <span class="footer-dot">·</span> Beta 13 setup companion</span></footer>
+  </main>
+  <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-top"><h2 id="help-title">A little help goes a long way.</h2><button class="icon-button" data-close aria-label="Close help">×</button></div><p class="muted">Plain language, right when you need it.</p><div id="help-content"></div></dialog>
+  <dialog id="reset-dialog" aria-labelledby="reset-title"><div class="dialog-top"><h2 id="reset-title">Start a fresh setup?</h2><button class="icon-button" data-close aria-label="Cancel reset">×</button></div><p>Your saved answers and progress on this device will be cleared. Your Core node and Cloudflare account won’t be changed.</p><div class="dialog-actions"><button class="secondary" data-close>Keep my progress</button><button class="primary" id="confirm-reset">Start over</button></div></dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <noscript><p class="noscript">This guide needs JavaScript to show your next step. Enable it and reload.</p></noscript>
+</body>
+</html>
