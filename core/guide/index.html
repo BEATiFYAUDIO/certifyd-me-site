@@ -49,14 +49,14 @@
         <section class="topic" id="public" data-search="start temporary link quick tunnel configuration tunnel routing public link cloudflare 4010">
           <div class="topic-head"><div><div class="number">03 · PUBLIC LINK</div><h2>Start a temporary tunnel</h2></div><label class="mark"><input type="checkbox" data-done="public">Done</label></div>
           <p>Core starts private. After creating the owner, you can explicitly open a temporary public link. It requires no domain or DNS setup.</p>
-          <ol><li>In Core, open <b>Configuration → Tunnel &amp; routing</b> and choose <b>Start temporary link</b>.</li><li>Wait for Core to report the generated <code>https://…trycloudflare.com</code> address. Copy the URL shown by Core; a stray address in an error message is not your link.</li><li>Open that address to check the public view, then return to Core and continue with your profile.</li></ol>
+          <ol><li>In Core, open <b>Configuration → Tunnel &amp; routing</b> and choose <b>Start temporary link</b>.</li><li>Wait for Core to report the generated <code>https://…trycloudflare.com</code> address. A stray address in an error message is not your link.</li><li>At the top of the Core dashboard, find the <b>Public</b> status and address. Choose <b>Open public profile</b> to check it, or <b>Copy public link</b> to share it. Then return to Core and continue with your profile.</li></ol>
           <div class="actions"><a class="action" href="/core/tunnel-setup/">Help with a temporary link</a></div>
           <p class="note">Starting the link makes Core’s public routes reachable on the internet through <code>127.0.0.1:4010</code>. It stays in Basic posture and is not a permanent buyer or commerce address. <b>Stop</b> closes the temporary link; it does not stop unrelated Cloudflare services. Core does not automatically turn it into a named tunnel later.</p>
         </section>
         <section class="topic" id="profile" data-search="profile identity display name bio avatar public profile theme handle">
           <div class="topic-head"><div><div class="number">03 · IDENTITY</div><h2>Make your profile yours</h2></div><label class="mark"><input type="checkbox" data-done="profile">Done</label></div>
           <ol><li>Open the <b>Profile</b> tab. The <b>Node Account (Local)</b> card identifies who controls this Core; your public-facing details are in <b>Public Profile (Presentation)</b> below it.</li><li>Enter a <b>Display name</b> and <b>Bio</b>. Press <b>Save</b> beside the display name.</li><li>If you want a public location, use the <b>Public Location</b> fields and choose how precise it should be. Save it separately with <b>Save approximate public location</b>.</li></ol>
-          <p class="note">The location is optional. Use an approximate area, not a street address or private location. The public profile changes its presentation; it does not change ownership of your node.</p>
+          <p class="note">The location is optional. Use an approximate area, not a street address or private location. Your public profile link remains available in the top bar through <b>Open public profile</b> and <b>Copy public link</b>. Presentation changes do not change ownership of your node.</p>
         </section>
         <section class="topic" id="picture" data-search="avatar profile photo picture upload image 2mb jpg jpeg png webp gif avif">
           <div class="topic-head"><div><div class="number">04 · PROFILE IMAGE</div><h2>Add a profile picture</h2></div><label class="mark"><input type="checkbox" data-done="picture">Done</label></div>
@@ -71,10 +71,10 @@
         <section class="topic" id="works" data-search="works catalog certifyd works legacy connect work spotify apple music youtube isrc upc iswc doi isbn eidr">
           <div class="topic-head"><div><div class="number">06 · CATALOG</div><h2>Create your first work</h2></div><label class="mark"><input type="checkbox" data-done="works">Done</label></div>
           <p>Let’s use one song as the first example. In <b>Works → New Certifyd Work</b>, enter its title, set <b>Type</b> to <b>Song</b>, and press <b>Create</b>. Open <b>Show details</b> for the new draft, then use <b>Save media</b> to attach the song file.</p>
-          <p>If the work already lives elsewhere, use the Legacy path instead:</p>
+          <p>If the work already lives elsewhere, use the Legacy path after your named tunnel is ready:</p>
           <div class="choice" role="group" aria-label="Choose work type"><button type="button" data-work="native" aria-pressed="false">A new Certifyd Work</button><button type="button" data-work="legacy" aria-pressed="false">An existing work elsewhere</button></div>
           <div id="work-detail" class="choice-detail">Choose a work type to see the next step.</div>
-          <p class="note">A connected Legacy work is a catalog reference, not proof that you own or control the outside account or rights.</p>
+          <p class="note">Connect Work requires a named tunnel and verification of the source profile. A connected Legacy work is a catalog reference, not proof that you own the rights.</p>
         </section>
         <section class="topic" id="works-tab" data-search="works tab works catalog certifyd legacy drafts releases metadata upload">
           <div class="topic-head"><div><div class="number">07 · FIND YOUR WAY</div><h2>What is the Works tab?</h2></div><label class="mark"><input type="checkbox" data-done="works-tab">Done</label></div>
@@ -84,7 +84,7 @@
         <section class="topic" id="rights" data-search="rights holders connect work legacy profile proof spotify apple music youtube isrc identifier verify source">
           <div class="topic-head"><div><div class="number">08 · LEGACY WORK</div><h2>What is Rights Holders?</h2></div><label class="mark"><input type="checkbox" data-done="rights">Done</label></div>
           <p>For now, <b>Rights Holders</b> contains <b>Connect Work</b>. The standalone registry for people, publishers, labels, organizations, and collecting societies is described in Core as future work.</p>
-          <ol><li>First prove the legacy social or platform profile that is the source of the work.</li><li>Open <b>Rights Holders → Connect Work</b>. Paste a Spotify, Apple Music, or YouTube URL, or choose an industry identifier such as ISRC.</li><li>Press <b>Discover</b> and review the metadata. <b>Connect</b> becomes available only when Core reports the source account verified.</li><li>Connect to create a private Legacy reference in your Works catalog.</li></ol>
+          <ol><li>First complete the <a href="#named">named tunnel setup</a> on your domain. A temporary Quick link does not unlock Legacy connection.</li><li>Prove the social or platform profile that is the source of the work.</li><li>Open <b>Rights Holders → Connect Work</b>. Paste a Spotify, Apple Music, or YouTube URL, or choose an industry identifier such as ISRC.</li><li>Press <b>Discover</b> and review the metadata. <b>Connect</b> becomes available only when Core confirms the prerequisites, including source-account verification.</li><li>Connect to create a private Legacy reference in your Works catalog.</li></ol>
           <p class="note">Source-account control is not proof of copyright or other rights ownership. A Legacy reference stays separate from a native Certifyd Work.</p>
         </section>
         <section class="topic" id="library" data-search="library tab what i own authored purchased shared splits derivatives songs videos books files">
@@ -186,6 +186,7 @@
     let current=topics.some(t=>t.id===location.hash.slice(1))?location.hash.slice(1):'install';
     function select(id,scroll=true){if(!topics.some(t=>t.id===id))return;current=id;document.body.classList.add('guided');topics.forEach(t=>t.classList.toggle('current',t.id===id));nav.querySelectorAll('a').forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+id));history.replaceState(null,'','#'+id);if(scroll)document.querySelector('#topics').scrollIntoView({behavior:'smooth',block:'start'})}
     nav.addEventListener('click',e=>{const a=e.target.closest('a');if(a){e.preventDefault();input.value='';search();select(a.hash.slice(1))}});select(current,false);
+    document.querySelector('#topics').addEventListener('click',e=>{const a=e.target.closest('a[href^="#"]');if(a&&topics.some(t=>t.id===a.hash.slice(1))){e.preventDefault();select(a.hash.slice(1))}});
     function choose(selector,key,details,copy){document.querySelectorAll(selector).forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll(selector).forEach(b=>b.setAttribute('aria-pressed',String(b===button)));details.innerHTML=copy[button.dataset[key]]}))}
     choose('[data-os]','os',document.querySelector('#install-detail'),{
       windows:'Download the Windows x64 installer, run it, then launch <b>Certifyd Core</b> from the Start Menu or desktop.',
@@ -194,7 +195,7 @@
     });
     choose('[data-work]','work',document.querySelector('#work-detail'),{
       native:'Choose <b>Certifyd Works</b> to create and manage a native work in Core. Start a draft, add its details and primary file, then review it before publishing.',
-      legacy:'First prove the source platform profile. Then open <b>Rights Holders → Connect Work</b>, discover the work by URL or identifier, and connect it after Core confirms the source account is verified.'
+      legacy:'First complete a <a href="#named">named tunnel</a> on your domain and prove the source platform profile. Then open <b>Rights Holders → Connect Work</b>, discover the work by URL or identifier, and connect it when Core confirms the prerequisites.'
     });
     const input=document.querySelector('#search'),results=document.querySelector('#search-results');
     function search(){const q=input.value.trim().toLowerCase();document.body.classList.toggle('searching',!!q);const matches=q?topics.filter(t=>(t.dataset.search+' '+t.textContent).toLowerCase().includes(q)):[];topics.forEach(t=>t.classList.toggle('match',matches.includes(t)));results.classList.toggle('open',!!q);results.innerHTML=q?(matches.length?matches.map(t=>'<a href="#'+t.id+'">'+t.querySelector('h2').textContent+'<small>'+t.querySelector('.number').textContent+'</small></a>').join(''):'<p>No match yet. Try a shorter term, such as “works” or “link”.</p>'):''}
