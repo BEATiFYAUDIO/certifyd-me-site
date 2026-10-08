@@ -1,15 +1,4 @@
 /* Shared desktop dropdown presentation for self-contained and shared-style pages. */
-@media (min-width: 1121px) {
-  .header-inner {
-    grid-template-columns: minmax(0, 180px) minmax(0, 1fr) minmax(0, 180px);
-  }
-
-  .header-inner::after {
-    content: "";
-    display: block;
-  }
-}
-
 .nav-desktop .nav-group {
   position: relative;
   flex: 1 1 0;
@@ -19,6 +8,11 @@
 .nav-desktop > a {
   flex: 1 1 0;
   min-width: 0;
+}
+
+.nav-desktop > a:last-child {
+  justify-content: flex-end;
+  padding-right: 0;
 }
 
 .nav-desktop .nav-group summary {
