@@ -546,11 +546,12 @@ function getView() {
           'Set the public hostname to <b>' + esc(hostname()) + '</b> using the chosen subdomain and domain.',
           'Set service type to <b>HTTP</b> and the service URL to <b>http://127.0.0.1:' + PUBLIC_PORT + '</b>. This is Core’s public-safe listener.',
           'Save the published application route, then confirm the connector for this exact tunnel remains connected.'
+          'Do <b>not</b> add a public route to the private dashboard on port <b>4000</b> as part of normal onboarding. Remote dashboard access is optional and requires separate access protection.'
         ]) +
         command('http://127.0.0.1:' + PUBLIC_PORT, 'REQUIRED SERVICE TARGET') +
         check('routed', 'The exact tunnel routes ' + esc(hostname()) + ' to port ' + PUBLIC_PORT + '.'),
         'Route identity and reachability are both required.',
-        'A hostname response checks reachability. Certifyd separately requires exact configured tunnel identity evidence.'
+        'A healthy connector does not prove the hostname reaches this Core. Use Core’s Named Tunnel verification to confirm the current Core instance answers through the public route.'
       );
 
     case 'coreConfirm':
@@ -594,7 +595,7 @@ function getView() {
           'Check <b>/health</b> and expect HTTP 200, then use Core’s route verification to confirm this hostname reaches the current Core instance.'
           goal === 'quick'
             ? 'Confirm Core still shows Basic posture and the same temporary canonical origin.'
-            : 'Confirm Core shows Advanced posture, exact tunnel identity, canonical origin, canonical buyer origin, and durable-ready state.'
+            : 'Confirm Core reports the intended Sovereign posture, tunnel identity, canonical origin, and durable readiness.'
         ]) +
         details(
           goal === 'quick' ? 'Quick Tunnel troubleshooting' : 'Named tunnel troubleshooting',
