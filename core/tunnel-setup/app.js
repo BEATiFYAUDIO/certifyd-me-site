@@ -545,7 +545,7 @@ function getView() {
           'Open its <b>Routes</b> tab and choose <b>Add route → Published application</b>.',
           'Set the public hostname to <b>' + esc(hostname()) + '</b> using the chosen subdomain and domain.',
           'Set service type to <b>HTTP</b> and the service URL to <b>http://127.0.0.1:' + PUBLIC_PORT + '</b>. This is Core’s public-safe listener.',
-          'Save the published application route, then confirm the connector for this exact tunnel remains connected.'
+          'Save the published application route, then confirm the connector for this exact tunnel remains connected.',
           'Do <b>not</b> add a public route to the private dashboard on port <b>4000</b> as part of normal onboarding. Remote dashboard access is optional and requires separate access protection.'
         ]) +
         command('http://127.0.0.1:' + PUBLIC_PORT, 'REQUIRED SERVICE TARGET') +
@@ -562,7 +562,7 @@ function getView() {
         ordered([
           'Open Core’s private operator interface at <b>http://127.0.0.1:' + PRIVATE_PORT + '</b>.',
           'Open <b>CONFIG → Tunnel & routing</b>. Enter the exact Named Tunnel identity and public hostname <b>' + esc(hostname()) + '</b>, then save the configuration.',
-          'Use <b>Discover tunnels</b> and the Named Tunnel verification controls to check the route reaches this Core. A healthy Cloudflare connector alone is not proof that Core is reachable.'
+          'Use <b>Discover tunnels</b> and the Named Tunnel verification controls to check the route reaches this Core. A healthy Cloudflare connector alone is not proof that Core is reachable.',
           a.management === 'external' || situationForAnswers(a) === 'service'
             ? 'Confirm Core recognizes the connector as externally managed and does not launch a duplicate process.'
             : 'Confirm Core reports the intended app-managed ownership.',
@@ -592,7 +592,9 @@ function getView() {
         ) +
         ordered([
           'Open the URL in a private browser window or on a different network.',
-          'Check <b>/health</b> and expect HTTP 200, then use Core’s route verification to confirm this hostname reaches the current Core instance.'
+          goal === 'quick'
+            ? 'Check <b>/health</b> and expect HTTP 200 for the temporary URL Core reported.'
+            : 'Check <b>/health</b> and expect HTTP 200, then use Core’s Named Tunnel verification to confirm this hostname reaches the current Core instance.',
           goal === 'quick'
             ? 'Confirm Core still shows Basic posture and the same temporary canonical origin.'
             : 'Confirm Core reports the intended Sovereign posture, tunnel identity, canonical origin, and durable readiness.'
