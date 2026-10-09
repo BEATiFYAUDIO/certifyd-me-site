@@ -119,11 +119,11 @@
           <p class="note">This adds a separate “Legacy” reference to your Works. Verifying a platform account does not establish copyright ownership.</p>
           <figure class="screen"><a class="screen-shot" href="images/connect-work.png" target="_blank" rel="noopener"><img src="images/connect-work.png" alt="Rights Holders page showing the Connect Work section, Paste URL, Enter Identifier, and Discover" loading="lazy"><span class="circle" style="--x:1%;--y:34%;--w:27%;--h:11%" aria-hidden="true"></span></a><figcaption>Connect Work sits under Rights Holders. Select the image to see the link or code lookup at full size.</figcaption></figure>
         </section>
-        <section class="topic" id="library" data-search="library tab what i own authored purchased shared splits derivatives songs videos books files">
+        <section class="topic" id="library" data-search="library tab what i own authored purchased shared splits derivatives songs videos books files profile featured">
           <div class="topic-head"><div><div class="number">09 · FIND YOUR WAY</div><h2>What is Library?</h2></div><label class="mark"><input type="checkbox" data-done="library">Done</label></div>
           <p><b>Library</b> is the view of works you can access. It includes your authored work<span class="sovereign-only">, purchases, and work shared through splits or derivatives</span>. Filter it by type or relationship to find something you can view or play.</p>
           <p class="sovereign-only">When a work’s split is locked and the owner publishes the work from <b>Works</b>, it appears in the accepted split participants’ Libraries. Those participants can then share the work to their own profiles.</p>
-          <p class="note">Use <b>Works</b> to manage what you create and <b>Library</b> to find what you can access. A work in your Library was not necessarily created by you.</p>
+          <p class="note">Use <b>Works</b> to manage what you create and <b>Library</b> to find what you can access. A work in your Library was not necessarily created by you. For your first publication, follow <a href="#library-first">Find your published work in Library</a>.</p>
           <figure class="screen sidebar-hi"><a class="screen-shot" href="images/works-catalog.png" target="_blank" rel="noopener"><img src="images/works-catalog.png" alt="Core’s left menu with Library below Works" loading="lazy"><span class="circle" style="--x:1%;--y:54%;--w:98%;--h:15%" aria-hidden="true"></span></a><figcaption>Library is directly below Works in Core’s left menu. Select the image for the full screenshot.</figcaption></figure>
         </section>
         <section class="topic" id="network-tab" data-search="network tab identity reachability payment participation storefront commerce authority visibility provider payout status runtime node presence services">
@@ -189,6 +189,14 @@
           <p class="note">After publishing, open the public link to check what visitors can actually see.</p>
           <figure class="screen share-focus"><a class="screen-shot" href="images/work-share.png" target="_blank" rel="noopener"><img src="images/work-share.png" alt="Expanded work details with Share, Public Link, Copy link, credits, and Network Visibility" loading="lazy"><span class="circle" style="--x:1%;--y:3%;--w:98%;--h:30%" aria-hidden="true"></span></a><figcaption>After <b>Show details</b>, find <b>Share → Public Link</b> in the circled area. This is an already published example. Select the image for the full screen.</figcaption></figure>
         </section>
+        <section class="topic" id="library-first" data-search="after publish library authored work add to profile remove from profile featured profile display share">
+          <div class="topic-head"><div><div class="number">20 · AFTER PUBLISHING</div><h2>Find your published work in Library</h2></div><label class="mark"><input type="checkbox" data-done="library-first">Done</label></div>
+          <p>Publishing finishes the work in <b>Works</b>. <b>Library</b> is where you find the works you can access, including the one you just authored. Showing a work on your public profile is a separate choice.</p>
+          <ol><li>Open <b>Library</b> in Core’s left menu and find the work by its title. Use the type or relationship filters if your Library has several works.</li><li>Open the work and check whether it is shown on your public profile. Add it to your profile if you want visitors to find it there, or leave it in your Library without displaying it on the profile.</li><li>If you want this work to stand out on your profile, use its <b>Featured</b> choice. Featuring is a presentation choice; check the public profile to see how it looks.</li><li>At the top of Core, choose <b>Open public profile</b>. Confirm that the work appears where you intended. You can still share its direct work link from <b>Works → Show details → Share</b>.</li></ol>
+          <p class="note sovereign-only">A work with a locked shared split also appears in the accepted participants’ Libraries after publication. Each participant can decide whether to show it on their own profile.</p>
+          <p class="note">A work being in Library does not by itself tell you whether it is on your public profile or featured. Check those settings and the public view separately.</p>
+          <figure class="screen sidebar-hi"><a class="screen-shot" href="images/works-catalog.png" target="_blank" rel="noopener"><img src="images/works-catalog.png" alt="Core left menu with Library directly below Works" loading="lazy"><span class="circle" style="--x:1%;--y:54%;--w:98%;--h:15%" aria-hidden="true"></span></a><figcaption>Library is directly below Works in Core’s left menu. Select the image for the full screenshot.</figcaption></figure>
+        </section>
         <section class="topic" id="commerce-gate" data-search="commerce unavailable basic audience revenue royalties rights holders manage splits locked upgrade sovereign named tunnel provider">
           <div class="topic-head"><div><div class="number">COMMERCE · BASIC</div><h2>Why is Commerce unavailable?</h2></div></div>
           <p>In Basic, you can create a profile, prove an identity, make a solo work, and share a temporary link. The Commerce tabs <b>Audience</b>, <b>Revenue</b>, <b>Royalties</b>, <b>Rights Holders</b>, and <b>Manage Splits</b> are unavailable.</p>
@@ -223,15 +231,15 @@
     const nav=document.querySelector('#topic-nav');
     const paths={
       basic:[
-        {label:'START & PUBLISH',ids:['install','owner','public','profile','picture','proof','works','work-settings','release','next']},
+        {label:'START & PUBLISH',ids:['install','owner','public','profile','picture','proof','works','work-settings','release','library-first','next']},
         {label:'EXPLORE THE TABS',ids:['works-tab','library','network-tab','commerce-gate','configuration','diagnostics']}
       ],
       creator:[
-        {label:'START & PUBLISH',ids:['install','owner','public','profile','picture','proof','works','work-settings','named','provider','advanced','splits','release','next']},
+        {label:'START & PUBLISH',ids:['install','owner','public','profile','picture','proof','works','work-settings','named','provider','advanced','splits','release','library-first','next']},
         {label:'EXPLORE THE TABS',ids:['works-tab','rights','library','network-tab','audience','revenue','royalties','configuration','diagnostics','lightning']}
       ],
       node:[
-        {label:'START & PUBLISH',ids:['install','owner','public','profile','picture','proof','works','work-settings','named','lightning','advanced','console','splits','release','next']},
+        {label:'START & PUBLISH',ids:['install','owner','public','profile','picture','proof','works','work-settings','named','lightning','advanced','console','splits','release','library-first','next']},
         {label:'EXPLORE THE TABS',ids:['works-tab','rights','library','network-tab','audience','revenue','royalties','configuration','diagnostics']}
       ]
     };
