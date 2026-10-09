@@ -75,6 +75,12 @@ function choices(key, items) {
 function ordered(items) {
   return '<ol class="instruction-list">' + items.map((item) => '<li>' + item + '</li>').join('') + '</ol>';
 }
+function screens(items) {
+  return items.map(([file, caption, alt]) =>
+    '<figure class="guide-shot"><a href="images/' + esc(file) + '" target="_blank" rel="noopener" aria-label="Open full-size screenshot: ' + esc(alt) + '">' +
+    '<img src="images/' + esc(file) + '" alt="' + esc(alt) + '" loading="lazy"></a><figcaption>' + caption + ' <span>Open full size</span></figcaption></figure>'
+  ).join('');
+}
 function need() { requirements = Array.from(arguments); }
 function view(title, lead, body, contextTitle, contextBody, button) {
   return {title, lead, body, contextTitle, contextBody, button: button || 'Continue'};
@@ -320,6 +326,8 @@ function getView() {
           'In Cloudflare, choose <b>Add a domain</b> and enter <b>' + esc(a.domain) + '</b>.',
           'Review every scanned record against your backup.',
           'Add any missing records. Keep mail-related records DNS-only.'
+        ]) + screens([
+          ['cloudflare-add-domain.png', 'Cloudflare’s Add a domain screen. Enter your own domain in this field.', 'Cloudflare domain name field']
         ]) + check('added', 'The domain is added and every required record is present in Cloudflare.'),
         'Nothing moves yet.',
         'Adding the zone prepares Cloudflare. Traffic changes only after the registrar uses Cloudflare’s assigned nameservers.'
@@ -335,6 +343,8 @@ function getView() {
           'Confirm every email and verification record.',
           'Confirm application and API hostnames.',
           'Record the current registrar nameservers for rollback.'
+        ]) + screens([
+          ['cloudflare-dns-review.png', 'Cloudflare’s scan can flag missing web or email records. Compare the actual records with your backup; the domain in this example is generic.', 'Cloudflare DNS scan warnings and DNS management']
         ]) + check('records', 'I compared Cloudflare DNS with the backup and recorded the old nameservers.'),
         'Preserve first, improve later.',
         'Keep the migration focused on matching existing behavior. Make unrelated DNS changes after the zone is stable.'
@@ -385,6 +395,8 @@ function getView() {
           a.dnssec === 'on' || a.dnssecResult === 'on' ? 'Disable DNSSEC or remove the old DS record at the registrar first.' : 'Confirm no old DS record is present.',
           'Replace the existing nameservers with the exact pair shown by Cloudflare.',
           'Save the change. Do not delete the old DNS account yet.'
+        ]) + screens([
+          ['cloudflare-nameservers.png', 'Cloudflare shows the two nameservers assigned to your zone. The values and previous nameservers are hidden in this example; copy yours directly from Cloudflare.', 'Cloudflare nameserver instructions with values redacted']
         ]) +
         note('Keep the old nameservers and DNS backup until Cloudflare reports Active and all services are verified.', true) +
         check('changed', 'I changed the nameservers using Cloudflare’s exact assigned values.'),
@@ -402,6 +414,8 @@ function getView() {
           'Test existing web and application hostnames.',
           'Send and receive email if the domain uses mail.',
           'If DNSSEC was previously enabled, follow Cloudflare’s instructions to enable it again with the new DS record.'
+        ]) + screens([
+          ['cloudflare-next-steps.png', 'Cloudflare’s follow-up screen points back to DNS and SSL/TLS checks. The nameserver values are hidden in this example.', 'Cloudflare activation next steps with nameservers redacted']
         ]) +
         check('active', 'Cloudflare reports Active and existing services still work.'),
         'Finish the migration before the tunnel.',
@@ -516,6 +530,10 @@ function getView() {
           a.os === 'windows' ? 'Return to Cloudflare and wait until it detects the connector as connected, then choose <b>Continue</b>.' : 'Wait for Cloudflare to confirm that the connector is connected.',
           'If installing as an OS service, let that service remain authoritative.',
           'Do not also ask Certifyd to launch a duplicate connector for the same tunnel.'
+        ]) + (a.os === 'windows' ? screens([
+          ['cloudflare-windows-connector.png', 'Choose Windows and 64-bit for a typical Windows PC. Cloudflare supplies the exact installer and service command for your tunnel.', 'Cloudflare connector setup with Windows and 64-bit selected']
+        ]) : '') + screens([
+          ['cloudflare-connector-healthy.png', 'A healthy connector means cloudflared is connected. Routes still need to be configured and checked.', 'Cloudflare tunnel overview showing a healthy connector and zero routes']
         ]) +
         check('connectorReady', 'The exact named tunnel connector is installed with one clear owner.'),
         'One tunnel, one active owner.',
@@ -547,6 +565,11 @@ function getView() {
           'Set service type to <b>HTTP</b> and the service URL to <b>http://127.0.0.1:' + PUBLIC_PORT + '</b>. This is Core’s public-safe listener.',
           'Save the published application route, then confirm the connector for this exact tunnel remains connected.',
           'Do <b>not</b> add a public route to the private dashboard on port <b>4000</b> as part of normal onboarding. Remote dashboard access is optional and requires separate access protection.'
+        ]) + screens([
+          ['cloudflare-routes-empty.png', 'Open the Routes tab on the exact tunnel and choose Add route.', 'Cloudflare tunnel Routes tab with no routes configured'],
+          ['cloudflare-add-route.png', 'Select Published application for the public Certifyd hostname.', 'Cloudflare Add a route dialog with Published application choice'],
+          ['cloudflare-public-route.png', 'The resulting route targets port 4010. This example uses a generic hostname and only shows the public-safe route.', 'Cloudflare route to http://127.0.0.1:4010'],
+          ['cloudflare-published-route.png', 'Another Cloudflare layout shows the same published route to port 4010.', 'Cloudflare published application route to port 4010']
         ]) +
         command('http://127.0.0.1:' + PUBLIC_PORT, 'REQUIRED SERVICE TARGET') +
         check('routed', 'The exact tunnel routes ' + esc(hostname()) + ' to port ' + PUBLIC_PORT + '.'),
@@ -567,6 +590,8 @@ function getView() {
             ? 'Confirm Core recognizes the connector as externally managed and does not launch a duplicate process.'
             : 'Confirm Core reports the intended app-managed ownership.',
           'Complete the explicit Sovereign Creator transition only after Core verifies the Named Tunnel and public route. Do not assume saving a tunnel automatically changes node posture.'
+        ]) + screens([
+          ['core-config-named.png', 'In Core, open CONFIG → Tunnel & routing. The connector-token field is for an app-managed setup; if an external service owns your tunnel, keep that service authoritative. Never paste a token into this guide.', 'Core CONFIG tab showing Tunnel and routing and advanced named-tunnel fields']
         ]) +
         note('<b>Expected durable result:</b> posture <b>Advanced</b>; canonical origin and canonical buyer origin are <b>' + esc(origin()) + '</b>; canonical is true; durable ready is true.') +
         check('coreConfigured', 'Core identifies the exact tunnel and reports the durable named setup ready.'),

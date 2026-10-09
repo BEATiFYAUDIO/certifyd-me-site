@@ -6,3 +6,5 @@
 .brand-mark img{display:block;width:100%;height:100%;object-fit:contain}
 :root{--purple:#147dab;--lavender:#e9f5fa}
 .primary:hover{background:#126b93;border-color:#126b93}
+
+.guide-shot{margin:20px 0 18px;max-width:100%}.guide-shot a{display:block;width:max-content;max-width:100%;border:1px solid #ded8e8;border-radius:9px;overflow:hidden;background:#fff;line-height:0}.guide-shot img{display:block;width:auto;max-width:100%;max-height:520px;object-fit:contain;object-position:left top}.guide-shot figcaption{font-size:12px;line-height:1.55;color:#625a70;margin-top:7px}.guide-shot figcaption span{color:#147dab;font-weight:600;white-space:nowrap}@media(max-width:620px){.guide-shot img{max-height:410px}.guide-shot figcaption{font-size:11px}}
