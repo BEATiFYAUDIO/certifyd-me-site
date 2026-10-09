@@ -2,13 +2,18 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://certifyd.me/</loc>
-    <lastmod>2026-10-08</lastmod>
+    <lastmod>2026-10-09</lastmod>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://certifyd.me/blog/</loc>
-    <lastmod>2026-10-08</lastmod>
+    <lastmod>2026-10-09</lastmod>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://certifyd.me/blog/mlc-2027-black-box-royalty-distribution-market-share/</loc>
+    <lastmod>2026-10-09</lastmod>
+    <priority>0.6</priority>
   </url>
   <url>
     <loc>https://certifyd.me/blog/spotify-audiobook-bundle-music-royalties-certifyd/</loc>
