@@ -494,8 +494,8 @@ function getView() {
         'Create one named tunnel for Certifyd.',
         'Use a distinct name and record both the exact name and UUID.',
         ordered([
-          'In Cloudflare Zero Trust, open <b>Networks → Connectors → Cloudflare Tunnels</b>.',
-          'Create a Cloudflared tunnel with a unique, recognizable name.',
+          'In Cloudflare, open <b>Networking → Tunnels</b> (the location may vary by dashboard layout), then choose <b>Create a tunnel</b>.',
+          'Choose <b>Cloudflared</b> and give the tunnel a unique, recognizable name, then continue to connector setup.',
           'Save the exact name and UUID shown by Cloudflare.'
         ]) +
         note('This creates a durable tunnel identity. It does not automatically convert a Quick Tunnel or reuse its temporary URL.') +
@@ -510,7 +510,10 @@ function getView() {
         'Install or run the named connector.',
         'Follow Cloudflare’s command for this exact tunnel and choose one process owner.',
         ordered([
-          'Use ' + link(sources.named, 'Cloudflare’s named tunnel setup') + ' for the Core computer’s operating system.',
+          a.os === 'windows' ? 'On Cloudflare’s connector setup screen choose <b>Windows</b> and <b>64-bit</b>, then download and run the <b>cloudflared MSI</b> installer.' : 'Use ' + link(sources.named, 'Cloudflare’s named tunnel setup') + ' for the Core computer’s operating system.',
+          a.os === 'windows' ? 'On the Windows computer, open <b>Start</b>, search for <b>PowerShell</b>, right-click it, and choose <b>Run as administrator</b>.' : 'Follow Cloudflare’s installation instructions for your operating system.',
+          a.os === 'windows' ? 'Copy the <b>service installation command provided by Cloudflare for this tunnel</b> and paste it into the elevated PowerShell window. The command includes a secret connector token: never publish or share it.' : 'Keep any connector credentials private.',
+          a.os === 'windows' ? 'Return to Cloudflare and wait until it detects the connector as connected, then choose <b>Continue</b>.' : 'Wait for Cloudflare to confirm that the connector is connected.',
           'If installing as an OS service, let that service remain authoritative.',
           'Do not also ask Certifyd to launch a duplicate connector for the same tunnel.'
         ]) +
@@ -538,10 +541,11 @@ function getView() {
         'Configure the public hostname route.',
         'Make the route on the exact named tunnel you verified or created.',
         ordered([
-          'Open the exact Certifyd tunnel in Cloudflare.',
-          'Add or verify public hostname <b>' + esc(hostname()) + '</b>.',
-          'Set service type to <b>HTTP</b> and URL to <b>127.0.0.1:' + PUBLIC_PORT + '</b>.',
-          'Save, then confirm the connector for this exact tunnel remains connected.'
+          'In Cloudflare, return to <b>Networking → Tunnels</b> and open the exact Certifyd tunnel.',
+          'Open its <b>Routes</b> tab and choose <b>Add route → Published application</b>.',
+          'Set the public hostname to <b>' + esc(hostname()) + '</b> using the chosen subdomain and domain.',
+          'Set service type to <b>HTTP</b> and the service URL to <b>http://127.0.0.1:' + PUBLIC_PORT + '</b>. This is Core’s public-safe listener.',
+          'Save the published application route, then confirm the connector for this exact tunnel remains connected.'
         ]) +
         command('http://127.0.0.1:' + PUBLIC_PORT, 'REQUIRED SERVICE TARGET') +
         check('routed', 'The exact tunnel routes ' + esc(hostname()) + ' to port ' + PUBLIC_PORT + '.'),
@@ -556,11 +560,12 @@ function getView() {
         'Use the existing named-tunnel controls; do not invent or infer another identity.',
         ordered([
           'Open Core’s private operator interface at <b>http://127.0.0.1:' + PRIVATE_PORT + '</b>.',
-          'Configure the exact tunnel name or UUID and durable hostname <b>' + esc(hostname()) + '</b>.',
+          'Open <b>CONFIG → Tunnel & routing</b>. Enter the exact Named Tunnel identity and public hostname <b>' + esc(hostname()) + '</b>, then save the configuration.',
+          'Use <b>Discover tunnels</b> and the Named Tunnel verification controls to check the route reaches this Core. A healthy Cloudflare connector alone is not proof that Core is reachable.'
           a.management === 'external' || situationForAnswers(a) === 'service'
             ? 'Confirm Core recognizes the connector as externally managed and does not launch a duplicate process.'
             : 'Confirm Core reports the intended app-managed ownership.',
-          'Wait for Advanced posture and durable-ready state.'
+          'Complete the explicit Sovereign Creator transition only after Core verifies the Named Tunnel and public route. Do not assume saving a tunnel automatically changes node posture.'
         ]) +
         note('<b>Expected durable result:</b> posture <b>Advanced</b>; canonical origin and canonical buyer origin are <b>' + esc(origin()) + '</b>; canonical is true; durable ready is true.') +
         check('coreConfigured', 'Core identifies the exact tunnel and reports the durable named setup ready.'),
@@ -586,7 +591,7 @@ function getView() {
         ) +
         ordered([
           'Open the URL in a private browser window or on a different network.',
-          'Check <b>/health</b> and expect HTTP 200.',
+          'Check <b>/health</b> and expect HTTP 200, then use Core’s route verification to confirm this hostname reaches the current Core instance.'
           goal === 'quick'
             ? 'Confirm Core still shows Basic posture and the same temporary canonical origin.'
             : 'Confirm Core shows Advanced posture, exact tunnel identity, canonical origin, canonical buyer origin, and durable-ready state.'
