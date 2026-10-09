@@ -1474,6 +1474,17 @@ test('OpenAI final writing instructions discourage validator-facing defensive pr
   assert.match(finalInstructionText, /Write like an informed technology\/music-business publication, not a compliance memo/i);
   assert.match(finalInstructionText, /Use plain, direct language for intelligent creators, musicians, producers and general music-business readers/i);
   assert.match(finalInstructionText, /Aim roughly for Grade 8 to 10 readability without simplifying the underlying reasoning/i);
+  assert.match(finalInstructionText, /voice of an intelligent, opinionated founder who understands the creative industries and cares about creators/i);
+  assert.match(finalInstructionText, /Create personality through the argument, concrete detail and storytelling/i);
+  assert.match(finalInstructionText, /open with a concrete human consequence, tension, contradiction or revealing observation rather than defaulting to a formal announcement followed by statistics/i);
+  assert.match(finalInstructionText, /Introduce the actual news, primary search entities, dates, figures and industry terms promptly/i);
+  assert.match(finalInstructionText, /Never imply that a particular creator lost money, rights, control or opportunity unless the verified source package establishes it/i);
+  assert.match(finalInstructionText, /Preserve useful SEO entity coverage while improving the prose/i);
+  assert.match(finalInstructionText, /company and organization names, people and job titles, products, services, technologies, dates, financial figures, industry terminology, primary keywords, secondary keywords and search-relevant relationships/i);
+  assert.match(finalInstructionText, /Explain what happens, who is affected and why it matters before introducing architectural terminology/i);
+  assert.match(finalInstructionText, /Vary sentence length and rhythm naturally/i);
+  assert.match(finalInstructionText, /conventional editorial paragraphs of roughly 3 to 5 sentences/i);
+  assert.match(finalInstructionText, /Avoid repetitive transition scaffolding such as “The obvious reading is,” “The deeper issue is,” “The practical difference is,”/i);
   assert.match(finalInstructionText, /Prefer familiar words, concrete statements, active voice and shorter sentence structures over academic, corporate, policy, investor or strategy-memo language/i);
   assert.match(finalInstructionText, /Preserve necessary industry terminology, factual qualifications and technical precision/i);
   assert.match(finalInstructionText, /When an idea can be expressed accurately in simpler language, use the simpler language/i);
@@ -1504,6 +1515,12 @@ test('OpenAI final writing instructions discourage validator-facing defensive pr
   assert.match(finalInstructionText, /distribution infrastructure moving upstream into creation/i);
   assert.match(finalInstructionText, /discover the deeper change from the evidence rather than reusing supplied wording/i);
   assert.match(finalInstructionText, /When selected Certifyd Brain is supplied, use it to develop a meaningful Certifyd perspective/i);
+  assert.match(finalInstructionText, /Let the outside story lead naturally to its architectural question, then introduce Certifyd where it becomes relevant to that argument/i);
+  assert.match(finalInstructionText, /Do not bolt on a formulaic Certifyd section or make the transition read like an advertisement/i);
+  assert.match(finalInstructionText, /centralized platforms create an architectural dependency problem/i);
+  assert.match(finalInstructionText, /long-term direction is creator-operated infrastructure that reduces the need for centralized intermediaries/i);
+  assert.match(finalInstructionText, /Distinguish verified current Certifyd Core capabilities from the broader architecture Certifyd is building toward/i);
+  assert.match(finalInstructionText, /Never imply that Certifyd already replaces rights administrators, distributors, licensing organizations or other systems unless selected Brain explicitly verifies that current capability/i);
   assert.match(finalInstructionText, /critique the architecture rather than the company/i);
   assert.match(finalInstructionText, /distinguish what the feature does from who controls the infrastructure that does it/i);
   assert.match(finalInstructionText, /Do not default to treating centralized platforms as permanent useful infrastructure that Certifyd merely complements/i);
@@ -1551,6 +1568,41 @@ test('OpenAI final writing instructions discourage validator-facing defensive pr
   assert.doesNotMatch(finalInstructionText, /Default to no Certifyd product mention/i);
   assert.doesNotMatch(finalInstructionText, /Absence of a Certifyd reference is a successful outcome/i);
   assert.doesNotMatch(finalInstructionText, /legal dispute → documentation → provenance → Certifyd/i);
+});
+
+test('fixture-informed editorial voice guidance preserves SEO facts while targeting report-like prose', async () => {
+  const fixturePaths = [
+    'content/blog/mlc-2027-black-box-royalty-distribution-market-share.md',
+    'content/blog/digital-music-news-metadata-royalties-mistaken-identity.md',
+  ];
+  const before = await Promise.all(fixturePaths.map((file) => fs.readFile(path.join(process.cwd(), file), 'utf8')));
+  assert.match(before[0], /Mechanical Licensing Collective \(MLC\)/);
+  assert.match(before[0], /April 2027/);
+  assert.match(before[0], /\$6\.3 million/);
+  assert.match(before[0], /\$75\.13 million/);
+  assert.match(before[0], /market-share basis/);
+  assert.match(before[1], /Digital Music News/);
+  assert.match(before[1], /Equalizer Consulting/);
+  assert.match(before[1], /music royalties/);
+  assert.match(before[1], /mistaken identity/i);
+
+  const calls = [];
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({ calls, article: validArticle(context.sourceRecords[0].id) }),
+  });
+  await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
+  const finalInstructionText = `${calls[1].instructions}\n${calls[1].input}`;
+  assert.match(finalInstructionText, /Preserve useful SEO entity coverage while improving the prose/i);
+  assert.match(finalInstructionText, /retain relevant company and organization names, people and job titles, products, services, technologies, dates, financial figures, industry terminology, primary keywords, secondary keywords and search-relevant relationships/i);
+  assert.match(finalInstructionText, /human-centered opening must remain an accurate framing of supported facts/i);
+  assert.match(finalInstructionText, /examples of a repetitive habit, not a phrase blacklist/i);
+  assert.match(finalInstructionText, /Facts must be supported by source material or selected Brain/i);
+  assert.match(finalInstructionText, /External adoption claims cannot be established by Brain/i);
+
+  const after = await Promise.all(fixturePaths.map((file) => fs.readFile(path.join(process.cwd(), file), 'utf8')));
+  assert.deepEqual(after, before);
 });
 
 test('final writing instructions require why-Certifyd architectural need before feature inventory', async () => {
