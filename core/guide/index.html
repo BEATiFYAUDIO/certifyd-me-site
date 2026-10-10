@@ -32,7 +32,7 @@
     <div class="eyebrow">Certifyd Core · Beta 13</div>
     <h1>Get comfortable with your Core.</h1>
     <p class="intro">Start with installation, then follow the parts you need. Each step is short. You can search for a task and keep track of what you have done on this device.</p>
-    <div class="path-picker"><h2>Which setup are you following?</h2><p>Most people can start with Basic. You can change this choice later.</p><div class="choice" role="group" aria-label="Choose your Core setup"><button type="button" data-path-choice="basic" aria-pressed="false"><strong>Basic</strong><span>Temporary link · create and share</span></button><button type="button" data-path-choice="creator" aria-pressed="false"><strong>Sovereign Creator</strong><span>Your own web address · payments</span></button><button type="button" data-path-choice="node" aria-pressed="false"><strong>Sovereign Node</strong><span>Run a payment node for creators</span></button></div><div class="path-detail" id="path-detail" role="status" aria-live="polite"></div></div>
+    <div class="path-picker"><h2>Which setup are you following?</h2><p>Choose the setup you have or want to reach. This guide cannot read your Core settings, so check your mode in Core’s Configuration tab. You can change this choice and skip steps you have already done.</p><div class="choice" role="group" aria-label="Choose your Core setup"><button type="button" data-path-choice="basic" aria-pressed="false"><strong>Basic</strong><span>Temporary link · free solo work</span></button><button type="button" data-path-choice="creator" aria-pressed="false"><strong>Sovereign Creator</strong><span>Your own web address · payments</span></button><button type="button" data-path-choice="node" aria-pressed="false"><strong>Sovereign Node</strong><span>Run a payment node for creators</span></button></div><div class="path-detail" id="path-detail" role="status" aria-live="polite"></div></div>
     <div class="search-wrap"><label for="search">What are you trying to do?</label><input id="search" type="search" placeholder="Try “profile”, “Spotify”, or “temporary link”" autocomplete="off" aria-controls="search-results"><div class="search-results" id="search-results" role="status" aria-live="polite"></div></div>
     <div class="layout">
       <aside class="side"><strong>WALKTHROUGH</strong><nav id="topic-nav" aria-label="Walkthrough sections"></nav><div class="progress" id="progress">Progress saved on this device</div></aside>
@@ -50,7 +50,7 @@
           <p class="note">This dashboard address is for you on your computer. The public link in the next step uses a separate, safer part of Core.</p>
           <figure class="screen"><a class="screen-shot" href="images/first-run-address.png" target="_blank" rel="noopener"><img src="images/first-run-address.png" alt="Browser address bar showing the local Core dashboard at 127.0.0.1:4000" loading="lazy"></a><figcaption>This is the local address to enter on the computer running Core.</figcaption></figure>
           <figure class="screen"><a class="screen-shot" href="images/first-run-sign-in.png" target="_blank" rel="noopener"><img src="images/first-run-sign-in.png" alt="Core sign-in screen with New here? in the upper-right corner" loading="lazy"><span class="circle" style="--x:70%;--y:10%;--w:18%;--h:6%" aria-hidden="true"></span></a><figcaption>Choose <b>New here?</b> for first-run setup. This example shows an existing LAN Studio mode and sample email; yours may look different. Select the image for the full screen.</figcaption></figure>
-          <p>After you create the owner, you can find public-link settings in <b>Configuration</b> near the bottom of Core’s left menu. Choose <b>Show Advanced</b> if the menu item is hidden. On a fresh install, leave <b>Basic Creator</b> selected.</p>
+          <p>After you create the owner, you can find public-link settings in <b>Configuration</b> near the bottom of Core’s left menu. Choose <b>Show Advanced</b> if the menu item is hidden. On a fresh install, Core begins in <b>Basic Creator</b>. Follow the next step for the public access you want.</p>
           <figure class="screen config-top"><a class="screen-shot" href="images/configuration.png" target="_blank" rel="noopener"><img src="images/configuration.png" alt="Configuration page with Network Participation Mode and Basic Creator option" loading="lazy"><span class="circle" style="--x:4%;--y:61%;--w:91%;--h:11%" aria-hidden="true"></span></a><figcaption>The circle points to the Basic Creator choice in Configuration. This screenshot is from an already configured Sovereign Node; a fresh Core starts private in Basic Creator. Select it for the full image.</figcaption></figure>
         </section>
         <section class="topic" id="public" data-search="start temporary link quick tunnel configuration tunnel routing public link cloudflare 4010">
@@ -223,7 +223,7 @@
         </section>
         <section class="topic" id="next" data-search="advanced commerce buyer payout splits proofs diagnostics backup update recovery help">
           <div class="topic-head"><div><div class="number">23 · NEXT STEPS</div><h2>Keep exploring</h2></div><label class="mark"><input type="checkbox" data-done="next">Done</label></div>
-          <p>Keep adding work and use Core’s messages to see what comes next. Your Basic link is temporary. When you want your own lasting web address and payments, switch this guide to <b>Sovereign Creator</b>. If you run payment services for other creators, choose <b>Sovereign Node</b>.</p>
+          <p>Keep adding work and use Core’s messages to see what comes next. <span class="basic-only">Your Basic link is temporary. When you want your own lasting web address and payments, switch this guide to <b>Sovereign Creator</b>. If you run payment services for other creators, choose <b>Sovereign Node</b>.</span><span class="sovereign-only">Check your permanent address and payment readiness in Core before relying on paid links.</span></p>
           <p class="note">This guide shows you where to click. Changes to your Core happen only when you take those steps in Core.</p>
         </section>
         <p class="footer">Based on Certifyd Core <code>v0.1.0-beta.13</code>. Progress and choices stay in this browser. <a href="/core/tunnel-setup/">Detailed public-link guide</a>.</p>
@@ -239,11 +239,11 @@
         {label:'EXPLORE THE TABS',ids:['works-tab','library','network-tab','commerce-gate','configuration','diagnostics']}
       ],
       creator:[
-        {label:'START & PUBLISH',ids:['install','owner','public','profile','picture','proof','works','work-settings','named','provider','advanced','splits','release','library-first','next']},
+        {label:'START & PUBLISH',ids:['install','owner','named','provider','profile','picture','proof','works','work-settings','advanced','splits','release','library-first','next']},
         {label:'EXPLORE THE TABS',ids:['works-tab','rights','library','network-tab','audience','revenue','royalties','configuration','diagnostics','lightning']}
       ],
       node:[
-        {label:'START & PUBLISH',ids:['install','owner','public','profile','picture','proof','works','work-settings','named','lightning','advanced','console','splits','release','library-first','next']},
+        {label:'START & PUBLISH',ids:['install','owner','named','lightning','profile','picture','proof','works','work-settings','advanced','console','splits','release','library-first','next']},
         {label:'EXPLORE THE TABS',ids:['works-tab','rights','library','network-tab','audience','revenue','royalties','configuration','diagnostics']}
       ]
     };
@@ -252,9 +252,9 @@
     let selectedPath=paths[saved.path]?saved.path:'basic';
     const activeIds=()=>paths[selectedPath].flatMap(g=>g.ids);
     const pathCopy={
-      basic:'Start with a temporary public link, make your profile, and publish a solo work. The Commerce section becomes available with a more complete setup.',
-      creator:'Use a domain you own for a permanent address, then connect a payment provider. Core will tell you when each feature is ready.',
-      node:'Run a Bitcoin and Lightning payment node for creators. Start with a domain and permanent address, then set up your node in Core.'
+      basic:'Basic: explicitly start a temporary link, make your profile, and publish a free solo work. The Commerce tabs and shared splits are unavailable.',
+      creator:'Sovereign Creator: set up or check your named tunnel and domain, then connect a payment provider. The temporary-link step is optional and is not part of this path.',
+      node:'Sovereign Node: set up or check your named tunnel and domain, then connect your Bitcoin and Lightning node. The provider console appears when Core is ready.'
     };
     function progress(){const ids=paths[selectedPath][0].ids;document.querySelector('#progress').textContent=ids.filter(id=>saved[id]).length+' of '+ids.length+' main steps done · saved on this device'}
     function renderPath(){
