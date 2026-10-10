@@ -66,6 +66,7 @@
           <div class="topic-head"><div><div class="number">03 · IDENTITY</div><h2>Make your profile yours</h2></div><label class="mark"><input type="checkbox" data-done="profile">Done</label></div>
           <ol><li>Open <b>Profile</b>. Scroll past <b>Node Account (Local)</b> to <b>Public Profile (Presentation)</b>. This is what visitors see.</li><li>Enter a <b>Display name</b> and <b>Bio</b>. Press <b>Save</b> beside the display name.</li><li>Location is optional. If you add one, choose how much of your area to show and press <b>Save approximate public location</b>.</li></ol>
           <p class="note">Use an approximate area, not your street address. Your profile link is always at the top of Core under <b>Open public profile</b> and <b>Copy public link</b>.</p>
+          <p class="note sovereign-only">With your named tunnel ready, check that <b>Open public profile</b> uses your lasting web address. This profile editor is shared with Basic; the permanent address and commerce readiness are what change this setup.</p>
           <figure class="screen sidebar-hi"><a class="screen-shot" href="images/works-catalog.png" target="_blank" rel="noopener"><img src="images/works-catalog.png" alt="Core’s left menu with the Profile tab near the top" loading="lazy"><span class="circle" style="--x:1%;--y:12%;--w:98%;--h:15%" aria-hidden="true"></span></a><figcaption>Find Profile near the top of Core’s left menu. Select the image for the full screenshot.</figcaption></figure>
           <p>Further down in <b>Profile → Appearance</b>, you can add a wallpaper and change the theme. You can leave this for later.</p>
           <figure class="screen appearance-focus"><a class="screen-shot" href="images/profile-appearance.png" target="_blank" rel="noopener"><img src="images/profile-appearance.png" alt="Profile Appearance area with wallpaper upload and theme controls" loading="lazy"><span class="circle" style="--x:1%;--y:71%;--w:21%;--h:11%" aria-hidden="true"></span></a><figcaption>The circled control changes your profile wallpaper. This example account already has a theme. Select the image for the full screen.</figcaption></figure>
@@ -84,7 +85,7 @@
         </section>
         <section class="topic" id="works" data-search="works catalog certifyd works legacy connect work spotify apple music youtube isrc upc iswc doi isbn eidr">
           <div class="topic-head"><div><div class="number">06 · CATALOG</div><h2>Create your first work</h2></div><label class="mark"><input type="checkbox" data-done="works">Done</label></div>
-          <p>Let’s use one song as the first example.</p>
+          <p class="basic-only">Let’s use one free solo song as the first example.</p><p class="sovereign-only">Create a work you can price or share with another eligible creator. The first steps still begin in <b>Works</b>; the price and split choices come afterward.</p>
           <ol><li>Open <b>Works → New Certifyd Work</b>, enter a title, choose <b>Song</b> for <b>Type</b>, and press <b>Create</b>.</li><li>Find your draft under <b>Your Works → Certifyd Works</b>. Press <b>Save media</b> beside it and choose your song file. Core takes care of storing the work.</li><li>Press <b>Save cover</b> and choose the cover image. Once published, this button says <b>Update cover</b>.</li><li>Press <b>Show details</b> to check the files and fill in more about the work.</li></ol>
           <p>The next step walks through the price, delivery, and other details inside <b>Show details</b>.</p>
           <p class="sovereign-only">If the work already lives elsewhere, use the Legacy path after your named tunnel is ready:</p>
@@ -241,16 +242,20 @@
         {label:'EXPLORE BASIC',ids:['next','works-tab','library','network-tab','commerce-gate','configuration','diagnostics']}
       ],
       creator:[
-        {label:'GET A LASTING ADDRESS',ids:['install','owner','named','provider']},
-        {label:'MAKE YOUR PROFILE',ids:['profile','picture','proof']},
-        {label:'CREATE & PUBLISH',ids:['works','work-settings','advanced','splits','release','library-first']},
-        {label:'EXPLORE CREATOR TABS',ids:['next','works-tab','rights','library','network-tab','audience','revenue','royalties','configuration','diagnostics']}
+        {label:'FIRST, OPEN CORE',ids:['install','owner']},
+        {label:'BECOME SOVEREIGN',ids:['named','provider']},
+        {label:'YOUR LASTING IDENTITY',ids:['profile','picture','proof']},
+        {label:'SELL OR SHARE A WORK',ids:['works','work-settings','splits','release','library-first']},
+        {label:'YOUR CREATOR TOOLS',ids:['rights','audience','revenue','royalties']},
+        {label:'MORE IN CORE',ids:['next','works-tab','library','network-tab','advanced','configuration','diagnostics']}
       ],
       node:[
-        {label:'SET UP YOUR NODE',ids:['install','owner','named','lightning']},
-        {label:'MAKE YOUR PROFILE',ids:['profile','picture','proof']},
-        {label:'CREATE & PUBLISH',ids:['works','work-settings','advanced','console','splits','release','library-first']},
-        {label:'EXPLORE NODE TABS',ids:['next','works-tab','rights','library','network-tab','audience','revenue','royalties','configuration','diagnostics']}
+        {label:'FIRST, OPEN CORE',ids:['install','owner']},
+        {label:'RUN YOUR OWN NODE',ids:['named','lightning','console']},
+        {label:'YOUR LASTING IDENTITY',ids:['profile','picture','proof']},
+        {label:'SELL OR SHARE A WORK',ids:['works','work-settings','splits','release','library-first']},
+        {label:'YOUR NETWORK TOOLS',ids:['rights','audience','revenue','royalties']},
+        {label:'MORE IN CORE',ids:['next','works-tab','library','network-tab','advanced','configuration','diagnostics']}
       ]
     };
     const saved=(()=>{try{return JSON.parse(localStorage.getItem('certifyd-core-walkthrough-v1')||'{}')}catch{return {}}})();
@@ -259,11 +264,17 @@
     const activeIds=()=>paths[selectedPath].flatMap(g=>g.ids);
     const pathCopy={
       basic:'Basic: explicitly start a temporary link, make your profile, and publish a free solo work. The Commerce tabs and shared splits are unavailable.',
-      creator:'Sovereign Creator: set up or check your named tunnel and domain, then connect a payment provider. The temporary-link step is optional and is not part of this path.',
-      node:'Sovereign Node: set up or check your named tunnel and domain, then connect your Bitcoin and Lightning node. The provider console appears when Core is ready.'
+      creator:'Sovereign Creator builds on Core basics: first use your domain for a lasting public address, then connect a payment provider. If Core is not installed yet, use the first two steps in the left column. Your profile editor is shared with Basic, but pricing, shared splits, and Commerce need this setup.',
+      node:'Sovereign Node builds on Core basics: use a domain and named tunnel, then connect the Bitcoin and Lightning services you operate. If Core is not installed yet, use the first two steps in the left column. Provider Console is for this path.'
     };
-    const title=id=>topics.find(t=>t.id===id).querySelector('h2').textContent;
-    function progress(){const ids=paths[selectedPath].slice(0,-1).flatMap(g=>g.ids);document.querySelector('#progress').textContent=ids.filter(id=>saved[id]).length+' of '+ids.length+' main steps done · saved on this device'}
+    const baseTitles=Object.fromEntries(topics.map(t=>[t.id,t.querySelector('h2').textContent]));
+    const pathTitles={
+      basic:{works:'Create your first free work',release:'Publish a free solo work'},
+      creator:{profile:'Build your lasting profile',works:'Create a work to sell or share','work-settings':'Set price and delivery',splits:'Agree on a shared split (if sharing)',release:'Publish with commerce ready','library-first':'Share it from Library'},
+      node:{lightning:'Connect your Lightning node',console:'Open Provider Console',profile:'Build your node profile',works:'Create a work to sell or share','work-settings':'Set price and delivery',splits:'Agree on a shared split (if sharing)',release:'Publish with commerce ready','library-first':'Share it from Library'}
+    };
+    const title=id=>pathTitles[selectedPath][id]||baseTitles[id];
+    function progress(){const groups=paths[selectedPath],ids=groups.slice(0,selectedPath==='basic'?3:4).flatMap(g=>g.ids);document.querySelector('#progress').textContent=ids.filter(id=>saved[id]).length+' of '+ids.length+' setup and publishing steps done · saved on this device'}
     function renderJourney(){
       const ids=activeIds(),index=ids.indexOf(current),stage=paths[selectedPath].find(g=>g.ids.includes(current));
       const next=ids.slice(index+1).find(id=>!saved[id])||ids[index+1];
@@ -276,6 +287,7 @@
       document.body.dataset.path=selectedPath;
       document.querySelectorAll('[data-path-choice]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.pathChoice===selectedPath)));
       document.querySelector('#path-detail').textContent=pathCopy[selectedPath];
+      topics.forEach(t=>t.querySelector('h2').textContent=title(t.id));
       nav.innerHTML=paths[selectedPath].map(g=>'<div class="nav-label" data-stage="'+g.label+'">'+g.label+'</div>'+g.ids.map(id=>'<a href="#'+id+'"><span class="nav-status" aria-hidden="true"></span><span>'+title(id)+'</span></a>').join('')).join('');
       activeIds().forEach((id,i)=>{const label=topics.find(t=>t.id===id).querySelector('.number');if(/^\d+/.test(label.textContent))label.textContent=String(i+1).padStart(2,'0')+label.textContent.replace(/^\d+/, '')});
       progress();
@@ -285,7 +297,7 @@
     let current=topics.some(t=>t.id===location.hash.slice(1))?location.hash.slice(1):'install';
     function select(id,scroll=true){const ids=activeIds();if(!ids.includes(id))return;current=id;document.body.classList.add('guided');topics.forEach(t=>t.classList.toggle('current',t.id===id));const i=ids.indexOf(id),controls=document.querySelector('#'+id+' .step-actions');controls.querySelector('.previous').disabled=i===0;controls.querySelector('.next').disabled=i===ids.length-1;controls.querySelector('.next').textContent=i===ids.length-1?'End of walkthrough':'Next step';renderJourney();history.replaceState(null,'','#'+id);if(scroll)document.querySelector('#topics').scrollIntoView({behavior:'smooth',block:'start'})}
     renderPath();select(activeIds().includes(current)?current:'install',false);
-    document.querySelectorAll('[data-path-choice]').forEach(button=>button.addEventListener('click',()=>{selectedPath=button.dataset.pathChoice;saved.path=selectedPath;save();renderPath();input.value='';search();select(activeIds().includes(current)?current:(selectedPath==='basic'?'works':'named'),false)}));
+    document.querySelectorAll('[data-path-choice]').forEach(button=>button.addEventListener('click',()=>{if(button.dataset.pathChoice===selectedPath)return;selectedPath=button.dataset.pathChoice;saved.path=selectedPath;save();renderPath();input.value='';search();select(selectedPath==='basic'?'install':'named',false)}));
     nav.addEventListener('click',e=>{const a=e.target.closest('a');if(a){e.preventDefault();input.value='';search();select(a.hash.slice(1))}});
     document.querySelector('#journey-card').addEventListener('click',e=>{const a=e.target.closest('a');if(a){e.preventDefault();input.value='';search();select(a.hash.slice(1))}});
     document.querySelector('#topics').addEventListener('click',e=>{const a=e.target.closest('a[href^="#"]');if(a&&activeIds().includes(a.hash.slice(1))){e.preventDefault();select(a.hash.slice(1))}});
