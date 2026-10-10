@@ -47,11 +47,17 @@
         <section class="topic" id="owner" data-search="first run owner create account sign in recovery key password local dashboard">
           <div class="topic-head"><div><div class="number">02 · FIRST RUN</div><h2>Create the first owner</h2></div><label class="mark"><input type="checkbox" data-done="owner">Done</label></div>
           <ol><li>Open Core. If the dashboard does not appear, enter <code>http://127.0.0.1:4000</code> in a browser on the same computer.</li><li>If you see <b>Sign in</b>, select <b>New here?</b> to begin setup. On <b>Create owner (first-run setup)</b>, make your owner account. If this is already your Core, sign in instead.</li><li>Save the recovery key somewhere safe when Core shows it. You will see it only once.</li></ol>
-          <p class="note">This dashboard address is for you on your computer. The public link in the next step uses a separate, safer part of Core.</p>
+          <p class="note">This dashboard address is for you on your computer. The public link later in this walkthrough uses a separate, safer part of Core.</p>
           <figure class="screen"><a class="screen-shot" href="images/first-run-address.png" target="_blank" rel="noopener"><img src="images/first-run-address.png" alt="Browser address bar showing the local Core dashboard at 127.0.0.1:4000" loading="lazy"></a><figcaption>This is the local address to enter on the computer running Core.</figcaption></figure>
           <figure class="screen"><a class="screen-shot" href="images/first-run-sign-in.png" target="_blank" rel="noopener"><img src="images/first-run-sign-in.png" alt="Core sign-in screen with New here? in the upper-right corner" loading="lazy"><span class="circle" style="--x:70%;--y:10%;--w:18%;--h:6%" aria-hidden="true"></span></a><figcaption>Choose <b>New here?</b> for first-run setup. This example shows an existing LAN Studio mode and sample email; yours may look different. Select the image for the full screen.</figcaption></figure>
           <p>After you create the owner, you can find public-link settings in <b>Configuration</b> near the bottom of Core’s left menu. Choose <b>Show Advanced</b> if the menu item is hidden. On a fresh install, Core begins in <b>Basic Creator</b>. Follow the next step for the public access you want.</p>
           <figure class="screen config-top"><a class="screen-shot" href="images/configuration.png" target="_blank" rel="noopener"><img src="images/configuration.png" alt="Configuration page with Network Participation Mode and Basic Creator option" loading="lazy"><span class="circle" style="--x:4%;--y:61%;--w:91%;--h:11%" aria-hidden="true"></span></a><figcaption>The circle points to the Basic Creator choice in Configuration. This screenshot is from an already configured Sovereign Node; a fresh Core starts private in Basic Creator. Select it for the full image.</figcaption></figure>
+        </section>
+        <section class="topic" id="wallet" data-search="wallet lightning address payout destination receive payments profile integrations LNURL basic">
+          <div class="topic-head"><div><div class="number">03 · GET READY</div><h2>Add your Lightning Address</h2></div><label class="mark"><input type="checkbox" data-done="wallet">Done</label></div>
+          <p>A <b>Lightning Address</b> looks a little like an email address, such as <code>name@yourwallet.example</code>. It tells Core where you can receive Lightning payments. Copy the receiving address from a wallet you control. This is a public address; never paste a wallet password or recovery words here.</p>
+          <ol><li>In Core, open <b>Profile</b> from the left menu and scroll down to <b>Integrations</b>.</li><li>Paste your address into <b>Lightning Address</b>. <b>LNURL</b> is optional. The <b>BTC Address</b> field is unavailable in Basic.</li><li>Press <b>Save payout settings</b> and check that Core says <b>Saved.</b></li></ol>
+          <p class="note">You can do this while Core is still private. Adding the address does not connect a payment provider or unlock priced works and shared splits. The next step starts your temporary public link.</p>
         </section>
         <section class="topic" id="public" data-search="start temporary link quick tunnel configuration tunnel routing public link cloudflare 4010">
           <div class="topic-head"><div><div class="number">03 · PUBLIC LINK</div><h2>Start a temporary public link</h2></div><label class="mark"><input type="checkbox" data-done="public">Done</label></div>
@@ -236,7 +242,7 @@
     const nav=document.querySelector('#topic-nav');
     const paths={
       basic:[
-        {label:'GET STARTED',ids:['install','owner','public']},
+        {label:'GET STARTED',ids:['install','owner','wallet','public']},
         {label:'MAKE YOUR PROFILE',ids:['profile','picture','proof']},
         {label:'CREATE & PUBLISH',ids:['works','work-settings','release','library-first']},
         {label:'EXPLORE BASIC',ids:['next','works-tab','library','network-tab','commerce-gate','configuration','diagnostics']}
@@ -263,7 +269,7 @@
     let selectedPath=paths[saved.path]?saved.path:'basic';
     const activeIds=()=>paths[selectedPath].flatMap(g=>g.ids);
     const pathCopy={
-      basic:'Basic: explicitly start a temporary link, make your profile, and publish a free solo work. The Commerce tabs and shared splits are unavailable.',
+      basic:'Basic: create your owner, add a Lightning receiving address, explicitly start a temporary link, then make your profile and publish a free solo work. The Commerce tabs and shared splits are unavailable.',
       creator:'Sovereign Creator builds on Core basics: first use your domain for a lasting public address, then connect a payment provider. If Core is not installed yet, use the first two steps in the left column. Your profile editor is shared with Basic, but pricing, shared splits, and Commerce need this setup.',
       node:'Sovereign Node builds on Core basics: use a domain and named tunnel, then connect the Bitcoin and Lightning services you operate. If Core is not installed yet, use the first two steps in the left column. Provider Console is for this path.'
     };
