@@ -249,7 +249,6 @@
         {label:'EXPLORE BASIC',ids:['next','works-tab','library','network-tab','commerce-gate','configuration','diagnostics']}
       ],
       creator:[
-        {label:'FIRST, OPEN CORE',ids:['install','owner']},
         {label:'BECOME SOVEREIGN',ids:['named','provider']},
         {label:'YOUR LASTING IDENTITY',ids:['profile','picture','proof']},
         {label:'SELL OR SHARE A WORK',ids:['works','work-settings','splits','release','library-first']},
@@ -257,7 +256,6 @@
         {label:'MORE IN CORE',ids:['next','works-tab','library','network-tab','advanced','configuration','diagnostics']}
       ],
       node:[
-        {label:'FIRST, OPEN CORE',ids:['install','owner']},
         {label:'RUN YOUR OWN NODE',ids:['named','lightning','console']},
         {label:'YOUR LASTING IDENTITY',ids:['profile','picture','proof']},
         {label:'SELL OR SHARE A WORK',ids:['works','work-settings','splits','release','library-first']},
@@ -271,8 +269,8 @@
     const activeIds=()=>paths[selectedPath].flatMap(g=>g.ids);
     const pathCopy={
       basic:'Basic: create your owner, add a Lightning receiving address, explicitly start a temporary link, then make your profile and publish a free solo work. The Commerce tabs and shared splits are unavailable.',
-      creator:'Sovereign Creator builds on Core basics: first use your domain for a lasting public address, then connect a payment provider. If Core is not installed yet, use the first two steps in the left column. Your profile editor is shared with Basic, but pricing, shared splits, and Commerce need this setup.',
-      node:'Sovereign Node builds on Core basics: use a domain and named tunnel, then connect the Bitcoin and Lightning services you operate. If Core is not installed yet, use the first two steps in the left column. Provider Console is for this path.'
+      creator:'Sovereign Creator builds on Core basics: first use your domain for a lasting public address, then connect a payment provider. If Core is not installed yet, choose Basic for the install and first-owner steps, then return here. Your profile editor is shared with Basic, but pricing, shared splits, and Commerce need this setup.',
+      node:'Sovereign Node builds on Core basics: use a domain and named tunnel, then connect the Bitcoin and Lightning services you operate. If Core is not installed yet, choose Basic for the install and first-owner steps, then return here. Provider Console is for this path.'
     };
     const baseTitles=Object.fromEntries(topics.map(t=>[t.id,t.querySelector('h2').textContent]));
     const pathTitles={
@@ -281,7 +279,7 @@
       node:{lightning:'Connect your Lightning node',console:'Open Provider Console',profile:'Build your node profile',works:'Create a work to sell or share','work-settings':'Set price and delivery',splits:'Agree on a shared split (if sharing)',release:'Publish with commerce ready','library-first':'Share it from Library'}
     };
     const title=id=>pathTitles[selectedPath][id]||baseTitles[id];
-    function progress(){const groups=paths[selectedPath],ids=groups.slice(0,selectedPath==='basic'?3:4).flatMap(g=>g.ids);document.querySelector('#progress').textContent=ids.filter(id=>saved[id]).length+' of '+ids.length+' setup and publishing steps done · saved on this device'}
+    function progress(){const groups=paths[selectedPath],ids=groups.slice(0,3).flatMap(g=>g.ids);document.querySelector('#progress').textContent=ids.filter(id=>saved[id]).length+' of '+ids.length+' setup and publishing steps done · saved on this device'}
     function renderJourney(){
       const ids=activeIds(),index=ids.indexOf(current),stage=paths[selectedPath].find(g=>g.ids.includes(current));
       const next=ids.slice(index+1).find(id=>!saved[id])||ids[index+1];
@@ -303,7 +301,7 @@
     topics.forEach(topic=>{const controls=document.createElement('div');controls.className='step-actions';controls.innerHTML='<button type="button" class="previous">Previous</button><button type="button" class="next">Next step</button>';topic.append(controls);['previous','next'].forEach(direction=>controls.querySelector('.'+direction).addEventListener('click',()=>{const ids=activeIds(),index=ids.indexOf(topic.id);if(index<0)return;select(ids[index+(direction==='next'?1:-1)])}));});
     let current=topics.some(t=>t.id===location.hash.slice(1))?location.hash.slice(1):'install';
     function select(id,scroll=true){const ids=activeIds();if(!ids.includes(id))return;current=id;document.body.classList.add('guided');topics.forEach(t=>t.classList.toggle('current',t.id===id));const i=ids.indexOf(id),controls=document.querySelector('#'+id+' .step-actions');controls.querySelector('.previous').disabled=i===0;controls.querySelector('.next').disabled=i===ids.length-1;controls.querySelector('.next').textContent=i===ids.length-1?'End of walkthrough':'Next step';renderJourney();history.replaceState(null,'','#'+id);if(scroll)document.querySelector('#topics').scrollIntoView({behavior:'smooth',block:'start'})}
-    renderPath();select(activeIds().includes(current)?current:'install',false);
+    renderPath();select(activeIds().includes(current)?current:(selectedPath==='basic'?'install':'named'),false);
     document.querySelectorAll('[data-path-choice]').forEach(button=>button.addEventListener('click',()=>{if(button.dataset.pathChoice===selectedPath)return;selectedPath=button.dataset.pathChoice;saved.path=selectedPath;save();renderPath();input.value='';search();select(selectedPath==='basic'?'install':'named',false)}));
     nav.addEventListener('click',e=>{const a=e.target.closest('a');if(a){e.preventDefault();input.value='';search();select(a.hash.slice(1))}});
     document.querySelector('#journey-card').addEventListener('click',e=>{const a=e.target.closest('a');if(a){e.preventDefault();input.value='';search();select(a.hash.slice(1))}});
