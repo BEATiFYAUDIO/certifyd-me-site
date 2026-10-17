@@ -130,7 +130,7 @@
               <article class="info-card">
                 <h3>macOS or Linux</h3>
                 <p>In Terminal, compare the output with the SHA-256 value listed on the platform card.</p>
-                <div class="code-lines"><code>shasum -a 256 ./Certifyd-Core-0.1.0-beta.20-macos-arm64.dmg</code><code>sha256sum ./Certifyd-Core-0.1.0-beta.20-linux-x64.tar.gz</code></div>
+                <div class="code-lines"><code>shasum -a 256 ./Certifyd-Core-0.1.0-beta.20-macos-arm64.dmg</code><code>sha256sum ./Certifyd-Core-0.1.0-beta.21-linux-x64.deb</code></div>
               </article>
             </div>
           </section>
@@ -232,32 +232,62 @@
       },
       {
         id: 'linux-x64',
-        platform: 'Linux x64',
+        platform: 'Linux x64 (Debian installer)',
         family: 'linux',
         label: 'Linux',
         architecture: 'Linux x64',
         status: 'Validated beta',
-        version: '0.1.0-beta.20',
-        filename: 'Certifyd-Core-0.1.0-beta.20-linux-x64.tar.gz',
-        size: '162,868,044 bytes',
-        sha256: '1b3d82fd6e6b2ed1d02e76d2793c3df501131adf361cdf14ae21d328a5e5417b',
-        url: 'https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.20/Certifyd-Core-0.1.0-beta.20-linux-x64.tar.gz',
-        note: 'Download, extract the archive, then run ./start.sh from the extracted folder.',
+        version: '0.1.0-beta.21',
+        filename: 'Certifyd-Core-0.1.0-beta.21-linux-x64.deb',
+        size: '93,452,358 bytes',
+        sha256: '5a8d6c353899b14d25d8c98a2cef3cc2d68a5ded5870da5b4103f166c88643b3',
+        url: 'https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.21/Certifyd-Core-0.1.0-beta.21-linux-x64.deb',
+        note: 'Download the Debian installer, open it with your package installer, then launch Certifyd Core from the application menu.',
         tags: ['linux']
       },
       {
         id: 'linux-arm64',
-        platform: 'Linux ARM64 / Raspberry Pi 64-bit',
+        platform: 'Linux ARM64 (Debian installer)',
         family: 'linux',
         label: 'Linux',
         architecture: 'Linux ARM64',
         status: 'Validated beta',
-        version: '0.1.0-beta.20',
-        filename: 'Certifyd-Core-0.1.0-beta.20-linux-arm64.tar.gz',
-        size: '160,422,559 bytes',
-        sha256: '2d13919bdc2d505e6d9decb52fdb6919ccc0fa1446c64fa44fd3fb7ef339a836',
-        url: 'https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.20/Certifyd-Core-0.1.0-beta.20-linux-arm64.tar.gz',
-        note: 'Native ARM64 build/runtime has been verified. It is compatible by runtime requirements with 64-bit Debian/ARM64-class systems; physical Raspberry Pi hardware validation is separate.',
+        version: '0.1.0-beta.21',
+        filename: 'Certifyd-Core-0.1.0-beta.21-linux-arm64.deb',
+        size: '91,429,794 bytes',
+        sha256: '46dd17a468247d96f9bd246bc38668247c070674367cbfb10afc068e1ee80509',
+        url: 'https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.21/Certifyd-Core-0.1.0-beta.21-linux-arm64.deb',
+        note: 'Download the Debian ARM64 installer, open it with your package installer, then launch Certifyd Core from the application menu. Physical Raspberry Pi validation is separate.',
+        tags: ['linux', 'arm']
+      },
+      {
+        id: 'linux-x64-portable',
+        platform: 'Linux x64 (portable archive)',
+        family: 'linux',
+        label: 'Linux portable',
+        architecture: 'Linux x64',
+        status: 'Validated beta',
+        version: '0.1.0-beta.21',
+        filename: 'Certifyd-Core-0.1.0-beta.21-linux-x64.tar.gz',
+        size: '162,870,243 bytes',
+        sha256: '88f2d7e984073f88c634c82c106ae3483177965032d783e858919d431175372d',
+        url: 'https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.21/Certifyd-Core-0.1.0-beta.21-linux-x64.tar.gz',
+        note: 'Portable / advanced: extract the archive, then run ./start.sh from the extracted folder.',
+        tags: ['linux']
+      },
+      {
+        id: 'linux-arm64-portable',
+        platform: 'Linux ARM64 (portable archive)',
+        family: 'linux',
+        label: 'Linux portable',
+        architecture: 'Linux ARM64',
+        status: 'Validated beta',
+        version: '0.1.0-beta.21',
+        filename: 'Certifyd-Core-0.1.0-beta.21-linux-arm64.tar.gz',
+        size: '160,423,497 bytes',
+        sha256: '1ddd6d90063999f26ae8292c4067db6eddb0522db8d4027ace5e874dd0c37800',
+        url: 'https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.21/Certifyd-Core-0.1.0-beta.21-linux-arm64.tar.gz',
+        note: 'Portable / advanced: extract the archive, then run ./start.sh from the extracted folder. Physical Raspberry Pi validation is separate.',
         tags: ['linux', 'arm']
       },
       {
@@ -368,7 +398,7 @@
 
     const PLATFORM_GUIDANCE = {
       mac: 'Choose Apple Silicon for M1/M2/M3/M4 Macs, or Intel for older Intel-based Macs.',
-      linux: 'Choose x64 for most Intel/AMD PCs, or ARM64 for Raspberry Pi 64-bit and other ARM64 systems.'
+      linux: 'Choose x64 for most Intel/AMD PCs, or ARM64 for 64-bit ARM devices. Debian installers and portable archives are available.'
     };
 
     function normalizeArchitecture(value) {
