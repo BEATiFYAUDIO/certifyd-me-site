@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Certifyd Core walkthrough</title>
-  <meta name="description" content="A searchable, step-by-step walkthrough for getting started with Certifyd Core Beta 13.">
+  <meta name="description" content="A searchable, step-by-step walkthrough for getting started with Certifyd Core Beta 20.">
   <link rel="icon" type="image/svg+xml" href="/images/certifyd-tab-icon.svg">
   <style>
     :root{--ink:#292b32;--muted:#666b78;--line:#e3e7eb;--blue:#147dab;--light:#e9f5fa;--paper:#f5f7f8}
@@ -27,87 +27,87 @@
   </style>
 </head>
 <body>
-  <header class="top"><div class="top-inner"><a class="brand" href="https://certifyd.me/" aria-label="Certifyd home"><img src="/images/certifyd-tab-icon.svg" alt="">certifyd</a><nav aria-label="Related pages"><a href="/downloads/">Downloads</a><a href="/core/tunnel-setup/">Tunnel guide</a></nav></div></header>
+  <header class="top"><div class="top-inner"><a class="brand" href="/" aria-label="Certifyd home"><img src="/images/certifyd-tab-icon.svg" alt="">certifyd</a><nav aria-label="Product guides"><a href="/core/guide/" aria-current="page">Core guide</a><a href="/ar/guide/">Certifyd AR</a></nav></div></header>
   <main>
-    <div class="eyebrow">Certifyd Core · Beta 13</div>
-    <h1>Get comfortable with your Core.</h1>
-    <p class="intro">Start with installation, then follow the parts you need. Each step is short. You can search for a task and keep track of what you have done on this device.</p>
-    <div class="path-picker"><h2>Which setup are you following?</h2><p>Choose the setup you have or want to reach. This guide cannot read your Core settings, so check your mode in Core’s Configuration tab. You can change this choice and skip steps you have already done.</p><div class="choice" role="group" aria-label="Choose your Core setup"><button type="button" data-path-choice="basic" aria-pressed="false"><strong>Basic</strong><span>Temporary link · free solo work</span></button><button type="button" data-path-choice="creator" aria-pressed="false"><strong>Sovereign Creator</strong><span>Your own web address · payments</span></button><button type="button" data-path-choice="node" aria-pressed="false"><strong>Sovereign Node</strong><span>Run a payment node for creators</span></button></div><div class="path-detail" id="path-detail" role="status" aria-live="polite"></div></div>
-    <div class="search-wrap"><label for="search">What are you trying to do?</label><input id="search" type="search" placeholder="Try “profile”, “Spotify”, or “temporary link”" autocomplete="off" aria-controls="search-results"><div class="search-results" id="search-results" role="status" aria-live="polite"></div></div>
+    <div class="eyebrow">Certifyd Core · Beta 20</div>
+    <h1>Your work. Your page. Your audience.</h1>
+    <p class="intro">Install Core, set up your public page, publish a work, and choose how to get paid. Follow the steps for your setup; your progress stays in this browser.</p>
+    <div class="path-picker"><h2>Which setup are you following?</h2><p>Choose your path. You can change it later; check Core for your live status.</p><div class="choice" role="group" aria-label="Choose your Core setup"><button type="button" data-path-choice="basic" aria-pressed="false"><strong>Basic</strong><span>Temporary public link · free solo work</span></button><button type="button" data-path-choice="creator" aria-pressed="false"><strong>Sovereign Creator</strong><span>Your own web address · optional paid works</span></button><button type="button" data-path-choice="node" aria-pressed="false"><strong>Sovereign Node</strong><span>Run your own payment services</span></button></div><div class="path-detail" id="path-detail" role="status" aria-live="polite"></div></div>
+    <div class="search-wrap"><label for="search">What are you trying to do?</label><input id="search" type="search" placeholder="Try “publish”, “payments”, or “domain”" autocomplete="off" aria-controls="search-results"><div class="search-results" id="search-results" role="status" aria-live="polite"></div></div>
     <div class="layout">
       <aside class="side"><strong id="side-heading">YOUR WALKTHROUGH</strong><div class="journey-card" id="journey-card" aria-live="polite"></div><nav id="topic-nav" aria-label="Walkthrough sections"></nav><div class="progress" id="progress">Progress saved on this device</div></aside>
       <div id="topics">
         <section class="topic" id="install" data-search="download install windows macos apple silicon intel linux arm64 raspberry pi first run">
           <div class="topic-head"><div><div class="number">01 · START HERE</div><h2>Install and open Core</h2></div><label class="mark"><input type="checkbox" data-done="install">Done</label></div>
-          <p>Core is an app that runs on your computer. Choose your computer type below, download Core, install it, and open it.</p>
+          <p>Put Certifyd Core on the computer that will hold your work.</p>
+          <p><b>What to click:</b> Choose your computer below, then use <b>Get Certifyd Core Beta 20</b>. Open the installed Certifyd Core app.</p>
           <div class="choice" role="group" aria-label="Choose your operating system"><button type="button" data-os="windows" aria-pressed="false">Windows</button><button type="button" data-os="mac" aria-pressed="false">macOS</button><button type="button" data-os="linux" aria-pressed="false">Linux / Pi</button></div>
-          <div id="install-detail" class="choice-detail">Choose your operating system to see the right launch steps.</div>
-          <div class="actions"><a class="action" href="/downloads/">Get Certifyd Core Beta 13</a></div>
+          <div id="install-detail" class="choice-detail">Choose your computer to see its launch steps.</div>
+          <div class="actions"><a class="action" href="/downloads/">Get Certifyd Core Beta 20</a></div>
+          <p class="note"><b>It worked when:</b> Core opens your dashboard in a browser. Your desktop icon, tray, or menu-bar control can open it again.</p>
+
         </section>
         <section class="topic" id="owner" data-search="first run owner create account sign in recovery key password local dashboard">
           <div class="topic-head"><div><div class="number">02 · FIRST RUN</div><h2>Create the first owner</h2></div><label class="mark"><input type="checkbox" data-done="owner">Done</label></div>
-          <ol><li>Open Core. If the dashboard does not appear, enter <code>http://127.0.0.1:4000</code> in a browser on the same computer.</li><li>If you see <b>Sign in</b>, select <b>New here?</b> to begin setup. On <b>Create owner (first-run setup)</b>, make your owner account. If this is already your Core, sign in instead.</li><li>Save the recovery key somewhere safe when Core shows it. You will see it only once.</li></ol>
-          <p class="note">This dashboard address is for you on your computer. The public link later in this walkthrough uses a separate, safer part of Core.</p>
+          <p>Make your private owner account the first time Core opens.</p>
+          <p><b>What to click:</b> On <b>Sign in</b>, choose <b>New here?</b> and complete <b>Create owner</b>. If this computer already has your Core account, sign in instead. Keep any recovery key Core shows in a safe place.</p>
+          <p class="note"><b>It worked when:</b> You can sign in and see your dashboard. Your account and published work stay with this Core installation during upgrades.</p>
+          <details><summary>Dashboard does not open automatically?</summary><p>On the Core computer, open <code>http://127.0.0.1:4000</code> in your browser. This private dashboard address is different from the public creator page you will share later.</p></details>
           <figure class="screen"><a class="screen-shot" href="images/first-run-address.png" target="_blank" rel="noopener"><img src="images/first-run-address.png" alt="Browser address bar showing the local Core dashboard at 127.0.0.1:4000" loading="lazy"></a><figcaption>This is the local address to enter on the computer running Core.</figcaption></figure>
-          <figure class="screen"><a class="screen-shot" href="images/first-run-sign-in.png" target="_blank" rel="noopener"><img src="images/first-run-sign-in.png" alt="Core sign-in screen with New here? in the upper-right corner" loading="lazy"><span class="circle" style="--x:70%;--y:10%;--w:18%;--h:6%" aria-hidden="true"></span></a><figcaption>Choose <b>New here?</b> for first-run setup. This example shows an existing LAN Studio mode and sample email; yours may look different. Select the image for the full screen.</figcaption></figure>
-          <p>After you create the owner, you can find public-link settings in <b>Configuration</b> near the bottom of Core’s left menu. Choose <b>Show Advanced</b> if the menu item is hidden. On a fresh install, Core begins in <b>Basic Creator</b>. <span class="basic-only">First add your Lightning Address in Profile; the temporary public-link step follows.</span><span class="sovereign-only">Next, set up the permanent address for your chosen path.</span></p>
-          <figure class="screen config-top"><a class="screen-shot" href="images/configuration.png" target="_blank" rel="noopener"><img src="images/configuration.png" alt="Configuration page with Network Participation Mode and Basic Creator option" loading="lazy"><span class="circle" style="--x:4%;--y:61%;--w:91%;--h:11%" aria-hidden="true"></span></a><figcaption>The circle points to the Basic Creator choice in Configuration. This screenshot is from an already configured Sovereign Node; a fresh Core starts private in Basic Creator. Select it for the full image.</figcaption></figure>
         </section>
         <section class="topic" id="wallet" data-search="wallet lightning address payout destination receive payments profile integrations LNURL basic">
           <div class="topic-head"><div><div class="number">03 · GET READY</div><h2>Add your Lightning Address</h2></div><label class="mark"><input type="checkbox" data-done="wallet">Done</label></div>
-          <p>A <b>Lightning Address</b> looks a little like an email address, such as <code>name@yourwallet.example</code>. It tells Core where you can receive Lightning payments. Copy the receiving address from a wallet you control. This is a public address; never paste a wallet password or recovery words here.</p>
-          <ol><li>In Core, open <b>Profile</b> from the left menu and scroll down to <b>Integrations</b>.</li><li>Paste your address into <b>Lightning Address</b>. <b>LNURL</b> is optional. The <b>BTC Address</b> field is unavailable in Basic.</li><li>Press <b>Save payout settings</b> and check that Core says <b>Saved.</b></li></ol>
+          <p>Add a receiving address if you want visitors to tip you. A Lightning Address looks like an email address, for example <code>name@wallet.example</code>.</p>
+          <p><b>What to click:</b> In <b>Profile → Integrations</b>, paste a Lightning Address from a wallet you control and choose <b>Save payout settings</b>. Never enter your wallet password or recovery words.</p>
+          <p class="note"><b>It worked when:</b> Core says <b>Saved</b>. This alone does not enable priced works or connect a payment provider. In Basic, your first published work stays free and solo.</p>
           <figure class="screen"><a class="screen-shot" href="images/profile-integrations.png" target="_blank" rel="noopener"><img src="images/profile-integrations.png" alt="Integrations at the bottom of Profile, with the Lightning Address field and Save payout settings button" loading="lazy"><span class="circle" style="--x:2%;--y:20%;--w:96%;--h:16%" aria-hidden="true"></span><span class="circle" style="--x:2%;--y:64%;--w:14%;--h:10%" aria-hidden="true"></span></a><figcaption>Scroll to <b>Integrations</b> near the bottom of Profile. Enter your Lightning Address in the first circled field, then choose <b>Save payout settings</b>.</figcaption></figure>
-          <p class="note">You can do this while Core is still private. Adding the address does not connect a payment provider or unlock priced works and shared splits. The next step starts your temporary public link.</p>
         </section>
         <section class="topic" id="public" data-search="start temporary link quick tunnel configuration tunnel routing public link cloudflare 4010">
           <div class="topic-head"><div><div class="number">03 · PUBLIC LINK</div><h2>Start a temporary public link</h2></div><label class="mark"><input type="checkbox" data-done="public">Done</label></div>
-          <p>Core starts private. Start a temporary link when you are ready for other people to see your public profile. You do not need a domain for this step.</p>
-          <ol><li>In Core, open <b>Configuration → Tunnel &amp; routing</b> and choose <b>Start temporary link</b>.</li><li>Wait until Core shows your new public address, ending in <code>trycloudflare.com</code>.</li><li>At the top of the Core dashboard, find <b>Public</b>. Choose <b>Open public profile</b> to check the link, or <b>Copy public link</b> to share it. Then return to Core and set up your profile.</li></ol>
-          <div class="actions"><a class="action" href="/core/tunnel-setup/">Help with a temporary link</a></div>
-          <p class="note">This link is temporary. <b>Stop</b> closes it without stopping other Cloudflare services on your computer. Core will start private again after a restart; you can start a new link whenever you choose. If you later want a permanent address, follow the separate named tunnel steps.</p>
-          <figure class="screen config-routing"><a class="screen-shot" href="images/configuration.png" target="_blank" rel="noopener"><img src="images/configuration.png" alt="Configuration page showing the Tunnel and routing section" loading="lazy"><span class="circle" style="--x:5%;--y:17%;--w:43%;--h:10%" aria-hidden="true"></span></a><figcaption>Find <b>Tunnel &amp; routing</b> in Configuration. This example already has a named tunnel, so its controls differ from a new Basic install. On a fresh Core, choose <b>Start temporary link</b>. Select the image for the full page.</figcaption></figure>
+          <p>A temporary link lets people visit your page while Core is running. It can change later. Core keeps sharing off until you give permission.</p>
+          <p><b>What to click:</b> In Core, open <b>Configuration → Public Connection</b>. Select <b>Temporary</b>, then choose <b>Enable sharing</b>. Selecting Temporary alone does not publish your page.</p>
+          <p class="note"><b>It worked when:</b> Core shows <b>Connection: Temporary</b>, a public address, and <b>Sharing: Online</b>. If it says <b>Connecting</b> or <b>Unverified</b>, wait or open <b>Advanced / Diagnostics</b>; do not assume visitors can reach the page yet. Use <b>Open public profile</b> to see the visitor view.</p>
+          <p>Use <b>Stop sharing</b> when you want the public page offline. An existing, authorized temporary-link setting may return on later launches; check the status in Core.</p>
+          <div class="actions"><a class="action" href="/core/tunnel-setup/">More help with public links</a></div>
           <figure class="screen"><a class="screen-shot" href="images/public-profile-link.png" target="_blank" rel="noopener"><img src="images/public-profile-link.png" alt="Core’s top bar with Open public profile and Copy public link" loading="lazy"><span class="circle" style="--x:59%;--y:47%;--w:34%;--h:47%" aria-hidden="true"></span></a><figcaption>The circled buttons are in Core’s top bar after your public link is ready. Select the image to enlarge it.</figcaption></figure>
         </section>
         <section class="topic" id="profile" data-search="profile identity display name bio avatar public profile theme handle">
           <div class="topic-head"><div><div class="number">03 · IDENTITY</div><h2>Make your profile yours</h2></div><label class="mark"><input type="checkbox" data-done="profile">Done</label></div>
-          <ol><li>Open <b>Profile</b>. Scroll past <b>Node Account (Local)</b> to <b>Public Profile (Presentation)</b>. This is what visitors see.</li><li>Enter a <b>Display name</b> and <b>Bio</b>. Press <b>Save</b> beside the display name.</li><li>Location is optional. If you add one, choose how much of your area to show and press <b>Save approximate public location</b>.</li></ol>
-          <p class="note">Use an approximate area, not your street address. Your profile link is always at the top of Core under <b>Open public profile</b> and <b>Copy public link</b>.</p>
-          <p class="note sovereign-only">With your named tunnel ready, check that <b>Open public profile</b> uses your lasting web address. This profile editor is shared with Basic; the permanent address and commerce readiness are what change this setup.</p>
+          <p>Give visitors a name and a short introduction.</p>
+          <p><b>What to click:</b> In Core, choose <b>Profile</b>, then find <b>Public Profile (Presentation)</b>. Enter your <b>Display name</b> and <b>Bio</b>, and save them. You can add an approximate location or wallpaper later.</p>
+          <p class="note"><b>It worked when:</b> Your name and bio remain after you reopen <b>Profile</b>. They will appear on your public page once you enable sharing.</p>
           <figure class="screen sidebar-hi"><a class="screen-shot" href="images/works-catalog.png" target="_blank" rel="noopener"><img src="images/works-catalog.png" alt="Core’s left menu with the Profile tab near the top" loading="lazy"><span class="circle" style="--x:1%;--y:12%;--w:98%;--h:15%" aria-hidden="true"></span></a><figcaption>Find Profile near the top of Core’s left menu. Select the image for the full screenshot.</figcaption></figure>
-          <p>Further down in <b>Profile → Appearance</b>, you can add a wallpaper and change the theme. You can leave this for later.</p>
           <figure class="screen appearance-focus"><a class="screen-shot" href="images/profile-appearance.png" target="_blank" rel="noopener"><img src="images/profile-appearance.png" alt="Profile Appearance area with wallpaper upload and theme controls" loading="lazy"><span class="circle" style="--x:1%;--y:71%;--w:21%;--h:11%" aria-hidden="true"></span></a><figcaption>The circled control changes your profile wallpaper. This example account already has a theme. Select the image for the full screen.</figcaption></figure>
         </section>
         <section class="topic" id="picture" data-search="avatar profile photo picture upload image 2mb jpg jpeg png webp gif avif">
           <div class="topic-head"><div><div class="number">04 · PROFILE IMAGE</div><h2>Add a profile picture</h2></div><label class="mark"><input type="checkbox" data-done="picture">Done</label></div>
-          <ol><li>Stay in <b>Profile → Public Profile (Presentation)</b> and find <b>Profile image</b>, just below Bio.</li><li>Choose <b>Upload image</b> and select a picture up to 2 MB. Core also accepts an image URL in that field.</li><li>Check the small round preview beside the field. <b>Clear image</b> removes it if you want to change it later.</li></ol>
-          <p class="note">This is the picture visitors see on your profile.</p>
+          <p>Add an image that helps people recognize you.</p>
+          <p><b>What to click:</b> In <b>Profile → Public Profile (Presentation)</b>, find <b>Profile image</b> and choose <b>Upload image</b>. Select an image up to 2 MB.</p>
+          <p class="note"><b>It worked when:</b> Your image appears in the small round preview. You can use <b>Clear image</b> to change it later.</p>
+
         </section>
         <section class="topic" id="proof" data-search="proof verification creator identity social platform github youtube tiktok spotify domain challenge verify">
           <div class="topic-head"><div><div class="number">05 · VERIFICATION</div><h2>Create your first proof</h2></div><label class="mark"><input type="checkbox" data-done="proof">Done</label></div>
-          <p>A proof shows that you control an account outside Certifyd. Here is a YouTube example.</p>
-          <ol><li>In <b>Profile</b>, create your <b>Creator Identity</b> if Core asks.</li><li>Under <b>Verification Proofs → Creator Platforms</b>, choose <b>Add / Verify platform</b>, then <b>YouTube</b>.</li><li>Paste your YouTube channel address, such as <code>https://www.youtube.com/@yourhandle</code>, and press <b>Create Social Challenge</b>.</li><li>Copy the exact text Core gives you into your YouTube channel’s <b>About</b> section. Back in Core, enter your channel address as the public location and press <b>Verify Social Proof</b>.</li><li>Wait for Core to say it is verified. If YouTube has not shown the new text yet, leave it there and try again later.</li></ol>
-          <p class="note">Use your channel page, not a link to a video or post. Core shows where to put the proof if you choose another platform.</p>
+          <p>Optionally show that an outside account belongs to you. You can publish a first work without doing this.</p>
+          <p><b>What to click:</b> In <b>Profile → Verification Proofs → Creator Platforms</b>, choose <b>Add / Verify platform</b>. Pick a platform and follow the exact text and placement Core gives you. Then choose <b>Verify Social Proof</b>.</p>
+          <p class="note"><b>It worked when:</b> Core marks that account verified. If the other site has not updated yet, leave the proof in place and try again later.</p>
           <figure class="screen proof-focus"><a class="screen-shot" href="images/profile-proofs.png" target="_blank" rel="noopener"><img src="images/profile-proofs.png" alt="Profile Verification Proofs area with Creator Platforms and Add or Verify platform" loading="lazy"><span class="circle" style="--x:87%;--y:50%;--w:11%;--h:12%" aria-hidden="true"></span></a><figcaption>Find <b>Add / Verify platform</b> in Profile’s Verification Proofs area. This example already has verified accounts. Select the image for the full screen.</figcaption></figure>
         </section>
         <section class="topic" id="works" data-search="works catalog certifyd works legacy connect work spotify apple music youtube isrc upc iswc doi isbn eidr">
-          <div class="topic-head"><div><div class="number">06 · CATALOG</div><h2>Create your first work</h2></div><label class="mark"><input type="checkbox" data-done="works">Done</label></div>
-          <p class="basic-only">Let’s use one free solo song as the first example.</p><p class="sovereign-only">Create a work you can price or share with another eligible creator. The first steps still begin in <b>Works</b>; the price and split choices come afterward.</p>
-          <ol><li>Open <b>Works → New Certifyd Work</b>, enter a title, choose <b>Song</b> for <b>Type</b>, and press <b>Create</b>.</li><li>Find your draft under <b>Your Works → Certifyd Works</b>. Press <b>Save media</b> beside it and choose your song file. Core takes care of storing the work.</li><li>Press <b>Save cover</b> and choose the cover image. Once published, this button says <b>Update cover</b>.</li><li>Press <b>Show details</b> to check the files and fill in more about the work.</li></ol>
-          <p>The next step walks through the price, delivery, and other details inside <b>Show details</b>.</p>
-          <p class="sovereign-only">If the work already lives elsewhere, use the Legacy path after your named tunnel is ready:</p>
+          <div class="topic-head"><div><div class="number">06 · CATALOG</div><h2>Add your first work</h2></div><label class="mark"><input type="checkbox" data-done="works">Done</label></div>
+          <p>Start a draft for the song, video, book, image, or other file you want to share.</p>
+          <p><b>What to click:</b> Open <b>Works → New Certifyd Work</b>, enter a title, choose the matching type, and choose <b>Create</b>. Find the draft under <b>Your Works → Certifyd Works</b>.</p>
+          <p class="note"><b>It worked when:</b> Your draft appears in <b>Your Works</b>. A draft is still private until you publish it.</p>
           <div class="choice" role="group" aria-label="Choose work type"><button type="button" data-work="native" aria-pressed="false">A new Certifyd Work</button><button class="sovereign-only" type="button" data-work="legacy" aria-pressed="false">An existing work elsewhere</button></div>
-          <div id="work-detail" class="choice-detail">Choose a work type to see the next step.</div>
-          <p class="note basic-only">In Basic, your work is solo. There is no <b>Edit splits</b> button on its card; you will see <b>Publish</b> when the work is ready. Shared splits and Connect Work need the Sovereign Creator setup.</p>
+          <div id="work-detail" class="choice-detail">Choose a work type for more detail.</div>
           <figure class="screen sidebar-hi"><a class="screen-shot" href="images/works-catalog.png" target="_blank" rel="noopener"><img src="images/works-catalog.png" alt="Core’s left menu with Works highlighted" loading="lazy"><span class="circle" style="--x:1%;--y:41%;--w:98%;--h:15%" aria-hidden="true"></span></a><figcaption>Start in Works on Core’s left menu. Select the image for the full screenshot.</figcaption></figure>
           <figure class="screen work-focus"><a class="screen-shot" href="images/works-catalog.png" target="_blank" rel="noopener"><img src="images/works-catalog.png" alt="Works catalog with New Certifyd Work form, Create button, and Your Works below" loading="lazy"><span class="circle" style="--x:1%;--y:12%;--w:72%;--h:78%" aria-hidden="true"></span></a><figcaption>The circled form starts a new work. This example account already has published works and may show controls unavailable in Basic. Your list may start empty. Select the image for the full screen.</figcaption></figure>
         </section>
         <section class="topic" id="work-settings" data-search="work author file cover price sats monetization delivery denotation stream download topic identifiers credits visibility details">
           <div class="topic-head"><div><div class="number">07 · WORK DETAILS</div><h2>Finish your work’s details</h2></div><label class="mark"><input type="checkbox" data-done="work-settings">Done</label></div>
-          <p>In <b>Works → Your Works → Certifyd Works</b>, find your draft and press <b>Show details</b>. Scroll down through the work’s settings. The example images show a work that has already been published, so your draft may have fewer details.</p>
-          <ol><li>Check the <b>Playback</b> and <b>File identity</b> areas so you know the right media and cover were saved.</li><li class="sovereign-only">Under <b>Monetization</b>, enter the amount in <b>Price (sats)</b> and press <b>Save price</b>. A sat is a small unit of Bitcoin. A price of <b>0</b> means free access. Charging needs your permanent address and connected payment setup.</li><li>Under <b>Delivery</b>, choose the <b>Denotation</b> that matches how you want people to receive the work, such as <b>Stream + download</b>, and press <b>Save delivery</b>. Read the short explanation Core shows beside the choice.</li><li>Under <b>Discovery</b>, choose a <b>Primary topic</b> if one fits. It helps people find the work.</li><li>Under <b>Industry Identifiers</b>, add an existing code such as an ISRC or UPC if you have one. The field is optional; do not invent a code.</li><li>Under <b>Credits</b>, add the people who worked on it, with their names and roles. These describe contributions and are separate from the payment split.</li></ol>
-          <p class="note basic-only">With Basic, keep your first work free and solo. Fill in the details you want, then return to the work card and press <b>Publish</b>. You do not need to edit or lock a split. Pricing for payment and shared splits require the Sovereign Creator setup.</p>
-          <p class="note sovereign-only">If another creator shares in this work, use <a href="#splits">Edit a split</a>. Each participant needs a permanent identity and the required commerce setup before they can accept. Set <b>Network Visibility</b> as part of publishing: <b>Hidden</b>, <b>Direct Link</b>, or <b>Discoverable</b>.</p>
+          <p>Add the file and the details people need to understand your work.</p>
+          <p><b>What to click:</b> On your draft in <b>Works</b>, choose <b>Save media</b> for the file and <b>Save cover</b> for its artwork. Open <b>Show details</b> to set delivery and any optional topic, credits, or existing industry code.</p>
+          <p class="note"><b>It worked when:</b> <b>Show details</b> displays the saved media and cover. In Basic, keep the work free and solo. <span class="sovereign-only">For a paid work, finish <a href="#provider">payment setup</a> and check Core's readiness before publishing.</span></p>
           <figure class="screen settings-focus"><a class="screen-shot" href="images/work-details.png" target="_blank" rel="noopener"><img src="images/work-details.png" alt="Work settings showing Monetization price in sats, Save price, Delivery Denotation, and Save delivery" loading="lazy"><span class="circle" style="--x:2%;--y:41%;--w:57%;--h:14%" aria-hidden="true"></span><span class="circle" style="--x:2%;--y:63%;--w:57%;--h:19%" aria-hidden="true"></span></a><figcaption>The first circle is the price control; the second is the delivery choice. Select the image for the full screenshot.</figcaption></figure>
           <figure class="screen metadata-focus"><a class="screen-shot" href="images/work-share.png" target="_blank" rel="noopener"><img src="images/work-share.png" alt="Optional Industry Identifiers form showing type, value, and Add" loading="lazy"><span class="circle" style="--x:2%;--y:6%;--w:95%;--h:74%" aria-hidden="true"></span></a><figcaption>If you have an existing industry code, choose its type, enter the value, and press <b>Add</b>. Select the image for the full screen.</figcaption></figure>
           <figure class="screen credits-focus"><a class="screen-shot" href="images/work-share.png" target="_blank" rel="noopener"><img src="images/work-share.png" alt="Credits area with Name and Role fields and Add credit" loading="lazy"><span class="circle" style="--x:2%;--y:72%;--w:95%;--h:20%" aria-hidden="true"></span></a><figcaption>Add each contributor’s name and role under <b>Credits</b>. The published-status box above it belongs to this example.</figcaption></figure>
@@ -146,22 +146,26 @@
         </section>
         <section class="topic" id="named" data-search="named tunnel permanent durable hostname domain dns cloudflare exact tunnel identity service">
           <div class="topic-head"><div><div class="number">11 · PERMANENT ADDRESS</div><h2>Set up a permanent address</h2></div><label class="mark"><input type="checkbox" data-done="named">Done</label></div>
-          <p>To keep the same public address over time, you need a domain you own (for example, <code>yourname.com</code>), a Cloudflare account, and that domain’s DNS on Cloudflare. Core calls this a <b>named tunnel</b>. The next guide asks what you already have before showing setup steps.</p>
-          <ol><li>Open the tunnel guide. Choose <b>I want a permanent custom hostname</b>, or tell it about a tunnel or service you already run.</li><li>Follow its steps for your setup. If you already have a tunnel, use its exact name or ID. When asked for Core’s destination address, enter <code>http://127.0.0.1:4010</code>.</li><li>In Core, check that your chosen web address is shown as ready before relying on links for buyers.</li></ol>
-          <div class="actions"><a class="action" href="/core/tunnel-setup/">Start named-tunnel setup</a></div>
-          <p class="note">It is fine to have other Cloudflare tunnels on this computer. Leave them running. Core also recognizes a Certifyd tunnel that you already run as a service.</p>
+          <p>A permanent connection gives your page an address on a domain you own. It stays the same across restarts. You can keep your existing profile and works while setting it up.</p>
+          <p><b>What to click:</b> In <b>Configuration → Public Connection</b>, select <b>Permanent</b>. Core looks for a matching connection. When your domain is configured and Core offers it, choose <b>Enable sharing</b> to give permission. Selecting Permanent or connecting an outside service alone does not make your page public.</p>
+          <p class="note"><b>It worked when:</b> Core shows <b>Connection: Permanent</b>, your domain as the public address, and <b>Sharing: Online</b>. A connected Cloudflare service by itself does not prove that visitors can reach your page.</p>
+          <p>If Core says the connection is unavailable, use the optional setup guide. It helps with a new domain or an existing Cloudflare service. Core discovers supported services automatically; you do not need to enter an executable path for normal setup.</p>
+          <div class="actions"><a class="action" href="/core/tunnel-setup/">Set up or check a permanent address</a></div>
+
         </section>
         <section class="topic" id="provider" data-search="payment node provider connect commerce delegated invoice network provider url node id public key trusted">
           <div class="topic-head"><div><div class="number">12 · PAYMENTS</div><h2>Connect a payment provider node</h2></div><label class="mark"><input type="checkbox" data-done="provider">Done</label></div>
-          <p>A payment provider is another Certifyd node that can handle payments for your Core.</p>
-          <ol><li>First set up your permanent address on a domain you own. A temporary link is not enough for payments.</li><li>On <a href="https://network.certifyd.me/" target="_blank" rel="noreferrer">the Certifyd Network map</a>, choose an available payment node, open <b>Review provider details</b>, and use <b>Copy provider details</b>.</li><li>In Core, open <b>Network → Provider Configuration</b>. Paste its <b>Provider URL</b> and <b>Provider Node ID</b> exactly. Add the optional public key and profile ID if the map supplies them.</li><li>Enable and <b>Save provider</b>, then follow <b>Connect provider</b> in Core. Wait for Core to confirm the connection is ready.</li></ol>
-          <p class="note">If you run your own payment node instead, use <b>Node → Lightning</b>. Your permanent address alone does not turn payments on.</p>
+          <p>To charge for work as a Sovereign Creator, connect a payment provider after your permanent public address is online.</p>
+          <p><b>What to click:</b> On the <a href="https://network.certifyd.me/" target="_blank" rel="noreferrer">Certifyd Network map</a>, choose a provider and copy its details. In Core, open <b>Network → Provider Configuration</b>, enter those details, choose <b>Save provider</b>, then <b>Connect provider</b>.</p>
+          <p class="note"><b>It worked when:</b> Core reports the provider ready. Then set a price in <b>Works → Show details → Monetization</b> and check the work's publish readiness. A public address alone does not enable payments.</p>
+
         </section>
         <section class="topic" id="lightning" data-search="lightning lnd local node node settings rest url macaroon tls certificate auto detect test save operator">
           <div class="topic-head"><div><div class="number">13 · NODE OPERATOR</div><h2>What is Lightning?</h2></div><label class="mark"><input type="checkbox" data-done="lightning">Done</label></div>
-          <p><b>Lightning</b> is for people who run their own LND payment node. If another provider handles payments for you, you can skip this.</p>
-          <ol><li>If you operate your own LND, open <b>Node → Lightning</b>.</li><li>Review the LND REST URL, network, macaroon, and TLS certificate fields. Use <b>Auto-detect</b> if Core can find a local candidate.</li><li>Press <b>Test</b>, resolve the reported readiness issue if any, then <b>Save</b> in Core.</li></ol>
-          <p class="note">The macaroon and certificate are private connection details. Enter them only in your local Core settings, never in this guide.</p>
+          <p>This step is for Sovereign Node operators using their own local Bitcoin and Lightning (LND) services. Other creators can use a payment provider instead.</p>
+          <p><b>What to click:</b> Check local Bitcoin readiness in <b>Node</b>, then open <b>Node → Lightning</b>. Use <b>Auto-detect</b> if available, choose <b>Test</b>, and save only after Core reports the service ready.</p>
+          <p class="note"><b>It worked when:</b> Core shows both local payment services ready. Keep connection credentials in Core only; never paste them into this guide.</p>
+
         </section>
         <section class="topic" id="console" data-search="provider console node operator lan delegated creators creator scope revenue diagnostics settlement payout treasury">
           <div class="topic-head"><div><div class="number">14 · NODE OPERATOR</div><h2>What is Provider Console?</h2></div><label class="mark"><input type="checkbox" data-done="console">Done</label></div>
@@ -175,16 +179,17 @@
         </section>
         <section class="topic" id="configuration" data-search="configuration node tunnel routing public link hostname quick named 4010 origin consent">
           <div class="topic-head"><div><div class="number">16 · NODE SETTINGS</div><h2>What is Configuration?</h2></div><label class="mark"><input type="checkbox" data-done="configuration">Done</label></div>
-          <p><b>Configuration</b> holds your public link and tunnel settings. Use the tunnel guide when you want a temporary link or a permanent address.</p>
-          <div class="actions"><a class="action" href="/core/tunnel-setup/">Open tunnel setup</a></div>
-          <p class="note">If Cloudflare asks where to send visitors, use <code>http://127.0.0.1:4010</code>. Keep the dashboard address ending in <code>:4000</code> private.</p>
-          <figure class="screen config-routing"><a class="screen-shot" href="images/configuration.png" target="_blank" rel="noopener"><img src="images/configuration.png" alt="Configuration page showing the Tunnel and routing section" loading="lazy"><span class="circle" style="--x:5%;--y:17%;--w:43%;--h:10%" aria-hidden="true"></span></a><figcaption>The tunnel settings begin at the circled heading. This example is an already running service-managed named tunnel; your setup may show different controls. Select the image for the full page.</figcaption></figure>
+          <p>Use this page to see your actual public connection and change sharing only when you choose to.</p>
+          <p><b>What to click:</b> Open <b>Configuration → Public Connection</b>. Choose <b>Temporary</b> or <b>Permanent</b> to inspect that path. Choose <b>Enable sharing</b> only when you want your creator page public.</p>
+          <p class="note"><b>It worked when:</b> <b>Connection</b>, <b>Public address</b>, and <b>Sharing</b> show the active result. For extra checks, open <b>Advanced / Diagnostics</b>.</p>
+          <details><summary>Technical addresses</summary><p>The private dashboard/API uses <code>127.0.0.1:4000</code>. The public creator pages use <code>127.0.0.1:4010</code>. Never point your public domain at the private dashboard.</p></details>
+
         </section>
         <section class="topic" id="diagnostics" data-search="diagnostics clock sync drift public tunnel health named tunnels backups local test hosts run tests copy report">
           <div class="topic-head"><div><div class="number">17 · NODE HEALTH</div><h2>What is Diagnostics?</h2></div><label class="mark"><input type="checkbox" data-done="diagnostics">Done</label></div>
-          <p>Open <b>Node (Operator) → Diagnostics</b> when you want to check how Core is working. This page groups the checks in one place:</p>
-          <ol><li><b>Clock sync</b> checks whether your computer’s time is close enough for signed invitations to work. Press <b>Recheck clock</b> if you have corrected your system time.</li><li><b>Public tunnel health</b> shows the current status, public origin, health probe, last check, and public ping. Press <b>Check tunnel health</b> to check again. <b>Named tunnels</b> lists the tunnel objects Core can see; <b>Refresh tunnels</b> updates that list. Match the exact configured tunnel name or ID before treating one as yours.</li><li><b>Backups (local)</b> shows where backup files are stored, whether backups are enabled, how long they are retained, and recent files. You can press <b>Run backup</b> or <b>Refresh list</b>. Keep the backup files private.</li><li><b>Test hosts</b> checks the public hostnames you enter, one per line. Press <b>Run tests</b>, then <b>Copy report</b> if you need to share the result. The check uses <code>/api/health</code> and does not include secrets.</li></ol>
-          <p class="note">A reachable hostname and a connected tunnel object answer different questions. Read the result of the specific check before changing tunnel settings. Diagnostics does not edit your DNS.</p>
+          <p>Use diagnostics only if Core cannot verify your public page or a service is not ready.</p>
+          <p><b>What to click:</b> Open <b>Node (Operator) → Diagnostics</b>, then choose <b>Check tunnel health</b>. If you need help, use <b>Copy report</b> from the relevant check. Keep backups and private connection details to yourself.</p>
+          <p class="note"><b>It worked when:</b> Core reports your public creator address reachable. A connected service and a reachable public page are different checks.</p>
           <figure class="screen"><a class="screen-shot" href="images/diagnostics.png" target="_blank" rel="noopener"><img src="images/diagnostics.png" alt="Diagnostics page showing Clock sync, Public tunnel health, Named tunnels, Backups local, and Test hosts" loading="lazy"></a><figcaption>The sections in Core's Diagnostics tab. The example hostname and computer path are hidden in this image. Select it to view the full screenshot.</figcaption></figure>
         </section>
         <section class="topic" id="splits" data-search="split edit splits manage splits participants percentages 100 draft lock version advanced lan commerce">
@@ -195,17 +200,16 @@
         </section>
         <section class="topic" id="release" data-search="draft upload primary file publish content release visibility direct link discoverable">
           <div class="topic-head"><div><div class="number">19 · PUBLISHING</div><h2>Publish your first work</h2></div><label class="mark"><input type="checkbox" data-done="release">Done</label></div>
-          <ol><li>Create a draft in <b>Works → New Certifyd Work</b>, save its media and cover, and follow <a href="#work-settings">Finish your work’s details</a>.</li><li class="sovereign-only">If you are charging, check the price and payment setup. If you share the work, <b>Save</b> the split, send the invites, wait for everyone to accept, and <b>Lock</b> it before publishing.</li><li>Press <b>Publish</b> when the work is ready<span class="sovereign-only"> and any shared split is locked</span>. Follow any message Core shows about what is still needed. To replace published media, make a new version.<span class="sovereign-only"> Accepted split participants will see the work in their Libraries.</span></li><li>For its link, press <b>Show details → Share → Public Link</b>, then <b>Open</b> or <b>Copy link</b>.<span class="sovereign-only"> <b>Network Visibility</b> controls whether it is <b>Hidden</b>, available by <b>Direct Link</b>, or <b>Discoverable</b>.</span></li></ol>
-          <p class="note basic-only">In Basic, the work card has <b>Publish</b> and no <b>Edit splits</b> button. You can publish your free solo work without a split step.</p>
-          <p class="note">After publishing, open the public link to check what visitors can actually see.</p>
+          <p>Make the finished work available to others.</p>
+          <p><b>What to click:</b> On the work card in <b>Works</b>, choose <b>Publish</b>. Follow any readiness message Core shows. If you are sharing income with collaborators, complete and lock the split first.</p>
+          <p class="note"><b>It worked when:</b> Core marks the work published. Open <b>Show details → Share → Public Link</b> to check the visitor page. Publishing does not automatically place the work on your creator profile.</p>
           <figure class="screen share-focus"><a class="screen-shot" href="images/work-share.png" target="_blank" rel="noopener"><img src="images/work-share.png" alt="Expanded work details with Share, Public Link, Copy link, credits, and Network Visibility" loading="lazy"><span class="circle" style="--x:1%;--y:3%;--w:98%;--h:30%" aria-hidden="true"></span></a><figcaption>After <b>Show details</b>, find <b>Share → Public Link</b> in the circled area. This is an already published example. Select the image for the full screen.</figcaption></figure>
         </section>
         <section class="topic" id="library-first" data-search="after publish library authored work add to profile remove from profile featured profile display share">
           <div class="topic-head"><div><div class="number">20 · AFTER PUBLISHING</div><h2>Find your published work in Library</h2></div><label class="mark"><input type="checkbox" data-done="library-first">Done</label></div>
-          <p>Publishing finishes the work in <b>Works</b>. <b>Library</b> is where you find the works you can access, including the one you just authored. Showing a work on your public profile is a separate choice.</p>
-          <ol><li>Open <b>Library</b> in Core’s left menu. Find your title under <b>Owned</b>; use <b>Relationship → Authored Work</b> or a <b>Type</b> filter if you have several works.</li><li>On the work’s card, choose <b>Add to Profile</b> if you want it on your public profile. If the card says <b>ADDED TO PROFILE</b>, its button becomes <b>Remove from Profile</b>. Leave it out or remove it if you want it only in Library.</li><li>Choose <b>Feature on Profile</b> if you want the work to stand out there. This is separate from publishing and from the normal profile listing.</li><li>Choose <b>Open Public Page</b> on the card to see the work’s public page. Then use <b>Open public profile</b> at the top of Core to check the profile listing and featured placement. You can still copy a direct work link from <b>Works → Show details → Share</b>.</li></ol>
-          <p class="note sovereign-only">A work with a locked shared split also appears in the accepted participants’ Libraries after publication. Each participant can decide whether to show it on their own profile.</p>
-          <p class="note">A work being in Library does not by itself tell you whether it is on your public profile or featured. Check those settings and the public view separately.</p>
+          <p>Find your new release and decide whether it appears on your creator profile.</p>
+          <p><b>What to click:</b> Open <b>Library</b> and find the work under <b>Owned</b>. On its card, choose <b>Add to Profile</b> to show it publicly. <b>Feature on Profile</b> is optional.</p>
+          <p class="note"><b>It worked when:</b> The card says <b>ADDED TO PROFILE</b> and the work appears after you choose <b>Open public profile</b>. <b>Remove from Profile</b> hides it from the profile without deleting your published work.</p>
           <figure class="screen"><a class="screen-shot" href="images/library-owned.png" target="_blank" rel="noopener"><img src="images/library-owned.png" alt="Library page with Owned works, Authored Work relationship filter, and work cards" loading="lazy"></a><figcaption>Your published work appears among the works you can access. This example already contains several works. Select it for the full screenshot.</figcaption></figure>
           <figure class="screen library-card"><a class="screen-shot" href="images/library-owned.png" target="_blank" rel="noopener"><img src="images/library-owned.png" alt="Library work card with Open Public Page, Add to Profile, and Feature on Profile buttons" loading="lazy"><span class="circle" style="--x:3%;--y:62%;--w:76%;--h:17%" aria-hidden="true"></span></a><figcaption>These are the profile choices on a work card. Another card in the full image is already added and shows <b>Remove from Profile</b>.</figcaption></figure>
         </section>
@@ -234,7 +238,7 @@
           <p>Keep adding work and use Core’s messages to see what comes next. <span class="basic-only">Your Basic link is temporary. When you want your own lasting web address and payments, switch this guide to <b>Sovereign Creator</b>. If you run payment services for other creators, choose <b>Sovereign Node</b>.</span><span class="sovereign-only">Check your permanent address and payment readiness in Core before relying on paid links.</span></p>
           <p class="note">This guide shows you where to click. Changes to your Core happen only when you take those steps in Core.</p>
         </section>
-        <p class="footer">Based on Certifyd Core <code>v0.1.0-beta.13</code>. Progress and choices stay in this browser. <a href="/core/tunnel-setup/">Detailed public-link guide</a>.</p>
+        <p class="footer">Based on Certifyd Core <code>v0.1.0-beta.20</code>. Progress and choices stay in this browser. <a href="/core/tunnel-setup/">Detailed public-link guide</a>.</p>
       </div>
     </div>
   </main>
@@ -243,24 +247,28 @@
     const nav=document.querySelector('#topic-nav');
     const paths={
       basic:[
-        {label:'GET STARTED',ids:['install','owner','wallet','public']},
-        {label:'MAKE YOUR PROFILE',ids:['profile','picture','proof']},
-        {label:'CREATE & PUBLISH',ids:['works','work-settings','release','library-first']},
-        {label:'EXPLORE BASIC',ids:['next','network-tab','commerce-gate','configuration','diagnostics']}
+        {label:'GET STARTED',ids:['install','owner']},
+        {label:'SET UP YOUR PROFILE',ids:['profile','picture']},
+        {label:'PUT YOUR PAGE ONLINE',ids:['public']},
+        {label:'PUBLISH YOUR FIRST WORK',ids:['works','work-settings','release','library-first']},
+        {label:'GET PAID',ids:['wallet']},
+        {label:'MORE IN CORE',ids:['proof','commerce-gate','network-tab','configuration','diagnostics','next']}
       ],
       creator:[
-        {label:'BECOME SOVEREIGN',ids:['named','provider']},
-        {label:'YOUR LASTING IDENTITY',ids:['profile','picture','proof']},
-        {label:'SELL OR SHARE A WORK',ids:['works','work-settings','splits','release','library-first']},
-        {label:'YOUR CREATOR TOOLS',ids:['rights','audience','revenue','royalties']},
-        {label:'MORE IN CORE',ids:['network-tab','advanced','configuration','diagnostics']}
+        {label:'GET STARTED',ids:['install','owner']},
+        {label:'SET UP YOUR PROFILE',ids:['profile','picture']},
+        {label:'USE YOUR OWN DOMAIN',ids:['named']},
+        {label:'PUBLISH YOUR FIRST WORK',ids:['works','work-settings','release','library-first']},
+        {label:'GET PAID',ids:['wallet','provider']},
+        {label:'MORE IN CORE',ids:['proof','splits','rights','audience','revenue','royalties','network-tab','advanced','configuration','diagnostics']}
       ],
       node:[
-        {label:'RUN YOUR OWN NODE',ids:['named','lightning','console']},
-        {label:'YOUR LASTING IDENTITY',ids:['profile','picture','proof']},
-        {label:'SELL OR SHARE A WORK',ids:['works','work-settings','splits','release','library-first']},
-        {label:'YOUR NETWORK TOOLS',ids:['rights','audience','revenue','royalties']},
-        {label:'MORE IN CORE',ids:['network-tab','advanced','configuration','diagnostics']}
+        {label:'GET STARTED',ids:['install','owner']},
+        {label:'SET UP YOUR PROFILE',ids:['profile','picture']},
+        {label:'USE YOUR OWN DOMAIN',ids:['named']},
+        {label:'PUBLISH YOUR FIRST WORK',ids:['works','work-settings','release','library-first']},
+        {label:'GET PAID',ids:['wallet','lightning']},
+        {label:'MORE IN CORE',ids:['proof','splits','console','rights','audience','revenue','royalties','network-tab','advanced','configuration','diagnostics']}
       ]
     };
     const saved=(()=>{try{return JSON.parse(localStorage.getItem('certifyd-core-walkthrough-v1')||'{}')}catch{return {}}})();
@@ -268,18 +276,18 @@
     let selectedPath=paths[saved.path]?saved.path:'basic';
     const activeIds=()=>paths[selectedPath].flatMap(g=>g.ids);
     const pathCopy={
-      basic:'Basic: create your owner, add a Lightning receiving address, explicitly start a temporary link, then make your profile and publish a free solo work. The Commerce tabs and shared splits are unavailable.',
-      creator:'Sovereign Creator builds on Core basics: first use your domain for a lasting public address, then connect a payment provider. If Core is not installed yet, choose Basic for the install and first-owner steps, then return here. Your profile editor is shared with Basic, but pricing, shared splits, and Commerce need this setup.',
-      node:'Sovereign Node builds on Core basics: use a domain and named tunnel, then connect the Bitcoin and Lightning services you operate. If Core is not installed yet, choose Basic for the install and first-owner steps, then return here. Provider Console is for this path.'
+      basic:'Share a free solo work through a temporary link. Add a Lightning Address if you want tips.',
+      creator:'Use your own domain. Add a payment provider when you want to sell paid work.',
+      node:'Use your own domain and local Bitcoin and Lightning services.'
     };
     const baseTitles=Object.fromEntries(topics.map(t=>[t.id,t.querySelector('h2').textContent]));
     const pathTitles={
-      basic:{works:'Create your first free work',release:'Publish a free solo work'},
-      creator:{profile:'Build your lasting profile',works:'Create a work to sell or share','work-settings':'Set price and delivery',splits:'Agree on a shared split (if sharing)',release:'Publish with commerce ready','library-first':'Share it from Library'},
-      node:{lightning:'Connect your Lightning node',console:'Open Provider Console',profile:'Build your node profile',works:'Create a work to sell or share','work-settings':'Set price and delivery',splits:'Agree on a shared split (if sharing)',release:'Publish with commerce ready','library-first':'Share it from Library'}
+      basic:{works:'Add your first free work',release:'Publish a free solo work'},
+      creator:{profile:'Set up your profile',works:'Add a work to sell or share','work-settings':'Set price and delivery',splits:'Agree on a shared split (if sharing)',release:'Publish your work','library-first':'Show it on your profile'},
+      node:{lightning:'Check your Lightning node',console:'Open Provider Console',profile:'Set up your profile',works:'Add a work to sell or share','work-settings':'Set price and delivery',splits:'Agree on a shared split (if sharing)',release:'Publish your work','library-first':'Show it on your profile'}
     };
     const title=id=>pathTitles[selectedPath][id]||baseTitles[id];
-    function progress(){const groups=paths[selectedPath],ids=groups.slice(0,3).flatMap(g=>g.ids);document.querySelector('#progress').textContent=ids.filter(id=>saved[id]).length+' of '+ids.length+' setup and publishing steps done · saved on this device'}
+    function progress(){const groups=paths[selectedPath],ids=groups.filter(g=>g.label!=='MORE IN CORE').flatMap(g=>g.ids);document.querySelector('#progress').textContent=ids.filter(id=>saved[id]).length+' of '+ids.length+' setup and publishing steps done · saved on this device'}
     function renderJourney(){
       const ids=activeIds(),index=ids.indexOf(current),stage=paths[selectedPath].find(g=>g.ids.includes(current));
       const next=ids.slice(index+1).find(id=>!saved[id])||ids[index+1];
@@ -301,8 +309,8 @@
     topics.forEach(topic=>{const controls=document.createElement('div');controls.className='step-actions';controls.innerHTML='<button type="button" class="previous">Previous</button><button type="button" class="next">Next step</button>';topic.append(controls);['previous','next'].forEach(direction=>controls.querySelector('.'+direction).addEventListener('click',()=>{const ids=activeIds(),index=ids.indexOf(topic.id);if(index<0)return;select(ids[index+(direction==='next'?1:-1)])}));});
     let current=topics.some(t=>t.id===location.hash.slice(1))?location.hash.slice(1):'install';
     function select(id,scroll=true){const ids=activeIds();if(!ids.includes(id))return;current=id;document.body.classList.add('guided');topics.forEach(t=>t.classList.toggle('current',t.id===id));const i=ids.indexOf(id),controls=document.querySelector('#'+id+' .step-actions');controls.querySelector('.previous').disabled=i===0;controls.querySelector('.next').disabled=i===ids.length-1;controls.querySelector('.next').textContent=i===ids.length-1?'End of walkthrough':'Next step';renderJourney();history.replaceState(null,'','#'+id);if(scroll)document.querySelector('#topics').scrollIntoView({behavior:'smooth',block:'start'})}
-    renderPath();select(activeIds().includes(current)?current:(selectedPath==='basic'?'install':'named'),false);
-    document.querySelectorAll('[data-path-choice]').forEach(button=>button.addEventListener('click',()=>{if(button.dataset.pathChoice===selectedPath)return;selectedPath=button.dataset.pathChoice;saved.path=selectedPath;save();renderPath();input.value='';search();select(selectedPath==='basic'?'install':'named',false)}));
+    renderPath();select(activeIds().includes(current)?current:'install',false);
+    document.querySelectorAll('[data-path-choice]').forEach(button=>button.addEventListener('click',()=>{if(button.dataset.pathChoice===selectedPath)return;selectedPath=button.dataset.pathChoice;saved.path=selectedPath;save();renderPath();input.value='';search();select('install',false)}));
     nav.addEventListener('click',e=>{const a=e.target.closest('a');if(a){e.preventDefault();input.value='';search();select(a.hash.slice(1))}});
     document.querySelector('#journey-card').addEventListener('click',e=>{const a=e.target.closest('a');if(a){e.preventDefault();input.value='';search();select(a.hash.slice(1))}});
     document.querySelector('#topics').addEventListener('click',e=>{const a=e.target.closest('a[href^="#"]');if(a&&activeIds().includes(a.hash.slice(1))){e.preventDefault();select(a.hash.slice(1))}});
@@ -310,7 +318,7 @@
     choose('[data-os]','os',document.querySelector('#install-detail'),{
       windows:'Download the Windows x64 installer, run it, then launch <b>Certifyd Core</b> from the Start Menu or desktop.',
       mac:'Download the DMG for your Mac (Apple Silicon or Intel), open it, drag <b>Certifyd Core.app</b> to Applications, then open the app.',
-      linux:'Download the Linux file that matches your computer (x64 or ARM64), unpack it, and run <code>./start.sh</code> from that folder. Many 64-bit Raspberry Pi systems use ARM64.'
+      linux:'Download the Linux file for your computer (x64 or ARM64) and unpack it. The Linux package includes a one-time desktop launcher helper. After running it, open <b>Certifyd Core</b> from your apps. A tray icon appears only where the desktop supports it. <details><summary>Linux setup commands</summary><p>In the extracted folder, run <code>./install-desktop.sh</code> once. To start without the desktop launcher, run <code>./start.sh</code>.</p></details>'
     });
     choose('[data-work]','work',document.querySelector('#work-detail'),{
       native:'Use <b>Certifyd Works</b> for a work you add to Core. Create a draft, press <b>Save media</b> for its file, then <b>Save cover</b> for the image. Open <b>Show details</b> to finish it. <span class="sovereign-only">For a shared split, send the invites, wait for acceptance, and lock it before publishing.</span>',
