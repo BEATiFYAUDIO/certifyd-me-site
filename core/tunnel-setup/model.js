@@ -1,6 +1,6 @@
 export const STORAGE_KEY = 'certifyd.tunnel-guide.beta13';
-export const RELEASE = 'v0.1.0-beta.13';
-export const RELEASE_SHA = 'ae0b2b1a068bb201148e55658ef05d14093c0509';
+export const RELEASE = 'v0.1.0-beta.20';
+export const RELEASE_SHA = 'b1b45ae0d84f799afc16d46d268667f93b9ea771';
 export const PRIVATE_PORT = 4000;
 export const PUBLIC_PORT = 4010;
 

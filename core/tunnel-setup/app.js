@@ -107,78 +107,73 @@ function getView() {
   switch (id) {
     case 'goal':
       return view(
-        'What are you trying to do?',
-        'Choose the outcome you need today. The guide will ask only what that path requires.',
+        'How do you want to share your page?',
+        'Choose the address you want. Core will show what is actually running.',
         choices('goal', [
-          ['quick', 'I just want a temporary public link', 'Fast test or share link. No DNS setup.', '↗', true],
-          ['permanent', 'I want a permanent custom hostname', 'Stable address and durable public access.', '◎'],
-          ['existing', 'I already have a Cloudflare tunnel', 'Reuse the exact tunnel already configured for Core.', '◉'],
-          ['service', 'I already have a Cloudflare service running', 'Preserve the service-managed connector.', '▤'],
-          ['unsure', 'I’m not sure', 'Inspect what exists before choosing a path.', '?']
+          ['quick', 'A temporary link', 'A quick way to share. The address may change.', '↗', true],
+          ['permanent', 'My own domain', 'A lasting address you control.', '◎'],
+          ['existing', 'I already have a Cloudflare tunnel', 'Keep the connection I already use.', '◉'],
+          ['service', 'A Cloudflare service runs on my computer', 'Keep the existing service in charge.', '▤'],
+          ['unsure', 'I’m not sure', 'Core can discover supported connections.', '?']
         ]),
-        'Fresh installs start private.',
-        'In Beta 13, public mode is off, status is offline, posture is Basic, port 4010 is closed, and no Cloudflare tunnel starts until you explicitly choose public access.',
+        'Your page starts private.',
+        'Finding an existing connection does not give Core permission to share your page. In Core, choose Enable sharing when you are ready.',
         'Find my path'
       );
 
     case 'inspect':
       return view(
-        'What is already running on the Core computer?',
-        'Choose the closest match. Multiple Cloudflare tunnels on one machine are valid.',
+        'What does Core show?',
+        'Open Configuration → Public Connection. Core discovers supported connections; choose what it finds.',
         choices('inspectResult', [
-          ['service', 'A Cloudflare service', 'cloudflared starts through Windows Services, launchd, or systemd.', '▤'],
-          ['existing', 'A named tunnel', 'I know there is a persistent tunnel identity.', '◉'],
-          ['none', 'Nothing I recognize', 'I have not intentionally configured a named tunnel.', '○']
+          ['service', 'An existing service', 'A Cloudflare service runs separately from Core.', '▤'],
+          ['existing', 'A permanent connection', 'A named connection is already configured.', '◉'],
+          ['none', 'Nothing I recognize', 'Start with a temporary link or set up a domain.', '○']
         ]),
-        'Connected does not mean selected.',
-        'Certifyd matches the configured tunnel by exact name or UUID. It does not adopt another tunnel merely because that tunnel is connected.'
+        'Unknown is okay.',
+        'Core may find a service without proving which tunnel it serves. Check Advanced / Diagnostics if its identity is unclear.'
       );
 
     case 'decide':
       return view(
-        'Which result do you need?',
-        'A temporary link is the shortest path. A named tunnel is a separate durable setup.',
+        'What do you want to use?',
+        'You can choose a temporary link now and move to your own domain later.',
         choices('nextGoal', [
-          ['quick', 'Temporary public link', 'No DNS, Basic posture, stops when you stop it.', '↗', true],
-          ['permanent', 'Permanent custom hostname', 'DNS, exact tunnel identity, Advanced posture when ready.', '◎']
+          ['quick', 'Temporary link', 'Start sharing without setting up a domain.', '↗', true],
+          ['permanent', 'My own domain', 'Set up a lasting public address.', '◎']
         ]),
-        'There is no automatic graduation.',
-        'Beta 13 does not automatically turn a running Quick Tunnel into a named tunnel. You can return and begin the permanent path later.'
+        'Changing tabs does not change sharing.',
+        'Only the action you confirm in Core can enable or stop public sharing.'
       );
 
     case 'quickPrivate':
       need('privateReady');
       return view(
-        'Start from Core’s private state.',
-        'Open Certifyd Core locally and confirm that Core itself is running.',
-        note('<b>Expected before you start:</b> public mode <b>off</b>, public status <b>offline</b>, posture <b>Basic</b>, no listener on <b>127.0.0.1:' + PUBLIC_PORT + '</b>, and no Cloudflare tunnel started by Core.') +
+        'Open Core.',
+        'Start Certifyd Core and sign in to your private dashboard.',
         ordered([
-          'Open the private operator interface at <b>http://127.0.0.1:' + PRIVATE_PORT + '</b> on the Core computer.',
-          'Open <b>Configuration → Tunnel & routing</b>.',
-          'Confirm Core is healthy before enabling any public access.'
-        ]) +
-        note('<b>Never expose port ' + PRIVATE_PORT + '.</b> It is the private operator API. Every public Cloudflare tunnel for Certifyd must target <b>http://127.0.0.1:' + PUBLIC_PORT + '</b>.', true) +
-        check('privateReady', 'Core is running and I am ready to explicitly start temporary public access.'),
-        'Two local listeners, two jobs.',
-        'Port 4000 is private operator control. Port 4010 is the allowlisted public surface and exists only while public access needs it.'
+          'In Core, open <b>Configuration → Public Connection</b>.',
+          'Check the current <b>Connection</b>, <b>Public address</b>, and <b>Sharing</b> status. If sharing is already online, use that address rather than starting another connection.'
+        ]) + check('privateReady', 'Core is open and I have checked its current sharing status.'),
+        'Your private dashboard stays private.',
+        'A public creator page is separate from the dashboard. Advanced detail: dashboard/API uses port 4000; the public creator listener uses port 4010.'
       );
 
     case 'quickStart':
       need('started');
       return view(
-        'Start the temporary link in Core.',
-        'This is the entire Quick Tunnel setup in Beta 13.',
-        note('Starting the link makes Core’s allowlisted public routes reachable on the internet. The temporary address is not a durable hostname.', true) +
+        'Enable temporary sharing.',
+        'One action in Core puts your creator page online.',
         ordered([
-          'In <b>Configuration → Tunnel & routing</b>, choose <b>Start temporary link</b>.',
-          'Wait while Core opens <b>127.0.0.1:' + PUBLIC_PORT + '</b> and launches the Quick Tunnel process it owns.',
-          'Copy the generated <b>https://…trycloudflare.com</b> address only after <b>Core reports it as the public URL</b>.'
+          'In <b>Configuration → Public Connection</b>, select <b>Temporary</b>.',
+          'Choose <b>Enable sharing</b> and wait for Core to connect.',
+          'Copy the <b>Public address</b> only after Core shows <b>Sharing: Online</b>.'
         ]) +
-        note('<b>Expected active state:</b> posture <b>Basic</b>; canonical origin is the temporary URL; canonical buyer origin is empty; durable status is not ready; reason <code>BASIC_TEMP_LINK_NON_DURABLE</code>.') +
-        check('started', 'Core reports the generated temporary public URL.'),
-        'Trust Core’s reported URL.',
-        'An unrelated trycloudflare.com string in an error message does not prove a tunnel was created. Continue only when Core reports the actual generated public address.',
-        'Verify my link'
+        note('Selecting Temporary alone does not publish your page. If Core says Connecting or Unverified, do not treat the link as ready.') +
+        check('started', 'Core shows Sharing: Online and a temporary public address.'),
+        'A temporary link can change.',
+        'Core starts the temporary connection with your consent. Keep Core running while you want visitors to reach it.',
+        'Check my page'
       );
 
     case 'cfAccount':
@@ -451,7 +446,7 @@ function getView() {
         choices('os', [
           ['windows', 'Windows', 'Cloudflare may run through Windows Services.', '⊞'],
           ['mac', 'macOS', 'Cloudflare may run through launchd.', '⌘'],
-          ['linux', 'Linux / Raspberry Pi', 'Cloudflare may run through systemd.', '▤']
+          ['linux', 'Linux / Raspberry Pi', 'Cloudflare may run through systemd or a SysV service.', '▤']
         ]),
         'Check the Core computer itself.',
         'A browser on another device can follow the guide, but the connector and public listener run beside Core.'
@@ -485,7 +480,7 @@ function getView() {
         ? 'sc query cloudflared'
         : a.os === 'mac'
           ? 'launchctl list | grep -i cloudflared'
-          : 'systemctl status cloudflared --no-pager';
+          : 'systemctl status cloudflared --no-pager || service cloudflared status';
       return view(
         'Verify the exact tunnel and its owner.',
         'Inspect before changing processes. Preserve every unrelated tunnel.',
@@ -580,88 +575,53 @@ function getView() {
     case 'coreConfirm':
       need('coreConfigured');
       return view(
-        'Confirm the named setup in Certifyd Core.',
-        'Use the existing named-tunnel controls; do not invent or infer another identity.',
+        'Enable sharing on your domain.',
+        'Core finds supported connections, but sharing still needs your permission.',
         ordered([
-          'Open Core’s private operator interface at <b>http://127.0.0.1:' + PRIVATE_PORT + '</b>.',
-          'Open <b>CONFIG → Tunnel & routing</b>. Enter the exact Named Tunnel identity and public hostname <b>' + esc(hostname()) + '</b>, then save the configuration.',
-          'Use <b>Discover tunnels</b> and the Named Tunnel verification controls to check the route reaches this Core. A healthy Cloudflare connector alone is not proof that Core is reachable.',
-          a.management === 'external' || situationForAnswers(a) === 'service'
-            ? 'Confirm Core recognizes the connector as externally managed and does not launch a duplicate process.'
-            : 'Confirm Core reports the intended app-managed ownership.',
-          'Complete the explicit Sovereign Creator transition only after Core verifies the Named Tunnel and public route. Do not assume saving a tunnel automatically changes node posture.'
-        ]) + screens([
-          ['core-config-named.png', 'In Core, open CONFIG → Tunnel & routing. The connector-token field is for an app-managed setup; if an external service owns your tunnel, keep that service authoritative. Never paste a token into this guide.', 'Core CONFIG tab showing Tunnel and routing and advanced named-tunnel fields']
+          'Open <b>Configuration → Public Connection</b> and select <b>Permanent</b>.',
+          'Check that Core shows your intended address, <b>' + esc(hostname()) + '</b>. If Core cannot verify the connection, open <b>Advanced / Diagnostics</b> rather than guessing.',
+          'Choose <b>Enable sharing</b>. Wait until Core shows <b>Connection: Permanent</b> and <b>Sharing: Online</b>.',
+          'If you were using a temporary link and switching fails, follow Core’s message and check that your original connection is still available.'
         ]) +
-        note('<b>Expected durable result:</b> posture <b>Advanced</b>; canonical origin and canonical buyer origin are <b>' + esc(origin()) + '</b>; canonical is true; durable ready is true.') +
-        check('coreConfigured', 'Core identifies the exact tunnel and reports the durable named setup ready.'),
-        'Stop respects ownership.',
-        'Stopping Certifyd-managed public access does not terminate an external Cloudflare service.'
+        note('An externally managed Cloudflare service may keep running independently. Core controls its own public sharing and does not stop that service.') +
+        check('coreConfigured', 'Core shows my permanent address and Sharing: Online.'),
+        'Connection and sharing are different.',
+        'A connected Cloudflare service does not by itself prove your creator page is reachable. Only trust Core’s verified online status.'
       );
 
     case 'verify': {
       const goal = goalForAnswers(a);
-      const expectedHost = goal === 'quick' ? '' : hostname();
       return view(
-        goal === 'quick' ? 'Verify the link Core reported.' : 'Verify the durable hostname.',
-        goal === 'quick'
-          ? 'Paste the public URL exactly as shown by Core after tunnel creation.'
-          : 'Open the expected hostname and confirm Core’s public health route responds.',
+        'Check your public page.',
+        'Copy the public address from Core. This guide cannot check Core’s live status for you.',
         field(
           'publicURL',
-          goal === 'quick' ? 'Core-reported public URL' : 'Public URL',
+          'Public address shown in Core',
           goal === 'quick' ? 'https://words-words.trycloudflare.com' : origin(),
-          goal === 'quick'
-            ? 'Do not copy a URL from raw error output.'
-            : 'Expected host: ' + esc(expectedHost)
+          'Use the address shown in Configuration → Public Connection.'
         ) +
         ordered([
-          'Open the URL in a private browser window or on a different network.',
-          goal === 'quick'
-            ? 'Check <b>/health</b> and expect HTTP 200 for the temporary URL Core reported.'
-            : 'Check <b>/health</b> and expect HTTP 200, then use Core’s Named Tunnel verification to confirm this hostname reaches the current Core instance.',
-          goal === 'quick'
-            ? 'Confirm Core still shows Basic posture and the same temporary canonical origin.'
-            : 'Confirm Core reports the intended Sovereign posture, tunnel identity, canonical origin, and durable readiness.'
+          'In Core, confirm <b>Sharing: Online</b> and choose <b>Open public profile</b>.',
+          'Open the copied address on a phone or in a private browser window. Your creator page should load.',
+          'If it does not load, check <b>Advanced / Diagnostics</b> in Core. A connected tunnel alone is not enough.'
         ]) +
-        details(
-          goal === 'quick' ? 'Quick Tunnel troubleshooting' : 'Named tunnel troubleshooting',
-          goal === 'quick'
-            ? '<ol><li>Confirm Core itself is running.</li><li>Confirm you explicitly started the temporary link.</li><li>Confirm the public listener on port 4010 is available.</li><li>Confirm cloudflared targets 127.0.0.1:4010.</li><li>Trust only the URL Core reports after actual tunnel creation.</li><li>If cloudflared cannot reach Cloudflare, check the OS CA certificates and TLS environment.</li><li>Never switch the target to port 4000.</li></ol><p>' + link(sources.troubleshooting, 'Cloudflare troubleshooting') + '</p>'
-            : '<ol><li>Confirm the exact configured tunnel name or UUID.</li><li>Do not select a different connected tunnel.</li><li>Determine whether the connector is app-managed or service-managed.</li><li>Check hostname reachability separately from tunnel-object identity.</li><li>Preserve unrelated Cloudflare processes.</li><li>Do not use broad process termination.</li></ol><p>' + link(sources.troubleshooting, 'Cloudflare troubleshooting') + '</p>'
-        ),
-        'Verification closes the loop.',
-        goal === 'quick'
-          ? 'The valid temporary origin is the URL Core reports. api.trycloudflare.com or another URL seen in an error does not count.'
-          : 'A successful page load alone does not prove exact tunnel identity. Check both Core’s status and the public response.',
+        details('Advanced connection checks', '<p>The public creator route should target <code>127.0.0.1:4010</code>. Keep the private dashboard on <code>127.0.0.1:4000</code> off the public route. Check your exact tunnel identity and route before changing services.</p>'),
+        'The visitor view is the test.',
+        'This guide saves your answers only. Core and a real visit to your public page show whether sharing works.',
         'Finish setup'
       );
     }
 
     case 'done': {
       const goal = goalForAnswers(a);
-      if (goal === 'quick') {
-        return view(
-          'Your temporary link is ready.',
-          'Use it for testing or short-lived sharing. It is not a durable hostname.',
-          '<div class="success-mark">✓</div><div class="summary-card"><span>Public origin</span><strong>' + esc(a.publicURL) +
-          '</strong><span>Posture</span><strong>Basic</strong><span>Durable</span><strong>No · BASIC_TEMP_LINK_NON_DURABLE</strong></div>' +
-          note('<b>When you press Stop:</b> Certifyd terminates only the Quick Tunnel child it owns, closes port 4010, leaves Quick autostart disabled, preserves consent state, and leaves unrelated Cloudflare tunnels and services running. Restarting Core remains private/off until you explicitly start public access again.') +
-          '<p>When you want a permanent hostname, start a new setup and choose the named-tunnel path. Beta 13 does not perform an automatic Quick-to-named handoff.</p>',
-          'Temporary means temporary.',
-          'The trycloudflare.com address can change the next time you start. Do not use it as a permanent commerce or buyer origin.',
-          'Start another setup'
-        );
-      }
       return view(
-        'Your durable hostname is ready.',
-        'The exact named tunnel now provides the canonical public and buyer origin.',
-        '<div class="success-mark">✓</div><div class="summary-card"><span>Canonical origin</span><strong>' + esc(origin()) +
-        '</strong><span>Canonical buyer origin</span><strong>' + esc(origin()) +
-        '</strong><span>Posture</span><strong>Advanced</strong><span>Durable ready</span><strong>Yes</strong></div>' +
-        note('Keep the tunnel name/UUID and process owner documented. Preserve unrelated Cloudflare tunnels and DNS records during future troubleshooting.'),
-        'Durability comes from exact configuration.',
-        'The stable result depends on the intended tunnel identity, the public hostname route, the port 4010 target, and a clearly owned connector process.',
+        'Your page is ready to share.',
+        'Use the address Core reports while Sharing is Online.',
+        '<div class="success-mark">✓</div><div class="summary-card"><span>Public address</span><strong>' + esc(a.publicURL) +
+        '</strong><span>Connection type</span><strong>' + (goal === 'quick' ? 'Temporary' : 'Permanent') + '</strong></div>' +
+        note('This guide cannot confirm live status. Check Core before sharing. Stop sharing in Core when you want the public page offline; it will not stop an externally managed Cloudflare service.'),
+        'Come back whenever you need to.',
+        goal === 'quick' ? 'A temporary address may change later. Core can remember an authorized sharing choice, so check its status on the next launch.' : 'Your domain stays the same, but a connected tunnel and a reachable creator page are separate checks.',
         'Start another setup'
       );
     }
@@ -722,7 +682,7 @@ function renderHelp() {
     '<div><strong>Process owner</strong><p>The application or OS service responsible for starting and stopping a connector.</p></div>' +
     '<div><strong>DNS</strong><p>The records that direct domain names to websites, mail, applications, and tunnel hostnames.</p></div>' +
     '</div><p class="source-note"><b>Guide source of truth:</b> Certifyd Core ' + esc(RELEASE) + ' · <code>' +
-    esc(RELEASE_SHA) + '</code> · Phase 1 and Phase 2A shipped; automatic Quick-to-named graduation is not included. ' +
+    esc(RELEASE_SHA) + '</code> · Core verifies public reachability; this guide records your answers only. ' +
     link(sources.release, 'Release source') + '</p>';
 }
 
