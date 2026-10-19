@@ -517,11 +517,12 @@ function getView() {
       need('connectorReady');
       return view(
         'Install or run the named connector.',
-        'Follow Cloudflare’s command for this exact tunnel and choose one process owner.',
+        'For a permanent Certifyd creator address, choose Cloudflare’s <b>Install as a service</b> option after installing cloudflared. Do not use the manual run command for an always-on setup.',
         ordered([
           a.os === 'windows' ? 'On Cloudflare’s connector setup screen choose <b>Windows</b> and <b>64-bit</b>, then download and run the <b>cloudflared MSI</b> installer.' : 'Use ' + link(sources.named, 'Cloudflare’s named tunnel setup') + ' for the Core computer’s operating system.',
-          a.os === 'windows' ? 'On the Windows computer, open <b>Start</b>, search for <b>PowerShell</b>, right-click it, and choose <b>Run as administrator</b>.' : 'Follow Cloudflare’s installation instructions for your operating system.',
-          a.os === 'windows' ? 'Copy the <b>service installation command provided by Cloudflare for this tunnel</b> and paste it into the elevated PowerShell window. The command includes a secret connector token: never publish or share it.' : 'Keep any connector credentials private.',
+          a.os === 'windows' ? 'On the Windows computer, open <b>Start</b>, search for <b>PowerShell</b>, right-click it, and choose <b>Run as administrator</b>.' : 'First complete Cloudflare’s <b>Install cloudflared</b> instructions for your operating system, if it is not already installed.',
+          'Cloudflare presents three command sections: <b>Install cloudflared</b> (installs the software), <b>Install as a service</b> (recommended: runs the named tunnel persistently), and <b>Run tunnel (manual)</b> (runs only while that process stays open). <b>Choose Install as a service</b> for an always-on Certifyd setup.',
+          a.os === 'windows' ? 'Copy the <b>service installation command provided by Cloudflare for this tunnel</b> and paste it into the elevated PowerShell window. The command includes a secret connector token: never publish or share it.' : 'Run the <b>Install as a service</b> command supplied for your exact tunnel with the required system permissions. Keep its connector token secret.',
           a.os === 'windows' ? 'Return to Cloudflare and wait until it detects the connector as connected, then choose <b>Continue</b>.' : 'Wait for Cloudflare to confirm that the connector is connected.',
           'If installing as an OS service, let that service remain authoritative.',
           'Do not also ask Certifyd to launch a duplicate connector for the same tunnel.'
