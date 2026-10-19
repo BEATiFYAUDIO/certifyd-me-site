@@ -178,11 +178,18 @@
           <ol><li>At the bottom of Core’s left menu, press <b>Show Advanced</b>.</li><li>Look for extra items such as <b>Configuration</b> and <b>Diagnostics</b>.</li><li>If an item is unavailable, Core will say what it needs. Showing the menu does not set up payments or splits.</li></ol>
           <p class="note">Core may already show this menu for some setups.</p>
         </section>
-        <section class="topic" id="configuration" data-search="configuration node tunnel routing public link hostname quick named 4010 origin consent">
+        <section class="topic" id="configuration" data-search="configuration node tunnel routing public link hostname quick named 4010 origin consent api connections spotify cloudflare analytics token zone">
           <div class="topic-head"><div><div class="number">16 · NODE SETTINGS</div><h2>What is Configuration?</h2></div><label class="mark"><input type="checkbox" data-done="configuration">Done</label></div>
           <p>Use this page to see your actual public connection and change sharing only when you choose to.</p>
           <p><b>What to click:</b> Open <b>Configuration → Public Connection</b>. Choose <b>Temporary</b> or <b>Permanent</b> to inspect that path. Choose <b>Enable sharing</b> only when you want your creator page public.</p>
           <p class="note"><b>It worked when:</b> <b>Connection</b>, <b>Public address</b>, and <b>Sharing</b> show the active result. For extra checks, open <b>Advanced / Diagnostics</b>.</p>
+          <details><summary>Optional API connections: Spotify and Cloudflare Analytics</summary>
+            <p>In Configuration, the optional Spotify metadata provider and Cloudflare Analytics connection are separate from your public connection. Neither is needed to run Core.</p>
+            <p><b>To add Cloudflare traffic and geography:</b></p>
+            <ol><li>In Cloudflare, open <b>My Profile → API Tokens → Create Token</b>. Create a custom token limited to your zone with <b>Zone → Analytics → Read</b>. For optional Web Analytics referrers, also allow <b>Account → Account Analytics → Read</b> for the relevant account. Copy the token once and keep it private.</li><li>On your domain's Cloudflare overview, copy its <b>Zone ID</b>. In Core, open <b>Configuration → Cloudflare Analytics (optional)</b>. Enter that Zone ID, the exact creator hostname, and the token. Add the <b>Account ID</b> only if you want available Web Analytics referrers.</li><li>Choose <b>Connect</b>, then <b>Refresh aggregates</b>. Open <b>Audience → Traffic &amp; Geography</b> to see available reports.</li></ol>
+            <p><b>It worked when:</b> Configuration shows a connected status and a last-refresh time, and Audience shows available Cloudflare reports. If your zone or token lacks a dataset, native Audience remains available.</p>
+            <p>Use <a href="https://developers.cloudflare.com/analytics/graphql-api/getting-started/authentication/api-token-auth/" target="_blank" rel="noopener noreferrer">Cloudflare's token instructions</a> if its dashboard labels differ. Enter the token only in your local Core, never in this guide or a public form.</p>
+          </details>
           <details><summary>Technical addresses</summary><p>The private dashboard/API uses <code>127.0.0.1:4000</code>. The public creator pages use <code>127.0.0.1:4010</code>. Never point your public domain at the private dashboard.</p></details>
 
         </section>
@@ -224,12 +231,7 @@
           <p>See how people reach your work. Core records Buy-page views for Basic and Sovereign creators; paid purchases and an indicative view-to-purchase ratio appear when commerce is available.</p>
           <p><b>What to click:</b> Open <b>Audience</b>. Choose <b>Last 7 days</b>, <b>Last 30 days</b>, <b>Last 90 days</b>, or <b>All time</b>. Use <b>Refresh</b> for the latest report. Select <b>Export all Audience data</b> and CSV or JSON when you want one file with every owned work and available history.</p>
           <p class="note"><b>It worked when:</b> You see your recorded views and a per-work list, or an accurate zero if no views occurred during a covered period. A coverage warning means Core cannot confirm all earlier activity. Cloudflare traffic is separate from Core views and never used to calculate conversion.</p>
-          <details><summary>Add optional Cloudflare traffic and geography</summary>
-            <p>If your creator address uses a domain in Cloudflare, you can add country traffic, a world map, device and browser breakdowns, and available referral sources. Audience still works without this connection.</p>
-            <ol><li>In Cloudflare, open <b>My Profile → API Tokens → Create Token</b>. Create a custom token limited to your zone with <b>Zone → Analytics → Read</b>. For optional Web Analytics referrers, also allow <b>Account → Account Analytics → Read</b> for the relevant account. Copy the token once and keep it private.</li><li>On your domain's Cloudflare overview, copy its <b>Zone ID</b>. In Core, open <b>Configuration → Cloudflare Analytics (optional)</b>. Enter that Zone ID, the exact creator hostname, and the token. Add the <b>Account ID</b> only if you want available Web Analytics referrers.</li><li>Choose <b>Connect</b>, then <b>Refresh aggregates</b>. Return to <b>Audience → Traffic &amp; Geography</b>.</li></ol>
-            <p><b>It worked when:</b> Configuration shows a connected status and a last-refresh time, and Audience shows available Cloudflare reports. Missing countries mean unknown data, not zero traffic. If your zone or token lacks a dataset, native Audience remains available.</p>
-            <p>Use <a href="https://developers.cloudflare.com/analytics/graphql-api/getting-started/authentication/api-token-auth/" target="_blank" rel="noopener noreferrer">Cloudflare's token instructions</a> if its dashboard labels differ. Enter the token only in your local Core, never in this guide or a public form.</p>
-          </details>
+          <p>Want a country map and traffic reports? Follow <a href="#configuration">Configuration's optional Cloudflare Analytics setup</a>. Cloudflare requests are separate from Core Buy-page views; missing countries mean unknown data, not zero traffic.</p>
         </section>
         <section class="topic" id="revenue" data-search="revenue overview sales earnings payouts content intelligence payment status stages">
           <div class="topic-head"><div><div class="number">21 · MONEY VIEWS</div><h2>Understand Revenue</h2></div><label class="mark"><input type="checkbox" data-done="revenue">Done</label></div>
