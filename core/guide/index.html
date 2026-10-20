@@ -183,12 +183,44 @@
           <p>Use this page to see your actual public connection and change sharing only when you choose to.</p>
           <p><b>What to click:</b> Open <b>Configuration → Public Connection</b>. Choose <b>Temporary</b> or <b>Permanent</b> to inspect that path. Choose <b>Enable sharing</b> only when you want your creator page public.</p>
           <p class="note"><b>It worked when:</b> <b>Connection</b>, <b>Public address</b>, and <b>Sharing</b> show the active result. For extra checks, open <b>Advanced / Diagnostics</b>.</p>
-          <details><summary>Optional API connections: Spotify and Cloudflare Analytics</summary>
-            <p>In Configuration, the optional Spotify metadata provider and Cloudflare Analytics connection are separate from your public connection. Neither is needed to run Core.</p>
-            <p><b>To add Cloudflare traffic and geography:</b></p>
-            <ol><li>In Cloudflare, open <b>My Profile → API Tokens → Create Token</b>. Create a custom token limited to your zone with <b>Zone → Analytics → Read</b>. For optional Web Analytics referrers, also allow <b>Account → Account Analytics → Read</b> for the relevant account. Copy the token once and keep it private.</li><li>On your domain's Cloudflare overview, copy its <b>Zone ID</b>. In Core, open <b>Configuration → Cloudflare Analytics (optional)</b>. Enter that Zone ID, the exact creator hostname, and the token. Add the <b>Account ID</b> only if you want available Web Analytics referrers.</li><li>Choose <b>Connect</b>, then <b>Refresh aggregates</b>. Open <b>Audience → Traffic &amp; Geography</b> to see available reports.</li></ol>
-            <p><b>It worked when:</b> Configuration shows a connected status and a last-refresh time, and Audience shows available Cloudflare reports. If your zone or token lacks a dataset, native Audience remains available.</p>
-            <p>Use <a href="https://developers.cloudflare.com/analytics/graphql-api/getting-started/authentication/api-token-auth/" target="_blank" rel="noopener noreferrer">Cloudflare's token instructions</a> if its dashboard labels differ. Enter the token only in your local Core, never in this guide or a public form.</p>
+          <details id="cloudflare-analytics-setup"><summary>Optional API connections: Spotify and Cloudflare Analytics — step-by-step setup</summary>
+            <p>Cloudflare Analytics is optional. It adds country, traffic, device, browser, operating-system and (where available) referral reports to <b>Audience</b>. It is separate from <b>Config → Tunnel &amp; Routing</b>: connecting or disconnecting analytics does not change your website, DNS, tunnel, or payments. Native Audience works without Cloudflare.</p>
+            <p><b>Before you start:</b> You need a Cloudflare account with access to the zone for your published creator hostname (for example, zone <code>example.com</code>, hostname <code>creator.example.com</code>). A temporary <code>trycloudflare.com</code> address does not provide a creator-owned Cloudflare zone to connect.</p>
+            <h3>1. Create your read-only Analytics API token</h3>
+            <ol>
+              <li>Sign in to <a href="https://dash.cloudflare.com/" target="_blank" rel="noopener noreferrer">Cloudflare</a>. Open your profile's <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noopener noreferrer">API Tokens</a> page. Choose <b>Create Token</b>, then <b>Create Custom Token</b>.</li>
+              <li>Name it <b>Certifyd Audience Analytics</b>.</li>
+              <li>Under <b>Permissions</b>, add <b>Zone → Analytics → Read</b>. For optional Web Analytics referrers, also add <b>Account → Account Analytics → Read</b>.</li>
+              <li>Under <b>Zone Resources</b>, choose <b>Include</b> and your specific website zone, not All zones. Under <b>Account Resources</b>, select the relevant account where available rather than All accounts.</li>
+              <li>Continue to the summary, check the permissions, and create the token. <b>Copy its value now</b> and store it securely. Cloudflare displays a new token's secret only once; you cannot simply reveal an old token later. If you lost it, create a replacement or regenerate it. Do not reuse your tunnel connector token.</li>
+            </ol>
+            <p class="note">Use read-only analytics permissions only. Do not grant DNS, Tunnel, or write access. Never paste the token into a public page, email, screenshot, or the guide.</p>
+            <h3>2. Find your zone, account, and creator hostname</h3>
+            <ol>
+              <li>In Cloudflare, open the website zone (for example, <code>example.com</code>) and find <b>Zone ID</b> on the zone's <b>Overview</b> page. Copy it.</li>
+              <li>Find <b>Account ID</b> in the selected account's overview/details. This field is optional in Core and is used for Web Analytics referral reporting when supported.</li>
+              <li>Use the exact public hostname where fans reach your creator page (for example, <code>creator.example.com</code>). The <b>zone</b> is <code>example.com</code>; the <b>hostname</b> is <code>creator.example.com</code>. A hostname outside your selected zone will fail verification.</li>
+            </ol>
+            <h3>3. Connect in Certifyd Core</h3>
+            <ol>
+              <li>Open <b>Core → Config → API Connections → Cloudflare Analytics</b>, beside the optional Spotify connection. Do not use Tunnel &amp; Routing for this step.</li>
+              <li>Enter the <b>Zone ID</b> and exact <b>Creator hostname</b>. Add <b>Account ID</b> if you want supported Web Analytics referral data.</li>
+              <li>Paste your private <b>Analytics Read token</b> into the secure token field, then select <b>Connect</b>.</li>
+              <li>Look for a verified or connected status. Select <b>Refresh aggregates</b> to fetch available reports, then open <b>Audience → Traffic &amp; Geography</b>.</li>
+            </ol>
+            <p><b>What you will see:</b> a country map and rankings, HTTP traffic trends, devices, browsers and operating systems; referring websites appear only if Web Analytics data is accessible. Core's Buy-page views and purchases stay separate from Cloudflare HTTP requests. Sampled or incomplete Cloudflare reports may show coverage warnings; a gray country means unknown data, not necessarily zero activity.</p>
+            <h3>4. Save your audience history</h3>
+            <p>In <b>Audience</b>, choose a date range and select <b>Export all Audience data</b> with CSV or JSON to save available native analytics and locally cached Cloudflare aggregates. <b>Export current page</b> covers that page's native metrics only. These files are reports, <b>not</b> a restorable Core database backup; use Core's backup feature for recovery.</p>
+            <h3>Having trouble connecting?</h3>
+            <ul>
+              <li><b>Unauthorized / missing permission:</b> Verify <b>Zone → Analytics → Read</b> and that Zone Resources includes the selected zone. Web Analytics may also require <b>Account → Account Analytics → Read</b>.</li>
+              <li><b>Hostname unverified:</b> Make sure the hostname belongs to the selected Cloudflare zone; don't enter an unrelated site.</li>
+              <li><b>Token lost or expired:</b> Create a replacement or regenerate it in Cloudflare, then connect again. Previously created token secrets cannot be viewed again.</li>
+              <li><b>No geography yet:</b> Refresh aggregates, check the hostname and reporting period, and allow for Cloudflare sampling, retention, and availability limits.</li>
+              <li><b>No referrers:</b> Add the correct Account ID, check Web Analytics access for the hostname, and try a shorter reporting period. Not all zones or ranges return this dataset.</li>
+              <li><b>Cloudflare unavailable:</b> Try again later. Native Audience analytics and commerce continue independently.</li>
+            </ul>
+            <p>Cloudflare's <a href="https://developers.cloudflare.com/analytics/graphql-api/getting-started/authentication/api-token-auth/" target="_blank" rel="noopener noreferrer">official token guide</a> has the latest dashboard wording. Your analytics token stays in Core and is never needed to operate a tunnel.</p>
           </details>
           <details><summary>Technical addresses</summary><p>The private dashboard/API uses <code>127.0.0.1:4000</code>. The public creator pages use <code>127.0.0.1:4010</code>. Never point your public domain at the private dashboard.</p></details>
 
@@ -231,7 +263,7 @@
           <p>See how people reach your work. Core records Buy-page views for Basic and Sovereign creators; paid purchases and an indicative view-to-purchase ratio appear when commerce is available.</p>
           <p><b>What to click:</b> Open <b>Audience</b>. Choose <b>Last 7 days</b>, <b>Last 30 days</b>, <b>Last 90 days</b>, or <b>All time</b>. Use <b>Refresh</b> for the latest report. Select <b>Export all Audience data</b> and CSV or JSON when you want one file with every owned work and available history.</p>
           <p class="note"><b>It worked when:</b> You see your recorded views and a per-work list, or an accurate zero if no views occurred during a covered period. A coverage warning means Core cannot confirm all earlier activity. Cloudflare traffic is separate from Core views and never used to calculate conversion.</p>
-          <p>Want a country map and traffic reports? Follow <a href="#configuration">Configuration's optional Cloudflare Analytics setup</a>. Cloudflare requests are separate from Core Buy-page views; missing countries mean unknown data, not zero traffic.</p>
+          <p>Want a country map and traffic reports? Follow <a href="#configuration">Configuration → Optional API connections → Cloudflare Analytics</a>. Cloudflare requests are separate from Core Buy-page views; missing countries mean unknown data, not zero traffic.</p>
         </section>
         <section class="topic" id="revenue" data-search="revenue overview sales earnings payouts content intelligence payment status stages">
           <div class="topic-head"><div><div class="number">21 · MONEY VIEWS</div><h2>Understand Revenue</h2></div><label class="mark"><input type="checkbox" data-done="revenue">Done</label></div>
