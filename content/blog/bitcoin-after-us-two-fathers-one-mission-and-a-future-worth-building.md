@@ -4,7 +4,7 @@ slug: "bitcoin-after-us-two-fathers-one-mission-and-a-future-worth-building"
 author: "Certifyd"
 date: "2026-10-20"
 updated: "2026-10-20"
-excerpt: "A Certifyd Sovereign Creator Spotlight featuring Miguel Abascal and Tim Sae Koo <text </text What do we really leave behind for the next generation? For Miguel Abascal and Tim Sae Koo, the answer goes far beyond money. Together, they're the voices behind Bitco"
+excerpt: "Meet Miguel Abascal and Tim Sae Koo, the fathers behind Bitcoin After Us, exploring Bitcoin, financial independence, generational wealth and creator sovereignty."
 coverImage: "/images/blog/bitcoin-after-us-two-fathers-one-mission-and-a-future-worth-building-1792525997680.png"
 coverImageAlt: ""
 coverImageCredit: ""
@@ -18,124 +18,111 @@ seoDescription: "A Certifyd Sovereign Creator Spotlight featuring Miguel Abascal
 
 # Bitcoin After Us: Two Fathers, One Mission, and a Future Worth Building
 
-**A Certifyd Sovereign Creator Spotlight featuring Miguel Abascal and Tim Sae Koo**
+*Certifyd Sovereign Creator Spotlight: Miguel Abascal and Tim Sae Koo*
 
-<text></text>
-What do we really leave behind for the next generation?
+What good is building wealth if the next generation doesn't know what to do with it? For fathers and entrepreneurs Miguel Abascal and Tim Sae Koo, that question is at the heart of a much larger conversation about Bitcoin, financial independence, and the responsibility of preparing children for the future. Through their podcast, **Bitcoin After Us**, they're exploring how families can pass along not only financial resources but also the knowledge, judgment, and values needed to make the most of them.
 
-For Miguel Abascal and Tim Sae Koo, the answer goes far beyond money.
+Their conversations reach beyond Bitcoin's price or its potential as an investment. Miguel and Tim are interested in how financial independence affects everyday life, what ownership really means, and how parents can help their children develop the skills to navigate an uncertain economic future. Drawing on their experiences in entrepreneurship, financial technology, and fatherhood, they've created a podcast that brings a personal perspective to subjects often dominated by technical and financial discussions.
 
-Together, they're the voices behind *Bitcoin After Us*, a podcast exploring fatherhood, financial independence, generational wealth, and what it means to prepare our children for a future built on sound money.
+At Certifyd, we're proud to feature independent creators whose work contributes something meaningful to the wider conversation. Miguel and Tim are using their experiences to explore questions that matter to families and entrepreneurs, while Miguel's participation in the Certifyd network offers a practical example of how the principles of ownership can extend beyond finance into digital identity and independent publishing.
 
-Their mission isn't simply to teach people about Bitcoin. It's to start conversations about responsibility, family, education, and the values we pass from one generation to the next.
+## Miguel Abascal: From Traditional Banking to Bitcoin Sherpa
 
-And at Certifyd, we're proud to help independent creators like Miguel bring those conversations to the world.
+Miguel Abascal's journey into Bitcoin began with years of experience in entrepreneurship and traditional finance. Originally from Mexico City, he helped grow a Mexican coffee business before moving to Canada in 2010, where he rebuilt his professional career. He eventually worked with major financial institutions, including TD Bank and Scotiabank, gaining firsthand experience with the products and systems that shape how individuals and businesses manage their money.
 
-## Meet Miguel Abascal: From Banking to Bitcoin Sherpa
+That background gives Miguel a distinctive perspective on financial independence. Having worked within established financial institutions, he understands the services they provide and the challenges people encounter when navigating financial systems. His professional interests eventually expanded into Bitcoin and privacy-focused financial technology, including work with Fedi and BitBooks, bringing together his experience in conventional banking with emerging approaches to financial ownership.
 
-Miguel's journey is anything but ordinary.
+Today, Miguel works as a consultant, helping business owners operate more effectively and retain more of the value they create. Known in the Bitcoin community as **Bitcoin Sherpa**, he draws on his experience in banking, entrepreneurship, and financial technology to explore questions about ownership, responsibility, and the tools available to people seeking greater financial independence.
 
-Originally from Mexico City, he helped grow a historic Mexican coffee business before moving to Canada in 2010.
+His work also extends into podcasting. Through [Advice That Worked](https://advicethatworked.com/), Miguel invites entrepreneurs and business leaders to share the advice that made a meaningful difference in their professional lives. The conversations focus on practical knowledge gained through experience, providing listeners with insights into the decisions, challenges, and turning points that shape a business.
 
-After rebuilding his career, Miguel went on to manage products associated with major financial portfolios at TD Bank and Scotiabank, gaining firsthand experience inside the traditional financial system.
+Whether he's advising entrepreneurs, discussing Bitcoin, or interviewing business owners, Miguel's work reflects a consistent interest in helping people understand the systems they depend on and make more informed decisions about their futures.
 
-But his journey didn't end there.
+## Tim Sae Koo: Entrepreneurship, Fatherhood, and Generational Responsibility
 
-Today, Miguel works at the intersection of Bitcoin, financial technology, entrepreneurship, and education. His experience includes Fedi and BitBooks, and he helps business owners understand how to retain more of the value they create.
+Tim Sae Koo brings a complementary perspective to Bitcoin After Us. As an entrepreneur, father, and founder of Generation Bitcoin, Tim explores how families can build greater financial resilience while helping their children develop the knowledge and judgment needed to manage money responsibly.
 
-Known in the Bitcoin community as **Bitcoin Sherpa**, Miguel believes that financial education and technology can help people take greater control of their futures.
+His interests connect entrepreneurship and financial education with the everyday responsibilities of raising a family. While accumulating wealth can provide children with opportunities, Tim's work examines what it takes to prepare the next generation to understand and preserve those opportunities. Financial independence requires more than access to resources; it involves developing skills, evaluating risks, and making thoughtful decisions over time.
 
-He also hosts *Advice That Worked*, a podcast where business owners share the advice that changed the course of their businesses.
+For parents, this distinction becomes particularly meaningful when considering inheritance. Savings, property, businesses, and Bitcoin can all be transferred from one generation to another, but the understanding required to manage them must be developed through education and experience. Tim's approach emphasizes the importance of preparing children for that responsibility rather than assuming financial security can be inherited without effort.
 
-From traditional banking to Bitcoin and independent publishing, Miguel's career reflects a consistent interest in empowering people.
+His experiences as an entrepreneur and father bring a personal dimension to conversations about generational wealth. Alongside Miguel's background in traditional finance and Bitcoin technology, Tim's perspective helps connect complex financial questions with the practical concerns of families thinking about their children's futures.
 
-## Meet Tim Sae Koo: Building for the Next Generation
+Together, Miguel and Tim bring different professional experiences to a shared purpose: encouraging parents to consider how they can leave their children more than money.
 
-For Tim Sae Koo, Bitcoin is about much more than an asset.
+## Bitcoin After Us: Building a Legacy Beyond Money
 
-An entrepreneur, father, and founder of Generation Bitcoin, Tim is focused on helping families break cycles of financial scarcity and prepare their children for greater independence.
+The title *Bitcoin After Us* captures the central question behind the podcast. Bitcoin may continue operating long after today's holders are gone, but what happens to the financial resources, knowledge, and responsibilities associated with it when one generation passes them to the next?
 
-His work brings together entrepreneurship, personal development, education, and generational responsibility.
+Miguel and Tim explore that question through discussions about Bitcoin inheritance, financial literacy, parenting, entrepreneurship, and the decisions families make when preparing for the future. Rather than presenting Bitcoin as a universal solution to financial challenges, they examine how ownership creates responsibilities and why education matters when preparing people to manage what they inherit.
 
-Through Generation Bitcoin, Tim is exploring how parents can pass down not just financial resources, but the knowledge, values, and confidence necessary to use them wisely.
+In *The Bitcoin Inheritance Paradox and Why Proof of Work Is the Answer*, the hosts explore the distinction between inheriting an asset and understanding its value. Bitcoin can be transferred between generations, but the knowledge needed to manage it securely and responsibly does not automatically accompany that transfer. Understanding custody, risk, and long-term financial decisions requires education, experience, and preparation.
 
-It's a perspective shaped by his experiences as a founder and a father.
+Another episode, *The Future Gap: Why I Choose Bitcoin as a New Dad*, explores the financial challenges facing younger generations and why Bitcoin has become part of the conversation for parents thinking decades ahead. By connecting broader economic concerns with the personal experience of becoming a father, the episode considers how financial decisions made today may influence the opportunities available to children in the future.
 
-And it's one that complements Miguel's financial background.
+What makes Bitcoin After Us particularly engaging is the personal perspective its hosts bring to these conversations. Miguel and Tim aren't approaching these subjects solely as financial or technological questions. They're discussing issues that affect their own families and the futures they're working to build for their children.
 
-## Bitcoin After Us: The Conversation That Matters
+That perspective makes the podcast relevant beyond the Bitcoin community. Parents, entrepreneurs, and anyone interested in financial education can recognize the importance of preparing future generations to understand and manage the resources available to them. Bitcoin provides the foundation for the conversation, but the underlying themes of responsibility, education, and independence have much broader significance.
 
-Together, Miguel and Tim created *Bitcoin After Us* to explore a question that doesn't get nearly enough attention:
+## From Financial Sovereignty to Creator Ownership
 
-**What happens when the first generation of Bitcoin holders becomes the first generation to pass it on?**
+One reason we're particularly pleased to feature Miguel and Tim's work is the relationship between the ideas explored in Bitcoin After Us and the principles behind Certifyd. Both involve questions about ownership, independence, and how individuals can take greater responsibility for the systems they rely on.
 
-Their podcast tackles subjects ranging from inheritance and financial literacy to parenting, personal responsibility, and breaking generational cycles.
+Bitcoin provides an alternative approach to holding and transferring value, allowing individuals to participate in a financial network without requiring a central institution to maintain the underlying ledger. For many people, that independence represents an opportunity to exercise greater control over their own financial decisions.
 
-In their debut episode, *The Bitcoin Inheritance Paradox and Why Proof of Work Is the Answer*, they explore why passing down Bitcoin involves far more than handing over private keys.
+Creators face a different but related challenge. Musicians, writers, filmmakers, podcasters, and other independent professionals frequently depend on centralized platforms to establish their public identities, publish original work, and connect with audiences. Those services can provide valuable distribution and discovery, but they also place important aspects of a creator's digital presence under the control of third parties.
 
-In *Why I Choose Bitcoin as a New Dad*, they examine the financial challenges facing future generations and how Bitcoin may offer families more than financial opportunity.
+**Certifyd approaches creator infrastructure differently.** Certifyd Core runs on the creator's own computer, providing tools for establishing a verifiable identity, managing original work, and publishing content through independently operated infrastructure. Rather than requiring every creator to maintain their identity inside a single centralized platform, Certifyd is building a network where creators can establish their own presence while continuing to participate in the broader digital ecosystem.
 
-Their conversations have since expanded to include parents, educators, and specialists exploring the practical and human sides of building a lasting legacy.
+For someone whose professional journey includes traditional banking, Bitcoin financial technology, entrepreneurship, and education, the relationship between financial sovereignty and creator ownership is particularly relevant.
 
-It's thoughtful, personal, and grounded in lived experience.
+### Bitcoin Sherpa: Creator Sovereignty in Practice
 
-Because building generational wealth is one thing.
+Through his Bitcoin Sherpa identity, Miguel has established a Sovereign Creator presence using Certifyd Core. His public profile is available at [creator.orangebydesign.com/u/bitcoin-sherpa](https://creator.orangebydesign.com/u/bitcoin-sherpa), where his identity is connected to the original work he chooses to publish.
 
-**Raising a generation prepared to steward it is another.**
+Miguel has already published content from Bitcoin After Us through his Certifyd identity, demonstrating how independently operated creator infrastructure can support original media and connect published work with a verifiable creator identity. His profile is served through his own domain, giving him an independent foundation for his creative presence.
 
-## Why We're Proud to Feature Them on Certifyd
+This approach doesn't require Miguel to abandon established podcast platforms or social networks. Those services can continue helping him reach listeners and participate in wider conversations. Certifyd provides an additional layer of independence by allowing him to operate a creator identity and publishing environment outside those platforms.
 
-At Certifyd, we believe creators should have the freedom to own their identities, publish their work, and build relationships without depending entirely on centralized platforms.
+For podcasters, that distinction matters. Original episodes may circulate across multiple services, reach different audiences, and remain valuable long after their initial release. Connecting creative work to a verifiable identity provides another way to establish its origin while reducing dependence on any single distributor.
 
-That's why Miguel's participation in the network means so much to us.
+Miguel's participation is a practical example of the network Certifyd is working to build. He isn't simply discussing sovereignty as a philosophical concept; he's incorporating independently operated creator infrastructure into his own publishing journey.
 
-Through his Bitcoin Sherpa identity, Miguel has established a Sovereign Creator profile on his own independent Certifyd node:
+## Why We're Proud to Feature Bitcoin After Us
 
-https://creator.orangebydesign.com/u/bitcoin-sherpa
+One of the most rewarding aspects of building Certifyd is discovering the people who choose to participate in the network and the work they bring with them. Technology provides infrastructure, but its value ultimately comes from the creators who use it to share knowledge, experiences, and original ideas.
 
-He's already publishing verified works from *Bitcoin After Us*, bringing the same principles of independence that underpin Bitcoin into his creative life.
+Miguel Abascal and Tim Sae Koo represent the kind of independent voices we're excited to celebrate. Their podcast combines professional experience with personal commitment, addressing questions that matter to families, entrepreneurs, and communities. By exploring Bitcoin through the lens of fatherhood and generational responsibility, they're creating conversations that extend beyond technology into the decisions people make about their lives.
 
-It's a real example of what Certifyd was built to support.
+We're especially pleased that Miguel has chosen to establish his Bitcoin Sherpa creator identity through Certifyd Core. His participation demonstrates how creator-operated infrastructure can support original media while giving independent creators greater control over their digital presence. We're equally proud to recognize Tim's contribution to Bitcoin After Us, where his experience and perspective complement Miguel's and help shape the conversations they're bringing to listeners.
 
-Creators using their own infrastructure.
+As Certifyd grows, we want to celebrate creators by introducing their work to new audiences and helping people discover the individuals behind it. Our vision isn't to build another centralized platform where everyone must maintain their creative presence inside a single company's system. It's to support a network of independent creators who can establish their own identities, verify their work, and connect with others while retaining greater ownership and control.
 
-Work connected to verifiable identities.
+Featuring Bitcoin After Us is an opportunity to share an engaging podcast while showing what that vision looks like through the experience of a real creator already participating in the network.
 
-Independent voices sharing ideas that matter.
+## A Future Worth Building
 
-We believe Miguel and Tim represent exactly the kind of thoughtful, purpose-driven creators who make independent networks valuable.
+Every generation inherits something from the one before it, whether that's financial resources, knowledge, traditions, opportunities, or the challenges that shape how people see the world. The value of that inheritance often depends on how well the next generation has been prepared to understand it and build upon it.
 
-We're proud to have Miguel building with Certifyd, and we're equally proud to share the work these two friends are creating together.
+Through Bitcoin After Us, Miguel and Tim encourage listeners to think about that responsibility more carefully. Their conversations explore how financial education, independent thinking, and thoughtful preparation can help families build something that lasts, while recognizing that the most important lessons often come from personal experience.
 
-## The Future Belongs to Those Who Build It
+At Certifyd, we're proud to share their story, celebrate their work, and have Miguel participating in our growing network of sovereign creators. Their commitment to education, ownership, and independent thinking reflects the kind of creator community we're working to support.
 
-Bitcoin After Us is ultimately about the future.
+Whether you're a parent, entrepreneur, Bitcoin enthusiast, or simply curious about how to prepare future generations for greater financial independence, Bitcoin After Us offers a thoughtful place to begin.
 
-The future of money. The future of family. The future of ownership.
-
-And perhaps most importantly, the future we're preparing for the people who come after us.
-
-Miguel Abascal and Tim Sae Koo are helping bring those conversations forward, one episode at a time.
-
-We're honoured to share their story and to support independent creators who are putting the principles of ownership into practice.
-
-**Because a network is only as meaningful as the people who build it.**
-
-And these are exactly the people we're proud to build alongside.
-
----
+We encourage you to explore the podcast, get to know the people behind it, and discover the work Miguel is already publishing through his own Certifyd creator identity.
 
 ## Discover Bitcoin After Us
 
-**Listen to the podcast:** https://podcasts.apple.com/ca/podcast/bitcoin-after-us/id1877004616
+**Listen to Bitcoin After Us:** [Apple Podcasts](https://podcasts.apple.com/ca/podcast/bitcoin-after-us/id1877004616)
 
-**Miguel's Certifyd profile:** https://creator.orangebydesign.com/u/bitcoin-sherpa
+**Explore Miguel's Sovereign Creator profile:** [Bitcoin Sherpa on Certifyd](https://creator.orangebydesign.com/u/bitcoin-sherpa)
 
-**Miguel on LinkedIn:** https://www.linkedin.com/in/miguelabascal
+**Connect with Miguel Abascal:** [LinkedIn](https://www.linkedin.com/in/miguelabascal)
 
-**Tim on LinkedIn:** https://www.linkedin.com/in/timsaekoo
+**Connect with Tim Sae Koo:** [LinkedIn](https://www.linkedin.com/in/timsaekoo)
 
-**Advice That Worked:** https://advicethatworked.com
+**Discover Advice That Worked:** [Official Website](https://advicethatworked.com/)
 
 ---
 
