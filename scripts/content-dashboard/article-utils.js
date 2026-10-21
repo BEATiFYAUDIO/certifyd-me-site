@@ -101,3 +101,9 @@ function keywordMatches(haystack, keyword) {
   if (String(keyword).includes(' ')) return haystack.includes(String(keyword));
   return new RegExp(`\\b${escaped}\\b`).test(haystack);
 }
+
+// A published repository path is the article identity; editing a slug is not a new post.
+export function publishedArticleSlug(run) {
+  const repositoryPath = run.manifest?.publishing?.repositoryPath || '';
+  return /^content\/blog\/([a-z0-9-]+)\.md$/.exec(repositoryPath)?.[1] || '';
+}

@@ -2459,3 +2459,39 @@ function approvedBrainRecord(overrides = {}) {
     ...overrides,
   };
 }
+
+test('published edits retain repository identity and replace stale social metadata', async () => {
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-published-edit-'));
+  const outputDir = path.join(tmpRoot, 'engine', 'outputs');
+  const runId = 'published-edit-001';
+  const runDir = path.join(outputDir, runId);
+  await createMinimalRun(runDir, { title: 'Original', slug: 'original', status: 'PUBLISHED', seoDescription: 'Old broken description' });
+  const manifestPath = path.join(runDir, 'publication-manifest.json');
+  const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+  manifest.publishing = { repositoryPath: 'content/blog/original.md' };
+  await fs.writeFile(manifestPath, JSON.stringify(manifest));
+  const actions = new ContentDashboardActions(getDashboardConfig({ ...env, CONTENT_AGENT_ROOT: tmpRoot, CONTENT_AGENT_OUTPUT_DIR: outputDir, CONTENT_DASHBOARD_DB_PATH: ':memory:' }));
+  await actions.saveArticleMarkdown({ actor: { id: 'founder', email: 'founder@example.test', role: 'founder' }, runId,
+    articleMarkdown: '---\ntitle: "Edited"\nslug: "accidental-new-slug"\nexcerpt: "New excerpt"\nseoDescription: "Correct social summary"\n---\n\nUpdated body.' });
+  const run = await actions.runs.readRun(runId);
+  assert.equal(run.blogPackage.slug, 'original');
+  assert.equal(run.blogPackage.canonicalUrl, 'https://certifyd.me/blog/original/');
+  assert.equal(run.blogPackage.seoDescription, 'Correct social summary');
+  assert.equal(run.blogPackage.description, 'Correct social summary');
+  // Publisher must also defend identity if an older editor changes package fields.
+  run.blogPackage.slug = 'accidental-new-slug';
+  run.blogPackage.canonicalUrl = 'https://certifyd.me/blog/accidental-new-slug/';
+  const publisher = new GitHubPullRequestPublisher({ githubPublishing: { enabled: true, owner: 'owner', repo: 'repo', token: 'test', mode: 'direct', baseBranch: 'main' } }, { readRun: async () => run });
+  publisher.createInstallationToken = async () => 'test';
+  publisher.buildGeneratedSiteFiles = async (slug, markdown) => {
+    assert.equal(slug, 'original');
+    assert.match(markdown, /slug: "original"/);
+    assert.match(markdown, /seoDescription: "Correct social summary"/);
+    return [];
+  };
+  publisher.publishMirrors = async () => [];
+  const result = await publisher.createPullRequest({ actor: { email: 'founder@example.test' }, runId });
+  assert.equal(result.repositoryPath, 'content/blog/original.md');
+  assert.equal(result.canonicalUrl, 'https://certifyd.me/blog/original/');
+  await fs.rm(tmpRoot, { recursive: true, force: true });
+});

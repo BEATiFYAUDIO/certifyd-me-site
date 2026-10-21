@@ -6,14 +6,16 @@ date: "2026-10-20"
 updated: "2026-10-20"
 excerpt: "Meet Miguel Abascal and Tim Sae Koo, the fathers behind Bitcoin After Us, exploring Bitcoin, financial independence, generational wealth and creator sovereignty."
 coverImage: "/images/blog/bitcoin-after-us-two-fathers-one-mission-and-a-future-worth-building-1792525997680.png"
-coverImageAlt: ""
+coverImageAlt: "Bitcoin After Us — Miguel Abascal and Tim Sae Koo"
+socialImageWidth: 1672
+socialImageHeight: 941
 coverImageCredit: ""
 coverImageCreditUrl: ""
 coverImageProvider: "upload"
 tags: []
 status: "published"
-seoTitle: "Bitcoin After Us: Two Fathers, One Mission, and a Future Worth Building | Certifyd"
-seoDescription: "A Certifyd Sovereign Creator Spotlight featuring Miguel Abascal and Tim Sae Koo <text </text What do we really leave behind for the next generation? For Miguel Abascal and Tim Sae Koo, the answer goes far beyond money. Together, they're the voices behind Bitco"
+seoTitle: "Bitcoin After Us: Miguel Abascal, Tim Sae Koo and Creator Sovereignty"
+seoDescription: "Meet Miguel Abascal and Tim Sae Koo, the fathers behind Bitcoin After Us, exploring Bitcoin inheritance, generational wealth and creator sovereignty."
 ---
 
 # Bitcoin After Us: Two Fathers, One Mission, and a Future Worth Building

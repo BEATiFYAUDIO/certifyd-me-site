@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { validateRunId } from './security.js';
-import { normalizeArticleTitle, selectArticleCoverImage } from './article-utils.js';
+import { normalizeArticleTitle, publishedArticleSlug, selectArticleCoverImage } from './article-utils.js';
 import { publicArticleBodyMarkdown, stripMarkdownFrontmatter } from './public-markdown.js';
 
 export class GitHubPullRequestPublisher {
@@ -37,7 +37,7 @@ export class GitHubPullRequestPublisher {
       throw Object.assign(new Error('Run is not ready for publishing.'), { statusCode: 409 });
     }
     const pkg = run.blogPackage || {};
-    const slug = safeSlug(pkg.slug || run.summary.slug || runId);
+    const slug = safeSlug(publishedArticleSlug(run) || pkg.slug || run.summary.slug || runId);
     const title = normalizeArticleTitle(pkg.title || run.summary.title);
     const markdown = buildBlogMarkdown(pkg, run);
     const installationToken = await this.createInstallationToken();
@@ -58,7 +58,7 @@ export class GitHubPullRequestPublisher {
       return {
         ok: true,
         output: [
-          `Published directly to ${this.config.baseBranch}: ${pkg.canonicalUrl || run.summary.canonicalUrl || `https://certifyd.me/blog/${slug}/`}`,
+          `Published directly to ${this.config.baseBranch}: https://certifyd.me/blog/${slug}/`,
           ...mirrorOutputLines(mirrors, 'Mirrored to', 'Preview mirror failed'),
         ].join('\n'),
         publishMode: 'direct',
@@ -66,7 +66,7 @@ export class GitHubPullRequestPublisher {
         mirrors,
         branchName: this.config.baseBranch,
         repositoryPath: `content/blog/${slug}.md`,
-        canonicalUrl: pkg.canonicalUrl || run.summary.canonicalUrl || `https://certifyd.me/blog/${slug}/`,
+        canonicalUrl: `https://certifyd.me/blog/${slug}/`,
       };
     }
     const branchName = `${this.config.branchPrefix}/${slug}-${Date.now()}`;
@@ -108,7 +108,7 @@ export class GitHubPullRequestPublisher {
       pullRequestUrl: pull.html_url,
       branchName,
       repositoryPath: `content/blog/${slug}.md`,
-      canonicalUrl: pkg.canonicalUrl || run.summary.canonicalUrl || `https://certifyd.me/blog/${slug}/`,
+      canonicalUrl: `https://certifyd.me/blog/${slug}/`,
     };
   }
 
@@ -119,7 +119,7 @@ export class GitHubPullRequestPublisher {
     }
     const run = await this.runs.readRun(runId);
     const pkg = run.blogPackage || {};
-    const slug = safeSlug(pkg.slug || run.summary.slug || runId);
+    const slug = safeSlug(publishedArticleSlug(run) || pkg.slug || run.summary.slug || runId);
     const title = normalizeArticleTitle(pkg.title || run.summary.title);
     const markdown = buildBlogMarkdown(pkg, run, { status: 'archived' });
     const installationToken = await this.createInstallationToken();
@@ -148,7 +148,7 @@ export class GitHubPullRequestPublisher {
       return {
         ok: true,
         output: [
-          `Unpublished directly from ${this.config.baseBranch}: ${pkg.canonicalUrl || run.summary.canonicalUrl || `https://certifyd.me/blog/${slug}/`}`,
+          `Unpublished directly from ${this.config.baseBranch}: https://certifyd.me/blog/${slug}/`,
           ...mirrorOutputLines(mirrors, 'Mirrored unpublish to', 'Preview unpublish mirror failed'),
         ].join('\n'),
         publishMode: 'direct',
@@ -157,7 +157,7 @@ export class GitHubPullRequestPublisher {
         branchName: this.config.baseBranch,
         repositoryPath: `content/blog/${slug}.md`,
         removedPath: `blog/${slug}/index.html`,
-        canonicalUrl: pkg.canonicalUrl || run.summary.canonicalUrl || `https://certifyd.me/blog/${slug}/`,
+        canonicalUrl: `https://certifyd.me/blog/${slug}/`,
       };
     }
     const branchName = `${this.config.branchPrefix}/unpublish-${slug}-${Date.now()}`;
@@ -207,7 +207,7 @@ export class GitHubPullRequestPublisher {
       branchName,
       repositoryPath: `content/blog/${slug}.md`,
       removedPath: `blog/${slug}/index.html`,
-      canonicalUrl: pkg.canonicalUrl || run.summary.canonicalUrl || `https://certifyd.me/blog/${slug}/`,
+      canonicalUrl: `https://certifyd.me/blog/${slug}/`,
     };
   }
 
@@ -348,7 +348,7 @@ function buildBlogMarkdown(pkg, run, options = {}) {
       : [];
   const frontmatter = {
     title: normalizeArticleTitle(pkg.title || run.summary.title),
-    slug: safeSlug(pkg.slug || run.summary.slug || run.summary.runId),
+    slug: safeSlug(publishedArticleSlug(run) || pkg.slug || run.summary.slug || run.summary.runId),
     author: pkg.author || 'Certifyd',
     date: pkg.date || today,
     updated: pkg.updated || today,
@@ -360,6 +360,7 @@ function buildBlogMarkdown(pkg, run, options = {}) {
       excerpt: pkg.excerpt || pkg.description || run.summary.summary || '',
       body: publicArticleBodyMarkdown(pkg.body, run.articleMarkdown),
     }),
+    ...(pkg.socialImageWidth && pkg.socialImageHeight ? { socialImageWidth: pkg.socialImageWidth, socialImageHeight: pkg.socialImageHeight } : {}),
     coverImageAlt: pkg.coverImageAlt || '',
     coverImageCredit: pkg.coverImageCredit || '',
     coverImageCreditUrl: pkg.coverImageCreditUrl || '',

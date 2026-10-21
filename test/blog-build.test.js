@@ -281,3 +281,19 @@ test('unsafe cover image paths fail validation', async () => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /unsafe path/);
 });
+
+test('social dimensions and Bitcoin duplicate redirect preserve the canonical article', async () => {
+  const slug = 'bitcoin-after-us-two-fathers-one-mission-and-a-future-worth-building';
+  const markdown = article({ title: 'Bitcoin After Us', slug, date: '2026-10-20' }).replace('tags:', 'socialImageWidth: 1672\nsocialImageHeight: 941\ntags:');
+  const root = await makeFixture({ 'bitcoin.md': markdown });
+  const result = runBuild(root);
+  assert.equal(result.status, 0, result.stderr);
+  const html = await fs.readFile(path.join(root, 'blog', slug, 'index.html'), 'utf8');
+  assert.match(html, /property="og:image:width" content="1672"/);
+  assert.match(html, /property="og:image:height" content="941"/);
+  const alias = await fs.readFile(path.join(root, 'blog', 'bitcoin-after-us-miguel-abascal-tim-sae-koo', 'index.html'), 'utf8');
+  assert.ok(alias.includes(`http-equiv="refresh" content="0; url=https://certifyd.me/blog/${slug}/"`));
+  const index = await fs.readFile(path.join(root, 'blog', 'index.html'), 'utf8');
+  assert.equal((index.match(/class="blog-card"/g) || []).length, 1);
+  await fs.rm(root, { recursive: true, force: true });
+});

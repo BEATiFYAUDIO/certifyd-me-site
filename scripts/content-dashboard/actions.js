@@ -7,7 +7,7 @@ import { validateRunId, validateVersion } from './security.js';
 import { ContentRunRepository } from './repository.js';
 import { createPublisher } from './publisher.js';
 import { buildGroundedContext, createDeterministicFallbackArticle, createGenerationProvider, normalizeProviderName, persistGeneratedArticleRun } from './generation-provider.js';
-import { cleanArticlePromptText, isSafeImagePath, normalizeArticleTitle, selectArticleCoverImage } from './article-utils.js';
+import { cleanArticlePromptText, isSafeImagePath, normalizeArticleTitle, publishedArticleSlug, selectArticleCoverImage } from './article-utils.js';
 import { appendGlobalPexelsHistory, selectAutomatedCoverImage } from './cover-image-provider.js';
 import { approveGeneratedBlogImage, ensureImageBriefForRun, generateBlogImage } from './image-generation.js';
 import { isApprovedBrainRecord } from './brain-utils.js';
@@ -1043,7 +1043,9 @@ export class ContentDashboardActions {
     const body = stripFrontmatter(markdown);
     const title = cleanArticlePromptText(frontmatterValue(markdown, 'title') || markdown.match(/^#\s+(.+)$/m)?.[1] || run.summary.title || runId, run.summary.title || 'Untitled article');
     const excerpt = cleanString(frontmatterValue(markdown, 'excerpt') || excerptFromMarkdown(body, title), 260);
-    const slug = safeSlug(frontmatterValue(markdown, 'slug') || run.blogPackage?.slug || run.summary.slug || title);
+    const slug = safeSlug(publishedArticleSlug(run) || frontmatterValue(markdown, 'slug') || run.blogPackage?.slug || run.summary.slug || title);
+    const seoTitle = cleanArticlePromptText(frontmatterValue(markdown, 'seoTitle') || `${title} | Certifyd`, `${title} | Certifyd`);
+    const seoDescription = cleanString(frontmatterValue(markdown, 'seoDescription') || excerpt, 260);
     const manifest = await this.readRunJson(base, 'publication-manifest.json', {});
     const article = await this.readRunJson(base, 'final/article.json', {});
     const blogPackage = await this.readRunJson(base, 'blog/blog-post.json', {});
@@ -1059,8 +1061,8 @@ export class ContentDashboardActions {
       title,
       slug,
       excerpt,
-      seoTitle: cleanArticlePromptText(article.seoTitle || `${title} | Certifyd`, `${title} | Certifyd`),
-      seoDescription: article.seoDescription || excerpt,
+      seoTitle,
+      seoDescription,
       bodyMarkdown: body,
       version,
       status: article.status || 'draft',
@@ -1071,7 +1073,9 @@ export class ContentDashboardActions {
       title,
       slug,
       excerpt,
-      description: blogPackage.description || excerpt,
+      description: seoDescription,
+      seoTitle,
+      seoDescription,
       body,
       canonicalUrl: blogUrl(slug),
     });

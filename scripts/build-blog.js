@@ -37,6 +37,11 @@ const IMPORTANT_PUBLIC_PAGES = [
 ];
 const STATIC_COMPAT_REDIRECTS = [
   {
+    fromPath: '/blog/bitcoin-after-us-miguel-abascal-tim-sae-koo/',
+    toPath: '/blog/bitcoin-after-us-two-fathers-one-mission-and-a-future-worth-building/',
+    title: 'Bitcoin After Us: Two Fathers, One Mission, and a Future Worth Building',
+  },
+  {
     fromPath: '/blog/meet-ansolas-musician-building-his-own-tools/',
     toPath: '/blog/ansolas-building-what-he-wishes-existed/',
     title: 'Ansolas and the Independent Creator Mindset',
@@ -335,6 +340,8 @@ async function readArticles() {
       excerpt,
       coverImage,
       socialImage,
+      socialImageWidth: Number(data.socialImageWidth) || SOCIAL_IMAGE_WIDTH,
+      socialImageHeight: Number(data.socialImageHeight) || SOCIAL_IMAGE_HEIGHT,
       coverImageAlt,
       coverImageCredit,
       coverImageCreditUrl,
@@ -514,8 +521,8 @@ async function writeArticle(article, template) {
     googleVerificationMeta: verificationMeta(),
     ogImage: absoluteUrl(ogImagePath),
     ogImageType: socialImageType(ogImagePath),
-    ogImageWidth: SOCIAL_IMAGE_WIDTH,
-    ogImageHeight: SOCIAL_IMAGE_HEIGHT,
+    ogImageWidth: article.socialImageWidth,
+    ogImageHeight: article.socialImageHeight,
     ogImageAlt: escapeHtml(article.coverImageAlt || article.title),
     publishedIso: article.date.toISOString(),
     updatedIso: article.updated.toISOString(),
