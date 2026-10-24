@@ -21,6 +21,7 @@ import {
   readDistributionState,
   writeDistributionDefaults,
   writeDistributionState,
+  withDistributionLock,
 } from './distribution-adapters.js';
 import {
   applyDistributionPackageEdit,
@@ -637,9 +638,10 @@ export class ContentDashboardActions {
     return result;
   }
 
-  async publishToCertifyd({ actor, runId, version, republish = false }) {
+  async publishToCertifyd({ actor, runId, version, republish = false, locked = false }) {
     validateRunId(runId);
     validateVersion(version);
+    if (!locked) return withDistributionLock(this.runs, runId, () => this.publishToCertifyd({ actor, runId, version, republish, locked: true }));
     try {
       const run = await this.runs.readRun(runId);
       if (run.summary.version !== version) {
@@ -659,6 +661,9 @@ export class ContentDashboardActions {
       const status = directPublish ? 'PUBLISHING_DEPLOYMENT' : 'PUBLISHING_REVIEW';
       const publishing = {
         status,
+        version,
+        articleHtmlHash: result.articleHtmlHash || '',
+        sourceFingerprint: distributionSourceFingerprint(run),
         mode: result.publishMode || 'draft-pr',
         pullRequestUrl: result.pullRequestUrl || '',
         branchName: result.branchName || '',
@@ -677,8 +682,13 @@ export class ContentDashboardActions {
         publishability: status,
         publishing,
         canonicalUrl: publishing.canonicalUrl || manifest.canonicalUrl || '',
+        liveVerifiedAt: '',
+        liveVerifiedVersion: '',
         updatedAt: now,
       });
+      const distribution = await readDistributionState(this.runs, runId);
+      distribution.destinations = { ...(distribution.destinations || {}), certifyd: { ...(distribution.destinations?.certifyd || {}), status: DESTINATION_STATES.PUBLISHING, externalUrl: publishing.canonicalUrl, lastError: '', updatedAt: now } };
+      await writeDistributionState(this.runs, runId, { ...distribution, updatedAt: now });
       await this.touchLifecycle(base, {
         type: 'PUBLISHING',
         actor: actor.email,
@@ -689,7 +699,7 @@ export class ContentDashboardActions {
       await this.audit.append({ action: 'publishing_pull_request', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, version, result: 'SUCCESS', note: indexNow.submitted ? `IndexNow ${indexNow.ok ? 'ok' : 'failed'}` : '' });
       return result;
     } catch (error) {
-      await this.audit.append({ action: 'publishing_pull_request', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, version, result: 'FAILED', note: error.message });
+      await this.audit.append({ action: 'publishing_pull_request', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, version, result: 'FAILED', note: safeError(error, this.config.env) });
       throw error;
     }
   }
@@ -789,90 +799,167 @@ export class ContentDashboardActions {
     return { ok: true, output: `Marked ${destinationId} ${status}.` };
   }
 
-  async distributeArticle({ actor, runId, version, destinations = [], retryFailed = false }) {
+  async distributeArticle({ actor, runId, version, destinations = [], retryFailed = false, destinationId = '' }) {
     validateRunId(runId);
     validateVersion(version);
     if (actor.role !== 'founder') throw Object.assign(new Error('Founder approval is required before distribution.'), { statusCode: 403 });
-    const run = await this.runs.readRun(runId);
-    if (run.summary.version !== version) throw Object.assign(new Error('Distribution requires the exact displayed version.'), { statusCode: 409 });
-    if (!isDistributionEligible(run.summary)) throw Object.assign(new Error('Only approved, ready, publishing or published articles can be distributed.'), { statusCode: 409 });
-
-    let selected = this.normalizeDistributionSelections(destinations, { allowCertifyd: true });
-    if (!selected.length && !retryFailed) {
-      const defaults = await readDistributionDefaults(this.config);
-      selected = this.normalizeDistributionSelections(defaults.destinations || [], { allowCertifyd: true });
-    }
-    if (!selected.length) throw Object.assign(new Error('Select at least one distribution destination.'), { statusCode: 400 });
-
-    const baseState = await readDistributionState(this.runs, runId);
-    const state = { destinations: {}, updatedAt: new Date().toISOString(), updatedBy: actor.email, ...baseState, destinations: { ...(baseState.destinations || {}) } };
-    const article = distributionArticle(run);
-    const results = [];
-
-    if (selected.includes('certifyd') && !isPublishedLike(run.summary)) {
-      try {
-        const result = await this.publishToCertifyd({ actor, runId, version });
-        state.destinations.certifyd = publishedState({ previous: state.destinations.certifyd, externalPostId: 'certifyd-blog', externalUrl: result.canonicalUrl || article.canonicalUrl });
-        article.canonicalUrl = result.canonicalUrl || article.canonicalUrl;
-        results.push({ id: 'certifyd', status: DESTINATION_STATES.PUBLISHED, url: article.canonicalUrl });
-      } catch (error) {
-        state.destinations.certifyd = failedState(state.destinations.certifyd, error);
-        results.push({ id: 'certifyd', status: DESTINATION_STATES.FAILED, error: error.message });
+    return withDistributionLock(this.runs, runId, async () => {
+      const run = await this.runs.readRun(runId);
+      if (run.summary.version !== version) throw Object.assign(new Error('Distribution requires the exact displayed version.'), { statusCode: 409 });
+      if (!isDistributionEligible(run.summary)) throw Object.assign(new Error('Only approved, ready, publishing or published articles can be distributed.'), { statusCode: 409 });
+      const baseState = await readDistributionState(this.runs, runId);
+      const state = { ...baseState, destinations: { ...(baseState.destinations || {}) }, updatedBy: actor.email };
+      let selected = this.normalizeDistributionSelections(destinations, { allowCertifyd: true });
+      if (retryFailed) {
+        const target = cleanString(destinationId, 80);
+        selected = Object.keys(state.destinations).filter((id) => (!target || id === target) && id !== 'certifyd' && state.destinations[id]?.status === DESTINATION_STATES.FAILED && !state.destinations[id]?.uncertainAcceptance);
+        if (!selected.length) throw Object.assign(new Error('No failed destination is eligible for retry. Uncertain outcomes must be reconciled first.'), { statusCode: 409 });
+      } else if (!selected.length) {
+        const defaults = await readDistributionDefaults(this.config);
+        selected = this.normalizeDistributionSelections(defaults.destinations || [], { allowCertifyd: true });
       }
-    } else if (selected.includes('certifyd')) {
-      state.destinations.certifyd = publishedState({ previous: state.destinations.certifyd, externalPostId: 'certifyd-blog', externalUrl: article.canonicalUrl });
-      results.push({ id: 'certifyd', status: DESTINATION_STATES.PUBLISHED, url: article.canonicalUrl });
-    }
-
-    for (const adapter of this.distributionAdapters.filter((item) => item.id !== 'certifyd' && selected.includes(item.id))) {
-      const previous = state.destinations[adapter.id] || {};
-      let attemptedState = previous;
-      try {
-        const connection = adapter.connectionStatus();
-        if (adapter.kind !== 'manual' && connection.status !== 'connected') {
-          throw new Error(`${adapter.displayName} is not connected.`);
+      if (!selected.length) throw Object.assign(new Error('Select at least one distribution destination.'), { statusCode: 400 });
+      const article = distributionArticle(run);
+      const results = [];
+      const automatic = selected.filter((id) => id !== 'certifyd' && this.distributionAdapters.find((item) => item.id === id)?.kind !== 'manual');
+      let canonicalBlock = '';
+      if (!isVerifiedCanonical(run)) {
+        if (selected.includes('certifyd') && !isPublishedLike(run.summary)) {
+          try {
+            const result = await this.publishToCertifyd({ actor, runId, version, locked: true });
+            state.destinations.certifyd = { ...(state.destinations.certifyd || {}), status: DESTINATION_STATES.PUBLISHING, externalUrl: result.canonicalUrl || article.canonicalUrl, updatedAt: new Date().toISOString(), lastError: '' };
+            canonicalBlock = 'Certifyd publication was requested. Verify the public article live before automatic distribution.';
+            results.push({ id: 'certifyd', status: DESTINATION_STATES.PUBLISHING });
+          } catch (error) {
+            canonicalBlock = `Certifyd publishing failed: ${safeError(error, this.config.env)}`;
+            state.destinations.certifyd = failedState(state.destinations.certifyd, error, {}, this.config.env);
+            results.push({ id: 'certifyd', status: DESTINATION_STATES.FAILED, error: canonicalBlock });
+          }
+        } else {
+          canonicalBlock = run.manifest?.publishing?.sourceFingerprint && run.manifest.publishing.sourceFingerprint !== distributionSourceFingerprint(run)
+            ? 'The article changed after its last Certifyd publication. Republish and verify the new live version before automatic distribution.'
+            : 'Certifyd is not verified live for this exact article version. Use Verify Live before automatic distribution.';
         }
-        if (previous.externalPostId && [DESTINATION_STATES.PUBLISHED, DESTINATION_STATES.SENT].includes(previous.status) && !retryFailed) {
-          results.push({ id: adapter.id, status: DESTINATION_STATES.SENT, skipped: true, url: previous.externalUrl || '' });
+      } else if (selected.includes('certifyd')) {
+        state.destinations.certifyd = publishedState({ previous: state.destinations.certifyd, externalPostId: 'certifyd-blog', externalUrl: article.canonicalUrl });
+        results.push({ id: 'certifyd', status: DESTINATION_STATES.PUBLISHED, url: article.canonicalUrl });
+      }
+      if (canonicalBlock) {
+        for (const id of automatic) {
+          const previous = state.destinations[id] || {};
+          if (![DESTINATION_STATES.SENT, DESTINATION_STATES.PUBLISHED, DESTINATION_STATES.UNCERTAIN, DESTINATION_STATES.SENDING].includes(previous.status) && !previous.uncertainAcceptance) {
+            state.destinations[id] = { ...previous, status: DESTINATION_STATES.QUEUED, blockedReason: canonicalBlock, updatedAt: new Date().toISOString() };
+          }
+          results.push({ id, status: state.destinations[id]?.status || DESTINATION_STATES.QUEUED, error: canonicalBlock });
+        }
+        await writeDistributionState(this.runs, runId, { ...state, updatedAt: new Date().toISOString() });
+      }
+      for (const adapter of this.distributionAdapters.filter((item) => item.id !== 'certifyd' && selected.includes(item.id))) {
+        if (canonicalBlock && adapter.kind !== 'manual') continue;
+        const previous = state.destinations[adapter.id] || {};
+        if (previous.status === DESTINATION_STATES.SENDING || previous.status === DESTINATION_STATES.UNCERTAIN || previous.uncertainAcceptance) {
+          const error = `${adapter.displayName} may have accepted an earlier attempt. Check the platform and reconcile the outcome before retrying.`;
+          if (previous.status === DESTINATION_STATES.SENDING) {
+            const detectedAt = new Date().toISOString();
+            const history = [...(previous.attemptHistory || [])];
+            if (history.length) history[history.length - 1] = { ...history.at(-1), result: DESTINATION_STATES.UNCERTAIN, uncertain: true, error, detectedAt };
+            state.destinations[adapter.id] = { ...previous, status: DESTINATION_STATES.UNCERTAIN, uncertainAcceptance: true, lastError: error, attemptHistory: history, updatedAt: detectedAt };
+            await writeDistributionState(this.runs, runId, { ...state, updatedAt: new Date().toISOString() });
+          }
+          results.push({ id: adapter.id, status: DESTINATION_STATES.UNCERTAIN, error });
           continue;
         }
-        if (retryFailed && previous.uncertainAcceptance) {
-          throw new Error(`${adapter.displayName} failed after an API attempt with uncertain acceptance. Check the platform manually before retrying.`);
+        const confirmed = [DESTINATION_STATES.SENT, DESTINATION_STATES.PUBLISHED].includes(previous.status);
+        const legacyPayload = previous.externalPostId && adapter.supportsUpdate ? preflightApiDistribution(adapter, article, previous, 'update').payload : null;
+        const sameLegacyPayload = previous.sentPayload && legacyPayload && JSON.stringify(previous.sentPayload) === JSON.stringify(legacyPayload);
+        if (adapter.kind !== 'manual' && confirmed && (previous.lastSuccessfulVersion === version || (!previous.lastSuccessfulVersion && (!previous.sentPayload || sameLegacyPayload)))) {
+          results.push({ id: adapter.id, status: previous.status, skipped: true, url: previous.externalUrl || '' });
+          continue;
         }
-        const preflight = preflightApiDistribution(adapter, article, previous);
-        if (!preflight.ok) throw new Error(`Distribution preflight failed: ${preflight.errors.join(' ')}`);
-        attemptedState = { ...previous, status: 'approved', preflight, approvedPayload: preflight.payload, updatedAt: new Date().toISOString() };
-        state.destinations[adapter.id] = attemptedState;
-        attemptedState = { ...attemptedState, status: DESTINATION_STATES.SENDING, retryCount: Number(previous.retryCount || 0) + (retryFailed ? 1 : 0), updatedAt: new Date().toISOString() };
-        state.destinations[adapter.id] = attemptedState;
+        const operation = adapter.kind === 'manual' ? 'export' : previous.externalPostId && adapter.supportsUpdate ? 'update' : 'publish';
+        const key = distributionOperationKey(runId, version, adapter.id, operation);
+        if (adapter.kind !== 'manual' && [DESTINATION_STATES.SENT, DESTINATION_STATES.PUBLISHED].includes(previous.status) && previous.operationKey === key) {
+          results.push({ id: adapter.id, status: previous.status, skipped: true, url: previous.externalUrl || '' });
+          continue;
+        }
+        if (adapter.kind !== 'manual' && previous.externalPostId && !adapter.supportsUpdate) {
+          results.push({ id: adapter.id, status: previous.status, skipped: true, url: previous.externalUrl || '' });
+          continue;
+        }
+        const attempt = { attemptId: crypto.randomUUID(), operationKey: key, runId, destination: adapter.id, articleVersion: version, operation, startedAt: new Date().toISOString(), endedAt: '', result: 'preparing', priorExternalPostId: previous.externalPostId || '', priorExternalUrl: previous.externalUrl || '', externalPostId: '', externalUrl: '', error: '', uncertain: false };
+        const history = [...(previous.attemptHistory || []), attempt];
+        state.destinations[adapter.id] = { ...previous, status: DESTINATION_STATES.QUEUED, operationKey: key, attemptId: attempt.attemptId, attemptHistory: history, updatedAt: attempt.startedAt };
+        await writeDistributionState(this.runs, runId, { ...state, updatedAt: new Date().toISOString() });
+        let requestStarted = false;
         let publishResult;
-        if (previous.externalPostId && adapter.supportsUpdate) publishResult = await adapter.updateArticle(article, previous);
-        else publishResult = await adapter.publishArticle(article, previous);
-        if (adapter.kind === 'manual') {
-          state.destinations[adapter.id] = manualReadyState(previous, publishResult);
-          results.push({ id: adapter.id, status: DESTINATION_STATES.MANUAL_READY });
-        } else {
-          state.destinations[adapter.id] = {
-            ...attemptedState,
-            status: DESTINATION_STATES.SENT,
-            externalPostId: publishResult.externalPostId || previous.externalPostId || '',
-            externalUrl: publishResult.externalUrl || previous.externalUrl || '',
-            lastError: '',
-            sentPayload: preflight.payload,
-            sentAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          results.push({ id: adapter.id, status: DESTINATION_STATES.SENT, url: publishResult.externalUrl || '' });
+        try {
+          if (adapter.kind !== 'manual' && adapter.connectionStatus().status !== 'connected') throw new Error(`${adapter.displayName} is not connected.`);
+          const preflight = preflightApiDistribution(adapter, article, previous, operation);
+          if (!preflight.ok) throw new Error(`Distribution preflight failed: ${preflight.errors.join(' ')}`);
+          const sendingAt = new Date().toISOString();
+          state.destinations[adapter.id] = { ...state.destinations[adapter.id], status: DESTINATION_STATES.SENDING, preflight, approvedPayload: preflight.payload, sendingAt, updatedAt: sendingAt, attemptHistory: history.slice(0, -1).concat({ ...attempt, result: 'in_flight' }) };
+          await writeDistributionState(this.runs, runId, { ...state, updatedAt: sendingAt });
+          requestStarted = true;
+          publishResult = operation === 'update' ? await adapter.updateArticle(article, previous) : await adapter.publishArticle(article, previous);
+          if (adapter.kind !== 'manual' && !publishResult?.externalPostId && !previous.externalPostId) throw new Error(`${adapter.displayName} returned no external post ID; confirm whether the post was created before retrying.`);
+          const endedAt = new Date().toISOString();
+          const externalPostId = publishResult?.externalPostId || previous.externalPostId || '';
+          const externalUrl = publishResult?.externalUrl || previous.externalUrl || '';
+          if (externalUrl && !isSafeExternalUrl(externalUrl)) throw new Error(`${adapter.displayName} returned an invalid external URL; reconcile the outcome before retrying.`);
+          const status = adapter.kind === 'manual' ? DESTINATION_STATES.MANUAL_READY : DESTINATION_STATES.SENT;
+          state.destinations[adapter.id] = { ...state.destinations[adapter.id], status, externalPostId, externalUrl, exportContent: adapter.kind === 'manual' ? publishResult.exportContent || '' : undefined, lastError: '', blockedReason: '', uncertainAcceptance: false, lastSuccessfulVersion: adapter.kind === 'manual' ? previous.lastSuccessfulVersion || '' : version, sentAt: endedAt, updatedAt: endedAt, sentPayload: preflight.payload, attemptHistory: history.slice(0, -1).concat({ ...attempt, endedAt, result: status, externalPostId, externalUrl }) };
+          await writeDistributionState(this.runs, runId, { ...state, updatedAt: endedAt });
+          results.push({ id: adapter.id, status, url: externalUrl });
+        } catch (error) {
+          const sanitized = safeError(error, this.config.env);
+          const uncertain = requestStarted && adapter.kind !== 'manual';
+          const endedAt = new Date().toISOString();
+          const status = uncertain ? DESTINATION_STATES.UNCERTAIN : DESTINATION_STATES.FAILED;
+          const returnedId = publishResult?.externalPostId || '';
+          const returnedUrl = isSafeExternalUrl(publishResult?.externalUrl || '') ? publishResult.externalUrl : '';
+          state.destinations[adapter.id] = { ...state.destinations[adapter.id], status, externalPostId: returnedId || previous.externalPostId || '', externalUrl: returnedUrl || previous.externalUrl || '', lastError: sanitized, uncertainAcceptance: uncertain, retryCount: Number(previous.retryCount || 0) + 1, updatedAt: endedAt, attemptHistory: history.slice(0, -1).concat({ ...attempt, endedAt, result: status, externalPostId: returnedId, externalUrl: returnedUrl, error: sanitized, uncertain }) };
+          await writeDistributionState(this.runs, runId, { ...state, updatedAt: endedAt });
+          results.push({ id: adapter.id, status, error: sanitized });
         }
-      } catch (error) {
-        state.destinations[adapter.id] = failedState(attemptedState, error, { uncertainAcceptance: adapter.kind !== 'manual' && adapter.connectionStatus().status === 'connected' });
-        results.push({ id: adapter.id, status: DESTINATION_STATES.FAILED, error: error.message });
       }
-    }
+      await this.audit.append({ action: 'article_distribution', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, version, result: results.some((item) => [DESTINATION_STATES.PUBLISHED, DESTINATION_STATES.SENT, DESTINATION_STATES.MANUAL_READY].includes(item.status)) ? 'SUCCESS' : 'FAILED', note: results.map((item) => `${item.id}:${item.status}`).join(',') });
+      return { ok: true, results, output: distributionResultText(results) };
+    });
+  }
 
-    await writeDistributionState(this.runs, runId, state);
-    await this.audit.append({ action: 'article_distribution', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, version, result: results.some((item) => item.status === DESTINATION_STATES.PUBLISHED || item.status === DESTINATION_STATES.SENT || item.status === DESTINATION_STATES.MANUAL_READY) ? 'SUCCESS' : 'FAILED', note: results.map((item) => `${item.id}:${item.status}`).join(',') });
-    return { ok: true, results, output: distributionResultText(results) };
+  async resolveDistributionOutcome({ actor, runId, destinationId, resolution, externalPostId = '', externalUrl = '' }) {
+    validateRunId(runId);
+    if (actor.role !== 'founder') throw Object.assign(new Error('Founder approval is required to reconcile distribution.'), { statusCode: 403 });
+    const id = cleanString(destinationId, 80);
+    if (!this.distributionAdapters.some((item) => item.id === id && item.kind !== 'manual' && id !== 'certifyd')) throw Object.assign(new Error('Unknown automatic destination.'), { statusCode: 400 });
+    if (!['confirmed', 'not_published'].includes(resolution)) throw Object.assign(new Error('Choose a valid reconciliation outcome.'), { statusCode: 400 });
+    return withDistributionLock(this.runs, runId, async () => {
+      const state = await readDistributionState(this.runs, runId);
+      const previous = state.destinations?.[id];
+      if (!previous || ![DESTINATION_STATES.UNCERTAIN, DESTINATION_STATES.SENDING].includes(previous.status)) throw Object.assign(new Error('This destination has no uncertain attempt to reconcile.'), { statusCode: 409 });
+      const last = previous.attemptHistory?.at(-1);
+      const postId = cleanString(externalPostId, 200);
+      const postUrl = cleanString(externalUrl, 2000);
+      if (resolution === 'confirmed' && !postId) throw Object.assign(new Error('A confirmed external post ID is required.'), { statusCode: 400 });
+      if (resolution === 'confirmed' && previous.externalPostId && previous.externalPostId !== postId) throw Object.assign(new Error('The confirmed post ID must match the existing external post ID.'), { statusCode: 400 });
+      if (postUrl && !isSafeExternalUrl(postUrl)) throw Object.assign(new Error('External URL must be a safe HTTPS post URL.'), { statusCode: 400 });
+      const now = new Date().toISOString();
+      const status = resolution === 'confirmed' ? DESTINATION_STATES.SENT : DESTINATION_STATES.FAILED;
+      state.destinations[id] = {
+        ...previous,
+        status,
+        uncertainAcceptance: false,
+        externalPostId: resolution === 'confirmed' ? postId : last?.priorExternalPostId || '',
+        externalUrl: resolution === 'confirmed' ? postUrl : last?.priorExternalUrl || '',
+        lastSuccessfulVersion: resolution === 'confirmed' ? last?.articleVersion || '' : previous.lastSuccessfulVersion || '',
+        lastError: resolution === 'confirmed' ? '' : 'Founder confirmed that the external operation was not accepted; retry is permitted.',
+        updatedAt: now,
+        attemptHistory: (previous.attemptHistory || []).slice(0, -1).concat(last ? { ...last, endedAt: now, result: status, externalPostId: resolution === 'confirmed' ? postId : '', externalUrl: resolution === 'confirmed' ? postUrl : '', uncertain: false, resolution, resolvedBy: actor.email } : []),
+      };
+      await writeDistributionState(this.runs, runId, { ...state, updatedAt: now, updatedBy: actor.email });
+      await this.audit.append({ action: 'distribution_outcome_reconciled', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, version: last?.articleVersion || '', result: 'SUCCESS', note: `${id}:${resolution}` });
+      return { ok: true, output: `${id}: ${resolution === 'confirmed' ? 'external post confirmed' : 'no external post found; retry enabled'}.` };
+    });
   }
 
   normalizeDistributionSelections(destinations = [], { allowCertifyd = false } = {}) {
@@ -883,16 +970,29 @@ export class ContentDashboardActions {
 
   async verifyLivePublication({ actor, runId }) {
     validateRunId(runId);
+    return withDistributionLock(this.runs, runId, () => this.verifyLivePublicationLocked({ actor, runId }));
+  }
+
+  async verifyLivePublicationLocked({ actor, runId }) {
     const run = await this.runs.readRun(runId);
     const canonicalUrl = run.summary.canonicalUrl || run.blogPackage?.canonicalUrl;
     if (!canonicalUrl || !/^https:\/\/certifyd\.me\/blog\/[a-z0-9-]+\/$/.test(canonicalUrl)) {
       throw Object.assign(new Error('A valid Certifyd Blog canonical URL is required before live verification.'), { statusCode: 409 });
+    }
+    if (run.manifest?.publishing?.version !== run.summary.version || run.manifest?.publishing?.canonicalUrl !== canonicalUrl || !run.manifest?.publishing?.articleHtmlHash) {
+      throw Object.assign(new Error('Publish the exact current article version to Certifyd before verifying it live.'), { statusCode: 409 });
     }
     const response = await fetch(canonicalUrl, { method: 'GET', redirect: 'follow' });
     if (!response.ok) {
       throw Object.assign(new Error(`Live URL is not available yet: HTTP ${response.status}`), { statusCode: 409 });
     }
     const html = await response.text();
+    if (cryptoHash(html) !== run.manifest.publishing.articleHtmlHash) {
+      throw Object.assign(new Error('The live article does not match the exact published version. Wait for deployment and verify again.'), { statusCode: 409 });
+    }
+    if (!html.includes(`<link rel="canonical" href="${canonicalUrl}"`)) {
+      throw Object.assign(new Error('The live article does not declare the expected Certifyd canonical URL.'), { statusCode: 409 });
+    }
     const title = run.summary.title || run.blogPackage?.title || '';
     if (title && !html.toLowerCase().includes(title.toLowerCase().slice(0, 40))) {
       throw Object.assign(new Error('Live URL responded, but the expected article title was not found.'), { statusCode: 409 });
@@ -907,6 +1007,7 @@ export class ContentDashboardActions {
       canonicalUrl,
       publishedAt: manifest.publishedAt || now,
       liveVerifiedAt: now,
+      liveVerifiedVersion: run.summary.version,
       updatedAt: now,
     });
     await this.touchLifecycle(base, {
@@ -916,11 +1017,15 @@ export class ContentDashboardActions {
       at: now,
     });
     await this.audit.append({ action: 'publishing_live_verify', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: 'SUCCESS', note: canonicalUrl });
+    const distribution = await readDistributionState(this.runs, runId);
+    distribution.destinations = { ...(distribution.destinations || {}), certifyd: publishedState({ previous: distribution.destinations?.certifyd, externalPostId: 'certifyd-blog', externalUrl: canonicalUrl }) };
+    await writeDistributionState(this.runs, runId, distribution);
     return { ok: true, output: `Live article verified: ${canonicalUrl}` };
   }
 
-  async unpublishFromCertifyd({ actor, runId, confirmUnpublish = '' }) {
+  async unpublishFromCertifyd({ actor, runId, confirmUnpublish = '', locked = false }) {
     validateRunId(runId);
+    if (!locked) return withDistributionLock(this.runs, runId, () => this.unpublishFromCertifyd({ actor, runId, confirmUnpublish, locked: true }));
     if (String(confirmUnpublish || '').trim().toLowerCase() !== 'unpublish') {
       throw Object.assign(new Error('Type unpublish to confirm removal from the live Certifyd Blog.'), { statusCode: 400 });
     }
@@ -1220,8 +1325,18 @@ function cleanString(value, maxLength) {
   return String(value || '').replace(/[\u0000-\u001f]+/g, ' ').trim().slice(0, maxLength);
 }
 
-function safeError(error) {
-  return String(error?.message || error || 'Generation failed.').replace(/sk-[a-zA-Z0-9_-]+/g, '[redacted]').slice(0, 600);
+function safeError(error, env = {}) {
+  let message = String(error?.message || error || 'Operation failed.');
+  for (const [name, value] of Object.entries(env || {})) {
+    if (!/(TOKEN|KEY|SECRET|PASSWORD|CREDENTIAL|AUTH)/i.test(name) || typeof value !== 'string' || value.length < 8) continue;
+    message = message.split(value).join('[redacted]');
+  }
+  return message
+    .replace(/-----BEGIN [^-]+-----[\s\S]*?-----END [^-]+-----/g, '[redacted private key]')
+    .replace(/\b(Bearer|Basic|Ghost)\s+[^\s,;"']+/gi, '$1 [redacted]')
+    .replace(/\b(?:api[-_]?key|access[-_]?token|authorization|password|secret)["']?\s*[:=]\s*["']?[^\s,;"']+/gi, '[redacted credential]')
+    .replace(/\b(?:sk-|gh[pousr]_|github_pat_|eyJ)[a-zA-Z0-9._-]{8,}/g, '[redacted token]')
+    .slice(0, 600);
 }
 
 function shouldCreateDeterministicGenerationFallback(error) {
@@ -1268,6 +1383,35 @@ function isPublishedLike(summary = {}) {
   return status === 'PUBLISHED' || (status === 'PUBLISHING' && publishability === 'PUBLISHING_DEPLOYMENT');
 }
 
+function isVerifiedCanonical(run = {}) {
+  const { summary = {}, manifest = {} } = run;
+  return summary.status === 'PUBLISHED'
+    && manifest.currentStatus === 'PUBLISHED'
+    && Boolean(manifest.liveVerifiedAt)
+    && manifest.liveVerifiedVersion === summary.version
+    && manifest.publishing?.version === summary.version
+    && manifest.publishing?.sourceFingerprint === distributionSourceFingerprint(run)
+    && /^https:\/\/certifyd\.me\/blog\/[a-z0-9-]+\/$/.test(summary.canonicalUrl || '')
+    && manifest.canonicalUrl === summary.canonicalUrl
+    && manifest.publishing?.canonicalUrl === summary.canonicalUrl;
+}
+
+function distributionSourceFingerprint(run) {
+  const article = distributionArticle(run);
+  return cryptoHash(JSON.stringify({ title: article.title, markdown: article.markdown, excerpt: article.excerpt, tags: article.tags, featuredImage: article.featuredImage }));
+}
+
+function distributionOperationKey(runId, version, destination, operation) {
+  return crypto.createHash('sha256').update(JSON.stringify([runId, version, destination, operation])).digest('hex');
+}
+
+function isSafeExternalUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password && ![...url.searchParams.keys()].some((key) => /token|secret|password|api.?key|auth/i.test(key));
+  } catch { return false; }
+}
+
 function distributionArticle(run = {}) {
   const pkg = run.blogPackage || {};
   const summary = run.summary || {};
@@ -1302,18 +1446,18 @@ function publishedState({ previous = {}, externalPostId = '', externalUrl = '' }
   };
 }
 
-function failedState(previous = {}, error, options = {}) {
+function failedState(previous = {}, error, options = {}, env = {}) {
   return {
     ...previous,
     status: DESTINATION_STATES.FAILED,
-    lastError: safeError(error),
+    lastError: safeError(error, env),
     uncertainAcceptance: Boolean(options.uncertainAcceptance || previous.uncertainAcceptance),
     retryCount: Number(previous.retryCount || 0) + 1,
     updatedAt: new Date().toISOString(),
   };
 }
 
-function preflightApiDistribution(adapter, article = {}, previous = {}) {
+function preflightApiDistribution(adapter, article = {}, previous = {}, operation = 'publish') {
   const payload = {
     destination: adapter.id,
     title: article.title || '',
@@ -1328,7 +1472,8 @@ function preflightApiDistribution(adapter, article = {}, previous = {}) {
   if (!payload.title.trim()) errors.push('Article title is required.');
   if (!payload.canonicalUrl || !/^https?:\/\//i.test(payload.canonicalUrl)) errors.push('Canonical URL is required.');
   if (!String(article.markdown || '').trim()) errors.push('Article body is required.');
-  if (previous.externalPostId || [DESTINATION_STATES.PUBLISHED, DESTINATION_STATES.SENT].includes(previous.status)) errors.push('Duplicate posting risk: this destination already appears published.');
+  if (operation === 'publish' && (previous.externalPostId || [DESTINATION_STATES.PUBLISHED, DESTINATION_STATES.SENT].includes(previous.status))) errors.push('Duplicate posting risk: this destination already appears published.');
+  if (operation === 'update' && (!previous.externalPostId || !adapter.supportsUpdate)) errors.push('This destination cannot update an existing post.');
   if (adapter.supportsUpdate === false) warnings.push(`${adapter.displayName} has limited edit/repost capability. Review the exact final payload before sending.`);
   return { ok: errors.length === 0, errors, warnings, payload, checkedAt: new Date().toISOString() };
 }

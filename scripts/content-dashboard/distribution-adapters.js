@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { validateRunId } from './security.js';
 
 export const DESTINATION_STATES = {
@@ -10,6 +11,7 @@ export const DESTINATION_STATES = {
   PUBLISHING: 'publishing',
   PUBLISHED: 'published',
   FAILED: 'failed',
+  UNCERTAIN: 'uncertain',
   MANUAL_READY: 'manual_export_ready',
 };
 
@@ -108,8 +110,12 @@ class EnvHttpDestination extends BaseDestination {
   async request(url, options = {}) {
     const response = await fetch(url, options);
     const text = await response.text();
-    if (!response.ok) throw new Error(`${this.displayName} API failed: HTTP ${response.status}. ${text.slice(0, 220)}`);
-    return text ? JSON.parse(text) : {};
+    if (!response.ok) throw new Error(`${this.displayName} API failed: HTTP ${response.status}. Response body withheld from logs and state.`);
+    let result;
+    try { result = text ? JSON.parse(text) : {}; }
+    catch { throw new Error(`${this.displayName} API returned invalid JSON. Response body withheld from logs and state.`); }
+    if (result.errors?.length) throw new Error(`${this.displayName} API returned errors. Response details withheld from logs and state.`);
+    return result;
   }
 }
 
@@ -202,13 +208,73 @@ class ManualExportDestination extends BaseDestination {
 
 export async function readDistributionState(runRepo, runId) {
   const base = runRepo.runPath(validateRunId(runId));
-  return safeJson(await fs.readFile(path.join(base, 'distribution', 'destinations.json'), 'utf8').catch(() => '{}'), {});
+  let contents;
+  try {
+    contents = await fs.readFile(path.join(base, 'distribution', 'destinations.json'), 'utf8');
+  } catch (error) {
+    if (error.code === 'ENOENT') return {};
+    throw error;
+  }
+  try {
+    const state = JSON.parse(contents);
+    if (!state || typeof state !== 'object' || Array.isArray(state) || (state.destinations && (typeof state.destinations !== 'object' || Array.isArray(state.destinations)))) throw new Error('Invalid distribution state.');
+    return state;
+  } catch {
+    throw Object.assign(new Error('Distribution state cannot be read safely. Repair or restore it before publishing to avoid duplicate posts.'), { statusCode: 409 });
+  }
 }
 
 export async function writeDistributionState(runRepo, runId, state) {
   const base = runRepo.runPath(validateRunId(runId));
   await fs.mkdir(path.join(base, 'distribution'), { recursive: true });
-  await fs.writeFile(path.join(base, 'distribution', 'destinations.json'), JSON.stringify(state, null, 2));
+  const target = path.join(base, 'distribution', 'destinations.json');
+  const temporary = `${target}.${crypto.randomUUID()}.tmp`;
+  try {
+    await fs.writeFile(temporary, JSON.stringify(state, null, 2));
+    await fs.rename(temporary, target);
+  } finally {
+    await fs.rm(temporary, { force: true });
+  }
+}
+
+export async function withDistributionLock(runRepo, runId, callback) {
+  const lock = path.join(runRepo.runPath(validateRunId(runId)), 'distribution', '.operation-lock');
+  await fs.mkdir(path.dirname(lock), { recursive: true });
+  try {
+    await fs.mkdir(lock);
+  } catch (error) {
+    if (error.code !== 'EEXIST') throw error;
+    const owner = safeJson(await fs.readFile(path.join(lock, 'owner.json'), 'utf8').catch(() => '{}'), {});
+    const age = Date.now() - (await fs.stat(lock)).mtimeMs;
+    if ((owner.pid && !processExists(owner.pid)) || (!owner.pid && age > 60_000)) {
+      const recovery = `${lock}.recovery`;
+      const abandoned = `${lock}.abandoned-${crypto.randomUUID()}`;
+      let recoveryOwned = false;
+      try {
+        await fs.mkdir(recovery);
+        recoveryOwned = true;
+        await fs.rename(lock, abandoned);
+        await fs.rm(abandoned, { recursive: true, force: true });
+        await fs.mkdir(lock);
+      } catch {
+        throw Object.assign(new Error('Another distribution operation acquired the article lock. Retry after checking status.'), { statusCode: 409 });
+      } finally {
+        if (recoveryOwned) await fs.rm(recovery, { recursive: true, force: true });
+      }
+    } else {
+      throw Object.assign(new Error('A distribution operation is already running for this article. Check its destination status before trying again.'), { statusCode: 409 });
+    }
+  }
+  try {
+    await fs.writeFile(path.join(lock, 'owner.json'), JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString() }));
+    return await callback();
+  } finally {
+    await fs.rm(lock, { recursive: true, force: true });
+  }
+}
+
+function processExists(pid) {
+  try { process.kill(Number(pid), 0); return true; } catch (error) { return error.code !== 'ESRCH'; }
 }
 
 export async function readDistributionDefaults(config) {

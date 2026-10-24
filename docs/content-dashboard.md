@@ -92,6 +92,14 @@ Current adapters:
 
 The GitHub adapter uses a GitHub App, creates a draft branch and opens a draft pull request. It does not merge, force-push, deploy directly or use a personal access token.
 
+## Distribution safety
+
+Automatic destination posting requires a Certifyd article that has been verified live for the exact published version. A GitHub write or draft PR leaves the Certifyd destination in `publishing`; the founder must use **Verify Live** after deployment. Verification compares the public article HTML with the generated article HTML recorded at publish time and checks its canonical link. Editing the article after publication closes the gate until the updated version is republished and verified. Manual exports remain available before live verification.
+
+Each destination attempt is persisted in `distribution/destinations.json` before its API call, with an operation key, attempt ID, prior external identity, timestamps and result history. A confirmed response must include an external post ID. A missing response or identity becomes `uncertain` and blocks automatic retry. The founder must check the external platform, then record its post ID or explicitly confirm that no post was created. The per-destination Retry control applies only to a certain failure; successful destinations are left alone. An article-level lock prevents concurrent publish actions, and an interrupted in-flight attempt remains visible for reconciliation after restart.
+
+Connector credentials remain in the dashboard server environment. Platform response bodies are excluded from persisted distribution errors.
+
 ## Local AI Generation
 
 The production blog-writing provider is local Ollama running Qwen 3. The deterministic generator remains available as the explicit offline/test fallback.

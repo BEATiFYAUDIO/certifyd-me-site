@@ -13,6 +13,7 @@ import { ContentBrainRepository } from '../scripts/content-dashboard/repository.
 import { KNOWLEDGE_SUGGESTIONS, applyKnowledgeSuggestion, listPendingKnowledgeSuggestions } from '../scripts/content-dashboard/brain-suggestions.js';
 import { GitHubPullRequestPublisher } from '../scripts/content-dashboard/publisher.js';
 import { distributionPackageOverallStatus } from '../scripts/content-dashboard/distribution-package.js';
+import { publicArticleBodyMarkdown } from '../scripts/content-dashboard/public-markdown.js';
 
 const env = {
   ...process.env,
@@ -826,6 +827,7 @@ test('20ac disconnected destination fails without blocking manual export distrib
     status: 'PUBLISHED',
     publishability: 'PUBLISHED',
   });
+  await markVerifiedRun(path.join(outputDir, runId));
   const actions = new ContentDashboardActions(getDashboardConfig({
     ...env,
     CONTENT_AGENT_ROOT: tmpRoot,
@@ -856,6 +858,7 @@ test('20aca API-backed distribution preflights payload and blocks uncertain retr
     publishability: 'PUBLISHED',
     markdown: '# API Preflight Article\n\nCreator commerce publishing body.',
   });
+  await markVerifiedRun(path.join(outputDir, runId));
   const previousFetch = globalThis.fetch;
   let postCalls = 0;
   globalThis.fetch = async () => {
@@ -873,17 +876,15 @@ test('20aca API-backed distribution preflights payload and blocks uncertain retr
     const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
 
     const first = await actions.distributeArticle({ actor, runId, version: 'v1', destinations: ['devto'] });
-    assert.equal(first.results[0].status, 'failed');
+    assert.equal(first.results[0].status, 'uncertain');
     let state = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'distribution', 'destinations.json'), 'utf8'));
-    assert.equal(state.destinations.devto.status, 'failed');
+    assert.equal(state.destinations.devto.status, 'uncertain');
     assert.equal(state.destinations.devto.uncertainAcceptance, true);
     assert.equal(state.destinations.devto.approvedPayload.destination, 'devto');
     assert.equal(state.destinations.devto.approvedPayload.canonicalUrl, 'https://certifyd.me/blog/api-preflight-article/');
     assert.equal(postCalls, 1);
 
-    const retry = await actions.distributeArticle({ actor, runId, version: 'v1', destinations: ['devto'], retryFailed: true });
-    assert.equal(retry.results[0].status, 'failed');
-    assert.match(retry.results[0].error, /Check the platform manually before retrying/);
+    await assert.rejects(actions.distributeArticle({ actor, runId, version: 'v1', destinations: ['devto'], retryFailed: true }), /Uncertain outcomes must be reconciled first/);
     state = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'distribution', 'destinations.json'), 'utf8'));
     assert.equal(state.destinations.devto.uncertainAcceptance, true);
     assert.equal(postCalls, 1);
@@ -2449,6 +2450,300 @@ async function createMinimalRun(runDir, options = {}) {
   await fs.writeFile(path.join(runDir, 'claim-ledger.json'), JSON.stringify({ claims: [{ text: 'Safe claim', status: 'APPROVED' }] }));
   await fs.writeFile(path.join(runDir, 'research-record.json'), JSON.stringify(options.research || { selectedEvidence, claimsThatMustNotBeMade: [] }));
 }
+
+async function markVerifiedRun(runDir, version = 'v1') {
+  const file = path.join(runDir, 'publication-manifest.json');
+  const manifest = JSON.parse(await fs.readFile(file, 'utf8'));
+  manifest.currentStatus = 'PUBLISHED';
+  manifest.publishability = 'LIVE';
+  manifest.liveVerifiedAt = new Date().toISOString();
+  manifest.liveVerifiedVersion = version;
+  const blog = JSON.parse(await fs.readFile(path.join(runDir, 'blog', 'blog-post.json'), 'utf8'));
+  const markdown = await fs.readFile(path.join(runDir, 'final', 'article.md'), 'utf8');
+  const source = { title: blog.title, markdown: publicArticleBodyMarkdown(blog.body, markdown, ''), excerpt: blog.description || blog.excerpt || 'Certifyd Blog', tags: [], featuredImage: blog.coverImage || '' };
+  manifest.publishing = { version, canonicalUrl: manifest.canonicalUrl, articleHtmlHash: crypto.createHash('sha256').update('verified test article').digest('hex'), sourceFingerprint: crypto.createHash('sha256').update(JSON.stringify(source)).digest('hex') };
+  await fs.writeFile(file, JSON.stringify(manifest));
+}
+
+async function distributionSafetyFixture({ verified = true, status = 'PUBLISHED', envOverrides = {} } = {}) {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-distribution-safety-'));
+  const outputDir = path.join(root, 'engine', 'outputs');
+  const runId = 'safety-article-001';
+  const runDir = path.join(outputDir, runId);
+  await createMinimalRun(runDir, { title: 'Safety Article', slug: 'safety-article', status, publishability: status === 'PUBLISHED' ? 'LIVE' : 'READY_TO_PUBLISH' });
+  if (verified) await markVerifiedRun(runDir);
+  const config = getDashboardConfig({ ...env, ...envOverrides, CONTENT_AGENT_ROOT: root, CONTENT_AGENT_OUTPUT_DIR: outputDir, CONTENT_DASHBOARD_DB_PATH: ':memory:' });
+  const actions = new ContentDashboardActions(config);
+  const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+  const state = async () => JSON.parse(await fs.readFile(path.join(runDir, 'distribution', 'destinations.json'), 'utf8'));
+  return { root, runDir, runId, actions, actor, state };
+}
+
+function fakeDestination(id, { connected = true, publish, update, supportsUpdate = false } = {}) {
+  return {
+    id,
+    displayName: id,
+    kind: 'full-article',
+    supportsUpdate,
+    connectionStatus: () => ({ status: connected ? 'connected' : 'not_connected' }),
+    publishArticle: publish || (async () => ({ externalPostId: `${id}-post`, externalUrl: `https://example.test/${id}-post` })),
+    updateArticle: update || (async () => ({ externalPostId: `${id}-post`, externalUrl: `https://example.test/${id}-post` })),
+  };
+}
+
+test('distribution safety: canonical live verification gates automatic posting but not manual exports', async () => {
+  const fixture = await distributionSafetyFixture({ verified: false, status: 'PUBLISHING' });
+  let calls = 0;
+  fixture.actions.distributionAdapters = [fakeDestination('devto', { publish: async () => { calls++; return { externalPostId: 'one' }; } }), ...fixture.actions.distributionAdapters.filter((item) => item.id === 'markdown')];
+  const result = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto', 'markdown'] });
+  assert.equal(calls, 0);
+  assert.equal(result.results.find((item) => item.id === 'devto').status, 'queued');
+  assert.equal(result.results.find((item) => item.id === 'markdown').status, 'manual_export_ready');
+  assert.match((await fixture.state()).destinations.devto.blockedReason, /verified live/);
+});
+
+test('distribution safety: editing the approved source invalidates its live distribution gate', async () => {
+  const fixture = await distributionSafetyFixture();
+  await fs.writeFile(path.join(fixture.runDir, 'final', 'article.md'), '# Safety Article\n\nChanged after live verification.');
+  let calls = 0;
+  fixture.actions.distributionAdapters = [fakeDestination('devto', { publish: async () => { calls++; return { externalPostId: 'bad' }; } })];
+  const result = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto'] });
+  assert.equal(result.results[0].status, 'queued');
+  assert.equal(calls, 0);
+});
+
+test('distribution safety: dashboard shows the canonical block and single-destination recovery controls', async () => {
+  const fixture = await distributionSafetyFixture({ verified: false, status: 'PUBLISHING' });
+  const dir = path.join(fixture.runDir, 'distribution');
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(path.join(dir, 'destinations.json'), JSON.stringify({ destinations: {
+    devto: { status: 'queued', blockedReason: 'Verify Live before automatic distribution.' },
+    ghost: { status: 'failed', uncertainAcceptance: false, lastError: 'Credentials missing.' },
+    hashnode: { status: 'uncertain', uncertainAcceptance: true, lastError: 'Check the platform.', attemptHistory: [{ startedAt: '2026-10-24T00:00:00.000Z', articleVersion: 'v1', operation: 'publish', result: 'uncertain' }] },
+  } }));
+  await withServer(async (base) => {
+    const cookie = await login(base, 'founder@example.test');
+    const response = await fetch(`${base}/app/content/distribution?runId=${fixture.runId}`, { headers: { cookie } });
+    const html = await response.text();
+    assert.match(html, /Verify Live before automatic distribution/);
+    assert.match(html, /Retry Ghost/);
+    assert.match(html, /Confirm external post/);
+    assert.doesNotMatch(html, /Retry failed destinations/);
+  }, { CONTENT_AGENT_ROOT: fixture.root, CONTENT_AGENT_OUTPUT_DIR: path.join(fixture.root, 'engine', 'outputs'), CONTENT_DASHBOARD_DB_PATH: ':memory:' });
+});
+
+test('distribution safety: a GitHub write remains pending until the exact public page verifies', async () => {
+  const fixture = await distributionSafetyFixture({ verified: false, status: 'READY_TO_PUBLISH' });
+  let calls = 0;
+  fixture.actions.distributionAdapters = [fixture.actions.distributionAdapters.find((item) => item.id === 'certifyd'), fakeDestination('devto', { publish: async () => { calls++; return { externalPostId: 'one' }; } })];
+  const html = '<html><title>Safety Article</title><link rel="canonical" href="https://certifyd.me/blog/safety-article/"><article>Exact version</article></html>';
+  const manifestPath = path.join(fixture.runDir, 'publication-manifest.json');
+  fixture.actions.publishToCertifyd = async ({ version }) => {
+    await markVerifiedRun(fixture.runDir, version);
+    const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+    manifest.currentStatus = 'PUBLISHING';
+    manifest.publishability = 'PUBLISHING_DEPLOYMENT';
+    manifest.liveVerifiedAt = '';
+    manifest.liveVerifiedVersion = '';
+    manifest.publishing.articleHtmlHash = crypto.createHash('sha256').update(html).digest('hex');
+    await fs.writeFile(manifestPath, JSON.stringify(manifest));
+    return { canonicalUrl: manifest.canonicalUrl };
+  };
+  const requested = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['certifyd', 'devto'] });
+  assert.equal(requested.results[0].status, 'publishing');
+  assert.equal(calls, 0);
+  const oldFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => new Response('missing', { status: 404 });
+    await assert.rejects(fixture.actions.verifyLivePublication({ actor: fixture.actor, runId: fixture.runId }), /not available/);
+    globalThis.fetch = async () => new Response('<html><title>Safety Article</title><article>Old version</article></html>', { status: 200 });
+    await assert.rejects(fixture.actions.verifyLivePublication({ actor: fixture.actor, runId: fixture.runId }), /exact published version/);
+    assert.equal(calls, 0);
+    globalThis.fetch = async () => new Response(html, { status: 200 });
+    await fixture.actions.verifyLivePublication({ actor: fixture.actor, runId: fixture.runId });
+  } finally { globalThis.fetch = oldFetch; }
+  const sent = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto'] });
+  assert.equal(sent.results[0].status, 'sent');
+  assert.equal(calls, 1);
+  assert.equal((await fixture.state()).destinations.certifyd.status, 'published');
+});
+
+test('distribution safety: canonical publisher failure leaves automatic destinations blocked', async () => {
+  const fixture = await distributionSafetyFixture({ verified: false, status: 'READY_TO_PUBLISH' });
+  let calls = 0;
+  fixture.actions.distributionAdapters = [fixture.actions.distributionAdapters.find((item) => item.id === 'certifyd'), fakeDestination('devto', { publish: async () => { calls++; return { externalPostId: 'bad' }; } })];
+  fixture.actions.publishToCertifyd = async () => { throw new Error('GitHub write failed'); };
+  const result = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['certifyd', 'devto'] });
+  assert.equal(result.results.find((item) => item.id === 'certifyd').status, 'failed');
+  assert.equal(result.results.find((item) => item.id === 'devto').status, 'queued');
+  assert.equal(calls, 0);
+  assert.match((await fixture.state()).destinations.devto.blockedReason, /GitHub write failed/);
+});
+
+test('distribution safety: malformed persisted state fails closed', async () => {
+  const fixture = await distributionSafetyFixture();
+  const dir = path.join(fixture.runDir, 'distribution');
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(path.join(dir, 'destinations.json'), '{broken');
+  let calls = 0;
+  fixture.actions.distributionAdapters = [fakeDestination('devto', { publish: async () => { calls++; return { externalPostId: 'bad' }; } })];
+  await assert.rejects(fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto'] }), /avoid duplicate posts/);
+  assert.equal(calls, 0);
+});
+
+test('distribution safety: pre-request failure is certain and retry targets only that destination', async () => {
+  const fixture = await distributionSafetyFixture();
+  let goodCalls = 0;
+  let failedCalls = 0;
+  fixture.actions.distributionAdapters = [
+    fakeDestination('devto', { publish: async () => { goodCalls++; return { externalPostId: 'good', externalUrl: 'https://example.test/good' }; } }),
+    fakeDestination('ghost', { connected: false, publish: async () => { failedCalls++; return { externalPostId: 'bad' }; } }),
+  ];
+  await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto', 'ghost'] });
+  let state = await fixture.state();
+  assert.equal(goodCalls, 1);
+  assert.equal(failedCalls, 0);
+  assert.equal(state.destinations.devto.status, 'sent');
+  assert.equal(state.destinations.ghost.status, 'failed');
+  assert.equal(state.destinations.ghost.uncertainAcceptance, false);
+  fixture.actions.distributionAdapters[1] = fakeDestination('ghost', { publish: async () => { failedCalls++; return { externalPostId: 'ghost-id', externalUrl: 'https://example.test/ghost' }; } });
+  const retry = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinationId: 'ghost', destinations: ['devto'], retryFailed: true });
+  assert.deepEqual(retry.results.map((item) => item.id), ['ghost']);
+  state = await fixture.state();
+  assert.equal(goodCalls, 1);
+  assert.equal(failedCalls, 1);
+  assert.equal(state.destinations.devto.status, 'sent');
+  assert.equal(state.destinations.ghost.externalPostId, 'ghost-id');
+  assert.equal(state.destinations.ghost.attemptHistory.length, 2);
+});
+
+test('distribution safety: an in-flight request is durable, uncertain, and never blindly retried', async () => {
+  const fixture = await distributionSafetyFixture();
+  let seen;
+  let calls = 0;
+  fixture.actions.distributionAdapters = [fakeDestination('devto', { publish: async () => { calls++; seen = await fixture.state(); throw new Error('response lost'); } })];
+  const first = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto'] });
+  assert.equal(seen.destinations.devto.status, 'sending');
+  assert.equal(seen.destinations.devto.attemptHistory[0].result, 'in_flight');
+  assert.equal(first.results[0].status, 'uncertain');
+  const repeated = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto'] });
+  assert.equal(repeated.results[0].status, 'uncertain');
+  assert.equal(calls, 1);
+  await assert.rejects(fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', retryFailed: true, destinationId: 'devto' }), /reconciled first/);
+  await fixture.actions.resolveDistributionOutcome({ actor: fixture.actor, runId: fixture.runId, destinationId: 'devto', resolution: 'not_published' });
+  fixture.actions.distributionAdapters = [fakeDestination('devto')];
+  const retried = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', retryFailed: true, destinationId: 'devto' });
+  assert.equal(retried.results[0].status, 'sent');
+  assert.equal((await fixture.state()).destinations.devto.attemptHistory.length, 2);
+});
+
+test('distribution safety: success requires external identity and repeat publish skips confirmed post', async () => {
+  const fixture = await distributionSafetyFixture();
+  let calls = 0;
+  fixture.actions.distributionAdapters = [fakeDestination('devto', { publish: async () => { calls++; return { externalPostId: 'post-1', externalUrl: 'https://example.test/post-1' }; } })];
+  await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto'] });
+  const second = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto'] });
+  assert.equal(calls, 1);
+  assert.equal(second.results[0].skipped, true);
+  const state = await fixture.state();
+  assert.equal(state.destinations.devto.externalPostId, 'post-1');
+  assert.equal(state.destinations.devto.externalUrl, 'https://example.test/post-1');
+  assert.equal(state.destinations.devto.attemptHistory.length, 1);
+  const missing = await distributionSafetyFixture();
+  missing.actions.distributionAdapters = [fakeDestination('devto', { publish: async () => ({ externalUrl: 'https://example.test/unknown' }) })];
+  const result = await missing.actions.distributeArticle({ actor: missing.actor, runId: missing.runId, version: 'v1', destinations: ['devto'] });
+  assert.equal(result.results[0].status, 'uncertain');
+  assert.equal((await missing.state()).destinations.devto.externalUrl, 'https://example.test/unknown');
+});
+
+test('distribution safety: recovered in-flight state requires reconciliation', async () => {
+  const fixture = await distributionSafetyFixture();
+  const dir = path.join(fixture.runDir, 'distribution');
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(path.join(dir, 'destinations.json'), JSON.stringify({ destinations: { devto: { status: 'sending', attemptHistory: [{ attemptId: 'lost-attempt', articleVersion: 'v1', result: 'in_flight' }] } } }));
+  const abandonedLock = path.join(dir, '.operation-lock');
+  await fs.mkdir(abandonedLock);
+  await fs.writeFile(path.join(abandonedLock, 'owner.json'), JSON.stringify({ pid: 2147483647, startedAt: '2020-01-01T00:00:00.000Z' }));
+  let calls = 0;
+  fixture.actions.distributionAdapters = [fakeDestination('devto', { publish: async () => { calls++; return { externalPostId: 'x' }; } })];
+  const result = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto'] });
+  assert.equal(result.results[0].status, 'uncertain');
+  assert.equal(calls, 0);
+  assert.equal((await fixture.state()).destinations.devto.status, 'uncertain');
+  assert.equal((await fixture.state()).destinations.devto.attemptHistory[0].uncertain, true);
+});
+
+test('distribution safety: a founder can reconcile a confirmed external post without sending again', async () => {
+  const fixture = await distributionSafetyFixture();
+  let calls = 0;
+  fixture.actions.distributionAdapters = [fakeDestination('devto', { publish: async () => { calls++; throw new Error('response lost'); } })];
+  await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto'] });
+  await fixture.actions.resolveDistributionOutcome({ actor: fixture.actor, runId: fixture.runId, destinationId: 'devto', resolution: 'confirmed', externalPostId: 'found-on-platform', externalUrl: 'https://example.test/found-on-platform' });
+  const repeated = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto'] });
+  assert.equal(repeated.results[0].skipped, true);
+  assert.equal(calls, 1);
+  const state = await fixture.state();
+  assert.equal(state.destinations.devto.externalPostId, 'found-on-platform');
+  assert.equal(state.destinations.devto.externalUrl, 'https://example.test/found-on-platform');
+  assert.equal(state.destinations.devto.attemptHistory[0].resolution, 'confirmed');
+});
+
+test('distribution safety: existing update adapter can update a new verified version', async () => {
+  const fixture = await distributionSafetyFixture();
+  let creates = 0;
+  let updates = 0;
+  fixture.actions.distributionAdapters = [fakeDestination('devto', { supportsUpdate: true, publish: async () => { creates++; return { externalPostId: 'post-1', externalUrl: 'https://example.test/post-1' }; }, update: async () => { updates++; return { externalPostId: 'post-1', externalUrl: 'https://example.test/post-1' }; } })];
+  await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto'] });
+  const articlePath = path.join(fixture.runDir, 'final', 'article.json');
+  const article = JSON.parse(await fs.readFile(articlePath, 'utf8'));
+  article.version = 'v2';
+  await fs.writeFile(articlePath, JSON.stringify(article));
+  await markVerifiedRun(fixture.runDir, 'v2');
+  const result = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v2', destinations: ['devto'] });
+  assert.equal(result.results[0].status, 'sent');
+  assert.equal(creates, 1);
+  assert.equal(updates, 1);
+  assert.equal((await fixture.state()).destinations.devto.attemptHistory[1].operation, 'update');
+});
+
+test('distribution safety: a legacy confirmed post with changed payload uses its update path', async () => {
+  const fixture = await distributionSafetyFixture();
+  const dir = path.join(fixture.runDir, 'distribution');
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(path.join(dir, 'destinations.json'), JSON.stringify({ destinations: { devto: { status: 'sent', externalPostId: 'legacy-id', externalUrl: 'https://example.test/legacy', sentPayload: { title: 'Old title', bodyHash: 'old-body' } } } }));
+  let updates = 0;
+  fixture.actions.distributionAdapters = [fakeDestination('devto', { supportsUpdate: true, publish: async () => { throw new Error('Should not create'); }, update: async () => { updates++; return { externalPostId: 'legacy-id', externalUrl: 'https://example.test/legacy' }; } })];
+  const result = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto'] });
+  assert.equal(result.results[0].status, 'sent');
+  assert.equal(updates, 1);
+  assert.equal((await fixture.state()).destinations.devto.attemptHistory[0].operation, 'update');
+});
+
+test('distribution safety: external errors redact configured secrets and authorization material', async () => {
+  const secret = 'top-secret-distribution-token';
+  const fixture = await distributionSafetyFixture({ envOverrides: { CONTENT_DISTRIBUTION_DEVTO_API_KEY: secret } });
+  fixture.actions.distributionAdapters = [fakeDestination('devto', { publish: async () => { throw new Error(`Bearer ${secret} Authorization: ${secret} sk-abcdefghijk`); } })];
+  await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto'] });
+  const stored = JSON.stringify(await fixture.state());
+  assert.doesNotMatch(stored, /top-secret-distribution-token|sk-abcdefghijk/);
+  assert.match(stored, /\[redacted\]/);
+});
+
+test('distribution safety: a double click cannot start two operations for one article', async () => {
+  const fixture = await distributionSafetyFixture();
+  let started;
+  const entered = new Promise((resolve) => { started = resolve; });
+  let release;
+  const held = new Promise((resolve) => { release = resolve; });
+  let calls = 0;
+  fixture.actions.distributionAdapters = [fakeDestination('devto', { publish: async () => { calls++; started(); await held; return { externalPostId: 'once' }; } })];
+  const first = fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto'] });
+  await entered;
+  await assert.rejects(fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto'] }), /already running/);
+  release();
+  await first;
+  assert.equal(calls, 1);
+});
 
 function approvedBrainRecord(overrides = {}) {
   return {

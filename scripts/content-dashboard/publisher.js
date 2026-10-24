@@ -46,6 +46,8 @@ export class GitHubPullRequestPublisher {
       token: installationToken,
       branchName: this.config.baseBranch,
     });
+    const articleHtml = generatedFiles.find((file) => file.path === `blog/${slug}/index.html`)?.content;
+    const articleHtmlHash = typeof articleHtml === 'string' ? crypto.createHash('sha256').update(articleHtml).digest('hex') : '';
     if (this.config.mode === 'direct') {
       const commits = await putGeneratedFiles({
         config: this.config,
@@ -67,6 +69,7 @@ export class GitHubPullRequestPublisher {
         branchName: this.config.baseBranch,
         repositoryPath: `content/blog/${slug}.md`,
         canonicalUrl: `https://certifyd.me/blog/${slug}/`,
+        articleHtmlHash,
       };
     }
     const branchName = `${this.config.branchPrefix}/${slug}-${Date.now()}`;
@@ -109,6 +112,7 @@ export class GitHubPullRequestPublisher {
       branchName,
       repositoryPath: `content/blog/${slug}.md`,
       canonicalUrl: `https://certifyd.me/blog/${slug}/`,
+      articleHtmlHash,
     };
   }
 
