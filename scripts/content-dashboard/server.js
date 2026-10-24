@@ -4,7 +4,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { getDashboardConfig, permissionsForRole } from './config.js';
 import { ContentRunRepository, ContentBrainRepository } from './repository.js';
-import { approvedBrainEvidence, ContentDashboardActions, AuditLogRepository, requiresApprovedBrainContext } from './actions.js';
+import { approvedBrainEvidence, ContentDashboardActions, AuditLogRepository, isVerifiedCanonical, requiresApprovedBrainContext } from './actions.js';
 import { createCsrfToken, escapeHtml, parseCookies, safeReturnPath, validateRunId, verifyCsrf, verifySession, signSession } from './security.js';
 import { card, humanizeLabel, layout, loginPage, renderMarkdown, statusPill } from './render.js';
 import { verifyCloudflareAccessRequest } from './cloudflare-access.js';
@@ -178,6 +178,7 @@ async function handleAction(req, res, url, ctx) {
   else if (action.endsWith('/distribution/publish')) { needs('content.distribution.manage'); result = await ctx.actions.distributeArticle({ actor: ctx.user, runId: form.get('runId'), version: form.get('version'), destinations: form.getAll('destinations') }); }
   else if (action.endsWith('/distribution/retry')) { needs('content.distribution.manage'); result = await ctx.actions.distributeArticle({ actor: ctx.user, runId: form.get('runId'), version: form.get('version'), destinationId: form.get('destinationId'), retryFailed: true }); }
   else if (action.endsWith('/distribution/resolve')) { needs('content.distribution.manage'); result = await ctx.actions.resolveDistributionOutcome({ actor: ctx.user, runId: form.get('runId'), destinationId: form.get('destinationId'), resolution: form.get('resolution'), externalPostId: form.get('externalPostId'), externalUrl: form.get('externalUrl') }); }
+  else if (action.endsWith('/distribution/manual-published')) { needs('content.distribution.manage'); result = await ctx.actions.markManualExternallyPublished({ actor: ctx.user, runId: form.get('runId'), destinationId: form.get('destinationId'), externalUrl: form.get('externalUrl') }); }
   else if (action.endsWith('/distribution/defaults')) { needs('content.distribution.manage'); result = await ctx.actions.saveDistributionDefaults({ actor: ctx.user, destinations: form.getAll('destinations') }); }
   else if (action.endsWith('/distribution/test')) { needs('content.distribution.manage'); result = await ctx.actions.testDistributionConnection({ actor: ctx.user, destinationId: form.get('destinationId') }); }
   else if (action.endsWith('/article/save')) { needs('content.article.edit'); result = await ctx.actions.saveArticleMarkdown({ actor: ctx.user, runId: form.get('runId'), articleMarkdown: form.get('articleMarkdown') }); }
@@ -188,6 +189,17 @@ async function handleAction(req, res, url, ctx) {
     return redirect(res, `/app/content/articles/${validateRunId(String(form.get('runId') || ''))}#cover-image`);
   }
   if (action.includes('/distribution/')) {
+    if (action.endsWith('/distribution/publish')) {
+      const statuses = { Confirmed: 0, Failed: 0, Uncertain: 0, 'Manual ready': 0, 'Skipped/not connected': 0 };
+      for (const item of result.results || []) {
+        if (['sent', 'published'].includes(item.status)) statuses.Confirmed++;
+        else if (item.status === 'failed') statuses.Failed++;
+        else if (item.status === 'uncertain') statuses.Uncertain++;
+        else if (item.status === 'manual_export_ready') statuses['Manual ready']++;
+        else statuses['Skipped/not connected']++;
+      }
+      return sendHtml(res, layout({ title: 'Publish Everywhere result', user: ctx.user, permissions: ctx.permissions, active: 'Distribution', body: `<p class="eyebrow">Distribution</p><h1>Publish Everywhere result</h1><p>${Object.entries(statuses).map(([name, count]) => `${escapeHtml(name)}: <strong>${count}</strong>`).join(' · ')}</p><pre>${escapeHtml(result.output || '')}</pre><a class="primary" href="/app/content/distribution?runId=${encodeURIComponent(validateRunId(String(form.get('runId') || '')))}">Review destination status</a>` }));
+    }
     const returnTo = safeReturnPath(String(form.get('returnTo') || ''));
     if (returnTo) return redirect(res, returnTo);
     return redirect(res, `/app/content/distribution${form.get('runId') ? `?runId=${encodeURIComponent(validateRunId(String(form.get('runId') || '')))}` : ''}`);
@@ -885,7 +897,7 @@ async function renderDistribution(ctx, url) {
   const eligibleRuns = runs.filter((run) => ['FOUNDER_APPROVED', 'READY_TO_PUBLISH', 'PUBLISHING', 'PUBLISHED'].includes(String(run.status || '').toUpperCase()));
   const destinations = overview.destinations;
   const destinationRows = destinations.map((destination) => destinationChip(destination, csrf, canManage)).join('');
-  const defaultForm = canManage ? `<form class="panel compact-panel" method="post" action="/app/content/actions/distribution/defaults"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><h2>Default destinations</h2><p class="muted">Defaults are not auto-published until the founder clicks Distribute for an article.</p><div class="destination-choice-grid">${destinations.filter((item) => item.id !== 'certifyd').map((item) => destinationCheckbox(item, overview.defaults?.destinations || [])).join('')}</div><button class="ghost" type="submit">Save default destinations</button></form>` : '';
+  const defaultForm = canManage ? `<form class="panel compact-panel" method="post" action="/app/content/actions/distribution/defaults"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><h2>Default destinations</h2><p class="muted">Defaults preselect destinations for each article. Nothing runs until the founder clicks Publish Everywhere.</p><div class="destination-choice-grid">${destinations.filter((item) => item.id !== 'certifyd').map((item) => destinationCheckbox(item, overview.defaults?.destinations || [])).join('')}</div><button class="ghost" type="submit">Save default destinations</button></form>` : '';
   const articleRows = eligibleRuns.map((run) => distributionArticleRow(run, details.get(run.runId), destinations, overview.defaults?.destinations || [], csrf, canManage, canPublish, selectedRunId === run.runId)).join('');
   return layout({
     title: 'Distribute',
@@ -1268,30 +1280,35 @@ function distributionArticleRow(run, detail, destinations, defaults, csrf, canMa
   const state = detail?.distribution?.destinations?.destinations || {};
   const publishedCount = Object.values(state).filter((item) => ['published', 'sent'].includes(item?.status)).length;
   const choices = destinations.map((destination) => destinationCheckbox(destination, destination.id === 'certifyd' ? ['certifyd'] : defaults, state[destination.id])).join('');
-  const statusRows = destinations.map((destination) => destinationStatusRow(destination, state[destination.id], run, csrf, canPublish)).join('');
-  const actions = canPublish ? `<p class="notice">Automatic destinations wait until Certifyd is verified live. Failed destinations have their own retry controls; uncertain outcomes require reconciliation.</p><div class="actions"><button class="primary" type="submit">Publish to selected destinations now</button></div>` : '<p class="notice">This role can view distribution, but cannot publish destinations.</p>';
-  return `<article class="distribution-row"><div><h3>${escapeHtml(run.title || 'Untitled article')}</h3><p>${statusPill(run.status)} <span class="muted">${escapeHtml(String(publishedCount))} destination${publishedCount === 1 ? '' : 's'} published · ${escapeHtml(run.canonicalUrl || 'No canonical URL')}</span></p></div><details ${open ? 'open' : ''}><summary class="primary">Distribute</summary>${distributionPackagePanel(detail?.distribution?.package, run, csrf, canManage, `/app/content/distribution?runId=${encodeURIComponent(run.runId)}`)}<form method="post" action="/app/content/actions/distribution/publish"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="runId" value="${escapeHtml(run.runId)}"><input type="hidden" name="version" value="${escapeHtml(run.version || 'v1')}"><h4>Connector publishing</h4><p class="muted">Certifyd Blog is canonical. Connected destinations require founder approval here before posting.</p><div class="destination-choice-grid">${choices}</div>${actions}</form><div class="distribution-status-list">${statusRows}</div></details></article>`;
+  const statusRows = destinations.map((destination) => destinationStatusRow(destination, state[destination.id], run, csrf, canPublish, detail || {})).join('');
+  const actions = canPublish ? `<p class="notice">Publish Certifyd, then Verify Live. Only verified DEV and WordPress destinations run automatically; manual exports become ready after verification. Each destination keeps its own result.</p><p class="muted">Selected destinations: <span data-selected-destinations>None</span></p><div class="actions"><button class="primary" type="submit">Publish Everywhere</button></div>` : '<p class="notice">This role can view distribution, but cannot publish destinations.</p>';
+  return `<article class="distribution-row"><div><h3>${escapeHtml(run.title || 'Untitled article')}</h3><p>${statusPill(run.status)} <span class="muted">${escapeHtml(String(publishedCount))} destination${publishedCount === 1 ? '' : 's'} published · ${escapeHtml(run.canonicalUrl || 'No canonical URL')}</span></p></div><details ${open ? 'open' : ''}><summary class="primary">Distribute</summary>${distributionPackagePanel(detail?.distribution?.package, run, csrf, canManage, `/app/content/distribution?runId=${encodeURIComponent(run.runId)}`)}<form method="post" action="/app/content/actions/distribution/publish" data-publish-everywhere><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="runId" value="${escapeHtml(run.runId)}"><input type="hidden" name="version" value="${escapeHtml(run.version || 'v1')}"><h4>Connector publishing</h4><p class="muted">Saved defaults are preselected; adjust this article before publishing.</p><div class="destination-choice-grid">${choices}</div>${actions}</form><div class="distribution-status-list">${statusRows}</div></details></article>`;
 }
 
 function destinationCheckbox(destination, selected = [], state = {}) {
-  const checked = selected.includes(destination.id) ? 'checked' : '';
-  const autoDisconnected = destination.automatic && !destination.manual && destination.status !== 'connected';
-  const disabled = destination.id === 'certifyd' ? '' : autoDisconnected ? 'disabled' : '';
-  const hint = state?.lastError ? state.lastError : destination.status === 'not_connected' ? 'Not connected' : destination.status === 'manual_export' ? 'Manual export' : destination.label;
+  const unavailable = destination.availableInPhase2 === false;
+  const checked = !unavailable && selected.includes(destination.id) ? 'checked' : '';
+  const disabled = unavailable ? 'disabled' : '';
+  const hint = unavailable ? 'Not enabled in Phase 2' : state?.lastError ? state.lastError : destination.status === 'not_connected' ? 'Not connected; will skip' : destination.status === 'manual_export' ? 'Manual export' : destination.label;
   return `<label class="destination-choice ${disabled ? 'muted' : ''}"><input type="checkbox" name="destinations" value="${escapeHtml(destination.id)}" ${checked} ${disabled}> <span><strong>${escapeHtml(destination.displayName)}</strong><small>${escapeHtml(hint || '')}</small></span></label>`;
 }
 
-function destinationStatusRow(destination, state = {}, run = {}, csrf = '', canManage = false) {
+function destinationStatusRow(destination, state = {}, run = {}, csrf = '', canManage = false, detail = {}) {
   const status = state?.status || 'not_selected';
   const url = state?.externalUrl ? ` · <a href="${escapeHtml(state.externalUrl)}" rel="noreferrer" target="_blank">Open</a>` : '';
   const error = state?.lastError || state?.blockedReason ? ` · ${escapeHtml(state.lastError || state.blockedReason)}` : '';
+  const canonical = destination.id === 'wordpress' && state?.status === 'sent' ? ` · ${state.canonicalVerified ? 'Certifyd canonical tag verified' : escapeHtml(state.canonicalWarning || 'WordPress canonical tag unverified')}` : '';
+  const exportId = `manual-export-${escapeHtml(run.runId)}-${escapeHtml(destination.id)}`;
+  const exportCurrent = destination.manual && state?.exportContent && isVerifiedCanonical(detail) && state.articleVersion === run.version && state.canonicalUrl === run.canonicalUrl;
+  const exportUi = exportCurrent ? `<details><summary>View ${escapeHtml(destination.displayName)} content</summary><textarea id="${exportId}" rows="12" readonly>${escapeHtml(state.exportContent)}</textarea><div class="mini-actions"><button class="ghost" type="button" data-copy-target="${exportId}">Copy</button><button class="ghost" type="button" data-download-target="${exportId}" data-download-name="${escapeHtml((run.slug || run.runId || 'article') + '-' + destination.id + (destination.id === 'html' ? '.html' : destination.id === 'email' ? '.txt' : '.md'))}">Download</button></div></details>` : destination.manual && state?.exportContent ? ' · Export is stale; regenerate after verifying the current Certifyd article.' : '';
+  const manualPublished = canManage && exportCurrent ? `<form method="post" action="/app/content/actions/distribution/manual-published"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="runId" value="${escapeHtml(run.runId)}"><input type="hidden" name="destinationId" value="${escapeHtml(destination.id)}"><label>External publication URL<input name="externalUrl" type="url" required placeholder="https://..."></label><button class="ghost small-button" type="submit">Mark as published externally</button></form>` : '';
   const retry = canManage && status === 'failed' && !state?.uncertainAcceptance && destination.id !== 'certifyd'
     ? `<form method="post" action="/app/content/actions/distribution/retry"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="runId" value="${escapeHtml(run.runId)}"><input type="hidden" name="version" value="${escapeHtml(run.version || 'v1')}"><input type="hidden" name="destinationId" value="${escapeHtml(destination.id)}"><button class="ghost small-button" type="submit">Retry ${escapeHtml(destination.displayName)}</button></form>` : '';
   const resolve = canManage && ['uncertain', 'sending'].includes(status)
     ? `<form method="post" action="/app/content/actions/distribution/resolve"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="runId" value="${escapeHtml(run.runId)}"><input type="hidden" name="destinationId" value="${escapeHtml(destination.id)}"><label>External post ID<input name="externalPostId" value="${escapeHtml(state.externalPostId || '')}"></label><label>External URL<input name="externalUrl" type="url" value="${escapeHtml(state.externalUrl || '')}"></label><button class="ghost small-button" type="submit" name="resolution" value="confirmed">Confirm external post</button><button class="ghost small-button" type="submit" name="resolution" value="not_published">Confirm no post exists</button></form>` : '';
   const attempts = Array.isArray(state?.attemptHistory) && state.attemptHistory.length
     ? `<details><summary>${state.attemptHistory.length} attempt${state.attemptHistory.length === 1 ? '' : 's'}</summary><ol>${state.attemptHistory.map((item) => `<li>${escapeHtml(item.startedAt || '')} · ${escapeHtml(item.articleVersion || '')} · ${escapeHtml(item.operation || '')} · ${escapeHtml(item.result || '')}${item.error ? ` · ${escapeHtml(item.error)}` : ''}</li>`).join('')}</ol></details>` : '';
-  return `<div class="distribution-status-row"><strong>${escapeHtml(destination.displayName)}</strong>: ${statusPill(status)}${url}${error}${retry}${resolve}${attempts}</div>`;
+  return `<div class="distribution-status-row"><strong>${escapeHtml(destination.displayName)}</strong>: ${statusPill(status)}${url}${error}${canonical}${exportUi}${manualPublished}${retry}${resolve}${attempts}</div>`;
 }
 
 function coverImageControls(run, csrf, permissions, config = {}) {

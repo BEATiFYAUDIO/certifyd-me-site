@@ -17,10 +17,12 @@ import {
   DESTINATION_STATES,
   buildDistributionAdapters,
   publicDestinationStatus,
+  readConnectionTests,
   readDistributionDefaults,
   readDistributionState,
   writeDistributionDefaults,
   writeDistributionState,
+  writeConnectionTests,
   withDistributionLock,
 } from './distribution-adapters.js';
 import {
@@ -709,8 +711,15 @@ export class ContentDashboardActions {
   }
 
   async distributionOverview() {
+    const tests = await readConnectionTests(this.config);
     return {
-      destinations: this.distributionAdapters.map(publicDestinationStatus),
+      destinations: this.distributionAdapters.map((adapter) => {
+        const item = publicDestinationStatus(adapter);
+        const checked = tests[adapter.id];
+        if (item.status === 'configured' && checked?.status === 'connected' && Date.now() - Date.parse(checked.testedAt) < 24 * 60 * 60 * 1000) return { ...item, ...checked, label: 'Connected' };
+        if (item.status === 'configured' && checked?.status === 'connection_error') return { ...item, ...checked, label: 'Connection test failed' };
+        return item;
+      }),
       defaults: await readDistributionDefaults(this.config),
     };
   }
@@ -718,7 +727,14 @@ export class ContentDashboardActions {
   async testDistributionConnection({ actor, destinationId }) {
     const adapter = this.distributionAdapters.find((item) => item.id === cleanString(destinationId, 80));
     if (!adapter) throw Object.assign(new Error('Unknown distribution destination.'), { statusCode: 404 });
-    const result = await adapter.testConnection();
+    let result;
+    try { result = await adapter.testConnection(); }
+    catch { result = { status: 'connection_error', label: 'Connection test failed', message: `${adapter.displayName} account verification failed. Check server-side credentials and permissions.` }; }
+    if (['devto', 'wordpress'].includes(adapter.id)) {
+      const tests = await readConnectionTests(this.config);
+      tests[adapter.id] = { status: result.status, message: result.message, accountId: result.accountId || '', testedAt: new Date().toISOString() };
+      await writeConnectionTests(this.config, tests);
+    }
     await this.audit.append({ action: 'distribution_connection_test', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, result: result.status === 'connected' || result.status === 'manual_export' ? 'SUCCESS' : 'FAILED', note: `${adapter.id}:${result.status}` });
     return { ok: result.status === 'connected' || result.status === 'manual_export', output: `${adapter.displayName}: ${result.label}. ${result.message || ''}` };
   }
@@ -819,9 +835,9 @@ export class ContentDashboardActions {
         selected = this.normalizeDistributionSelections(defaults.destinations || [], { allowCertifyd: true });
       }
       if (!selected.length) throw Object.assign(new Error('Select at least one distribution destination.'), { statusCode: 400 });
+      const connectionTests = await readConnectionTests(this.config);
       const article = distributionArticle(run);
       const results = [];
-      const automatic = selected.filter((id) => id !== 'certifyd' && this.distributionAdapters.find((item) => item.id === id)?.kind !== 'manual');
       let canonicalBlock = '';
       if (!isVerifiedCanonical(run)) {
         if (selected.includes('certifyd') && !isPublishedLike(run.summary)) {
@@ -845,7 +861,7 @@ export class ContentDashboardActions {
         results.push({ id: 'certifyd', status: DESTINATION_STATES.PUBLISHED, url: article.canonicalUrl });
       }
       if (canonicalBlock) {
-        for (const id of automatic) {
+        for (const id of selected.filter((item) => item !== 'certifyd')) {
           const previous = state.destinations[id] || {};
           if (![DESTINATION_STATES.SENT, DESTINATION_STATES.PUBLISHED, DESTINATION_STATES.UNCERTAIN, DESTINATION_STATES.SENDING].includes(previous.status) && !previous.uncertainAcceptance) {
             state.destinations[id] = { ...previous, status: DESTINATION_STATES.QUEUED, blockedReason: canonicalBlock, updatedAt: new Date().toISOString() };
@@ -855,8 +871,24 @@ export class ContentDashboardActions {
         await writeDistributionState(this.runs, runId, { ...state, updatedAt: new Date().toISOString() });
       }
       for (const adapter of this.distributionAdapters.filter((item) => item.id !== 'certifyd' && selected.includes(item.id))) {
-        if (canonicalBlock && adapter.kind !== 'manual') continue;
+        if (canonicalBlock) continue;
+        if (adapter.kind !== 'manual' && !['devto', 'wordpress'].includes(adapter.id)) {
+          const reason = 'This automatic destination is outside Distribution Phase 2.';
+          const prior = state.destinations[adapter.id] || {};
+          if ([DESTINATION_STATES.SENDING, DESTINATION_STATES.UNCERTAIN].includes(prior.status) || prior.uncertainAcceptance) {
+            results.push({ id: adapter.id, status: DESTINATION_STATES.UNCERTAIN, error: 'An earlier attempt remains uncertain; reconcile it before future publishing.' });
+            continue;
+          }
+          if (![DESTINATION_STATES.SENT, DESTINATION_STATES.PUBLISHED].includes(prior.status)) state.destinations[adapter.id] = { ...prior, status: DESTINATION_STATES.SKIPPED, blockedReason: reason, updatedAt: new Date().toISOString() };
+          await writeDistributionState(this.runs, runId, { ...state, updatedAt: new Date().toISOString() });
+          results.push({ id: adapter.id, status: DESTINATION_STATES.SKIPPED, error: reason });
+          continue;
+        }
         const previous = state.destinations[adapter.id] || {};
+        if (adapter.kind === 'manual' && previous.status === DESTINATION_STATES.PUBLISHED && previous.lastSuccessfulVersion === version) {
+          results.push({ id: adapter.id, status: DESTINATION_STATES.PUBLISHED, skipped: true, url: previous.externalUrl || '' });
+          continue;
+        }
         if (previous.status === DESTINATION_STATES.SENDING || previous.status === DESTINATION_STATES.UNCERTAIN || previous.uncertainAcceptance) {
           const error = `${adapter.displayName} may have accepted an earlier attempt. Check the platform and reconcile the outcome before retrying.`;
           if (previous.status === DESTINATION_STATES.SENDING) {
@@ -867,6 +899,13 @@ export class ContentDashboardActions {
             await writeDistributionState(this.runs, runId, { ...state, updatedAt: new Date().toISOString() });
           }
           results.push({ id: adapter.id, status: DESTINATION_STATES.UNCERTAIN, error });
+          continue;
+        }
+        if (adapter.kind !== 'manual' && adapter.connectionStatus().status !== 'connected' && (adapter.connectionStatus().status !== 'configured' || connectionTests[adapter.id]?.status !== 'connected' || !(Date.now() - Date.parse(connectionTests[adapter.id]?.testedAt) < 24 * 60 * 60 * 1000))) {
+          const reason = `${adapter.displayName} is not verified connected. Test the connection first.`;
+          if (![DESTINATION_STATES.SENT, DESTINATION_STATES.PUBLISHED].includes(previous.status)) state.destinations[adapter.id] = { ...previous, status: DESTINATION_STATES.SKIPPED, blockedReason: reason, updatedAt: new Date().toISOString() };
+          await writeDistributionState(this.runs, runId, { ...state, updatedAt: new Date().toISOString() });
+          results.push({ id: adapter.id, status: DESTINATION_STATES.SKIPPED, error: reason });
           continue;
         }
         const confirmed = [DESTINATION_STATES.SENT, DESTINATION_STATES.PUBLISHED].includes(previous.status);
@@ -893,21 +932,28 @@ export class ContentDashboardActions {
         let requestStarted = false;
         let publishResult;
         try {
-          if (adapter.kind !== 'manual' && adapter.connectionStatus().status !== 'connected') throw new Error(`${adapter.displayName} is not connected.`);
+          if (adapter.kind !== 'manual') {
+            const status = adapter.connectionStatus().status;
+            if (status !== 'connected' && (status !== 'configured' || connectionTests[adapter.id]?.status !== 'connected' || Date.now() - Date.parse(connectionTests[adapter.id]?.testedAt) >= 24 * 60 * 60 * 1000)) throw new Error(`${adapter.displayName} is not verified connected. Test the connection first.`);
+          }
           const preflight = preflightApiDistribution(adapter, article, previous, operation);
           if (!preflight.ok) throw new Error(`Distribution preflight failed: ${preflight.errors.join(' ')}`);
           const sendingAt = new Date().toISOString();
           state.destinations[adapter.id] = { ...state.destinations[adapter.id], status: DESTINATION_STATES.SENDING, preflight, approvedPayload: preflight.payload, sendingAt, updatedAt: sendingAt, attemptHistory: history.slice(0, -1).concat({ ...attempt, result: 'in_flight' }) };
           await writeDistributionState(this.runs, runId, { ...state, updatedAt: sendingAt });
           requestStarted = true;
-          publishResult = operation === 'update' ? await adapter.updateArticle(article, previous) : await adapter.publishArticle(article, previous);
+          const checkpoint = async (progress) => {
+            state.destinations[adapter.id] = { ...state.destinations[adapter.id], ...progress, updatedAt: new Date().toISOString() };
+            await writeDistributionState(this.runs, runId, { ...state, updatedAt: new Date().toISOString() });
+          };
+          publishResult = operation === 'update' ? await adapter.updateArticle(article, previous, { checkpoint }) : await adapter.publishArticle(article, previous, { checkpoint });
           if (adapter.kind !== 'manual' && !publishResult?.externalPostId && !previous.externalPostId) throw new Error(`${adapter.displayName} returned no external post ID; confirm whether the post was created before retrying.`);
           const endedAt = new Date().toISOString();
-          const externalPostId = publishResult?.externalPostId || previous.externalPostId || '';
-          const externalUrl = publishResult?.externalUrl || previous.externalUrl || '';
+          const externalPostId = adapter.kind === 'manual' ? '' : publishResult?.externalPostId || previous.externalPostId || '';
+          const externalUrl = adapter.kind === 'manual' ? '' : publishResult?.externalUrl || previous.externalUrl || '';
           if (externalUrl && !isSafeExternalUrl(externalUrl)) throw new Error(`${adapter.displayName} returned an invalid external URL; reconcile the outcome before retrying.`);
           const status = adapter.kind === 'manual' ? DESTINATION_STATES.MANUAL_READY : DESTINATION_STATES.SENT;
-          state.destinations[adapter.id] = { ...state.destinations[adapter.id], status, externalPostId, externalUrl, exportContent: adapter.kind === 'manual' ? publishResult.exportContent || '' : undefined, lastError: '', blockedReason: '', uncertainAcceptance: false, lastSuccessfulVersion: adapter.kind === 'manual' ? previous.lastSuccessfulVersion || '' : version, sentAt: endedAt, updatedAt: endedAt, sentPayload: preflight.payload, attemptHistory: history.slice(0, -1).concat({ ...attempt, endedAt, result: status, externalPostId, externalUrl }) };
+          state.destinations[adapter.id] = { ...state.destinations[adapter.id], status, externalPostId, externalUrl, exportContent: adapter.kind === 'manual' ? publishResult.exportContent || '' : undefined, publicationMethod: adapter.kind === 'manual' ? '' : previous.publicationMethod || '', publishedExternallyAt: adapter.kind === 'manual' ? '' : previous.publishedExternallyAt || '', mediaId: publishResult?.mediaId || state.destinations[adapter.id]?.mediaId || 0, mediaSourceUrl: publishResult?.mediaSourceUrl || state.destinations[adapter.id]?.mediaSourceUrl || '', canonicalVerified: publishResult?.canonicalVerified === true, canonicalWarning: publishResult?.canonicalWarning || '', lastError: '', blockedReason: '', uncertainAcceptance: false, lastSuccessfulVersion: adapter.kind === 'manual' ? previous.lastSuccessfulVersion || '' : version, articleVersion: version, canonicalUrl: article.canonicalUrl, sentAt: endedAt, updatedAt: endedAt, sentPayload: preflight.payload, attemptHistory: history.slice(0, -1).concat({ ...attempt, endedAt, result: status, externalPostId, externalUrl }) };
           await writeDistributionState(this.runs, runId, { ...state, updatedAt: endedAt });
           results.push({ id: adapter.id, status, url: externalUrl });
         } catch (error) {
@@ -959,6 +1005,28 @@ export class ContentDashboardActions {
       await writeDistributionState(this.runs, runId, { ...state, updatedAt: now, updatedBy: actor.email });
       await this.audit.append({ action: 'distribution_outcome_reconciled', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, version: last?.articleVersion || '', result: 'SUCCESS', note: `${id}:${resolution}` });
       return { ok: true, output: `${id}: ${resolution === 'confirmed' ? 'external post confirmed' : 'no external post found; retry enabled'}.` };
+    });
+  }
+
+  async markManualExternallyPublished({ actor, runId, destinationId, externalUrl }) {
+    validateRunId(runId);
+    if (actor.role !== 'founder') throw Object.assign(new Error('Founder approval is required.'), { statusCode: 403 });
+    const adapter = this.distributionAdapters.find((item) => item.id === cleanString(destinationId, 80) && item.kind === 'manual');
+    if (!adapter) throw Object.assign(new Error('Choose a manual export destination.'), { statusCode: 400 });
+    const url = cleanString(externalUrl, 2000);
+    if (!isSafeExternalUrl(url)) throw Object.assign(new Error('Enter a safe HTTPS external post URL.'), { statusCode: 400 });
+    return withDistributionLock(this.runs, runId, async () => {
+      const run = await this.runs.readRun(runId);
+      if (!isVerifiedCanonical(run)) throw Object.assign(new Error('Certifyd must be verified live for this article version.'), { statusCode: 409 });
+      const state = await readDistributionState(this.runs, runId);
+      const previous = state.destinations?.[adapter.id];
+      if (previous?.status !== DESTINATION_STATES.MANUAL_READY && previous?.status !== DESTINATION_STATES.PUBLISHED) throw Object.assign(new Error('Generate this manual export before marking it externally published.'), { statusCode: 409 });
+      if (previous.articleVersion !== run.summary.version || previous.canonicalUrl !== run.summary.canonicalUrl || previous.sentPayload?.bodyHash !== cryptoHash(distributionArticle(run).markdown)) throw Object.assign(new Error('This export is stale. Generate it again for the verified live article.'), { statusCode: 409 });
+      const now = new Date().toISOString();
+      state.destinations[adapter.id] = { ...previous, status: DESTINATION_STATES.PUBLISHED, externalUrl: url, publishedExternallyAt: now, lastSuccessfulVersion: run.summary.version, articleVersion: run.summary.version, canonicalUrl: run.summary.canonicalUrl, publicationMethod: 'manual', updatedAt: now };
+      await writeDistributionState(this.runs, runId, { ...state, updatedAt: now, updatedBy: actor.email });
+      await this.audit.append({ action: 'manual_distribution_confirmed', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, version: run.summary.version, result: 'SUCCESS', note: adapter.id });
+      return { ok: true, output: `${adapter.displayName} marked externally published.` };
     });
   }
 
@@ -1383,7 +1451,7 @@ function isPublishedLike(summary = {}) {
   return status === 'PUBLISHED' || (status === 'PUBLISHING' && publishability === 'PUBLISHING_DEPLOYMENT');
 }
 
-function isVerifiedCanonical(run = {}) {
+export function isVerifiedCanonical(run = {}) {
   const { summary = {}, manifest = {} } = run;
   return summary.status === 'PUBLISHED'
     && manifest.currentStatus === 'PUBLISHED'

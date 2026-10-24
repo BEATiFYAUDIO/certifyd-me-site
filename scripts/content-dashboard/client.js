@@ -21,6 +21,18 @@ document.addEventListener('click', async (event) => {
   const button = event.target;
   if (!(button instanceof HTMLButtonElement)) return;
   const targetId = button.dataset.copyTarget;
+  const downloadId = button.dataset.downloadTarget;
+  if (downloadId) {
+    const source = document.getElementById(downloadId);
+    if (!(source instanceof HTMLTextAreaElement)) return;
+    const blob = new Blob([source.value], { type: downloadId.endsWith('-html') ? 'text/html;charset=utf-8' : 'text/plain;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = button.dataset.downloadName || 'export.txt';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    return;
+  }
   if (!targetId) return;
   const target = document.getElementById(targetId);
   if (!(target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement)) return;
@@ -29,3 +41,15 @@ document.addEventListener('click', async (event) => {
   button.textContent = 'Copied';
   setTimeout(() => { button.textContent = original; }, 1200);
 });
+
+function updateDestinationPreview(form) {
+  const preview = form.querySelector('[data-selected-destinations]');
+  if (!preview) return;
+  const selected = [...form.querySelectorAll('input[name="destinations"]:checked')].map((input) => input.closest('label')?.querySelector('strong')?.textContent || input.value);
+  preview.textContent = selected.join(', ') || 'None';
+}
+document.addEventListener('change', (event) => {
+  const form = event.target?.closest?.('[data-publish-everywhere]');
+  if (form) updateDestinationPreview(form);
+});
+document.querySelectorAll('[data-publish-everywhere]').forEach(updateDestinationPreview);

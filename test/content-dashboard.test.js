@@ -14,6 +14,7 @@ import { KNOWLEDGE_SUGGESTIONS, applyKnowledgeSuggestion, listPendingKnowledgeSu
 import { GitHubPullRequestPublisher } from '../scripts/content-dashboard/publisher.js';
 import { distributionPackageOverallStatus } from '../scripts/content-dashboard/distribution-package.js';
 import { publicArticleBodyMarkdown } from '../scripts/content-dashboard/public-markdown.js';
+import { buildDistributionAdapters, markdownToHtml } from '../scripts/content-dashboard/distribution-adapters.js';
 
 const env = {
   ...process.env,
@@ -811,13 +812,13 @@ test('20ab distribution reports connector status without returning credentials',
   const devto = overview.destinations.find((item) => item.id === 'devto');
   const wordpress = overview.destinations.find((item) => item.id === 'wordpress');
   const linkedin = overview.destinations.find((item) => item.id === 'linkedin');
-  assert.equal(devto.status, 'connected');
+  assert.equal(devto.status, 'configured');
   assert.equal(wordpress.status, 'not_connected');
   assert.equal(linkedin.status, 'not_connected');
   assert.doesNotMatch(JSON.stringify(overview), /server-side-secret/);
 });
 
-test('20ac disconnected destination fails without blocking manual export distribution', async () => {
+test('20ac disconnected destination skips without blocking manual export distribution', async () => {
   const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-distribution-isolation-'));
   const outputDir = path.join(tmpRoot, 'engine', 'outputs');
   const runId = 'distribution-ready-001';
@@ -840,10 +841,10 @@ test('20ac disconnected destination fails without blocking manual export distrib
     version: 'v1',
     destinations: ['devto', 'markdown'],
   });
-  assert.equal(result.results.find((item) => item.id === 'devto').status, 'failed');
+  assert.equal(result.results.find((item) => item.id === 'devto').status, 'skipped');
   assert.equal(result.results.find((item) => item.id === 'markdown').status, 'manual_export_ready');
   const state = JSON.parse(await fs.readFile(path.join(outputDir, runId, 'distribution', 'destinations.json'), 'utf8'));
-  assert.equal(state.destinations.devto.status, 'failed');
+  assert.equal(state.destinations.devto.status, 'skipped');
   assert.equal(state.destinations.markdown.status, 'manual_export_ready');
 });
 
@@ -874,6 +875,8 @@ test('20aca API-backed distribution preflights payload and blocks uncertain retr
       CONTENT_DISTRIBUTION_DEVTO_API_KEY: 'devto-test-key',
     }));
     const actor = { id: 'founder@example.test', email: 'founder@example.test', role: 'founder' };
+    await fs.mkdir(path.join(tmpRoot, 'dashboard'), { recursive: true });
+    await fs.writeFile(path.join(tmpRoot, 'dashboard', 'distribution-connections.json'), JSON.stringify({ devto: { status: 'connected', testedAt: new Date().toISOString() } }));
 
     const first = await actions.distributeArticle({ actor, runId, version: 'v1', destinations: ['devto'] });
     assert.equal(first.results[0].status, 'uncertain');
@@ -2491,14 +2494,14 @@ function fakeDestination(id, { connected = true, publish, update, supportsUpdate
   };
 }
 
-test('distribution safety: canonical live verification gates automatic posting but not manual exports', async () => {
+test('distribution safety: canonical live verification gates automatic posting and canonical manual exports', async () => {
   const fixture = await distributionSafetyFixture({ verified: false, status: 'PUBLISHING' });
   let calls = 0;
   fixture.actions.distributionAdapters = [fakeDestination('devto', { publish: async () => { calls++; return { externalPostId: 'one' }; } }), ...fixture.actions.distributionAdapters.filter((item) => item.id === 'markdown')];
   const result = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto', 'markdown'] });
   assert.equal(calls, 0);
   assert.equal(result.results.find((item) => item.id === 'devto').status, 'queued');
-  assert.equal(result.results.find((item) => item.id === 'markdown').status, 'manual_export_ready');
+  assert.equal(result.results.find((item) => item.id === 'markdown').status, 'queued');
   assert.match((await fixture.state()).destinations.devto.blockedReason, /verified live/);
 });
 
@@ -2591,30 +2594,30 @@ test('distribution safety: malformed persisted state fails closed', async () => 
   assert.equal(calls, 0);
 });
 
-test('distribution safety: pre-request failure is certain and retry targets only that destination', async () => {
+test('distribution safety: disconnected destination skips without affecting confirmed destinations', async () => {
   const fixture = await distributionSafetyFixture();
   let goodCalls = 0;
   let failedCalls = 0;
   fixture.actions.distributionAdapters = [
     fakeDestination('devto', { publish: async () => { goodCalls++; return { externalPostId: 'good', externalUrl: 'https://example.test/good' }; } }),
-    fakeDestination('ghost', { connected: false, publish: async () => { failedCalls++; return { externalPostId: 'bad' }; } }),
+    fakeDestination('wordpress', { connected: false, publish: async () => { failedCalls++; return { externalPostId: 'bad' }; } }),
   ];
-  await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto', 'ghost'] });
+  const result = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto', 'wordpress'] });
   let state = await fixture.state();
   assert.equal(goodCalls, 1);
   assert.equal(failedCalls, 0);
   assert.equal(state.destinations.devto.status, 'sent');
-  assert.equal(state.destinations.ghost.status, 'failed');
-  assert.equal(state.destinations.ghost.uncertainAcceptance, false);
-  fixture.actions.distributionAdapters[1] = fakeDestination('ghost', { publish: async () => { failedCalls++; return { externalPostId: 'ghost-id', externalUrl: 'https://example.test/ghost' }; } });
-  const retry = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinationId: 'ghost', destinations: ['devto'], retryFailed: true });
-  assert.deepEqual(retry.results.map((item) => item.id), ['ghost']);
+  assert.equal(state.destinations.wordpress.status, 'skipped');
+  assert.equal(result.results.find((item) => item.id === 'wordpress').status, 'skipped');
+  fixture.actions.distributionAdapters[1] = fakeDestination('wordpress', { publish: async () => { failedCalls++; return { externalPostId: 'wordpress-id', externalUrl: 'https://example.test/wordpress' }; } });
+  const later = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto', 'wordpress'] });
+  assert.equal(later.results.find((item) => item.id === 'devto').skipped, true);
   state = await fixture.state();
   assert.equal(goodCalls, 1);
   assert.equal(failedCalls, 1);
   assert.equal(state.destinations.devto.status, 'sent');
-  assert.equal(state.destinations.ghost.externalPostId, 'ghost-id');
-  assert.equal(state.destinations.ghost.attemptHistory.length, 2);
+  assert.equal(state.destinations.wordpress.externalPostId, 'wordpress-id');
+  assert.equal(state.destinations.wordpress.attemptHistory.length, 1);
 });
 
 test('distribution safety: an in-flight request is durable, uncertain, and never blindly retried', async () => {
@@ -2789,4 +2792,200 @@ test('published edits retain repository identity and replace stale social metada
   assert.equal(result.repositoryPath, 'content/blog/original.md');
   assert.equal(result.canonicalUrl, 'https://certifyd.me/blog/original/');
   await fs.rm(tmpRoot, { recursive: true, force: true });
+});
+
+test('distribution phase 2: Markdown exports render structure, safe links and escaped raw HTML', () => {
+  const html = markdownToHtml('# Heading\n\nA **bold** and *italic* [link](https://certifyd.me).\n\n1. First\n2. Second\n\n> Quote\n\n`inline`\n\n```js\nconst x = 1;\n```\n\n---\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(1))');
+  for (const tag of ['<h1>Heading</h1>', '<strong>bold</strong>', '<em>italic</em>', '<ol>', '<blockquote>', '<pre><code', '<hr>', '<code>inline</code>', '<a href="https://certifyd.me"']) assert.match(html, new RegExp(tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.doesNotMatch(html, /<script>|href="javascript:/);
+  assert.match(html, /&lt;script&gt;/);
+  const exported = buildDistributionAdapters().find((item) => item.id === 'html');
+  const result = exported.publishArticle({ title: 'Test', markdown: '# Body', canonicalUrl: 'https://certifyd.me/blog/test/' });
+  return result.then(({ exportContent }) => assert.match(exportContent, /<a href="https:\/\/certifyd\.me\/blog\/test\/">Certifyd<\/a>/));
+});
+
+test('distribution phase 2: DEV account test, create, update, and identity validation', async () => {
+  const adapter = buildDistributionAdapters({ env: { CONTENT_DISTRIBUTION_DEVTO_API_KEY: 'private-key' } }).find((item) => item.id === 'devto');
+  const article = { title: 'Article', markdown: '# Article', canonicalUrl: 'https://certifyd.me/blog/article/', excerpt: 'Summary', tags: ['Creator Rights'], featuredImage: '/images/blog/cover.jpg' };
+  const original = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ url: String(url), options });
+    if (String(url).endsWith('/users/me')) return Response.json({ id: 12, username: 'certifyd' });
+    return Response.json({ id: 99, url: 'https://dev.to/certifyd/article' });
+  };
+  try {
+    assert.equal((await adapter.testConnection()).status, 'connected');
+    const created = await adapter.publishArticle(article);
+    assert.equal(created.externalPostId, '99');
+    assert.equal((await adapter.updateArticle(article, { externalPostId: '99' })).externalPostId, '99');
+    assert.equal(calls[1].options.headers['api-key'], 'private-key');
+    assert.equal(calls[1].options.headers.Accept, 'application/vnd.forem.api-v1+json');
+    const payload = JSON.parse(calls[1].options.body).article;
+    assert.equal(payload.main_image, 'https://certifyd.me/images/blog/cover.jpg');
+    assert.equal(payload.tags, 'creatorrights');
+    assert.equal(payload.canonical_url, article.canonicalUrl);
+    await assert.rejects(adapter.updateArticle(article, { externalPostId: 'missing' }), /valid existing article ID/);
+    globalThis.fetch = async () => Response.json({ id: 99 });
+    await assert.rejects(adapter.publishArticle(article), /public URL/);
+    globalThis.fetch = async () => new Response('{}', { status: 401 });
+    await assert.rejects(adapter.testConnection(), /HTTP 401/);
+  } finally { globalThis.fetch = original; }
+});
+
+test('distribution phase 2: WordPress verifies account, publishes and reuses featured media on update', async () => {
+  const adapter = buildDistributionAdapters({ env: { CONTENT_DISTRIBUTION_WORDPRESS_API_URL: 'https://wp.example.test', CONTENT_DISTRIBUTION_WORDPRESS_USERNAME: 'editor', CONTENT_DISTRIBUTION_WORDPRESS_APPLICATION_PASSWORD: 'app-pass', CONTENT_DISTRIBUTION_WORDPRESS_CANONICAL_META_KEY: 'certifyd_canonical' } }).find((item) => item.id === 'wordpress');
+  const article = { title: 'Article', markdown: '# Article', canonicalUrl: 'https://certifyd.me/blog/article/', excerpt: 'Summary', featuredImage: '/images/blog/cover.jpg' };
+  const original = globalThis.fetch;
+  const calls = [];
+  let canonical = true;
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ url: String(url), options });
+    if (String(url).endsWith('/users/me?context=edit')) return Response.json({ id: 4, name: 'Editor' });
+    if (String(url).startsWith('https://certifyd.me/images/')) return new Response(Buffer.from([1, 2, 3]), { headers: { 'content-type': 'image/jpeg' } });
+    if (String(url).endsWith('/media')) return Response.json({ id: 55 });
+    if (String(url).includes('/wp-json/wp/v2/posts')) return Response.json({ id: 77, link: 'https://wp.example.test/article/' });
+    if (String(url).endsWith('/article/')) return new Response(`<link rel="canonical" href="${canonical ? article.canonicalUrl : 'https://wp.example.test/article/'}">`);
+    throw new Error('Unexpected request');
+  };
+  try {
+    assert.equal((await adapter.testConnection()).status, 'connected');
+    let checkpoint;
+    const created = await adapter.publishArticle(article, {}, { checkpoint: async (value) => { checkpoint = value; } });
+    assert.equal(created.externalPostId, '77');
+    assert.equal(created.canonicalVerified, true);
+    assert.equal(checkpoint.mediaId, 55);
+    const body = JSON.parse(calls.find((call) => call.url.endsWith('/posts')).options.body);
+    assert.equal(body.featured_media, 55);
+    assert.equal(body.meta.certifyd_canonical, article.canonicalUrl);
+    assert.match(body.content, /<a href="https:\/\/certifyd\.me\/blog\/article\/">Certifyd<\/a>/);
+    canonical = false;
+    const updated = await adapter.updateArticle(article, { externalPostId: '77', ...checkpoint });
+    assert.equal(updated.canonicalVerified, false);
+    assert.match(updated.canonicalWarning, /unverified/);
+    assert.equal(calls.filter((call) => call.url.endsWith('/media')).length, 1);
+    await assert.rejects(adapter.updateArticle(article, { externalPostId: 'invalid' }), /valid existing post ID/);
+    globalThis.fetch = async () => new Response('{}', { status: 401 });
+    await assert.rejects(adapter.testConnection(), /HTTP 401/);
+  } finally { globalThis.fetch = original; }
+});
+
+test('distribution phase 2: manual exports are visible, downloadable and can be recorded as external publication', async () => {
+  const fixture = await distributionSafetyFixture();
+  const result = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['markdown', 'html', 'email', 'pdf', 'medium', 'substack'] });
+  assert.equal(result.results.filter((item) => item.status === 'manual_export_ready').length, 6);
+  await withServer(async (base) => {
+    const cookie = await login(base, 'founder@example.test');
+    const response = await fetch(`${base}/app/content/distribution?runId=${fixture.runId}`, { headers: { Cookie: cookie } });
+    const html = await response.text();
+    assert.match(html, /View Markdown export content/);
+    assert.match(html, /data-download-target=/);
+    assert.match(html, /Mark as published externally/);
+    assert.match(html, /Publish Everywhere/);
+  }, { CONTENT_AGENT_ROOT: fixture.root, CONTENT_AGENT_OUTPUT_DIR: path.join(fixture.root, 'engine', 'outputs') });
+  await fixture.actions.markManualExternallyPublished({ actor: fixture.actor, runId: fixture.runId, destinationId: 'medium', externalUrl: 'https://medium.com/@certifyd/article' });
+  const state = await fixture.state();
+  assert.equal(state.destinations.medium.status, 'published');
+  assert.equal(state.destinations.medium.publicationMethod, 'manual');
+  assert.equal(state.destinations.medium.articleVersion, 'v1');
+  assert.equal(state.destinations.medium.canonicalUrl, 'https://certifyd.me/blog/safety-article/');
+  assert.equal(state.destinations.medium.externalUrl, 'https://medium.com/@certifyd/article');
+  assert.ok(state.destinations.medium.publishedExternallyAt);
+});
+
+test('distribution phase 2: Publish Everywhere preserves mixed destination results', async () => {
+  const fixture = await distributionSafetyFixture();
+  fixture.actions.distributionAdapters = [
+    fakeDestination('devto', { publish: async () => ({ externalPostId: '101', externalUrl: 'https://dev.to/test/article' }) }),
+    fakeDestination('wordpress', { publish: async () => { throw new Error('HTTP 503'); } }),
+    fixture.actions.distributionAdapters.find((item) => item.id === 'markdown'),
+  ];
+  const result = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto', 'wordpress', 'markdown'] });
+  assert.deepEqual(result.results.map((item) => item.status), ['sent', 'uncertain', 'manual_export_ready']);
+  const state = await fixture.state();
+  assert.equal(state.destinations.devto.status, 'sent');
+  assert.equal(state.destinations.wordpress.status, 'uncertain');
+  assert.equal(state.destinations.markdown.status, 'manual_export_ready');
+});
+
+test('distribution phase 2: connection tests persist only status and distinguish failed tests', async () => {
+  const fixture = await distributionSafetyFixture({ envOverrides: { CONTENT_DISTRIBUTION_DEVTO_API_KEY: 'private-dev-key', CONTENT_DISTRIBUTION_DEVTO_USERNAME: 'certifyd' } });
+  const original = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => Response.json({ id: 8, username: 'certifyd' });
+    assert.equal((await fixture.actions.testDistributionConnection({ actor: fixture.actor, destinationId: 'devto' })).ok, true);
+    assert.equal((await fixture.actions.distributionOverview()).destinations.find((item) => item.id === 'devto').status, 'connected');
+    let persisted = await fs.readFile(path.join(fixture.root, 'dashboard', 'distribution-connections.json'), 'utf8');
+    assert.doesNotMatch(persisted, /private-dev-key|api-key|Authorization/);
+    globalThis.fetch = async () => new Response('credential denied', { status: 401 });
+    assert.equal((await fixture.actions.testDistributionConnection({ actor: fixture.actor, destinationId: 'devto' })).ok, false);
+    assert.equal((await fixture.actions.distributionOverview()).destinations.find((item) => item.id === 'devto').status, 'connection_error');
+    persisted = await fs.readFile(path.join(fixture.root, 'dashboard', 'distribution-connections.json'), 'utf8');
+    assert.doesNotMatch(persisted, /credential denied|private-dev-key/);
+  } finally { globalThis.fetch = original; }
+});
+
+test('distribution phase 2: WordPress media checkpoint survives failed post and retry does not reupload', async () => {
+  const fixture = await distributionSafetyFixture({ envOverrides: { CONTENT_DISTRIBUTION_WORDPRESS_API_URL: 'https://wp.example.test', CONTENT_DISTRIBUTION_WORDPRESS_USERNAME: 'editor', CONTENT_DISTRIBUTION_WORDPRESS_APPLICATION_PASSWORD: 'app-pass' } });
+  const blogFile = path.join(fixture.runDir, 'blog', 'blog-post.json');
+  const blog = JSON.parse(await fs.readFile(blogFile, 'utf8'));
+  blog.coverImage = '/images/blog/cover.jpg';
+  await fs.writeFile(blogFile, JSON.stringify(blog));
+  await markVerifiedRun(fixture.runDir);
+  await fs.mkdir(path.join(fixture.root, 'dashboard'), { recursive: true });
+  await fs.writeFile(path.join(fixture.root, 'dashboard', 'distribution-connections.json'), JSON.stringify({ wordpress: { status: 'connected', testedAt: new Date().toISOString() } }));
+  const original = globalThis.fetch;
+  let mediaCalls = 0;
+  let postCalls = 0;
+  globalThis.fetch = async (url) => {
+    const target = String(url);
+    if (target.startsWith('https://certifyd.me/images/')) return new Response(Buffer.from([1, 2, 3]), { headers: { 'content-type': 'image/jpeg' } });
+    if (target.endsWith('/media')) { mediaCalls++; return Response.json({ id: 55 }); }
+    if (target.endsWith('/posts')) { postCalls++; return postCalls === 1 ? new Response('failure', { status: 503 }) : Response.json({ id: 77, link: 'https://wp.example.test/article/' }); }
+    if (target.endsWith('/article/')) return new Response('<link rel="canonical" href="https://certifyd.me/blog/safety-article/">');
+    throw new Error('Unexpected request');
+  };
+  try {
+    const first = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['wordpress'] });
+    assert.equal(first.results[0].status, 'uncertain');
+    assert.equal((await fixture.state()).destinations.wordpress.mediaId, 55);
+    await fixture.actions.resolveDistributionOutcome({ actor: fixture.actor, runId: fixture.runId, destinationId: 'wordpress', resolution: 'not_published' });
+    const retry = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinationId: 'wordpress', retryFailed: true });
+    assert.equal(retry.results[0].status, 'sent');
+    assert.equal(mediaCalls, 1);
+    assert.equal(postCalls, 2);
+    assert.equal((await fixture.state()).destinations.wordpress.canonicalVerified, true);
+  } finally { globalThis.fetch = original; }
+});
+
+test('distribution phase 2: Publish Everywhere form shows selected destinations and result summary', async () => {
+  const fixture = await distributionSafetyFixture();
+  await withServer(async (base) => {
+    const cookie = await login(base, 'founder@example.test');
+    const page = await (await fetch(`${base}/app/content/distribution?runId=${fixture.runId}`, { headers: { Cookie: cookie } })).text();
+    const form = page.match(/<form[^>]+action="\/app\/content\/actions\/distribution\/publish"[\s\S]*?<\/form>/)?.[0] || '';
+    assert.match(form, /data-publish-everywhere/);
+    assert.match(form, /value="markdown" checked/);
+    const csrf = form.match(/name="_csrf" value="([^"]+)"/)?.[1];
+    assert.ok(csrf);
+    const response = await fetch(`${base}/app/content/actions/distribution/publish`, { method: 'POST', headers: { Cookie: cookie, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ _csrf: csrf, runId: fixture.runId, version: 'v1', destinations: 'markdown' }), redirect: 'manual' });
+    assert.equal(response.status, 200);
+    const result = await response.text();
+    assert.match(result, /Manual ready: <strong>1<\/strong>/);
+    assert.match(result, /Confirmed: <strong>0<\/strong>/);
+  }, { CONTENT_AGENT_ROOT: fixture.root, CONTENT_AGENT_OUTPUT_DIR: path.join(fixture.root, 'engine', 'outputs') });
+  assert.equal((await fixture.state()).destinations.markdown.status, 'manual_export_ready');
+});
+
+test('distribution phase 2: edited article cannot expose or confirm a stale manual export', async () => {
+  const fixture = await distributionSafetyFixture();
+  await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['markdown'] });
+  await fs.writeFile(path.join(fixture.runDir, 'final', 'article.md'), '# Safety Article\n\nChanged after the export was prepared.');
+  await assert.rejects(fixture.actions.markManualExternallyPublished({ actor: fixture.actor, runId: fixture.runId, destinationId: 'markdown', externalUrl: 'https://example.test/article' }), /verified live/);
+  await withServer(async (base) => {
+    const cookie = await login(base, 'founder@example.test');
+    const page = await (await fetch(`${base}/app/content/distribution?runId=${fixture.runId}`, { headers: { Cookie: cookie } })).text();
+    assert.match(page, /Export is stale/);
+    assert.doesNotMatch(page, /View Markdown export content/);
+  }, { CONTENT_AGENT_ROOT: fixture.root, CONTENT_AGENT_OUTPUT_DIR: path.join(fixture.root, 'engine', 'outputs') });
 });
