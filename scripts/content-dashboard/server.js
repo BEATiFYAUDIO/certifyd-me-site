@@ -24,6 +24,7 @@ import {
   TRENDING_CATEGORIES,
 } from './trends.js';
 import { ensureImageBriefForRun } from './image-generation.js';
+import { BLOGGER_REDIRECT_URI } from './blogger-oauth.js';
 
 const STATIC_TYPES = new Map([['.html','text/html; charset=utf-8'],['.css','text/css; charset=utf-8'],['.js','text/javascript; charset=utf-8'],['.svg','image/svg+xml'],['.png','image/png'],['.jpg','image/jpeg'],['.jpeg','image/jpeg'],['.webp','image/webp'],['.xml','application/xml; charset=utf-8'],['.txt','text/plain; charset=utf-8'],['.mp4','video/mp4']]);
 const generationJobs = new Map();
@@ -52,7 +53,7 @@ export function createContentDashboardServer(options = {}) {
       if (url.pathname === '/app/login') return await handleLogin(req, res, url, { config, userRepo });
       if (url.pathname === '/app/logout') return handleLogout(req, res);
       if (url.pathname.startsWith('/app/content')) return await handleProtected(req, res, url, { config, runRepo, brainRepo, actions, audit, userRepo, requestId });
-      return await serveStatic(req, res, url, config.siteRoot);
+      return await serveStatic(req, res, url, config);
     } catch (error) {
       sendError(res, error);
     }
@@ -108,6 +109,12 @@ async function handleProtected(req, res, url, ctx) {
   }
   const permissions = permissionsForRole(user.role);
   if (!permissions.includes('content.dashboard.view')) return sendStatus(res, 403, 'Forbidden');
+  if (url.pathname === '/app/content/oauth/blogger/callback') {
+    if (req.method !== 'GET') return sendStatus(res, 405, 'Method not allowed');
+    if (user.role !== 'founder') return sendStatus(res, 403, 'Forbidden');
+    await ctx.actions.completeBloggerConnection({ actor: user, sessionId: user.sid, state: url.searchParams.get('state'), code: url.searchParams.get('code'), error: url.searchParams.get('error') });
+    return redirect(res, '/app/content/distribution?blogger=connected');
+  }
   if (req.method === 'POST') return handleAction(req, res, url, { ...ctx, user, permissions });
   await ctx.audit.append({ action: 'dashboard_access', actorUserId: user.id, actorDisplayName: user.email, actorRole: user.role, result: 'SUCCESS', requestId: ctx.requestId });
   return handlePage(req, res, url, { ...ctx, user, permissions });
@@ -181,6 +188,8 @@ async function handleAction(req, res, url, ctx) {
   else if (action.endsWith('/distribution/manual-published')) { needs('content.distribution.manage'); result = await ctx.actions.markManualExternallyPublished({ actor: ctx.user, runId: form.get('runId'), destinationId: form.get('destinationId'), externalUrl: form.get('externalUrl') }); }
   else if (action.endsWith('/distribution/defaults')) { needs('content.distribution.manage'); result = await ctx.actions.saveDistributionDefaults({ actor: ctx.user, destinations: form.getAll('destinations') }); }
   else if (action.endsWith('/distribution/test')) { needs('content.distribution.manage'); result = await ctx.actions.testDistributionConnection({ actor: ctx.user, destinationId: form.get('destinationId') }); }
+  else if (action.endsWith('/distribution/blogger/connect')) { needs('content.distribution.manage'); return redirect(res, ctx.actions.startBloggerConnection({ actor: ctx.user, sessionId: ctx.user.sid })); }
+  else if (action.endsWith('/distribution/blogger/disconnect')) { needs('content.distribution.manage'); result = await ctx.actions.disconnectBlogger({ actor: ctx.user }); }
   else if (action.endsWith('/article/save')) { needs('content.article.edit'); result = await ctx.actions.saveArticleMarkdown({ actor: ctx.user, runId: form.get('runId'), articleMarkdown: form.get('articleMarkdown') }); }
   else if (action.endsWith('/article/archive')) { needs('content.article.archive'); result = await ctx.actions.archiveArticle({ actor: ctx.user, runId: form.get('runId') }); }
   else if (action.endsWith('/article/delete-draft')) { needs('content.article.delete'); result = await ctx.actions.deleteDraft({ actor: ctx.user, runId: form.get('runId'), confirmDelete: form.get('confirmDelete') }); }
@@ -896,7 +905,7 @@ async function renderDistribution(ctx, url) {
   for (const run of runs) details.set(run.runId, await ctx.runRepo.readRun(run.runId).catch(() => null));
   const eligibleRuns = runs.filter((run) => ['FOUNDER_APPROVED', 'READY_TO_PUBLISH', 'PUBLISHING', 'PUBLISHED'].includes(String(run.status || '').toUpperCase()));
   const destinations = overview.destinations;
-  const destinationRows = destinations.map((destination) => destinationChip(destination, csrf, canManage)).join('');
+  const destinationRows = destinations.map((destination) => destinationChip(destination, csrf, canManage, canPublish)).join('');
   const defaultForm = canManage ? `<form class="panel compact-panel" method="post" action="/app/content/actions/distribution/defaults"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><h2>Default destinations</h2><p class="muted">Defaults preselect destinations for each article. Nothing runs until the founder clicks Publish Everywhere.</p><div class="destination-choice-grid">${destinations.filter((item) => item.id !== 'certifyd').map((item) => destinationCheckbox(item, overview.defaults?.destinations || [])).join('')}</div><button class="ghost" type="submit">Save default destinations</button></form>` : '';
   const articleRows = eligibleRuns.map((run) => distributionArticleRow(run, details.get(run.runId), destinations, overview.defaults?.destinations || [], csrf, canManage, canPublish, selectedRunId === run.runId)).join('');
   return layout({
@@ -1268,8 +1277,13 @@ function distributionPackageStatus(pkg = {}) {
   return 'draft';
 }
 
-function destinationChip(destination, csrf, canManage) {
+function destinationChip(destination, csrf, canManage, isFounder = false) {
   const css = destination.status === 'connected' ? 'good' : destination.status === 'manual_export' ? 'warn' : destination.status === 'connection_error' ? 'bad' : '';
+  if (destination.id === 'blogger') {
+    const test = canManage ? `<form method="post" action="/app/content/actions/distribution/test"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="destinationId" value="blogger"><button class="ghost small-button" type="submit">Test connection</button></form>` : '';
+    const controls = isFounder ? `${test}<form method="post" action="/app/content/actions/distribution/blogger/connect"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><button class="ghost small-button" type="submit">Connect Blogger</button></form><form method="post" action="/app/content/actions/distribution/blogger/disconnect"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><button class="ghost small-button" type="submit">Disconnect Blogger</button></form>` : test;
+    return `<article class="destination-chip"><div><strong>Blogger</strong><p>${statusPill(destination.label)} <span class="muted">${escapeHtml(destination.message || '')}</span></p><p class="muted">Google OAuth redirect URI: <code>${escapeHtml(BLOGGER_REDIRECT_URI)}</code></p></div><div class="mini-actions">${controls}</div></article>`;
+  }
   const controls = canManage
     ? `<form method="post" action="/app/content/actions/distribution/test"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="destinationId" value="${escapeHtml(destination.id)}"><button class="ghost small-button" type="submit">Test connection</button></form><button class="ghost small-button" type="button" disabled>${destination.status === 'connected' ? 'Disconnect' : 'Connect'}</button>`
     : '';
@@ -1281,7 +1295,7 @@ function distributionArticleRow(run, detail, destinations, defaults, csrf, canMa
   const publishedCount = Object.values(state).filter((item) => ['published', 'sent'].includes(item?.status)).length;
   const choices = destinations.map((destination) => destinationCheckbox(destination, destination.id === 'certifyd' ? ['certifyd'] : defaults, state[destination.id])).join('');
   const statusRows = destinations.map((destination) => destinationStatusRow(destination, state[destination.id], run, csrf, canPublish, detail || {})).join('');
-  const actions = canPublish ? `<p class="notice">Publish Certifyd, then Verify Live. Only verified DEV and WordPress destinations run automatically; manual exports become ready after verification. Each destination keeps its own result.</p><p class="muted">Selected destinations: <span data-selected-destinations>None</span></p><div class="actions"><button class="primary" type="submit">Publish Everywhere</button></div>` : '<p class="notice">This role can view distribution, but cannot publish destinations.</p>';
+  const actions = canPublish ? `<p class="notice">Publish Certifyd, then Verify Live. Only verified DEV, WordPress and Blogger destinations run automatically; manual exports become ready after verification. Each destination keeps its own result.</p><p class="muted">Selected destinations: <span data-selected-destinations>None</span></p><div class="actions"><button class="primary" type="submit">Publish Everywhere</button></div>` : '<p class="notice">This role can view distribution, but cannot publish destinations.</p>';
   return `<article class="distribution-row"><div><h3>${escapeHtml(run.title || 'Untitled article')}</h3><p>${statusPill(run.status)} <span class="muted">${escapeHtml(String(publishedCount))} destination${publishedCount === 1 ? '' : 's'} published · ${escapeHtml(run.canonicalUrl || 'No canonical URL')}</span></p></div><details ${open ? 'open' : ''}><summary class="primary">Distribute</summary>${distributionPackagePanel(detail?.distribution?.package, run, csrf, canManage, `/app/content/distribution?runId=${encodeURIComponent(run.runId)}`)}<form method="post" action="/app/content/actions/distribution/publish" data-publish-everywhere><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="runId" value="${escapeHtml(run.runId)}"><input type="hidden" name="version" value="${escapeHtml(run.version || 'v1')}"><h4>Connector publishing</h4><p class="muted">Saved defaults are preselected; adjust this article before publishing.</p><div class="destination-choice-grid">${choices}</div>${actions}</form><div class="distribution-status-list">${statusRows}</div></details></article>`;
 }
 
@@ -1448,12 +1462,14 @@ function validateIntake(form) {
   if (!['deterministic', 'ollama', 'openai'].includes(provider)) throw Object.assign(new Error('Invalid generation provider.'), { statusCode: 400 });
 }
 
-async function serveStatic(req, res, url, siteRoot) {
+async function serveStatic(req, res, url, config) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return sendStatus(res, 405, 'Method not allowed');
+  const siteRoot = config.siteRoot;
   let pathname = decodeURIComponent(url.pathname);
   if (pathname === '/') pathname = '/index.html';
   let file = path.resolve(siteRoot, `.${pathname}`);
   if (!file.startsWith(siteRoot)) return sendStatus(res, 403, 'Forbidden');
+  if (file === path.resolve(config.agentRoot, 'dashboard', 'blogger-oauth.enc.json')) return sendStatus(res, 403, 'Forbidden');
   let stat = await fs.stat(file).catch(() => null);
   if (stat?.isDirectory()) {
     file = path.join(file, 'index.html');

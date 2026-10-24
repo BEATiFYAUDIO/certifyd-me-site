@@ -15,6 +15,7 @@ import { GitHubPullRequestPublisher } from '../scripts/content-dashboard/publish
 import { distributionPackageOverallStatus } from '../scripts/content-dashboard/distribution-package.js';
 import { publicArticleBodyMarkdown } from '../scripts/content-dashboard/public-markdown.js';
 import { buildDistributionAdapters, markdownToHtml } from '../scripts/content-dashboard/distribution-adapters.js';
+import { BLOGGER_REDIRECT_URI } from '../scripts/content-dashboard/blogger-oauth.js';
 
 const env = {
   ...process.env,
@@ -2923,6 +2924,164 @@ test('distribution phase 2: connection tests persist only status and distinguish
     persisted = await fs.readFile(path.join(fixture.root, 'dashboard', 'distribution-connections.json'), 'utf8');
     assert.doesNotMatch(persisted, /credential denied|private-dev-key/);
   } finally { globalThis.fetch = original; }
+});
+
+test('Blogger OAuth: founder start, callback state, encrypted storage, connection test, and disconnect', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-blogger-oauth-'));
+  const nativeFetch = globalThis.fetch;
+  let tokenCalls = 0;
+  let blogCalls = 0;
+  globalThis.fetch = async (url, options = {}) => {
+    const target = String(url);
+    if (target === 'https://oauth2.googleapis.com/token') {
+      tokenCalls++;
+      assert.equal(new URLSearchParams(options.body).get('redirect_uri'), BLOGGER_REDIRECT_URI);
+      return Response.json({ access_token: 'private-access-token', refresh_token: 'private-refresh-token', expires_in: 3600 });
+    }
+    if (target.includes('/blogger/v3/users/self/blogs')) {
+      blogCalls++;
+      assert.equal(options.headers.Authorization, 'Bearer private-access-token');
+      return Response.json({ items: [{ id: '12345', name: 'Certifyd Blogger' }] });
+    }
+    return nativeFetch(url, options);
+  };
+  try {
+    await withServer(async (base) => {
+      const founder = await login(base, 'founder@example.test');
+      const editor = await login(base, 'editor@example.test');
+      const page = await nativeFetch(`${base}/app/content/distribution`, { headers: { cookie: founder } });
+      const html = await page.text();
+      assert.match(html, /https:\/\/admin\.certifyd\.me\/app\/content\/oauth\/blogger\/callback/);
+      assert.doesNotMatch(html, /private-client-secret|private-refresh-token|private-access-token/);
+      const csrf = html.match(/name="_csrf" value="([^"]+)"/)?.[1];
+      const startPath = '/app/content/actions/distribution/blogger/connect';
+      const body = new URLSearchParams({ _csrf: csrf });
+      assert.equal((await nativeFetch(`${base}${startPath}`, { method: 'POST', redirect: 'manual', headers: { cookie: founder }, body: new URLSearchParams({ _csrf: 'bad' }) })).status, 403);
+      assert.equal((await nativeFetch(`${base}${startPath}`, { method: 'POST', redirect: 'manual', headers: { cookie: editor }, body })).status, 403);
+      const start = await nativeFetch(`${base}${startPath}`, { method: 'POST', redirect: 'manual', headers: { cookie: founder }, body });
+      assert.equal(start.status, 303);
+      const auth = new URL(start.headers.get('location'));
+      assert.equal(auth.origin, 'https://accounts.google.com');
+      assert.equal(auth.searchParams.get('redirect_uri'), BLOGGER_REDIRECT_URI);
+      assert.equal(auth.searchParams.get('access_type'), 'offline');
+      assert.equal(auth.searchParams.get('scope'), 'https://www.googleapis.com/auth/blogger');
+      const state = auth.searchParams.get('state');
+      const callback = '/app/content/oauth/blogger/callback';
+      assert.equal((await nativeFetch(`${base}${callback}?state=wrong&code=private-code`, { redirect: 'manual', headers: { cookie: founder } })).status, 403);
+      assert.equal((await nativeFetch(`${base}${callback}?state=${state}&code=private-code`, { redirect: 'manual', headers: { cookie: editor } })).status, 403);
+      const done = await nativeFetch(`${base}${callback}?state=${state}&code=private-code`, { redirect: 'manual', headers: { cookie: founder } });
+      assert.equal(done.status, 303);
+      assert.equal(done.headers.get('location'), '/app/content/distribution?blogger=connected');
+      assert.equal(tokenCalls, 1);
+      assert.equal(blogCalls, 1);
+      assert.equal((await nativeFetch(`${base}${callback}?state=${state}&code=private-code`, { redirect: 'manual', headers: { cookie: founder } })).status, 403);
+      const storedPath = path.join(root, 'dashboard', 'blogger-oauth.enc.json');
+      const stored = await fs.readFile(storedPath, 'utf8');
+      assert.doesNotMatch(stored, /private-refresh-token|private-access-token|private-client-secret/);
+      assert.equal((await fs.stat(storedPath)).mode & 0o777, 0o600);
+      assert.notEqual((await nativeFetch(`${base}/content-agent/dashboard/blogger-oauth.enc.json`)).status, 200);
+      const tested = await nativeFetch(`${base}/app/content/actions/distribution/test`, { method: 'POST', redirect: 'manual', headers: { cookie: founder }, body: new URLSearchParams({ _csrf: csrf, destinationId: 'blogger' }) });
+      assert.equal(tested.status, 303);
+      assert.equal(blogCalls, 2);
+      const connection = await fs.readFile(path.join(root, 'dashboard', 'distribution-connections.json'), 'utf8');
+      assert.doesNotMatch(connection, /private-refresh-token|private-access-token|private-client-secret/);
+      const disconnected = await nativeFetch(`${base}/app/content/actions/distribution/blogger/disconnect`, { method: 'POST', redirect: 'manual', headers: { cookie: founder }, body });
+      assert.equal(disconnected.status, 303);
+      await assert.rejects(fs.stat(storedPath), { code: 'ENOENT' });
+    }, { CONTENT_AGENT_ROOT: root, CONTENT_AGENT_OUTPUT_DIR: path.join(root, 'engine', 'outputs'), CONTENT_DASHBOARD_PUBLIC_URL: 'https://admin.certifyd.me', CONTENT_DISTRIBUTION_BLOGGER_CLIENT_ID: 'test-client', CONTENT_DISTRIBUTION_BLOGGER_CLIENT_SECRET: 'private-client-secret', CONTENT_DISTRIBUTION_BLOGGER_BLOG_ID: '12345' });
+  } finally { globalThis.fetch = nativeFetch; }
+});
+
+test('Blogger OAuth: missing refresh token, invalid credentials, and wrong blog fail closed', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-blogger-oauth-failure-'));
+  const config = getDashboardConfig({ ...env, CONTENT_AGENT_ROOT: root, CONTENT_DISTRIBUTION_BLOGGER_CLIENT_ID: 'test-client', CONTENT_DISTRIBUTION_BLOGGER_CLIENT_SECRET: 'private-client-secret', CONTENT_DISTRIBUTION_BLOGGER_BLOG_ID: '12345', CONTENT_DASHBOARD_PUBLIC_URL: 'https://admin.certifyd.me' });
+  const oauth = buildDistributionAdapters(config).find((item) => item.id === 'blogger').oauth;
+  const actor = { id: 'founder@example.test', role: 'founder' };
+  const nativeFetch = globalThis.fetch;
+  try {
+    let state = new URL(oauth.start({ actor, sessionId: 'session' })).searchParams.get('state');
+    globalThis.fetch = async () => Response.json({ access_token: 'access-only', expires_in: 3600 });
+    await assert.rejects(oauth.complete({ actor, sessionId: 'session', state, code: 'code' }), /refresh token/);
+    assert.equal(await oauth.connected(), false);
+    state = new URL(oauth.start({ actor, sessionId: 'session' })).searchParams.get('state');
+    globalThis.fetch = async () => new Response('private credential details', { status: 401 });
+    await assert.rejects(oauth.complete({ actor, sessionId: 'session', state, code: 'code' }), /HTTP 401/);
+    state = new URL(oauth.start({ actor, sessionId: 'session' })).searchParams.get('state');
+    globalThis.fetch = async (url) => String(url).includes('/token') ? Response.json({ access_token: 'private-access', refresh_token: 'private-refresh', expires_in: 3600 }) : Response.json({ items: [{ id: 'other-blog' }] });
+    await assert.rejects(oauth.complete({ actor, sessionId: 'session', state, code: 'code' }), /cannot access/);
+    assert.equal(await oauth.connected(), false);
+  } finally { globalThis.fetch = nativeFetch; }
+});
+
+test('Blogger OAuth: expired access token refreshes before existing create/update requests', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-blogger-refresh-'));
+  const config = getDashboardConfig({ ...env, CONTENT_AGENT_ROOT: root, CONTENT_DISTRIBUTION_BLOGGER_CLIENT_ID: 'test-client', CONTENT_DISTRIBUTION_BLOGGER_CLIENT_SECRET: 'private-client-secret', CONTENT_DISTRIBUTION_BLOGGER_BLOG_ID: '12345', CONTENT_DASHBOARD_PUBLIC_URL: 'https://admin.certifyd.me' });
+  const adapter = buildDistributionAdapters(config).find((item) => item.id === 'blogger');
+  const actor = { id: 'founder@example.test', role: 'founder' };
+  const state = new URL(adapter.oauth.start({ actor, sessionId: 'session' })).searchParams.get('state');
+  const nativeFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    const target = String(url);
+    calls.push({ target, options });
+    if (target.includes('/token')) {
+      const refresh = new URLSearchParams(options.body).get('grant_type') === 'refresh_token';
+      return Response.json(refresh ? { access_token: 'fresh-access', expires_in: 3600 } : { access_token: 'expired-access', refresh_token: 'private-refresh', expires_in: 1 });
+    }
+    if (target.includes('/users/self/blogs')) return Response.json({ items: [{ id: '12345', name: 'Certifyd Blogger' }] });
+    if (target.endsWith('/posts/')) return Response.json({ id: '98765', url: 'https://certifydcreator.blogspot.com/2026/10/article.html' });
+    if (target.endsWith('/posts/98765')) return Response.json({ id: '98765', url: 'https://certifydcreator.blogspot.com/2026/10/article.html' });
+    throw new Error('Unexpected mocked Blogger request');
+  };
+  try {
+    await adapter.oauth.complete({ actor, sessionId: 'session', state, code: 'code' });
+    const article = { title: 'Article', markdown: '# Article\n\nText', canonicalUrl: 'https://certifyd.me/blog/article/', tags: ['music'] };
+    const created = await adapter.publishArticle(article);
+    assert.equal(created.externalPostId, '98765');
+    assert.equal(calls.filter((call) => call.target.includes('/token')).length, 2);
+    const createCall = calls.find((call) => call.target.endsWith('/posts/'));
+    assert.equal(createCall.options.headers.Authorization, 'Bearer fresh-access');
+    assert.match(JSON.parse(createCall.options.body).content, /Originally published on/);
+    const updated = await adapter.updateArticle(article, { externalPostId: '98765' });
+    assert.equal(updated.externalPostId, '98765');
+    assert.equal(calls.find((call) => call.target.endsWith('/posts/98765')).options.method, 'PUT');
+    assert.equal(adapter.supportsDelete, false);
+    await assert.rejects(adapter.updateArticle(article, { externalPostId: '' }), /valid existing post ID/);
+    const testAdapter = buildDistributionAdapters(config).find((item) => item.id === 'blogger');
+    assert.equal((await testAdapter.testConnection()).status, 'connected');
+    assert.equal(calls.filter((call) => call.target.includes('/token')).length, 3);
+  } finally { globalThis.fetch = nativeFetch; }
+});
+
+test('Blogger OAuth: verified blog joins canonical-first distribution once and preserves its post ID', async () => {
+  const fixture = await distributionSafetyFixture({ envOverrides: { CONTENT_DASHBOARD_PUBLIC_URL: 'https://admin.certifyd.me', CONTENT_DISTRIBUTION_BLOGGER_CLIENT_ID: 'test-client', CONTENT_DISTRIBUTION_BLOGGER_CLIENT_SECRET: 'private-client-secret', CONTENT_DISTRIBUTION_BLOGGER_BLOG_ID: '12345' } });
+  const nativeFetch = globalThis.fetch;
+  let posts = 0;
+  globalThis.fetch = async (url, options = {}) => {
+    const target = String(url);
+    if (target.includes('/token')) return Response.json({ access_token: 'private-access', refresh_token: 'private-refresh', expires_in: 3600 });
+    if (target.includes('/users/self/blogs')) return Response.json({ items: [{ id: '12345', name: 'Certifyd Blogger' }] });
+    if (target.endsWith('/posts/')) {
+      posts++;
+      assert.equal(options.headers.Authorization, 'Bearer private-access');
+      return Response.json({ id: '98765', url: 'https://certifydcreator.blogspot.com/2026/10/article.html' });
+    }
+    throw new Error('Unexpected Blogger request');
+  };
+  try {
+    const blocked = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['blogger'] });
+    assert.equal(blocked.results[0].status, 'skipped');
+    assert.equal(posts, 0);
+    const state = new URL(fixture.actions.startBloggerConnection({ actor: fixture.actor, sessionId: 'session' })).searchParams.get('state');
+    await fixture.actions.completeBloggerConnection({ actor: fixture.actor, sessionId: 'session', state, code: 'code' });
+    assert.equal((await fixture.actions.testDistributionConnection({ actor: fixture.actor, destinationId: 'blogger' })).ok, true);
+    const first = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['blogger'] });
+    assert.equal(first.results[0].status, 'sent');
+    assert.equal((await fixture.state()).destinations.blogger.externalPostId, '98765');
+    const again = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['blogger'] });
+    assert.equal(again.results[0].skipped, true);
+    assert.equal(posts, 1);
+  } finally { globalThis.fetch = nativeFetch; }
 });
 
 test('distribution phase 2: WordPress media checkpoint survives failed post and retry does not reupload', async () => {

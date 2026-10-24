@@ -3,6 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { Marked, Renderer } from 'marked';
 import { validateRunId } from './security.js';
+import { BloggerOAuth } from './blogger-oauth.js';
 
 export const DESTINATION_STATES = {
   NOT_SELECTED: 'not_selected',
@@ -44,7 +45,7 @@ export function buildDistributionAdapters(config = {}) {
   return [
     new CertifydDestination(),
     new DevToDestination(env),
-    new BloggerDestination(env),
+    new BloggerDestination(config),
     new WordPressDestination(env),
     new GhostDestination(env),
     new HashnodeDestination(env),
@@ -68,7 +69,7 @@ export function publicDestinationStatus(adapter) {
     supportsImage: Boolean(adapter.supportsImage),
     manual: adapter.kind === 'manual',
     automatic: adapter.kind === 'canonical' || adapter.kind === 'full-article' || adapter.kind === 'social',
-    availableInPhase2: ['certifyd', 'devto', 'wordpress'].includes(adapter.id) || adapter.kind === 'manual',
+    availableInPhase2: ['certifyd', 'devto', 'wordpress', 'blogger'].includes(adapter.id) || adapter.kind === 'manual',
   };
 }
 
@@ -150,16 +151,23 @@ class DevToDestination extends EnvHttpDestination {
 }
 
 class BloggerDestination extends EnvHttpDestination {
-  constructor(env) { super({ id: 'blogger', displayName: 'Blogger', kind: 'full-article', supportsCanonical: true, supportsUpdate: true, supportsDelete: true }, env, ['CONTENT_DISTRIBUTION_BLOGGER_BLOG_ID', 'CONTENT_DISTRIBUTION_BLOGGER_ACCESS_TOKEN']); }
+  constructor(config) {
+    super({ id: 'blogger', displayName: 'Blogger', kind: 'full-article', supportsCanonical: false, supportsUpdate: true, supportsDelete: false }, config.env || process.env, ['CONTENT_DISTRIBUTION_BLOGGER_BLOG_ID', 'CONTENT_DISTRIBUTION_BLOGGER_CLIENT_ID', 'CONTENT_DISTRIBUTION_BLOGGER_CLIENT_SECRET']);
+    this.oauth = new BloggerOAuth(config);
+  }
+  async testConnection() { return this.oauth.testConnection(); }
   async publishArticle(article) {
     const url = `https://www.googleapis.com/blogger/v3/blogs/${encodeURIComponent(this.env.CONTENT_DISTRIBUTION_BLOGGER_BLOG_ID)}/posts/`;
-    const json = await this.request(url, { method: 'POST', headers: jsonHeaders({ Authorization: `Bearer ${this.env.CONTENT_DISTRIBUTION_BLOGGER_ACCESS_TOKEN}` }), body: JSON.stringify({ title: article.title, content: markdownToHtml(withCanonicalFooter(article.markdown, article.canonicalUrl)), labels: article.tags }) });
+    const json = await this.request(url, { method: 'POST', headers: jsonHeaders({ Authorization: `Bearer ${await this.oauth.accessToken()}` }), body: JSON.stringify({ title: article.title, content: markdownToHtml(withCanonicalFooter(article.markdown, article.canonicalUrl)), labels: article.tags }) });
+    if (!positiveId(json.id) || !isHttpsUrl(json.url)) throw new Error('Blogger returned no valid post ID or URL; reconcile before retrying.');
     return { externalPostId: String(json.id || ''), externalUrl: json.url || '', raw: json };
   }
   async updateArticle(article, state) {
-    if (!state.externalPostId) return this.publishArticle(article);
+    if (!positiveId(state.externalPostId)) throw new Error('Blogger update requires a valid existing post ID. Reconcile the destination first.');
     const url = `https://www.googleapis.com/blogger/v3/blogs/${encodeURIComponent(this.env.CONTENT_DISTRIBUTION_BLOGGER_BLOG_ID)}/posts/${encodeURIComponent(state.externalPostId)}`;
-    const json = await this.request(url, { method: 'PUT', headers: jsonHeaders({ Authorization: `Bearer ${this.env.CONTENT_DISTRIBUTION_BLOGGER_ACCESS_TOKEN}` }), body: JSON.stringify({ title: article.title, content: markdownToHtml(withCanonicalFooter(article.markdown, article.canonicalUrl)), labels: article.tags }) });
+    const json = await this.request(url, { method: 'PUT', headers: jsonHeaders({ Authorization: `Bearer ${await this.oauth.accessToken()}` }), body: JSON.stringify({ title: article.title, content: markdownToHtml(withCanonicalFooter(article.markdown, article.canonicalUrl)), labels: article.tags }) });
+    if (json.id && String(json.id) !== String(state.externalPostId)) throw new Error('Blogger returned a different post ID; reconcile before retrying.');
+    if (!isHttpsUrl(json.url || state.externalUrl)) throw new Error('Blogger returned no valid post URL; reconcile before retrying.');
     return { externalPostId: String(json.id || state.externalPostId), externalUrl: json.url || state.externalUrl || '', raw: json };
   }
 }
