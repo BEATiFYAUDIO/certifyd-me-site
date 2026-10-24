@@ -730,13 +730,40 @@ export class ContentDashboardActions {
     let result;
     try { result = await adapter.testConnection(); }
     catch { result = { status: 'connection_error', label: 'Connection test failed', message: `${adapter.displayName} account verification failed. Check server-side credentials and permissions.` }; }
-    if (['devto', 'wordpress'].includes(adapter.id)) {
+    if (['devto', 'wordpress', 'blogger'].includes(adapter.id)) {
       const tests = await readConnectionTests(this.config);
       tests[adapter.id] = { status: result.status, message: result.message, accountId: result.accountId || '', testedAt: new Date().toISOString() };
       await writeConnectionTests(this.config, tests);
     }
     await this.audit.append({ action: 'distribution_connection_test', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, result: result.status === 'connected' || result.status === 'manual_export' ? 'SUCCESS' : 'FAILED', note: `${adapter.id}:${result.status}` });
     return { ok: result.status === 'connected' || result.status === 'manual_export', output: `${adapter.displayName}: ${result.label}. ${result.message || ''}` };
+  }
+
+  bloggerAdapter() { return this.distributionAdapters.find((item) => item.id === 'blogger'); }
+
+  startBloggerConnection({ actor, sessionId }) {
+    if (actor.role !== 'founder') throw Object.assign(new Error('Only the founder can connect Blogger.'), { statusCode: 403 });
+    return this.bloggerAdapter().oauth.start({ actor, sessionId });
+  }
+
+  async completeBloggerConnection({ actor, sessionId, state, code, error }) {
+    if (actor.role !== 'founder') throw Object.assign(new Error('Only the founder can connect Blogger.'), { statusCode: 403 });
+    const blog = await this.bloggerAdapter().oauth.complete({ actor, sessionId, state, code, error });
+    const tests = await readConnectionTests(this.config);
+    tests.blogger = { status: 'connected', message: `Blogger blog ${blog.name || blog.id} verified.`, accountId: String(blog.id), testedAt: new Date().toISOString() };
+    await writeConnectionTests(this.config, tests);
+    await this.audit.append({ action: 'blogger_oauth_connect', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, result: 'SUCCESS', note: `blog:${blog.id}` });
+    return { ok: true, output: `Blogger blog ${blog.name || blog.id} connected.` };
+  }
+
+  async disconnectBlogger({ actor }) {
+    if (actor.role !== 'founder') throw Object.assign(new Error('Only the founder can disconnect Blogger.'), { statusCode: 403 });
+    await this.bloggerAdapter().oauth.disconnect();
+    const tests = await readConnectionTests(this.config);
+    delete tests.blogger;
+    await writeConnectionTests(this.config, tests);
+    await this.audit.append({ action: 'blogger_oauth_disconnect', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, result: 'SUCCESS' });
+    return { ok: true, output: 'Blogger disconnected. The stored refresh token was removed.' };
   }
 
   async saveDistributionDefaults({ actor, destinations = [] }) {
@@ -872,7 +899,7 @@ export class ContentDashboardActions {
       }
       for (const adapter of this.distributionAdapters.filter((item) => item.id !== 'certifyd' && selected.includes(item.id))) {
         if (canonicalBlock) continue;
-        if (adapter.kind !== 'manual' && !['devto', 'wordpress'].includes(adapter.id)) {
+        if (adapter.kind !== 'manual' && !['devto', 'wordpress', 'blogger'].includes(adapter.id)) {
           const reason = 'This automatic destination is outside Distribution Phase 2.';
           const prior = state.destinations[adapter.id] || {};
           if ([DESTINATION_STATES.SENDING, DESTINATION_STATES.UNCERTAIN].includes(prior.status) || prior.uncertainAcceptance) {

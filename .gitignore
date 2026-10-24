@@ -7,6 +7,8 @@ deploy/admin/local.env
 content-agent/dashboard/*.sqlite
 content-agent/dashboard/*.log
 content-agent/dashboard/cover-image-history.json
+content-agent/dashboard/blogger-oauth.enc.json
+content-agent/dashboard/blogger-oauth.enc.json.*.tmp
 content-agent/review/*.log.jsonl
 
 content-agent/engine/outputs/
