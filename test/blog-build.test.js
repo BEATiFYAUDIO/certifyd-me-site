@@ -105,6 +105,40 @@ test('build renders blog index, article pages, and metadata without publishing p
   assert.match(seo.stdout, /SEO validation passed/);
 });
 
+test('curated hub links only published articles and preserves the chronological archive', async () => {
+  const root = await makeFixture({
+    'ownership.md': article({ title: 'Ownership Guide', slug: 'i-asked-100-companies-for-my-data-i-got-deletion-notices-instead', date: '2026-07-20' }),
+    'architecture.md': article({ title: 'Architecture Guide', slug: 'certifyd-architecture-creator-operated-infrastructure', date: '2026-07-21' }),
+    'rights.md': article({ title: 'Rights Guide', slug: 'digital-music-news-metadata-royalties-mistaken-identity', date: '2026-07-22' }),
+    'ai.md': article({ title: 'AI Guide', slug: 'jason-isbell-suno-ai-artist-identity', date: '2026-07-23' }),
+    'commerce.md': article({ title: 'Commerce Guide', slug: 'even-josh-remsberg-direct-to-fan-operating-layer', date: '2026-07-24' }),
+    'latest.md': article({ title: 'Latest Story', slug: 'latest-story', date: '2026-07-25' }),
+    'archived.md': article({ title: 'Archived Stock Story', slug: 'universal-has-sold-a-chunk-of-spotify-stock-for-around-467m-artists-will-likely-be-paid-ov', date: '2026-07-26', status: 'archived' }),
+  });
+  const result = runBuild(root);
+  assert.equal(result.status, 0, result.stderr);
+
+  const index = await fs.readFile(path.join(root, 'blog', 'index.html'), 'utf8');
+  for (const topic of ['creator-ownership', 'music-rights', 'ai-identity', 'direct-commerce']) {
+    assert.match(index, new RegExp(`href="/blog/#${topic}"`));
+    assert.match(index, new RegExp(`id="${topic}"`));
+  }
+  assert.match(index, /<h2 id="featured-heading">Start Here<\/h2>/);
+  assert.match(index, /<h2 class="latest-heading" id="latest-heading">Latest Articles<\/h2>/);
+  assert.doesNotMatch(index, /Archived Stock Story/);
+  const latest = index.slice(index.indexOf('<section class="latest-section"'));
+  assert.ok(latest.indexOf('Latest Story') < latest.indexOf('Commerce Guide'));
+  assert.ok(latest.indexOf('Commerce Guide') < latest.indexOf('Ownership Guide'));
+  assert.equal((latest.match(/class="blog-card"/g) || []).length, 6);
+
+  const ownership = await fs.readFile(path.join(root, 'blog', 'i-asked-100-companies-for-my-data-i-got-deletion-notices-instead', 'index.html'), 'utf8');
+  assert.match(ownership, /<h2 id="related-reading-heading">Related reading<\/h2>/);
+  assert.match(ownership, /href="\/blog\/certifyd-architecture-creator-operated-infrastructure\/"/);
+  assert.match(ownership, /href="\/blog\/#creator-ownership"/);
+  const latestArticle = await fs.readFile(path.join(root, 'blog', 'latest-story', 'index.html'), 'utf8');
+  assert.doesNotMatch(latestArticle, /related-reading-heading/);
+});
+
 test('build removes legacy homepage blog injection markers without affecting the blog', async () => {
   const root = await makeFixture({
     'article.md': article({ title: 'Homepage Cleanup Article', slug: 'homepage-cleanup-article', date: '2026-07-26' }),

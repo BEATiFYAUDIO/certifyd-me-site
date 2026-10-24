@@ -52,6 +52,82 @@ const HOME_CSS_START = '/* BLOG_STYLES_START */';
 const HOME_CSS_END = '/* BLOG_STYLES_END */';
 const HOME_SECTION_START = '<!-- BLOG_RECENT_START -->';
 const HOME_SECTION_END = '<!-- BLOG_RECENT_END -->';
+const FEATURED_SLUGS = [
+  'i-asked-100-companies-for-my-data-i-got-deletion-notices-instead',
+  'universal-has-sold-a-chunk-of-spotify-stock-for-around-467m-artists-will-likely-be-paid-ov',
+  'vassal-benford-career-ownership-technology-hip-hop',
+  'certifyd-architecture-creator-operated-infrastructure',
+  'creator-owned-lie-account-someone-elses-server',
+  'digital-music-news-metadata-royalties-mistaken-identity',
+];
+const BLOG_TOPICS = [
+  {
+    id: 'creator-ownership',
+    title: 'Creator Ownership & Infrastructure',
+    description: 'Explore what it takes for creators to control their identity, work and audience relationships beyond a platform account.',
+    slugs: [
+      'certifyd-architecture-creator-operated-infrastructure',
+      'creator-owned-lie-account-someone-elses-server',
+      'i-asked-100-companies-for-my-data-i-got-deletion-notices-instead',
+      'what-if-your-next-creator-platform-was-a-computer-you-owned',
+      'vassal-benford-career-ownership-technology-hip-hop',
+    ],
+  },
+  {
+    id: 'music-rights',
+    title: 'Music Rights, Royalties & Metadata',
+    description: 'Follow the records, permissions and payment rules that determine how music is identified, licensed and paid for.',
+    slugs: [
+      'digital-music-news-metadata-royalties-mistaken-identity',
+      'mlc-2027-black-box-royalty-distribution-market-share',
+      'musixmatch-music-reports-rights-data-operating-layer',
+      'spotify-bundling-ruling-royalty-product-design',
+      'universal-has-sold-a-chunk-of-spotify-stock-for-around-467m-artists-will-likely-be-paid-ov',
+    ],
+  },
+  {
+    id: 'ai-identity',
+    title: 'AI, Identity & Provenance',
+    description: 'Read how AI music raises questions about artist identity, consent, attribution and proof of origin.',
+    slugs: [
+      'jason-isbell-suno-ai-artist-identity',
+      'suno-pulls-mary-j-blige-ad-unauthorized-representative',
+      'voice-swap-ddex-ai-voice-rights-metadata',
+      'sony-music-260000-ai-deepfake-takedown-requests',
+      'reservoir-suno-lawsuit-ai-music-training-rights',
+    ],
+  },
+  {
+    id: 'direct-commerce',
+    title: 'Direct Fan Relationships & Commerce',
+    description: 'See how artists and creator businesses reach fans, make sales and keep a direct relationship with their audience.',
+    slugs: [
+      'even-josh-remsberg-direct-to-fan-operating-layer',
+      'soundcloud-paid-downloads-artists-keep-100-one-platform-problem',
+      'fanfare-independent-music-charts-sales-not-streams',
+      'spotify-paid-podcast-memberships-creator-infrastructure',
+      'patreon-says-internet-failed-creators-is-another-platform-the-answer',
+    ],
+  },
+];
+const RELATED_READING = {
+  'i-asked-100-companies-for-my-data-i-got-deletion-notices-instead': {
+    topicId: 'creator-ownership',
+    slugs: ['certifyd-architecture-creator-operated-infrastructure', 'creator-owned-lie-account-someone-elses-server'],
+  },
+  'digital-music-news-metadata-royalties-mistaken-identity': {
+    topicId: 'music-rights',
+    slugs: ['mlc-2027-black-box-royalty-distribution-market-share', 'musixmatch-music-reports-rights-data-operating-layer'],
+  },
+  'universal-has-sold-a-chunk-of-spotify-stock-for-around-467m-artists-will-likely-be-paid-ov': {
+    topicId: 'music-rights',
+    slugs: ['spotify-bundling-ruling-royalty-product-design', 'spotify-audiobook-bundle-music-royalties-certifyd'],
+  },
+  'vassal-benford-career-ownership-technology-hip-hop': {
+    topicId: 'creator-ownership',
+    slugs: ['vassal-benford-feature-profile-july-2026-feature-profile-reinvention-in-the-modern-enterta'],
+  },
+};
 
 marked.setOptions({ async: false, breaks: false, gfm: true });
 
@@ -386,7 +462,7 @@ function renderArticleCard(article) {
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">${escapeHtml(article.author)} · ${escapeHtml(formatDisplayDate(article.date))}</div>
-        <h2><a href="${localArticlePath(article)}">${escapeHtml(article.title)}</a></h2>
+        <h3><a href="${localArticlePath(article)}">${escapeHtml(article.title)}</a></h3>
         <p>${escapeHtml(article.excerpt)}</p>
         ${tagList(article)}
         <a class="blog-btn" href="${localArticlePath(article)}">Read article →</a>
@@ -395,24 +471,51 @@ function renderArticleCard(article) {
   `.trim();
 }
 
-function renderCategoryTags(articles) {
-  const tags = [...new Set(articles.flatMap((article) => article.tags))].sort();
-  if (!tags.length) return '<span class="category-tag">Certifyd</span>';
-  return tags.map((tag) => `<span class="category-tag">${escapeHtml(tag)}</span>`).join('\n');
+function curatedArticles(slugs, bySlug) {
+  return slugs.map((slug) => bySlug.get(slug)).filter(Boolean);
 }
 
-function renderFeaturedCategoryTags(articles) {
-  const tags = new Set(articles.flatMap((article) => article.tags).map((tag) => String(tag || '').toLowerCase()));
-  const featured = [
-    'creator ownership',
-    'AI music',
-    'music rights',
-    'direct-to-fan',
-    'creator infrastructure',
-    'artist identity',
-  ].filter((tag) => tags.has(tag.toLowerCase()));
-  const fallback = featured.length ? featured : ['creator ownership', 'AI music', 'music rights', 'direct-to-fan'];
-  return fallback.map((tag) => `<span class="category-tag featured">${escapeHtml(tag)}</span>`).join('\n');
+function availableTopics(bySlug) {
+  return BLOG_TOPICS.map((topic) => ({ ...topic, articles: curatedArticles(topic.slugs, bySlug) }))
+    .filter((topic) => topic.articles.length);
+}
+
+function renderTopicNavigation(topics) {
+  return topics.map((topic) => `<a class="category-tag featured" href="/blog/#${topic.id}">${escapeHtml(topic.title)}</a>`).join('\n');
+}
+
+function renderFeaturedArticles(bySlug) {
+  const articles = curatedArticles(FEATURED_SLUGS, bySlug);
+  if (!articles.length) return '';
+  return `<section class="hub-section" aria-labelledby="featured-heading">
+    <h2 id="featured-heading">Start Here</h2>
+    <p class="hub-intro">A few places to begin exploring creator ownership, music rights and direct relationships with fans.</p>
+    <div class="featured-grid">${articles.map((article) => `<article class="hub-feature-card">
+      <h3><a href="${localArticlePath(article)}">${escapeHtml(article.title)}</a></h3>
+      <p>${escapeHtml(article.excerpt)}</p>
+    </article>`).join('\n')}</div>
+  </section>`;
+}
+
+function renderTopicSections(topics) {
+  return topics.map((topic) => `<section class="hub-section hub-topic" id="${topic.id}" aria-labelledby="${topic.id}-heading">
+    <h2 id="${topic.id}-heading">${escapeHtml(topic.title)}</h2>
+    <p class="hub-intro">${escapeHtml(topic.description)}</p>
+    <ul class="topic-links">${topic.articles.map((article) => `<li><a href="${localArticlePath(article)}">${escapeHtml(article.title)}</a></li>`).join('\n')}</ul>
+  </section>`).join('\n');
+}
+
+function renderRelatedReading(article, bySlug) {
+  const selection = RELATED_READING[article.slug];
+  if (!selection) return '';
+  const related = curatedArticles(selection.slugs, bySlug).filter((item) => item.slug !== article.slug);
+  if (!related.length) return '';
+  const topic = BLOG_TOPICS.find((item) => item.id === selection.topicId);
+  return `<aside class="related-reading" aria-labelledby="related-reading-heading">
+    <h2 id="related-reading-heading">Related reading</h2>
+    <ul>${related.map((item) => `<li><a href="${localArticlePath(item)}">${escapeHtml(item.title)}</a></li>`).join('\n')}</ul>
+    ${topic ? `<a class="related-topic" href="/blog/#${topic.id}">Explore ${escapeHtml(topic.title)} →</a>` : ''}
+  </aside>`;
 }
 
 function jsonLdScript(data) {
@@ -488,6 +591,8 @@ function imageCreditHtml(article) {
 }
 
 async function writeBlogIndex(articles, template) {
+  const bySlug = new Map(articles.map((article) => [article.slug, article]));
+  const topics = availableTopics(bySlug);
   const html = renderTemplate(template, {
     metaTitle: 'Certifyd Blog | Creator-Owned Commerce Infrastructure',
     metaDescription: 'Articles from Certifyd on creator ownership, publishing, discovery, attribution and direct commerce.',
@@ -498,15 +603,16 @@ async function writeBlogIndex(articles, template) {
     socialImageWidth: SOCIAL_IMAGE_WIDTH,
     socialImageHeight: SOCIAL_IMAGE_HEIGHT,
     socialImageAlt: 'Certifyd creator-owned commerce infrastructure',
-    featuredCategories: renderFeaturedCategoryTags(articles),
-    categories: renderCategoryTags(articles),
+    topicNavigation: renderTopicNavigation(topics),
+    featuredArticles: renderFeaturedArticles(bySlug),
+    topicSections: renderTopicSections(topics),
     articles: articles.length ? articles.map(renderArticleCard).join('\n') : '<p class="empty-state">No published articles yet.</p>',
   });
   await fs.mkdir(OUT_DIR, { recursive: true });
   await fs.writeFile(path.join(OUT_DIR, 'index.html'), html);
 }
 
-async function writeArticle(article, template) {
+async function writeArticle(article, template, bySlug) {
   const outDir = path.join(OUT_DIR, article.slug);
   await fs.mkdir(outDir, { recursive: true });
   const metaTitle = article.seoTitle || `${article.title} | Certifyd Blog`;
@@ -537,6 +643,7 @@ async function writeArticle(article, template) {
     heroImage: `<div class="article-hero-image"><img src="${escapeHtml(article.coverImage)}" alt="${escapeHtml(article.coverImageAlt)}" loading="eager" decoding="async" onerror="this.src='${DEFAULT_IMAGE}'" />${imageCreditHtml(article)}</div>`,
     tags: tagList(article),
     body: article.body,
+    relatedReading: renderRelatedReading(article, bySlug),
   });
   await fs.writeFile(path.join(outDir, 'index.html'), html);
 }
@@ -697,7 +804,8 @@ export async function buildBlog() {
   await ensureSocialImages(articles);
   await ensureEmptyDir(OUT_DIR);
   await writeBlogIndex(articles, indexTemplate);
-  await Promise.all(articles.map((article) => writeArticle(article, articleTemplate)));
+  const bySlug = new Map(articles.map((article) => [article.slug, article]));
+  await Promise.all(articles.map((article) => writeArticle(article, articleTemplate, bySlug)));
   await writeStaticRedirects();
   await updateHomepage(articles);
   await writeSitemap(articles);

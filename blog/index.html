@@ -29,6 +29,7 @@
   <style>
     :root{--bg:#146f95;--bg-deep:#062337;--panel:rgba(8,55,78,.58);--panel-strong:rgba(5,24,38,.74);--border:rgba(205,238,255,.24);--text:#e8ecf1;--muted:#b4bdc8;--brand:#ff8a00;--blue:#5f9fff;--wrap:1560px;--pad:clamp(18px,4vw,48px)}
 *{box-sizing:border-box}html{background:var(--bg-deep);scroll-behavior:smooth}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--text);background:linear-gradient(180deg,rgba(7,34,52,.96),rgba(8,55,78,.9)),radial-gradient(900px 620px at 14% -8%,rgba(95,159,255,.24),transparent 60%),radial-gradient(740px 520px at 90% 8%,rgba(255,138,0,.12),transparent 62%),var(--bg-deep);line-height:1.6}a{color:inherit;text-decoration:none}img{display:block;max-width:100%}.skip-link{position:absolute;left:var(--pad);top:10px;z-index:100;transform:translateY(-140%);border-radius:999px;background:#000;color:#fff;padding:10px 14px;font-weight:900;transition:transform .18s ease}.skip-link:focus{transform:translateY(0)}:focus-visible{outline:3px solid var(--blue);outline-offset:4px;box-shadow:0 0 0 5px rgba(95,159,255,.28);border-radius:12px}.wrap{width:100%;max-width:var(--wrap);margin:0 auto;padding-inline:var(--pad)}header.site-header{position:sticky;top:0;z-index:10;border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(8,10,13,.82),rgba(8,10,13,.68));backdrop-filter:blur(16px);box-shadow:0 18px 70px rgba(0,0,0,.30)}.header-rail{background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.008))}.header-inner{max-width:1560px;min-height:82px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px}.brand{display:flex;align-items:center;height:64px;overflow:visible;min-width:0}.brand img{height:56px;width:auto;object-fit:contain;filter:drop-shadow(0 12px 28px rgba(0,0,0,.45))}.nav-desktop{justify-self:stretch;width:100%;display:flex;justify-content:space-evenly;gap:0;align-items:center;white-space:nowrap}.nav-desktop a{padding:10px 7px;font-size:.9rem;border-radius:12px;min-height:44px;display:flex;align-items:center;justify-content:center;text-align:center;border:1px solid transparent;opacity:.9}.nav-desktop a:hover,.nav-desktop a[aria-current="page"]{opacity:1;background:rgba(255,255,255,.07);border-color:var(--border);color:#fff}.nav-mobile{display:none;position:relative;justify-self:end}.nav-mobile summary{list-style:none;cursor:pointer;padding:8px 10px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.07);min-height:40px;width:50px;display:flex;align-items:center;justify-content:center}.nav-mobile summary::-webkit-details-marker{display:none}.burger{display:inline-block;width:22px;height:14px;position:relative}.burger::before,.burger::after,.burger span{content:"";position:absolute;left:0;right:0;height:2px;background:#d9e0ea;border-radius:999px}.burger::before{top:0}.burger::after{bottom:0}.burger span{top:6px}.nav-drawer{position:absolute;right:0;top:calc(100% + 12px);min-width:260px;padding:10px;border-radius:18px;border:1px solid var(--border);background:rgba(8,10,13,.88);backdrop-filter:blur(16px);display:grid;gap:6px;box-shadow:0 30px 90px rgba(0,0,0,.55)}.nav-drawer a{padding:12px;border-radius:14px;min-height:44px;display:flex;align-items:center}.nav-drawer a:hover,.nav-drawer a[aria-current="page"]{background:rgba(255,255,255,.07)}main{padding:clamp(52px,8vw,112px) 0}.eyebrow{margin:0 0 12px;color:var(--brand);font-size:.78rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase}h1{margin:0;font-size:clamp(3.2rem,9vw,7.5rem);line-height:.88;letter-spacing:-.08em;text-wrap:balance}.lede{margin:22px 0 0;max-width:720px;color:#d8ecf8;font-size:clamp(1.1rem,2vw,1.45rem)}.category-tags{display:flex;flex-wrap:wrap;gap:10px}.featured-tags{margin:30px 0 0}.category-tag{border:1px solid var(--border);border-radius:999px;padding:9px 13px;background:rgba(255,255,255,.06);color:#d8ecf8;font-weight:800;font-size:.82rem}.category-tag.featured{background:rgba(95,159,255,.12);border-color:rgba(205,238,255,.32)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin-top:42px}.topic-browser{margin-top:44px;border:1px solid var(--border);border-radius:22px;background:rgba(255,255,255,.04);padding:18px 20px}.topic-browser summary{cursor:pointer;font-weight:900;color:#fff}.topic-browser .category-tags{margin-top:16px}.blog-card{display:flex;flex-direction:column;min-height:100%;border:1px solid var(--border);border-radius:24px;overflow:hidden;background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.025)),var(--panel-strong);box-shadow:0 30px 90px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.08)}.blog-card-media{aspect-ratio:16/9;background:#071421;overflow:hidden}.blog-card-media img{width:100%;height:100%;object-fit:cover;object-position:top center;transform-origin:center top;transition:transform .25s ease}.blog-card:hover .blog-card-media img{transform:scale(1.02)}.blog-card-body{padding:22px;display:flex;flex-direction:column;gap:12px;flex:1}.blog-card-meta{color:var(--brand);font-size:.72rem;font-weight:900;letter-spacing:.16em;text-transform:uppercase}.blog-card h2{margin:0;font-size:clamp(1.55rem,3vw,2.25rem);line-height:1;letter-spacing:-.05em}.blog-card p{margin:0;color:var(--muted)}.tag-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}.tag-list span{border:1px solid var(--border);border-radius:999px;padding:5px 8px;color:#d8ecf8;font-size:.75rem;font-weight:800}.blog-btn{display:inline-flex;align-items:center;justify-content:center;align-self:flex-start;margin-top:auto;border-radius:999px;background:linear-gradient(135deg,#ffd978,#ff8a00);color:#111418;padding:11px 15px;font-weight:900}.empty-state{border:1px solid var(--border);border-radius:20px;padding:22px;background:rgba(255,255,255,.05);color:var(--muted)}footer{border-top:1px solid var(--border);padding:24px 0;color:#bfd9e8;background:rgba(5,24,38,.52)}@media(max-width:1120px){.nav-desktop{display:none}.nav-mobile{display:block}.header-inner{min-height:96px;padding-block:8px}}@media(max-width:720px){.brand img{height:62px;max-width:min(70vw,410px)}main{padding-top:42px}.grid{grid-template-columns:1fr;gap:16px}.blog-card-body{padding:20px}}
+    .featured-tags a:hover,.featured-tags a:focus-visible{background:rgba(95,159,255,.3);color:#fff}.hub-section{margin-top:54px}.hub-section h2,.latest-heading{margin:0;font-size:clamp(1.8rem,3vw,2.6rem);line-height:1.12;letter-spacing:-.04em}.hub-intro{margin:10px 0 0;max-width:760px;color:#d8ecf8}.featured-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:22px}.hub-feature-card,.hub-topic{border:1px solid var(--border);border-radius:20px;background:var(--panel-strong);padding:22px}.hub-feature-card h3{margin:0;font-size:1.25rem;line-height:1.25}.hub-feature-card h3 a:hover,.topic-links a:hover{text-decoration:underline;text-underline-offset:3px}.hub-feature-card p{margin:10px 0 0;color:var(--muted);font-size:.94rem}.topic-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:46px}.hub-topic{margin-top:0;scroll-margin-top:110px}.topic-links{display:grid;gap:12px;margin:22px 0 0;padding-left:20px}.topic-links li{padding-left:3px;color:var(--brand)}.topic-links a{color:#e8ecf1;font-weight:700}.latest-section{margin-top:58px}.latest-section .grid{margin-top:22px}.blog-card h3{margin:0;font-size:clamp(1.55rem,3vw,2.25rem);line-height:1;letter-spacing:-.05em}@media(max-width:900px){.featured-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:720px){.featured-grid,.topic-grid{grid-template-columns:1fr}.hub-section{margin-top:42px}.topic-grid{margin-top:34px}.hub-topic{scroll-margin-top:105px}}
   </style>
   <link rel="stylesheet" href="/styles/main-site.css" />
   <link rel="stylesheet" href="/styles/grouped-navigation.css" />
@@ -55,18 +56,78 @@
             <a href="/join/">Join Network</a>
             <a href="https://investor.certifyd.me/">Invest</a>
           </nav></details></div></div></header>
-  <main id="main"><section class="wrap"><p class="eyebrow">Certifyd Blog</p><h1>Creator ownership, publishing and direct commerce.</h1><p class="lede">Articles from Certifyd on creator-owned infrastructure, public publishing, attribution and commerce.</p><div class="category-tags featured-tags" aria-label="Featured article topics"><span class="category-tag featured">creator ownership</span>
-<span class="category-tag featured">AI music</span>
-<span class="category-tag featured">music rights</span>
-<span class="category-tag featured">direct-to-fan</span>
-<span class="category-tag featured">creator infrastructure</span>
-<span class="category-tag featured">artist identity</span></div><div class="grid"><article class="blog-card">
+  <main id="main"><div class="wrap"><p class="eyebrow">Certifyd Blog</p><h1>Creator ownership, publishing and direct commerce.</h1><p class="lede">Articles from Certifyd on creator-owned infrastructure, public publishing, attribution and commerce.</p><nav class="category-tags featured-tags" aria-label="Browse blog topics"><a class="category-tag featured" href="/blog/#creator-ownership">Creator Ownership &amp; Infrastructure</a>
+<a class="category-tag featured" href="/blog/#music-rights">Music Rights, Royalties &amp; Metadata</a>
+<a class="category-tag featured" href="/blog/#ai-identity">AI, Identity &amp; Provenance</a>
+<a class="category-tag featured" href="/blog/#direct-commerce">Direct Fan Relationships &amp; Commerce</a></nav><section class="hub-section" aria-labelledby="featured-heading">
+    <h2 id="featured-heading">Start Here</h2>
+    <p class="hub-intro">A few places to begin exploring creator ownership, music rights and direct relationships with fans.</p>
+    <div class="featured-grid"><article class="hub-feature-card">
+      <h3><a href="/blog/i-asked-100-companies-for-my-data-i-got-deletion-notices-instead/">I Asked 100 Companies for My Data. I Got Deletion Notices Instead</a></h3>
+      <p>A WIRED reporter filed more than 100 requests to see what companies knew about him. The resulting mess exposes a deeper problem with digital ownership: having rights over data is not the same as controlling it.</p>
+    </article>
+<article class="hub-feature-card">
+      <h3><a href="/blog/universal-has-sold-a-chunk-of-spotify-stock-for-around-467m-artists-will-likely-be-paid-ov/">Universal Has Sold a Chunk of Spotify Stock for Around $467M: Artists Will Likely Be Paid Over $100M</a></h3>
+      <p>Universal Music Group has sold approximately $467 million worth of Spotify shares. While more than $100 million is expected to be distributed to artists, the sale also highlights the structural issues within today&#39;s streaming economy.</p>
+    </article>
+<article class="hub-feature-card">
+      <h3><a href="/blog/vassal-benford-career-ownership-technology-hip-hop/">Vassal Benford: A Career Built for More Than One Generation</a></h3>
+      <p>Vassal Benford’s career spans generations of music, film and entertainment. From cross-genre production and the B.B. King Estate to Certifyd and collaborations with Mally Mall, Benford is connecting creative legacy with a new model for creator ownership.</p>
+    </article>
+<article class="hub-feature-card">
+      <h3><a href="/blog/certifyd-architecture-creator-operated-infrastructure/">Certifyd Architecture: Creator Infrastructure Without the Central Platform</a></h3>
+      <p>Certifyd starts with a different assumption: the creator operates the infrastructure. Here’s how Core, independent nodes, providers, fans and apps connect without requiring one central platform to own the network.</p>
+    </article>
+<article class="hub-feature-card">
+      <h3><a href="/blog/creator-owned-lie-account-someone-elses-server/">“Creator-Owned” Is a Lie If Your Account Lives on Someone Else’s Server</a></h3>
+      <p>Everyone says they’re building for creators. But if your identity, work and audience only exist as an account on somebody else’s infrastructure, how much do you actually control?</p>
+    </article>
+<article class="hub-feature-card">
+      <h3><a href="/blog/digital-music-news-metadata-royalties-mistaken-identity/">Digital Music News Shows Why Accurate Metadata Still May Not Get You Paid</a></h3>
+      <p>A Digital Music News article highlights a hard truth about music royalties: titles, dates and identifiers can look correct while the artist connected to a catalog is wrong. That makes identity and entitlement records central to creator control.</p>
+    </article></div>
+  </section><div class="topic-grid"><section class="hub-section hub-topic" id="creator-ownership" aria-labelledby="creator-ownership-heading">
+    <h2 id="creator-ownership-heading">Creator Ownership &amp; Infrastructure</h2>
+    <p class="hub-intro">Explore what it takes for creators to control their identity, work and audience relationships beyond a platform account.</p>
+    <ul class="topic-links"><li><a href="/blog/certifyd-architecture-creator-operated-infrastructure/">Certifyd Architecture: Creator Infrastructure Without the Central Platform</a></li>
+<li><a href="/blog/creator-owned-lie-account-someone-elses-server/">“Creator-Owned” Is a Lie If Your Account Lives on Someone Else’s Server</a></li>
+<li><a href="/blog/i-asked-100-companies-for-my-data-i-got-deletion-notices-instead/">I Asked 100 Companies for My Data. I Got Deletion Notices Instead</a></li>
+<li><a href="/blog/what-if-your-next-creator-platform-was-a-computer-you-owned/">What If Your Next Creator Platform Was a Computer You Owned?</a></li>
+<li><a href="/blog/vassal-benford-career-ownership-technology-hip-hop/">Vassal Benford: A Career Built for More Than One Generation</a></li></ul>
+  </section>
+<section class="hub-section hub-topic" id="music-rights" aria-labelledby="music-rights-heading">
+    <h2 id="music-rights-heading">Music Rights, Royalties &amp; Metadata</h2>
+    <p class="hub-intro">Follow the records, permissions and payment rules that determine how music is identified, licensed and paid for.</p>
+    <ul class="topic-links"><li><a href="/blog/digital-music-news-metadata-royalties-mistaken-identity/">Digital Music News Shows Why Accurate Metadata Still May Not Get You Paid</a></li>
+<li><a href="/blog/mlc-2027-black-box-royalty-distribution-market-share/">The MLC’s 2027 Black-Box Distribution Turns Unmatched Royalties Into a Market-Share Question</a></li>
+<li><a href="/blog/musixmatch-music-reports-rights-data-operating-layer/">Musixmatch’s Music Reports Deal Makes Rights Data the New Operating Layer</a></li>
+<li><a href="/blog/spotify-bundling-ruling-royalty-product-design/">Spotify Bundling Ruling Shows Product Design Is Now a Royalty Lever</a></li>
+<li><a href="/blog/universal-has-sold-a-chunk-of-spotify-stock-for-around-467m-artists-will-likely-be-paid-ov/">Universal Has Sold a Chunk of Spotify Stock for Around $467M: Artists Will Likely Be Paid Over $100M</a></li></ul>
+  </section>
+<section class="hub-section hub-topic" id="ai-identity" aria-labelledby="ai-identity-heading">
+    <h2 id="ai-identity-heading">AI, Identity &amp; Provenance</h2>
+    <p class="hub-intro">Read how AI music raises questions about artist identity, consent, attribution and proof of origin.</p>
+    <ul class="topic-links"><li><a href="/blog/jason-isbell-suno-ai-artist-identity/">Jason Isbell Is Suing Suno Over Something Bigger Than Copyright: His Identity</a></li>
+<li><a href="/blog/suno-pulls-mary-j-blige-ad-unauthorized-representative/">Suno Pulls Mary J. Blige Ad After Deal With Unauthorized Representative</a></li>
+<li><a href="/blog/voice-swap-ddex-ai-voice-rights-metadata/">Voice-Swap Joins DDEX as AI Voice Rights Move Into the Music Supply Chain</a></li>
+<li><a href="/blog/sony-music-260000-ai-deepfake-takedown-requests/">Sony Music’s 260,000 AI Deepfake Requests Show Why Takedowns Cannot Be the Whole System</a></li>
+<li><a href="/blog/reservoir-suno-lawsuit-ai-music-training-rights/">Reservoir’s Suno Lawsuit Puts AI Music’s Training Stack in the Rights Debate</a></li></ul>
+  </section>
+<section class="hub-section hub-topic" id="direct-commerce" aria-labelledby="direct-commerce-heading">
+    <h2 id="direct-commerce-heading">Direct Fan Relationships &amp; Commerce</h2>
+    <p class="hub-intro">See how artists and creator businesses reach fans, make sales and keep a direct relationship with their audience.</p>
+    <ul class="topic-links"><li><a href="/blog/even-josh-remsberg-direct-to-fan-operating-layer/">EVEN’s Josh Remsberg Hire Shows Direct-to-Fan Becoming an Operating Layer</a></li>
+<li><a href="/blog/soundcloud-paid-downloads-artists-keep-100-one-platform-problem/">SoundCloud Paid Downloads Let Artists Keep 100%. The &#39;One Platform&#39; Pitch Is the Problem.</a></li>
+<li><a href="/blog/fanfare-independent-music-charts-sales-not-streams/">Fanfare Launches Independent Music Charts Built Around Sales, Not Streams</a></li>
+<li><a href="/blog/spotify-paid-podcast-memberships-creator-infrastructure/">Spotify’s Paid Podcast Memberships Put More of the Creator Business Inside Spotify</a></li>
+<li><a href="/blog/patreon-says-internet-failed-creators-is-another-platform-the-answer/">Patreon Says the Internet Has Failed Creators. It’s Right. But Is Another Platform the Answer?</a></li></ul>
+  </section></div><section class="latest-section" aria-labelledby="latest-heading"><h2 class="latest-heading" id="latest-heading">Latest Articles</h2><div class="grid"><article class="blog-card">
       <a class="blog-card-media" href="/blog/meta-scraping-terms-creator-control-certifyd-ar/" aria-label="Read Meta’s Scraping Terms Show Why Creators Need Control Beyond Social Media">
         <img src="/images/blog/2026/10/meta-scraping-terms-creator-control-certifyd-ar-r2-logo.svg" alt="" loading="lazy" decoding="async" onerror="this.src='/images/certifyd-main-image-independent-scene-20260613.png'" />
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · October 23, 2026</div>
-        <h2><a href="/blog/meta-scraping-terms-creator-control-certifyd-ar/">Meta’s Scraping Terms Show Why Creators Need Control Beyond Social Media</a></h2>
+        <h3><a href="/blog/meta-scraping-terms-creator-control-certifyd-ar/">Meta’s Scraping Terms Show Why Creators Need Control Beyond Social Media</a></h3>
         <p>Meta’s proposed scraping terms have publishers asking who really controls their content. Certifyd Core and Certifyd AR offer a different approach: creator-operated identity and cryptographic verification that augment the existing web.</p>
         <div class="tag-list" aria-label="Tags"><span>Meta</span><span>News/Media Alliance</span><span>web scraping</span><span>publisher rights</span><span>creator infrastructure</span><span>direct commerce</span></div>
         <a class="blog-btn" href="/blog/meta-scraping-terms-creator-control-certifyd-ar/">Read article →</a>
@@ -78,7 +139,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · October 22, 2026</div>
-        <h2><a href="/blog/reservoir-suno-lawsuit-ai-music-training-rights/">Reservoir’s Suno Lawsuit Puts AI Music’s Training Stack in the Rights Debate</a></h2>
+        <h3><a href="/blog/reservoir-suno-lawsuit-ai-music-training-rights/">Reservoir’s Suno Lawsuit Puts AI Music’s Training Stack in the Rights Debate</a></h3>
         <p>Reservoir’s lawsuit against Suno alleges unauthorized use of 1,050 compositions in AI training. The dispute pushes a bigger question into view: whether music rights can remain a back-office concern when training data sits inside the product itself.</p>
         <div class="tag-list" aria-label="Tags"><span>AI music</span><span>Suno</span><span>Reservoir</span><span>music copyright</span><span>training data</span><span>creator infrastructure</span></div>
         <a class="blog-btn" href="/blog/reservoir-suno-lawsuit-ai-music-training-rights/">Read article →</a>
@@ -90,7 +151,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · October 20, 2026</div>
-        <h2><a href="/blog/bitcoin-after-us-two-fathers-one-mission-and-a-future-worth-building/">Bitcoin After Us: Two Fathers, One Mission, and a Future Worth Building</a></h2>
+        <h3><a href="/blog/bitcoin-after-us-two-fathers-one-mission-and-a-future-worth-building/">Bitcoin After Us: Two Fathers, One Mission, and a Future Worth Building</a></h3>
         <p>Meet Miguel Abascal and Tim Sae Koo, the fathers behind Bitcoin After Us, exploring Bitcoin, financial independence, generational wealth and creator sovereignty.</p>
 
         <a class="blog-btn" href="/blog/bitcoin-after-us-two-fathers-one-mission-and-a-future-worth-building/">Read article →</a>
@@ -102,7 +163,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · October 20, 2026</div>
-        <h2><a href="/blog/musixmatch-music-reports-rights-data-operating-layer/">Musixmatch’s Music Reports Deal Makes Rights Data the New Operating Layer</a></h2>
+        <h3><a href="/blog/musixmatch-music-reports-rights-data-operating-layer/">Musixmatch’s Music Reports Deal Makes Rights Data the New Operating Layer</a></h3>
         <p>Musixmatch’s acquisition of Music Reports brings Songdex, Blokur and Cuetrak into a wider rights-and-royalties push.</p>
         <div class="tag-list" aria-label="Tags"><span>Musixmatch</span><span>Music Reports</span><span>Songdex</span><span>music rights</span><span>royalties</span><span>music metadata</span><span>creator infrastructure</span></div>
         <a class="blog-btn" href="/blog/musixmatch-music-reports-rights-data-operating-layer/">Read article →</a>
@@ -114,7 +175,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · October 20, 2026</div>
-        <h2><a href="/blog/spotify-paid-podcast-memberships-creator-infrastructure/">Spotify’s Paid Podcast Memberships Put More of the Creator Business Inside Spotify</a></h2>
+        <h3><a href="/blog/spotify-paid-podcast-memberships-creator-infrastructure/">Spotify’s Paid Podcast Memberships Put More of the Creator Business Inside Spotify</a></h3>
         <p>Spotify’s new paid podcast memberships give eligible creators tiered fan revenue beyond bonus episodes. They also pull discovery, checkout, paid access and fan conversion deeper into Spotify’s operating environment.</p>
         <div class="tag-list" aria-label="Tags"><span>Spotify</span><span>podcasts</span><span>podcast memberships</span><span>creator economy</span><span>direct commerce</span><span>creator infrastructure</span></div>
         <a class="blog-btn" href="/blog/spotify-paid-podcast-memberships-creator-infrastructure/">Read article →</a>
@@ -126,7 +187,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · October 16, 2026</div>
-        <h2><a href="/blog/sportspro-athlete-voices-fan-relationships/">SportsPro on Athlete Voices: Proximity Is Becoming the New Sports Distribution Layer</a></h2>
+        <h3><a href="/blog/sportspro-athlete-voices-fan-relationships/">SportsPro on Athlete Voices: Proximity Is Becoming the New Sports Distribution Layer</a></h3>
         <p>SportsPro Media argues that sports fandom is now always on, with athletes extending the story between fixtures. The bigger question is who controls the identity, context and audience relationship that makes that proximity valuable.</p>
         <div class="tag-list" aria-label="Tags"><span>SportsPro Media</span><span>athlete voices</span><span>sports media</span><span>fan relationships</span><span>creator infrastructure</span><span>provenance</span><span>attribution</span></div>
         <a class="blog-btn" href="/blog/sportspro-athlete-voices-fan-relationships/">Read article →</a>
@@ -138,7 +199,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · October 14, 2026</div>
-        <h2><a href="/blog/india-independent-artists-infrastructure-royalty-transparency/">India’s Independent Artists Need Infrastructure, Not Another Gatekeeper</a></h2>
+        <h3><a href="/blog/india-independent-artists-infrastructure-royalty-transparency/">India’s Independent Artists Need Infrastructure, Not Another Gatekeeper</a></h3>
         <p>Madverse founder Rohan Nesho Jain argues that India’s independent artists need infrastructure, royalty transparency and global reach. The harder question is who controls the operating layer that delivers it.</p>
         <div class="tag-list" aria-label="Tags"><span>Indian music industry</span><span>independent artists</span><span>royalty transparency</span><span>music infrastructure</span><span>creator ownership</span><span>Madverse Music Group</span><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/india-independent-artists-infrastructure-royalty-transparency/">Read article →</a>
@@ -150,7 +211,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · October 12, 2026</div>
-        <h2><a href="/blog/warner-music-ray-ban-luxottica-social-media-music-lawsuit/">Warner Music’s Ray-Ban Lawsuit Puts Music Rights Back in the Social Publishing Workflow</a></h2>
+        <h3><a href="/blog/warner-music-ray-ban-luxottica-social-media-music-lawsuit/">Warner Music’s Ray-Ban Lawsuit Puts Music Rights Back in the Social Publishing Workflow</a></h3>
         <p>Warner Music has sued Ray-Ban and Oakley owner Luxottica over alleged unlicensed use of more than 427 works in social-media posts. The case highlights why music authorization cannot remain an afterthought in commercial publishing.</p>
         <div class="tag-list" aria-label="Tags"><span>Warner Music</span><span>Ray-Ban</span><span>Luxottica</span><span>music licensing</span><span>social media</span><span>rights authorization</span><span>creator infrastructure</span></div>
         <a class="blog-btn" href="/blog/warner-music-ray-ban-luxottica-social-media-music-lawsuit/">Read article →</a>
@@ -162,7 +223,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · October 10, 2026</div>
-        <h2><a href="/blog/suno-live-experiences-ai-music-live-economy/">Suno Live Experiences Signals AI Music’s Move Into the Live Economy</a></h2>
+        <h3><a href="/blog/suno-live-experiences-ai-music-live-economy/">Suno Live Experiences Signals AI Music’s Move Into the Live Economy</a></h3>
         <p>Suno has launched Suno Live Experiences and put former Ticketmaster VP Michael Chua in charge. The move suggests that AI music companies are competing to own more than creation: they are moving toward the audience and live context around the work.</p>
         <div class="tag-list" aria-label="Tags"><span>Suno</span><span>AI music</span><span>live music</span><span>Songkick</span><span>creator infrastructure</span><span>music business</span></div>
         <a class="blog-btn" href="/blog/suno-live-experiences-ai-music-live-economy/">Read article →</a>
@@ -174,7 +235,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · October 9, 2026</div>
-        <h2><a href="/blog/mlc-2027-black-box-royalty-distribution-market-share/">The MLC’s 2027 Black-Box Distribution Turns Unmatched Royalties Into a Market-Share Question</a></h2>
+        <h3><a href="/blog/mlc-2027-black-box-royalty-distribution-market-share/">The MLC’s 2027 Black-Box Distribution Turns Unmatched Royalties Into a Market-Share Question</a></h3>
         <p>The MLC plans to begin distributing remaining 2021 black-box mechanical royalties in April 2027. The move shows why unresolved work and share information can shape not just payment timing, but who ultimately receives the money.</p>
         <div class="tag-list" aria-label="Tags"><span>MLC</span><span>mechanical royalties</span><span>black box royalties</span><span>music publishing</span><span>songwriters</span><span>rights data</span><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/mlc-2027-black-box-royalty-distribution-market-share/">Read article →</a>
@@ -186,7 +247,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · October 8, 2026</div>
-        <h2><a href="/blog/spotify-audiobook-bundle-music-royalties-certifyd/">Spotify’s Audiobook Bundle Shows How Subscription Design Can Shape Music Royalties</a></h2>
+        <h3><a href="/blog/spotify-audiobook-bundle-music-royalties-certifyd/">Spotify’s Audiobook Bundle Shows How Subscription Design Can Shape Music Royalties</a></h3>
         <p>Spotify says Audiobooks+ has passed one million subscribers as audiobook access expands to more than 180 markets. Publishers’ objections show that subscription packaging can also shape how music royalties are treated.</p>
         <div class="tag-list" aria-label="Tags"><span>Spotify</span><span>audiobooks</span><span>music publishing</span><span>mechanical royalties</span><span>songwriters</span><span>creator infrastructure</span></div>
         <a class="blog-btn" href="/blog/spotify-audiobook-bundle-music-royalties-certifyd/">Read article →</a>
@@ -198,7 +259,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · October 7, 2026</div>
-        <h2><a href="/blog/qwantumrights-music-data-royalties-creator-control/">QwantumRights Solutions: What Your Music Data Doesn’t Know Could Be Costing You Money</a></h2>
+        <h3><a href="/blog/qwantumrights-music-data-royalties-creator-control/">QwantumRights Solutions: What Your Music Data Doesn’t Know Could Be Costing You Money</a></h3>
         <p>A Digital Music News partner article from QwantumRights Solutions argues that incomplete rights and repertoire data can turn into delayed, misallocated or missed royalties. The deeper issue is who controls the records that connect a work to payment.</p>
         <div class="tag-list" aria-label="Tags"><span>music rights</span><span>music metadata</span><span>royalties</span><span>creator infrastructure</span><span>music business</span><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/qwantumrights-music-data-royalties-creator-control/">Read article →</a>
@@ -210,7 +271,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · October 5, 2026</div>
-        <h2><a href="/blog/sony-music-260000-ai-deepfake-takedown-requests/">Sony Music’s 260,000 AI Deepfake Requests Show Why Takedowns Cannot Be the Whole System</a></h2>
+        <h3><a href="/blog/sony-music-260000-ai-deepfake-takedown-requests/">Sony Music’s 260,000 AI Deepfake Requests Show Why Takedowns Cannot Be the Whole System</a></h3>
         <p>Sony Music says it has asked digital platforms to remove more than 260,000 AI-generated tracks impersonating its artists. The scale turns AI voice imitation from an isolated rights dispute into a recurring infrastructure problem.</p>
         <div class="tag-list" aria-label="Tags"><span>AI deepfakes</span><span>Sony Music</span><span>artist identity</span><span>music rights</span><span>creator infrastructure</span></div>
         <a class="blog-btn" href="/blog/sony-music-260000-ai-deepfake-takedown-requests/">Read article →</a>
@@ -222,7 +283,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · October 3, 2026</div>
-        <h2><a href="/blog/spotify-amazon-music-mffa-michael-smith-streaming-fraud-sentencing/">Spotify, Amazon Music and MFFA Push for Prison Time in Michael Smith Streaming Fraud Case</a></h2>
+        <h3><a href="/blog/spotify-amazon-music-mffa-michael-smith-streaming-fraud-sentencing/">Spotify, Amazon Music and MFFA Push for Prison Time in Michael Smith Streaming Fraud Case</a></h3>
         <p>Ahead of Michael Smith’s October 6 sentencing, the Music Fights Fraud Alliance has urged a significant prison sentence in a case centered on bot-assisted streams and diverted royalties.</p>
         <div class="tag-list" aria-label="Tags"><span>streaming fraud</span><span>Spotify</span><span>Amazon Music</span><span>Music Fights Fraud Alliance</span><span>creator infrastructure</span><span>music royalties</span></div>
         <a class="blog-btn" href="/blog/spotify-amazon-music-mffa-michael-smith-streaming-fraud-sentencing/">Read article →</a>
@@ -234,7 +295,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · October 2, 2026</div>
-        <h2><a href="/blog/bb-king-the-montreux-years/">B.B. King. The Montreux Years. Executive produced by Vassal Benford, Montreux Jazz on Sony/BMG.</a></h2>
+        <h3><a href="/blog/bb-king-the-montreux-years/">B.B. King. The Montreux Years. Executive produced by Vassal Benford, Montreux Jazz on Sony/BMG.</a></h3>
         <p>B.B. King: The Montreux Years arrives November 20 with rare live performances from 1982–2000. Hear the first single now and preorder the collection.</p>
         <div class="tag-list" aria-label="Tags"><span>B.B. King</span><span>The Montreux Years</span><span>Montreux Jazz Festival</span><span>blues</span><span>live music</span><span>Vassal Benford</span></div>
         <a class="blog-btn" href="/blog/bb-king-the-montreux-years/">Read article →</a>
@@ -246,7 +307,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 30, 2026</div>
-        <h2><a href="/blog/digital-music-news-metadata-royalties-mistaken-identity/">Digital Music News Shows Why Accurate Metadata Still May Not Get You Paid</a></h2>
+        <h3><a href="/blog/digital-music-news-metadata-royalties-mistaken-identity/">Digital Music News Shows Why Accurate Metadata Still May Not Get You Paid</a></h3>
         <p>A Digital Music News article highlights a hard truth about music royalties: titles, dates and identifiers can look correct while the artist connected to a catalog is wrong. That makes identity and entitlement records central to creator control.</p>
         <div class="tag-list" aria-label="Tags"><span>music metadata</span><span>music royalties</span><span>artist identity</span><span>catalog management</span><span>creator infrastructure</span></div>
         <a class="blog-btn" href="/blog/digital-music-news-metadata-royalties-mistaken-identity/">Read article →</a>
@@ -258,7 +319,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 29, 2026</div>
-        <h2><a href="/blog/music-ai-2-0-creator-controlled-identity/">Music AI 2.0: When the Recording Stops Being the Scarce Asset</a></h2>
+        <h3><a href="/blog/music-ai-2-0-creator-controlled-identity/">Music AI 2.0: When the Recording Stops Being the Scarce Asset</a></h3>
         <p>Digital Music News argues that AI could split music into a fast, synthetic economy and an artist-centered one.</p>
         <div class="tag-list" aria-label="Tags"><span>Music AI</span><span>Creator Economy</span><span>Artist Identity</span><span>Creator Infrastructure</span><span>Music Business</span></div>
         <a class="blog-btn" href="/blog/music-ai-2-0-creator-controlled-identity/">Read article →</a>
@@ -270,7 +331,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 28, 2026</div>
-        <h2><a href="/blog/voice-swap-ddex-ai-voice-rights-metadata/">Voice-Swap Joins DDEX as AI Voice Rights Move Into the Music Supply Chain</a></h2>
+        <h3><a href="/blog/voice-swap-ddex-ai-voice-rights-metadata/">Voice-Swap Joins DDEX as AI Voice Rights Move Into the Music Supply Chain</a></h3>
         <p>Voice-Swap has joined DDEX and plans to contribute on consent, authorization and rights metadata for AI voice. The deeper issue is whether permission can travel through music workflows as usable data—or remain locked inside the companies that manage it.</p>
         <div class="tag-list" aria-label="Tags"><span>AI voice</span><span>DDEX</span><span>music rights</span><span>metadata</span><span>creator infrastructure</span><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/voice-swap-ddex-ai-voice-rights-metadata/">Read article →</a>
@@ -282,7 +343,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 27, 2026</div>
-        <h2><a href="/blog/even-josh-remsberg-direct-to-fan-operating-layer/">EVEN’s Josh Remsberg Hire Shows Direct-to-Fan Becoming an Operating Layer</a></h2>
+        <h3><a href="/blog/even-josh-remsberg-direct-to-fan-operating-layer/">EVEN’s Josh Remsberg Hire Shows Direct-to-Fan Becoming an Operating Layer</a></h3>
         <p>EVEN has appointed former Warner Records executive Josh Remsberg as Head of Commercial Partnerships. The new role points to a wider shift: direct-to-fan services are becoming deeper commercial intermediaries, not simply places for artists to sell to fans.</p>
         <div class="tag-list" aria-label="Tags"><span>EVEN</span><span>Josh Remsberg</span><span>direct-to-fan</span><span>music business</span><span>creator infrastructure</span><span>commercial partnerships</span></div>
         <a class="blog-btn" href="/blog/even-josh-remsberg-direct-to-fan-operating-layer/">Read article →</a>
@@ -294,7 +355,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 26, 2026</div>
-        <h2><a href="/blog/creator-owned-lie-account-someone-elses-server/">“Creator-Owned” Is a Lie If Your Account Lives on Someone Else’s Server</a></h2>
+        <h3><a href="/blog/creator-owned-lie-account-someone-elses-server/">“Creator-Owned” Is a Lie If Your Account Lives on Someone Else’s Server</a></h3>
         <p>Everyone says they’re building for creators. But if your identity, work and audience only exist as an account on somebody else’s infrastructure, how much do you actually control?</p>
         <div class="tag-list" aria-label="Tags"><span>creator economy</span><span>creator ownership</span><span>creator platforms</span><span>direct-to-fan</span><span>Certifyd Fan</span><span>Certifyd Core</span><span>creator infrastructure</span></div>
         <a class="blog-btn" href="/blog/creator-owned-lie-account-someone-elses-server/">Read article →</a>
@@ -306,7 +367,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 25, 2026</div>
-        <h2><a href="/blog/michael-smith-streaming-fraud-real-customer-activity/">Michael Smith’s Streaming Fraud Case Shows Why a Stream Is Not a Customer</a></h2>
+        <h3><a href="/blog/michael-smith-streaming-fraud-real-customer-activity/">Michael Smith’s Streaming Fraud Case Shows Why a Stream Is Not a Customer</a></h3>
         <p>Michael Smith’s streaming-fraud case shows what happens when automated music and automated listening can turn manufactured attention into real royalty payments.</p>
         <div class="tag-list" aria-label="Tags"><span>streaming fraud</span><span>AI music</span><span>music royalties</span><span>creator economy</span><span>direct commerce</span><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/michael-smith-streaming-fraud-real-customer-activity/">Read article →</a>
@@ -318,7 +379,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 24, 2026</div>
-        <h2><a href="/blog/robert-palmer-estate-primary-wave-catalog-identity/">Robert Palmer’s Estate Deal Shows Why Artist Identity and Catalogs Need Durable Records</a></h2>
+        <h3><a href="/blog/robert-palmer-estate-primary-wave-catalog-identity/">Robert Palmer’s Estate Deal Shows Why Artist Identity and Catalogs Need Durable Records</a></h3>
         <p>Primary Wave’s deal with the Robert Palmer estate spans publishing, recordings and name, image and likeness rights, showing why the records connecting an artist’s identity and work need to survive individual business relationships.</p>
         <div class="tag-list" aria-label="Tags"><span>Robert Palmer</span><span>Primary Wave</span><span>music publishing</span><span>catalogs</span><span>name image likeness</span><span>creator infrastructure</span><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/robert-palmer-estate-primary-wave-catalog-identity/">Read article →</a>
@@ -330,7 +391,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 23, 2026</div>
-        <h2><a href="/blog/openai-patreon-hires-creator-control/">OpenAI’s Patreon Hires Raise a Bigger Question About Creator Control</a></h2>
+        <h3><a href="/blog/openai-patreon-hires-creator-control/">OpenAI’s Patreon Hires Raise a Bigger Question About Creator Control</a></h3>
         <p>OpenAI has hired three former Patreon leaders for its Creator Product effort.</p>
         <div class="tag-list" aria-label="Tags"><span>OpenAI</span><span>Patreon</span><span>creator economy</span><span>creator infrastructure</span><span>creator ownership</span><span>AI</span></div>
         <a class="blog-btn" href="/blog/openai-patreon-hires-creator-control/">Read article →</a>
@@ -342,7 +403,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 22, 2026</div>
-        <h2><a href="/blog/certifyd-architecture-creator-operated-infrastructure/">Certifyd Architecture: Creator Infrastructure Without the Central Platform</a></h2>
+        <h3><a href="/blog/certifyd-architecture-creator-operated-infrastructure/">Certifyd Architecture: Creator Infrastructure Without the Central Platform</a></h3>
         <p>Certifyd starts with a different assumption: the creator operates the infrastructure. Here’s how Core, independent nodes, providers, fans and apps connect without requiring one central platform to own the network.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>Certifyd Core</span><span>creator infrastructure</span><span>creator ownership</span><span>federated network</span><span>peer-to-peer</span><span>creator economy</span><span>Bitcoin</span><span>Lightning</span></div>
         <a class="blog-btn" href="/blog/certifyd-architecture-creator-operated-infrastructure/">Read article →</a>
@@ -354,7 +415,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 21, 2026</div>
-        <h2><a href="/blog/submithub-ai-music-ban-streaming-rules-discovery/">SubmitHub’s AI Music Ban Shows How Streaming Rules Shape Discovery Upstream</a></h2>
+        <h3><a href="/blog/submithub-ai-music-ban-streaming-rules-discovery/">SubmitHub’s AI Music Ban Shows How Streaming Rules Shape Discovery Upstream</a></h3>
         <p>SubmitHub says it will bar AI music submissions, citing the growing gap between what promotion services can accept and what major streaming systems will recommend or monetize. The decision exposes how discovery rules are increasingly set downstream.</p>
         <div class="tag-list" aria-label="Tags"><span>SubmitHub</span><span>AI music</span><span>music discovery</span><span>streaming</span><span>creator infrastructure</span><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/submithub-ai-music-ban-streaming-rules-discovery/">Read article →</a>
@@ -366,7 +427,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 20, 2026</div>
-        <h2><a href="/blog/audiomack-pro-song-pulse-creator-infrastructure/">Audiomack Pro Turns Artist Tools Into a More Central Operating Layer</a></h2>
+        <h3><a href="/blog/audiomack-pro-song-pulse-creator-infrastructure/">Audiomack Pro Turns Artist Tools Into a More Central Operating Layer</a></h3>
         <p>Audiomack Pro’s global rollout bundles analytics, promotion, profile verification and payout-program access in one subscription. Song Pulse shows how creator activity is moving deeper inside streaming services—and why creators need infrastructure they control.</p>
         <div class="tag-list" aria-label="Tags"><span>Audiomack</span><span>Audiomack Pro</span><span>Song Pulse</span><span>creator infrastructure</span><span>music analytics</span><span>artist payouts</span></div>
         <a class="blog-btn" href="/blog/audiomack-pro-song-pulse-creator-infrastructure/">Read article →</a>
@@ -378,7 +439,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 18, 2026</div>
-        <h2><a href="/blog/notes-fm-5m-raise-royalty-data-creator-stack/">Notes.fm’s $5M Raise Signals That Royalty Data Is Moving Into the Creator Stack</a></h2>
+        <h3><a href="/blog/notes-fm-5m-raise-royalty-data-creator-stack/">Notes.fm’s $5M Raise Signals That Royalty Data Is Moving Into the Creator Stack</a></h3>
         <p>Notes.fm has raised $5 million from artists and music-industry leaders. The news points to a shift: royalty recovery, credits and rights data are becoming core creator infrastructure, not back-office cleanup.</p>
         <div class="tag-list" aria-label="Tags"><span>Notes.fm</span><span>music royalties</span><span>music credits</span><span>independent artists</span><span>creator infrastructure</span><span>music business</span></div>
         <a class="blog-btn" href="/blog/notes-fm-5m-raise-royalty-data-creator-stack/">Read article →</a>
@@ -390,7 +451,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 17, 2026</div>
-        <h2><a href="/blog/stella-lefty-organic-discovery-release-records/">Stella Lefty and the End of the “Organic” Discovery Story</a></h2>
+        <h3><a href="/blog/stella-lefty-organic-discovery-release-records/">Stella Lefty and the End of the “Organic” Discovery Story</a></h3>
         <p>Stella Lefty’s rise shows how short-form audience response can quickly become a release, repertoire and live strategy. That compressed path makes clear attribution and release context more important from the start.</p>
         <div class="tag-list" aria-label="Tags"><span>Stella Lefty</span><span>artist development</span><span>music discovery</span><span>release records</span><span>attribution</span><span>provenance</span></div>
         <a class="blog-btn" href="/blog/stella-lefty-organic-discovery-release-records/">Read article →</a>
@@ -402,7 +463,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 16, 2026</div>
-        <h2><a href="/blog/disctopia-verified-listening-patent-creator-payouts/">Disctopia’s Verified Listening Patent Challenges the Economics of the Play</a></h2>
+        <h3><a href="/blog/disctopia-verified-listening-patent-creator-payouts/">Disctopia’s Verified Listening Patent Challenges the Economics of the Play</a></h3>
         <p>Disctopia’s newly reported U.S. patent ties creator compensation to verified audience presence rather than the initiated play alone. The larger question is whether streaming economics can keep treating access as a proxy for attention.</p>
         <div class="tag-list" aria-label="Tags"><span>Disctopia</span><span>creator payouts</span><span>streaming fraud</span><span>verified listening</span><span>music business</span></div>
         <a class="blog-btn" href="/blog/disctopia-verified-listening-patent-creator-payouts/">Read article →</a>
@@ -414,7 +475,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 15, 2026</div>
-        <h2><a href="/blog/elevenlabs-umg-ai-music-deal-five-things/">5 Things to Know About ElevenLabs’ UMG Deal and Its Music Ambitions</a></h2>
+        <h3><a href="/blog/elevenlabs-umg-ai-music-deal-five-things/">5 Things to Know About ElevenLabs’ UMG Deal and Its Music Ambitions</a></h3>
         <p>ElevenLabs’ first major-label agreement with UMG points to a music-AI market where licensed fan creation becomes a distinct product category—not simply a feature inside a general audio tool.</p>
         <div class="tag-list" aria-label="Tags"><span>ElevenLabs</span><span>UMG</span><span>AI music</span><span>fan remixes</span><span>music licensing</span><span>creator infrastructure</span></div>
         <a class="blog-btn" href="/blog/elevenlabs-umg-ai-music-deal-five-things/">Read article →</a>
@@ -426,7 +487,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 14, 2026</div>
-        <h2><a href="/blog/afm-ai-licensing-performer-terms-music-input-economy/">AFM’s AI Licensing Fight Puts Performer Terms at the Center of Music’s New Input Economy</a></h2>
+        <h3><a href="/blog/afm-ai-licensing-performer-terms-music-input-economy/">AFM’s AI Licensing Fight Puts Performer Terms at the Center of Music’s New Input Economy</a></h3>
         <p>The American Federation of Musicians is opposing dismissal motions in its lawsuit over major-label AI licensing deals, arguing that performers’ recordings entered commercial AI systems without payment or credit. The dispute tests whether legacy “new use” prote</p>
         <div class="tag-list" aria-label="Tags"><span>AI music</span><span>music rights</span><span>performers</span><span>AFM</span><span>recording agreements</span><span>creator infrastructure</span></div>
         <a class="blog-btn" href="/blog/afm-ai-licensing-performer-terms-music-input-economy/">Read article →</a>
@@ -438,7 +499,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 14, 2026</div>
-        <h2><a href="/blog/busta-rhymes-streaming-ip-business/">Busta Rhymes on Streaming: The IP Business Cannot End at the Stream</a></h2>
+        <h3><a href="/blog/busta-rhymes-streaming-ip-business/">Busta Rhymes on Streaming: The IP Business Cannot End at the Stream</a></h3>
         <p>Busta Rhymes says artists and producers still share a fundamental frustration with streaming economics. His comments point to a larger shift: a sustainable music business increasingly depends on creator-controlled IP context beyond distribution alone.</p>
         <div class="tag-list" aria-label="Tags"><span>Busta Rhymes</span><span>streaming economics</span><span>music royalties</span><span>creator ownership</span><span>music business</span><span>catalog management</span></div>
         <a class="blog-btn" href="/blog/busta-rhymes-streaming-ip-business/">Read article →</a>
@@ -450,7 +511,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 13, 2026</div>
-        <h2><a href="/blog/spotify-bundling-ruling-royalty-product-design/">Spotify Bundling Ruling Shows Product Design Is Now a Royalty Lever</a></h2>
+        <h3><a href="/blog/spotify-bundling-ruling-royalty-product-design/">Spotify Bundling Ruling Shows Product Design Is Now a Royalty Lever</a></h3>
         <p>A federal judge denied the MLC’s push for an interlocutory appeal in its Spotify bundling dispute, keeping the focus on a larger shift: subscription packaging can now shape music royalty economics.</p>
         <div class="tag-list" aria-label="Tags"><span>Spotify</span><span>Mechanical Licensing Collective</span><span>music royalties</span><span>bundling</span><span>songwriters</span><span>music business</span></div>
         <a class="blog-btn" href="/blog/spotify-bundling-ruling-royalty-product-design/">Read article →</a>
@@ -462,7 +523,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 11, 2026</div>
-        <h2><a href="/blog/ticketmaster-meta-muse-live-event-discovery-agent-layer/">Ticketmaster Joins Meta Muse, Moving Live-Event Discovery Into the Agent Layer</a></h2>
+        <h3><a href="/blog/ticketmaster-meta-muse-live-event-discovery-agent-layer/">Ticketmaster Joins Meta Muse, Moving Live-Event Discovery Into the Agent Layer</a></h3>
         <p>Ticketmaster’s Muse connector keeps checkout on its own site while Meta’s AI agent shapes the route to event discovery. The deeper shift is that the first interface between a fan and a ticket may increasingly be an agent, not an event page.</p>
         <div class="tag-list" aria-label="Tags"><span>Ticketmaster</span><span>Meta Muse</span><span>live events</span><span>creator commerce</span><span>fan relationships</span><span>AI agents</span></div>
         <a class="blog-btn" href="/blog/ticketmaster-meta-muse-live-event-discovery-agent-layer/">Read article →</a>
@@ -474,7 +535,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 11, 2026</div>
-        <h2><a href="/blog/umg-elevenlabs-ai-music-permissions-product/">UMG and ElevenLabs Move AI Music Permissions Into the Product</a></h2>
+        <h3><a href="/blog/umg-elevenlabs-ai-music-permissions-product/">UMG and ElevenLabs Move AI Music Permissions Into the Product</a></h3>
         <p>Universal Music Group and ElevenLabs are developing a licensed, artist-participation AI music product. The deeper signal is that permissions are moving from a downstream clearance exercise into the design of the creative experience itself.</p>
         <div class="tag-list" aria-label="Tags"><span>UMG</span><span>ElevenLabs</span><span>AI music</span><span>music rights</span><span>creator economy</span><span>licensing</span></div>
         <a class="blog-btn" href="/blog/umg-elevenlabs-ai-music-permissions-product/">Read article →</a>
@@ -486,7 +547,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 10, 2026</div>
-        <h2><a href="/blog/suno-believe-tunecore-ai-music-distribution-rights-context/">Suno’s Believe Deal Moves AI Music Licensing Upstream Into Distribution</a></h2>
+        <h3><a href="/blog/suno-believe-tunecore-ai-music-distribution-rights-context/">Suno’s Believe Deal Moves AI Music Licensing Upstream Into Distribution</a></h3>
         <p>Suno’s strategic partnership with Believe and TuneCore connects opt-in AI-model participation with a route to distribution. The deeper shift is distribution infrastructure moving upstream into the terms of creation itself.</p>
         <div class="tag-list" aria-label="Tags"><span>Suno</span><span>Believe</span><span>TuneCore</span><span>AI music</span><span>music rights</span><span>distribution</span><span>attribution</span><span>provenance</span></div>
         <a class="blog-btn" href="/blog/suno-believe-tunecore-ai-music-distribution-rights-context/">Read article →</a>
@@ -498,7 +559,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 9, 2026</div>
-        <h2><a href="/blog/suno-v6-ai-music-permission-by-design/">Suno v6 Shows AI Music Is Moving From Permission After the Fact to Permission by Design</a></h2>
+        <h3><a href="/blog/suno-v6-ai-music-permission-by-design/">Suno v6 Shows AI Music Is Moving From Permission After the Fact to Permission by Design</a></h3>
         <p>Suno’s new v6 models were developed with Warner Music Group, BMG and Believe. The bigger shift is not simply that AI companies are licensing music. Permission is starting to move into the architecture of the product itself.</p>
         <div class="tag-list" aria-label="Tags"><span>AI</span><span>Music</span><span>Suno</span><span>Warner Music Group</span><span>BMG</span><span>Believe</span><span>Music Rights</span><span>Creator Economy</span></div>
         <a class="blog-btn" href="/blog/suno-v6-ai-music-permission-by-design/">Read article →</a>
@@ -510,7 +571,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 8, 2026</div>
-        <h2><a href="/blog/afm-universal-warner-ai-music-licensing-rights/">AFM vs. Universal and Warner Shows AI Music Licensing Has a Rights-Stack Problem</a></h2>
+        <h3><a href="/blog/afm-universal-warner-ai-music-licensing-rights/">AFM vs. Universal and Warner Shows AI Music Licensing Has a Rights-Stack Problem</a></h3>
         <p>Universal and Warner may have the right to license recordings to AI companies. The AFM says that does not mean the musicians who performed on those recordings disappear from the transaction.</p>
         <div class="tag-list" aria-label="Tags"><span>- AI</span></div>
         <a class="blog-btn" href="/blog/afm-universal-warner-ai-music-licensing-rights/">Read article →</a>
@@ -522,7 +583,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 6, 2026</div>
-        <h2><a href="/blog/jason-isbell-suno-ai-artist-identity/">Jason Isbell Is Suing Suno Over Something Bigger Than Copyright: His Identity</a></h2>
+        <h3><a href="/blog/jason-isbell-suno-ai-artist-identity/">Jason Isbell Is Suing Suno Over Something Bigger Than Copyright: His Identity</a></h3>
         <p>Jason Isbell and other musicians are suing Suno without making a copyright claim. Their case raises a deeper question for AI and music: who has authority to use an artist&#39;s identity?</p>
         <div class="tag-list" aria-label="Tags"><span>Jason Isbell</span><span>Suno</span><span>AI music</span><span>artist identity</span><span>creator rights</span><span>digital identity</span><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/jason-isbell-suno-ai-artist-identity/">Read article →</a>
@@ -534,7 +595,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 5, 2026</div>
-        <h2><a href="/blog/suno-pulls-mary-j-blige-ad-unauthorized-representative/">Suno Pulls Mary J. Blige Ad After Deal With Unauthorized Representative</a></h2>
+        <h3><a href="/blog/suno-pulls-mary-j-blige-ad-unauthorized-representative/">Suno Pulls Mary J. Blige Ad After Deal With Unauthorized Representative</a></h3>
         <p>Suno says it pulled a Mary J. Blige campaign after learning that the person who arranged the deal was not authorized to represent her. The incident exposes a bigger problem for digital music: proving who actually has authority to act for a creator.</p>
         <div class="tag-list" aria-label="Tags"><span>Mary J. Blige</span><span>Suno</span><span>AI music</span><span>digital identity</span><span>creator rights</span><span>authorization</span><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/suno-pulls-mary-j-blige-ad-unauthorized-representative/">Read article →</a>
@@ -546,7 +607,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 4, 2026</div>
-        <h2><a href="/blog/certifyd-weekly-roundup-creator-economy-moving-down-the-stack/">Certifyd Weekly Roundup: The Creator Economy Is Moving Down the Stack</a></h2>
+        <h3><a href="/blog/certifyd-weekly-roundup-creator-economy-moving-down-the-stack/">Certifyd Weekly Roundup: The Creator Economy Is Moving Down the Stack</a></h3>
         <p>From artist operating systems and verified identity to AI impersonation, platform security and new music-discovery models, this week&#39;s stories kept returning to the same question: who controls the infrastructure underneath the creator economy?</p>
         <div class="tag-list" aria-label="Tags"><span>weekly roundup</span><span>creator economy</span><span>music industry</span><span>AI</span><span>creator ownership</span><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/certifyd-weekly-roundup-creator-economy-moving-down-the-stack/">Read article →</a>
@@ -558,7 +619,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 4, 2026</div>
-        <h2><a href="/blog/jola-labs-launches-ai-business-operating-system-roster/">JO:LA Labs Launches AI ‘Business Operating System’ Roster</a></h2>
+        <h3><a href="/blog/jola-labs-launches-ai-business-operating-system-roster/">JO:LA Labs Launches AI ‘Business Operating System’ Roster</a></h3>
         <p>JO:LA Labs is pitching Roster as an end-to-end music business operating system for artists and managers. Its launch raises a bigger question: what should an artist&#39;s operating system actually operate?</p>
         <div class="tag-list" aria-label="Tags"><span>music business</span><span>creator economy</span><span>AI</span><span>artist management</span><span>creator infrastructure</span><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/jola-labs-launches-ai-business-operating-system-roster/">Read article →</a>
@@ -570,7 +631,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 3, 2026</div>
-        <h2><a href="/blog/musixmatch-adds-label-hub-as-lyricfind-debuts-verified-artist-program/">Musixmatch Adds Label Hub as LyricFind Debuts Verified Artist Program</a></h2>
+        <h3><a href="/blog/musixmatch-adds-label-hub-as-lyricfind-debuts-verified-artist-program/">Musixmatch Adds Label Hub as LyricFind Debuts Verified Artist Program</a></h3>
         <p>Musixmatch and LyricFind are giving labels and artists more control over music data. But the authoritative records still live inside centralized systems operated by somebody else.</p>
         <div class="tag-list" aria-label="Tags"><span>music</span><span>digital identity</span><span>artist verification</span><span>music metadata</span><span>creator ownership</span><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/musixmatch-adds-label-hub-as-lyricfind-debuts-verified-artist-program/">Read article →</a>
@@ -582,7 +643,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 3, 2026</div>
-        <h2><a href="/blog/report-explores-ai-s-indies-impact-and-infrastructure-erosion/">Report explores AI’s indies impact and infrastructure erosion</a></h2>
+        <h3><a href="/blog/report-explores-ai-s-indies-impact-and-infrastructure-erosion/">Report explores AI’s indies impact and infrastructure erosion</a></h3>
         <p>A new report from Stvdio and Secretly Distribution frames AI&#39;s impact on independent music as a fight for music&#39;s infrastructure. That distinction matters: independence means considerably less when the systems creators depend on are controlled somewhere else.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span><span>AI</span><span>creator ownership</span></div>
         <a class="blog-btn" href="/blog/report-explores-ai-s-indies-impact-and-infrastructure-erosion/">Read article →</a>
@@ -594,7 +655,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 2, 2026</div>
-        <h2><a href="/blog/x-attackers-targeting-user-accounts-after-launch-x-money/">X Says Attackers Are Targeting User Accounts After the Launch of X Money</a></h2>
+        <h3><a href="/blog/x-attackers-targeting-user-accounts-after-launch-x-money/">X Says Attackers Are Targeting User Accounts After the Launch of X Money</a></h3>
         <p>X says attackers began targeting user accounts after X Money became widely available. The attempted attacks expose a bigger question for creators: what happens when your identity, audience and financial activity all live behind the same platform login?</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>AI</span><span>creator ownership</span></div>
         <a class="blog-btn" href="/blog/x-attackers-targeting-user-accounts-after-launch-x-money/">Read article →</a>
@@ -606,7 +667,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 1, 2026</div>
-        <h2><a href="/blog/how-alternative-music-platforms-are-differentiating-themselves-from-mainstream-streaming/">How Alternative Music Platforms Are Differentiating Themselves from Mainstream Streaming: A Focus on Curation, Compensation, and Cooperation</a></h2>
+        <h3><a href="/blog/how-alternative-music-platforms-are-differentiating-themselves-from-mainstream-streaming/">How Alternative Music Platforms Are Differentiating Themselves from Mainstream Streaming: A Focus on Curation, Compensation, and Cooperation</a></h3>
         <p>A new generation of music services is experimenting with human curation, different payment models and even cooperative ownership. The most interesting possibility may be that the future doesn&#39;t require another Spotify at all.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span><span>AI</span></div>
         <a class="blog-btn" href="/blog/how-alternative-music-platforms-are-differentiating-themselves-from-mainstream-streaming/">Read article →</a>
@@ -618,7 +679,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · September 1, 2026</div>
-        <h2><a href="/blog/multiple-youtube-amazon-music-and-spotify-profiles-of-jazz-legends-were-hijacked-to-churn/">Multiple YouTube, Amazon Music, and Spotify Profiles of Jazz Legends Were Hijacked to Churn Out AI Slop</a></h2>
+        <h3><a href="/blog/multiple-youtube-amazon-music-and-spotify-profiles-of-jazz-legends-were-hijacked-to-churn/">Multiple YouTube, Amazon Music, and Spotify Profiles of Jazz Legends Were Hijacked to Churn Out AI Slop</a></h3>
         <p>Jazz musicians who died decades ago are suddenly getting new releases on major streaming profiles. The problem isn&#39;t only AI slop. It&#39;s that a platform profile has become a proxy for artist identity without necessarily proving who authorized the release.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span><span>AI</span></div>
         <a class="blog-btn" href="/blog/multiple-youtube-amazon-music-and-spotify-profiles-of-jazz-legends-were-hijacked-to-churn/">Read article →</a>
@@ -630,7 +691,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 31, 2026</div>
-        <h2><a href="/blog/gta-vi-music-discovery-machine/">GTA VI Isn&#39;t Just a Game. It&#39;s a Music Discovery Machine.</a></h2>
+        <h3><a href="/blog/gta-vi-music-discovery-machine/">GTA VI Isn&#39;t Just a Game. It&#39;s a Music Discovery Machine.</a></h3>
         <p>GTA VI is packed with licensed music. But the bigger story is what happens when songs are discovered inside worlds, experiences and memories instead of playlists.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span><span>creator ownership</span></div>
         <a class="blog-btn" href="/blog/gta-vi-music-discovery-machine/">Read article →</a>
@@ -642,7 +703,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 30, 2026</div>
-        <h2><a href="/blog/musicians-hunting-ai-grifters-provenance/">Musicians Are Hunting for AI Grifters. Provenance Could Make the Detective Work Obsolete</a></h2>
+        <h3><a href="/blog/musicians-hunting-ai-grifters-provenance/">Musicians Are Hunting for AI Grifters. Provenance Could Make the Detective Work Obsolete</a></h3>
         <p>Musicians are learning to spot AI-generated tracks by listening for artifacts, studying videos and investigating suspicious releases. But the deeper problem isn&#39;t detection. It&#39;s that digital music still lacks a reliable way to establish where a work came from</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span><span>AI</span></div>
         <a class="blog-btn" href="/blog/musicians-hunting-ai-grifters-provenance/">Read article →</a>
@@ -654,7 +715,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 29, 2026</div>
-        <h2><a href="/blog/authentic-brands-group-drake-ovo-intellectual-property/">Authentic Brands Group Acquires Majority Stake in Drake’s OVO Intellectual Property</a></h2>
+        <h3><a href="/blog/authentic-brands-group-drake-ovo-intellectual-property/">Authentic Brands Group Acquires Majority Stake in Drake’s OVO Intellectual Property</a></h3>
         <p>Authentic Brands Group has acquired a majority stake in the intellectual property of Drake’s OVO, while Drake retains significant ownership and creative involvement. The deal shows how creator-built identity can become an asset far beyond music.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>creator ownership</span></div>
         <a class="blog-btn" href="/blog/authentic-brands-group-drake-ovo-intellectual-property/">Read article →</a>
@@ -666,7 +727,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 29, 2026</div>
-        <h2><a href="/blog/i-asked-100-companies-for-my-data-i-got-deletion-notices-instead/">I Asked 100 Companies for My Data. I Got Deletion Notices Instead</a></h2>
+        <h3><a href="/blog/i-asked-100-companies-for-my-data-i-got-deletion-notices-instead/">I Asked 100 Companies for My Data. I Got Deletion Notices Instead</a></h3>
         <p>A WIRED reporter filed more than 100 requests to see what companies knew about him. The resulting mess exposes a deeper problem with digital ownership: having rights over data is not the same as controlling it.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/i-asked-100-companies-for-my-data-i-got-deletion-notices-instead/">Read article →</a>
@@ -678,7 +739,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 28, 2026</div>
-        <h2><a href="/blog/certifyd-weekly-roundup-drake-ovo-stability-ai-soundcloud-fanfare/">Certifyd Weekly Roundup: Drake’s OVO IP, Stability AI, SoundCloud Downloads and Independent Music Charts</a></h2>
+        <h3><a href="/blog/certifyd-weekly-roundup-drake-ovo-stability-ai-soundcloud-fanfare/">Certifyd Weekly Roundup: Drake’s OVO IP, Stability AI, SoundCloud Downloads and Independent Music Charts</a></h3>
         <p>This week in music and the creator economy: Drake’s OVO becomes valuable standalone IP, the majors invest in Stability AI, SoundCloud brings paid downloads on-platform, Fanfare challenges streaming-led charts, and Round Hill escalates the AI copyright fight.</p>
         <div class="tag-list" aria-label="Tags"><span>music industry</span><span>creator economy</span><span>Drake</span><span>OVO</span><span>Stability AI</span><span>SoundCloud</span><span>Fanfare</span><span>AI music</span><span>music rights</span><span>Dolly Parton</span><span>Tim Curry</span><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/certifyd-weekly-roundup-drake-ovo-stability-ai-soundcloud-fanfare/">Read article →</a>
@@ -690,7 +751,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 28, 2026</div>
-        <h2><a href="/blog/fanfare-independent-music-charts-sales-not-streams/">Fanfare Launches Independent Music Charts Built Around Sales, Not Streams</a></h2>
+        <h3><a href="/blog/fanfare-independent-music-charts-sales-not-streams/">Fanfare Launches Independent Music Charts Built Around Sales, Not Streams</a></h3>
         <p>Fanfare is launching two independent music charts built around physical music and merchandise sales rather than streaming. The idea raises a larger question about what independent music charts should measure in a direct-to-fan economy.</p>
         <div class="tag-list" aria-label="Tags"><span>Fanfare</span><span>independent music charts</span><span>music charts</span><span>direct-to-fan</span><span>independent artists</span><span>creator economy</span><span>music sales</span><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/fanfare-independent-music-charts-sales-not-streams/">Read article →</a>
@@ -702,7 +763,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 27, 2026</div>
-        <h2><a href="/blog/dolly-parton-legacy-music-songwriting-ownership/">Dolly Parton&#39;s Legacy Was Bigger Than Music. She Built Something She Owned.</a></h2>
+        <h3><a href="/blog/dolly-parton-legacy-music-songwriting-ownership/">Dolly Parton&#39;s Legacy Was Bigger Than Music. She Built Something She Owned.</a></h3>
         <p>Dolly Parton leaves behind more than one of the greatest catalogs in popular music. She built a career around songwriting, ownership, independence, business and an extraordinary ability to turn creative success into something that outlived the spotlight.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/dolly-parton-legacy-music-songwriting-ownership/">Read article →</a>
@@ -714,7 +775,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 27, 2026</div>
-        <h2><a href="/blog/soundcloud-paid-downloads-artists-keep-100-one-platform-problem/">SoundCloud Paid Downloads Let Artists Keep 100%. The &#39;One Platform&#39; Pitch Is the Problem.</a></h2>
+        <h3><a href="/blog/soundcloud-paid-downloads-artists-keep-100-one-platform-problem/">SoundCloud Paid Downloads Let Artists Keep 100%. The &#39;One Platform&#39; Pitch Is the Problem.</a></h3>
         <p>SoundCloud says artists will keep 100% of paid download sales as it expands its direct-to-fan business. That&#39;s good. Telling creators they should build their audience &#39;in one place, on one platform&#39; is not.</p>
         <div class="tag-list" aria-label="Tags"><span>SoundCloud</span><span>paid downloads</span><span>direct-to-fan</span><span>creator economy</span><span>independent artists</span><span>music downloads</span><span>creator ownership</span><span>music industry</span></div>
         <a class="blog-btn" href="/blog/soundcloud-paid-downloads-artists-keep-100-one-platform-problem/">Read article →</a>
@@ -726,7 +787,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 26, 2026</div>
-        <h2><a href="/blog/ansolas-building-what-he-wishes-existed/">He’s Building What He Wishes Existed: Ansolas and the Independent Creator Mindset</a></h2>
+        <h3><a href="/blog/ansolas-building-what-he-wishes-existed/">He’s Building What He Wishes Existed: Ansolas and the Independent Creator Mindset</a></h3>
         <p>Marc Marc Wensauer aka AnSolas has spent years working independently across music and technology. His latest project, Logic Loop Manager, started with a simple idea: if the tool you need doesn&#39;t exist, build it.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>Ansolas</span><span>Logic Loop Manager</span><span>Certifyd Core</span><span>Claude Code</span><span>creator tools</span><span>creator ownership</span></div>
         <a class="blog-btn" href="/blog/ansolas-building-what-he-wishes-existed/">Read article →</a>
@@ -738,7 +799,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 26, 2026</div>
-        <h2><a href="/blog/copyrighted-music-ai-models-provenance-infrastructure/">If Copyrighted Music Can Be Extracted From an AI Model, Provenance Just Became Infrastructure</a></h2>
+        <h3><a href="/blog/copyrighted-music-ai-models-provenance-infrastructure/">If Copyrighted Music Can Be Extracted From an AI Model, Provenance Just Became Infrastructure</a></h3>
         <p>Round Hill Music’s lawsuits against Suno and Anthropic are pushing the AI copyright fight beyond training data and toward model weights, extraction and evidence. That raises a much bigger question for music: how do we prove where digital works came from and wh</p>
         <div class="tag-list" aria-label="Tags"><span>AI</span><span>music copyright</span><span>Round Hill Music</span><span>Suno</span><span>Anthropic</span><span>provenance</span><span>creator rights</span><span>Certifyd Core</span></div>
         <a class="blog-btn" href="/blog/copyrighted-music-ai-models-provenance-infrastructure/">Read article →</a>
@@ -750,7 +811,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 26, 2026</div>
-        <h2><a href="/blog/music-industry-isnt-rejecting-ai-deciding-who-gets-to-participate/">The Music Industry Isn&#39;t Rejecting AI. It&#39;s Deciding Who Gets to Participate.</a></h2>
+        <h3><a href="/blog/music-industry-isnt-rejecting-ai-deciding-who-gets-to-participate/">The Music Industry Isn&#39;t Rejecting AI. It&#39;s Deciding Who Gets to Participate.</a></h3>
         <p>Universal, Sony and Warner have invested in Stability AI&#39;s $76 million funding round. The deal makes something increasingly clear: the music industry&#39;s fight isn&#39;t simply against generative AI. It&#39;s becoming a fight over licensing, permission, participation an</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>AI</span><span>creator ownership</span></div>
         <a class="blog-btn" href="/blog/music-industry-isnt-rejecting-ai-deciding-who-gets-to-participate/">Read article →</a>
@@ -762,7 +823,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 24, 2026</div>
-        <h2><a href="/blog/what-if-your-next-creator-platform-was-a-computer-you-owned/">What If Your Next Creator Platform Was a Computer You Owned?</a></h2>
+        <h3><a href="/blog/what-if-your-next-creator-platform-was-a-computer-you-owned/">What If Your Next Creator Platform Was a Computer You Owned?</a></h3>
         <p>Raspberry Pi has published an official guide to building a cyberdeck as homemade personal computers surge in popularity. Behind the maker trend is a bigger idea: what happens when creators run their digital infrastructure on computers they actually control?</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>Raspberry Pi</span><span>creator economy</span><span>creator ownership</span><span>Certifyd Core</span><span>sovereign infrastructure</span></div>
         <a class="blog-btn" href="/blog/what-if-your-next-creator-platform-was-a-computer-you-owned/">Read article →</a>
@@ -774,7 +835,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 23, 2026</div>
-        <h2><a href="/blog/patreon-says-internet-failed-creators-is-another-platform-the-answer/">Patreon Says the Internet Has Failed Creators. It’s Right. But Is Another Platform the Answer?</a></h2>
+        <h3><a href="/blog/patreon-says-internet-failed-creators-is-another-platform-the-answer/">Patreon Says the Internet Has Failed Creators. It’s Right. But Is Another Platform the Answer?</a></h3>
         <p>Patreon is rolling out 30 new features after declaring that the current internet has failed creators and fandoms. But the announcement raises a deeper question: Is the solution to platform dependency, a better platform, or infrastructure creators actually cont</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span><span>creator ownership</span></div>
         <a class="blog-btn" href="/blog/patreon-says-internet-failed-creators-is-another-platform-the-answer/">Read article →</a>
@@ -786,7 +847,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 22, 2026</div>
-        <h2><a href="/blog/umg-backed-music-ip-holdings-ai-music-patent-portfolio-certifyd/">UMG-Backed Music IP Holdings Unveils AI Music Patent Portfolio, Aiming to ‘Set a Standard for How AI and Music Grow Together’</a></h2>
+        <h3><a href="/blog/umg-backed-music-ip-holdings-ai-music-patent-portfolio-certifyd/">UMG-Backed Music IP Holdings Unveils AI Music Patent Portfolio, Aiming to ‘Set a Standard for How AI and Music Grow Together’</a></h3>
         <p>Music IP Holdings has unveiled a broad patent framework for licensed AI music, with Udio and GRAI among its first adopters. The move could help standardize permissions, identifiers, attribution and payment—but it also raises a bigger question: who should contr</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span><span>AI</span></div>
         <a class="blog-btn" href="/blog/umg-backed-music-ip-holdings-ai-music-patent-portfolio-certifyd/">Read article →</a>
@@ -798,7 +859,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 21, 2026</div>
-        <h2><a href="/blog/alibaba-launches-happyshrimp-ai-music-generator-taihe-music-artist-co-creation/">Alibaba Launches HappyShrimp AI Music Generator With Taihe Music as Artist Co-Creation Partner</a></h2>
+        <h3><a href="/blog/alibaba-launches-happyshrimp-ai-music-generator-taihe-music-artist-co-creation/">Alibaba Launches HappyShrimp AI Music Generator With Taihe Music as Artist Co-Creation Partner</a></h3>
         <p>Alibaba has entered the AI music market with HappyShrimp 1.0, a model capable of generating complete songs from prompts. Its partnership with Taihe Music also raises a bigger question: how will rights, attribution and compensation work with AI?</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span><span>AI</span><span>creator ownership</span></div>
         <a class="blog-btn" href="/blog/alibaba-launches-happyshrimp-ai-music-generator-taihe-music-artist-co-creation/">Read article →</a>
@@ -810,7 +871,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 21, 2026</div>
-        <h2><a href="/blog/certifyd-weekly-roundup-platforms-control-creators-sovereignty-ai-payments/">Certifyd Weekly Roundup: Platforms Want More Control. Creators Should Want More Too.</a></h2>
+        <h3><a href="/blog/certifyd-weekly-roundup-platforms-control-creators-sovereignty-ai-payments/">Certifyd Weekly Roundup: Platforms Want More Control. Creators Should Want More Too.</a></h3>
         <p>This week, TikTok explored payments through DMs, Amazon&#39;s Twitch gave creators an AI training opt-out, Alibaba entered AI music, Peacock raised prices, and Vassal Benford looked toward a more sovereign future for musicians.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>creator ownership</span></div>
         <a class="blog-btn" href="/blog/certifyd-weekly-roundup-platforms-control-creators-sovereignty-ai-payments/">Read article →</a>
@@ -822,7 +883,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 21, 2026</div>
-        <h2><a href="/blog/inside-spitfire-audios-shift-to-scalable-royalty-payments-powered-by-tipalti/">Inside Spitfire Audio’s Shift to Scalable Royalty Payments Powered by Tipalti</a></h2>
+        <h3><a href="/blog/inside-spitfire-audios-shift-to-scalable-royalty-payments-powered-by-tipalti/">Inside Spitfire Audio’s Shift to Scalable Royalty Payments Powered by Tipalti</a></h3>
         <p>Spitfire Audio moved from manual, spreadsheet-driven royalty payouts to automated mass payments with Tipalti, cutting processing time from weeks to minutes. The case highlights a larger challenge:scalable settlement.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/inside-spitfire-audios-shift-to-scalable-royalty-payments-powered-by-tipalti/">Read article →</a>
@@ -834,7 +895,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 21, 2026</div>
-        <h2><a href="/blog/peacock-is-raising-prices-again-the-bigger-story-is-who-controls-the-creator-economy/">Peacock Is Raising Prices Again. The Bigger Story Is Who Controls the Creator Economy</a></h2>
+        <h3><a href="/blog/peacock-is-raising-prices-again-the-bigger-story-is-who-controls-the-creator-economy/">Peacock Is Raising Prices Again. The Bigger Story Is Who Controls the Creator Economy</a></h3>
         <p>Peacock is raising subscription prices again as streaming platforms search for sustainable economics. For creators, the bigger question is whether higher consumer spending translates into stronger ownership..</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>AI</span><span>creator ownership</span></div>
         <a class="blog-btn" href="/blog/peacock-is-raising-prices-again-the-bigger-story-is-who-controls-the-creator-economy/">Read article →</a>
@@ -846,7 +907,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 21, 2026</div>
-        <h2><a href="/blog/vassal-benford-quincy-jones-music-sovereignty-certifyd/">Vassal Benford Wanted to Be the Next Quincy Jones. Then He Started Building His Own Future.</a></h2>
+        <h3><a href="/blog/vassal-benford-quincy-jones-music-sovereignty-certifyd/">Vassal Benford Wanted to Be the Next Quincy Jones. Then He Started Building His Own Future.</a></h3>
         <p>In 1993, Vassal Benford told Billboard he wanted to be the next young Quincy Jones. More than three decades later, his journey through records, film, business and technology has led to an even bigger idea: helping musicians control their own future.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>creator ownership</span></div>
         <a class="blog-btn" href="/blog/vassal-benford-quincy-jones-music-sovereignty-certifyd/">Read article →</a>
@@ -858,7 +919,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 20, 2026</div>
-        <h2><a href="/blog/tiktok-calls-it-peer-to-peer-payments-tiktok-is-still-in-the-middle/">TikTok Calls It Peer-to-Peer Payments. TikTok Is Still in the Middle.</a></h2>
+        <h3><a href="/blog/tiktok-calls-it-peer-to-peer-payments-tiktok-is-still-in-the-middle/">TikTok Calls It Peer-to-Peer Payments. TikTok Is Still in the Middle.</a></h3>
         <p>TikTok is reportedly exploring &#39;peer-to-peer&#39; payments through direct messages. But the proposed transactions would still run through TikTok Pay. That&#39;s person-to-person commerce—not peer-to-peer architecture—and the difference matters.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/tiktok-calls-it-peer-to-peer-payments-tiktok-is-still-in-the-middle/">Read article →</a>
@@ -870,7 +931,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 17, 2026</div>
-        <h2><a href="/blog/music-is-everywhere-so-why-is-it-getting-harder-to-be-a-musician/">Music Is Everywhere. So Why Is It Getting Harder to Be a Musician?</a></h2>
+        <h3><a href="/blog/music-is-everywhere-so-why-is-it-getting-harder-to-be-a-musician/">Music Is Everywhere. So Why Is It Getting Harder to Be a Musician?</a></h3>
         <p>Music has never been more abundant, accessible or commercially useful. Yet for many musicians, building a sustainable career is becoming harder. The contradiction exposes a deeper problem in the infrastructure connecting creators, rights, audiences and commerc</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span></div>
         <a class="blog-btn" href="/blog/music-is-everywhere-so-why-is-it-getting-harder-to-be-a-musician/">Read article →</a>
@@ -882,7 +943,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 16, 2026</div>
-        <h2><a href="/blog/amazon-can-use-your-twitch-content-to-train-its-ai-unless-you-opt-out/">Amazon Can Use Your Twitch Content to Train Its AI—Unless You Opt Out</a></h2>
+        <h3><a href="/blog/amazon-can-use-your-twitch-content-to-train-its-ai-unless-you-opt-out/">Amazon Can Use Your Twitch Content to Train Its AI—Unless You Opt Out</a></h3>
         <p>Twitch now lets creators opt out of having their content used to train Amazon&#39;s generative AI models, raising a larger question about consent, platform terms and who controls permission in the AI era.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>AI</span></div>
         <a class="blog-btn" href="/blog/amazon-can-use-your-twitch-content-to-train-its-ai-unless-you-opt-out/">Read article →</a>
@@ -894,7 +955,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 16, 2026</div>
-        <h2><a href="/blog/the-isley-brothers-end-trademark-lawsuit/">The Isley Brothers, Both Alive and Dead, Have Finally Stopped Beefing About Their Trademark</a></h2>
+        <h3><a href="/blog/the-isley-brothers-end-trademark-lawsuit/">The Isley Brothers, Both Alive and Dead, Have Finally Stopped Beefing About Their Trademark</a></h3>
         <p>Ronald Isley and the estate of Rudolph Isley have ended their long-running dispute over The Isley Brothers trademark, closing a case that raises larger questions about creative partnerships, ownership and preserving rights across generations.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>trust</span></div>
         <a class="blog-btn" href="/blog/the-isley-brothers-end-trademark-lawsuit/">Read article →</a>
@@ -906,7 +967,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 15, 2026</div>
-        <h2><a href="/blog/previewing-ultrafast-mode-gpt-5-6-sol-at-up-to-14x-the-speed/">Previewing Ultrafast Mode: GPT-5.6 Sol at Up to 14X the Speed</a></h2>
+        <h3><a href="/blog/previewing-ultrafast-mode-gpt-5-6-sol-at-up-to-14x-the-speed/">Previewing Ultrafast Mode: GPT-5.6 Sol at Up to 14X the Speed</a></h3>
         <p>OpenAI is previewing Ultrafast mode for GPT-5.6 Sol, promising speeds of up to 750 output tokens per second. For creator-owned infrastructure, the bigger story is what happens when capable AI agents can operate software, workflows and infrastructure at dramati</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/previewing-ultrafast-mode-gpt-5-6-sol-at-up-to-14x-the-speed/">Read article →</a>
@@ -918,7 +979,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 14, 2026</div>
-        <h2><a href="/blog/certifyd-weekly-roundup-ai-streaming-rights-infrastructure-shaping-musics-future/">Certifyd Weekly Roundup: AI, Streaming, Rights and the Infrastructure Shaping Music’s Future</a></h2>
+        <h3><a href="/blog/certifyd-weekly-roundup-ai-streaming-rights-infrastructure-shaping-musics-future/">Certifyd Weekly Roundup: AI, Streaming, Rights and the Infrastructure Shaping Music’s Future</a></h3>
         <p>This week in music: recorded music revenue is forecast to surge through 2033, Suno signs a global BMG licensing deal, Beyoncé faces a sample lawsuit, YouTube monetization remains a platform risk, counterfeit merch puts provenance in focus, and Vassal Benford&#39;s</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span><span>AI</span></div>
         <a class="blog-btn" href="/blog/certifyd-weekly-roundup-ai-streaming-rights-infrastructure-shaping-musics-future/">Read article →</a>
@@ -930,7 +991,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 14, 2026</div>
-        <h2><a href="/blog/vassal-benford-clive-davis-vaz-arista-records/">From Producer to Institution Builder: Vassal Benford Reflects on the Clive Davis and VAZ/Arista Years</a></h2>
+        <h3><a href="/blog/vassal-benford-clive-davis-vaz-arista-records/">From Producer to Institution Builder: Vassal Benford Reflects on the Clive Davis and VAZ/Arista Years</a></h3>
         <p>A new retrospective on Vassal Benford&#39;s mentorship under Clive Davis and the VAZ/Arista Records era offers a lesson that remains relevant to today&#39;s creator economy: making the work is only the beginning. The next step is building the infrastructure around it.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/vassal-benford-clive-davis-vaz-arista-records/">Read article →</a>
@@ -942,7 +1003,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 13, 2026</div>
-        <h2><a href="/blog/global-recorded-music-revenue-to-more-than-double-by-2033-midia-report-says/">Global Recorded Music Revenue to More Than Double By 2033: MIDiA Report Says</a></h2>
+        <h3><a href="/blog/global-recorded-music-revenue-to-more-than-double-by-2033-midia-report-says/">Global Recorded Music Revenue to More Than Double By 2033: MIDiA Report Says</a></h3>
         <p>MIDiA forecasts global recorded music revenue will reach $121.1 billion by 2033, with streaming still leading growth while an expanding $18.5 billion fan economy pushes music companies further into merchandise, live events, physical products, gaming, social pl</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span></div>
         <a class="blog-btn" href="/blog/global-recorded-music-revenue-to-more-than-double-by-2033-midia-report-says/">Read article →</a>
@@ -954,7 +1015,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 13, 2026</div>
-        <h2><a href="/blog/suno-launches-global-licensing-deal-with-bmg-ahead-of-new-music-model/">Suno Launches Global Licensing Deal with BMG Ahead of New Music Model</a></h2>
+        <h3><a href="/blog/suno-launches-global-licensing-deal-with-bmg-ahead-of-new-music-model/">Suno Launches Global Licensing Deal with BMG Ahead of New Music Model</a></h3>
         <p>Suno and BMG have established a global licensing framework covering recorded music and publishing, with participating artists and songwriters opting in. The deal points toward a larger shift in AI music: from permission after the fact toward infrastructure tha</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span></div>
         <a class="blog-btn" href="/blog/suno-launches-global-licensing-deal-with-bmg-ahead-of-new-music-model/">Read article →</a>
@@ -966,7 +1027,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 12, 2026</div>
-        <h2><a href="/blog/beyonc-hit-with-infringement-lawsuit-over-allegedly-unauthorized-sample-on-alien-superstar/">Beyoncé Hit With Infringement Lawsuit Over Allegedly Unauthorized Sample on &#39;Alien Superstar</a></h2>
+        <h3><a href="/blog/beyonc-hit-with-infringement-lawsuit-over-allegedly-unauthorized-sample-on-alien-superstar/">Beyoncé Hit With Infringement Lawsuit Over Allegedly Unauthorized Sample on &#39;Alien Superstar</a></h3>
         <p>Beyoncé Hit With Infringement Lawsuit Over Allegedly Unauthorized Sample on &#39;Alien Superstar&#39; Business Relevance This news story connects to creators, partners, and investors by highlighting a legal issue that can impact</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/beyonc-hit-with-infringement-lawsuit-over-allegedly-unauthorized-sample-on-alien-superstar/">Read article →</a>
@@ -978,7 +1039,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 11, 2026</div>
-        <h2><a href="/blog/vassal-benford-career-ownership-technology-hip-hop/">Vassal Benford: A Career Built for More Than One Generation</a></h2>
+        <h3><a href="/blog/vassal-benford-career-ownership-technology-hip-hop/">Vassal Benford: A Career Built for More Than One Generation</a></h3>
         <p>Vassal Benford’s career spans generations of music, film and entertainment. From cross-genre production and the B.B. King Estate to Certifyd and collaborations with Mally Mall, Benford is connecting creative legacy with a new model for creator ownership.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>creator ownership</span></div>
         <a class="blog-btn" href="/blog/vassal-benford-career-ownership-technology-hip-hop/">Read article →</a>
@@ -990,7 +1051,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 10, 2026</div>
-        <h2><a href="/blog/live-nations-merch-traffic-sues-online-sellers-over-counterfeit-nirvana-bruno-mars-merch/">Live Nation’s Merch Traffic Sues Online Sellers Over Counterfeit Nirvana, Bruno Mars Merch</a></h2>
+        <h3><a href="/blog/live-nations-merch-traffic-sues-online-sellers-over-counterfeit-nirvana-bruno-mars-merch/">Live Nation’s Merch Traffic Sues Online Sellers Over Counterfeit Nirvana, Bruno Mars Merch</a></h3>
         <p>Live Nation subsidiary Merch Traffic is suing online sellers accused of selling counterfeit merchandise tied to Nirvana, Bruno Mars and other major artists. The case highlights a growing challenge: proving who is authorized to manufacture and sell an artist&#39;s</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/live-nations-merch-traffic-sues-online-sellers-over-counterfeit-nirvana-bruno-mars-merch/">Read article →</a>
@@ -1002,7 +1063,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 10, 2026</div>
-        <h2><a href="/blog/youtube-is-making-it-harder-to-earn-money-on-the-platform/">YouTube Is Making It Harder to Earn Money on the Platform</a></h2>
+        <h3><a href="/blog/youtube-is-making-it-harder-to-earn-money-on-the-platform/">YouTube Is Making It Harder to Earn Money on the Platform</a></h3>
         <p>YouTube remains one of the largest distribution channels in the creator economy, but building an audience on YouTube and building a sustainable business are not necessarily the same thing. Creators operate inside a system where monetization rules, recommendati</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/youtube-is-making-it-harder-to-earn-money-on-the-platform/">Read article →</a>
@@ -1014,7 +1075,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 7, 2026</div>
-        <h2><a href="/blog/certifyd-weekly-roundup-2026-08-07/">Certifyd Weekly Roundup: AI, Streaming, and the Infrastructure Shaping Music&#39;s Future</a></h2>
+        <h3><a href="/blog/certifyd-weekly-roundup-2026-08-07/">Certifyd Weekly Roundup: AI, Streaming, and the Infrastructure Shaping Music&#39;s Future</a></h3>
         <p>This week&#39;s biggest music business stories point to a common trend: AI is becoming commercial, streaming continues to grow, and the industry&#39;s next competitive advantage will be trusted infrastructure.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span></div>
         <a class="blog-btn" href="/blog/certifyd-weekly-roundup-2026-08-07/">Read article →</a>
@@ -1026,7 +1087,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 7, 2026</div>
-        <h2><a href="/blog/from-hit-records-to-hollywood-vassal-benford-creator-economy/">From Hit Records to Hollywood: Why Vassal Benford&#39;s Career Matters in Today&#39;s Creator Economy</a></h2>
+        <h3><a href="/blog/from-hit-records-to-hollywood-vassal-benford-creator-economy/">From Hit Records to Hollywood: Why Vassal Benford&#39;s Career Matters in Today&#39;s Creator Economy</a></h3>
         <p>From Jennifer Lopez and Jason Derulo to Chris Brown and film production, Vassal Benford&#39;s career illustrates how modern creators are evolving beyond music into intellectual property, publishing and long-term ownership.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>creator ownership</span></div>
         <a class="blog-btn" href="/blog/from-hit-records-to-hollywood-vassal-benford-creator-economy/">Read article →</a>
@@ -1038,7 +1099,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 7, 2026</div>
-        <h2><a href="/blog/the-music-industry-is-trying-to-guess-the-ai-recipe-after-dinner-was-served/">The Music Industry Is Trying to Guess the AI Recipe After Dinner Was Served</a></h2>
+        <h3><a href="/blog/the-music-industry-is-trying-to-guess-the-ai-recipe-after-dinner-was-served/">The Music Industry Is Trying to Guess the AI Recipe After Dinner Was Served</a></h3>
         <p>Andreea Gleeson&#39;s latest op-ed argues that AI&#39;s biggest challenge isn&#39;t the technology itself—it&#39;s building interoperable commercial infrastructure that properly credits, compensates and protects creators. Here&#39;s why that matters.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span><span>AI</span><span>creator ownership</span></div>
         <a class="blog-btn" href="/blog/the-music-industry-is-trying-to-guess-the-ai-recipe-after-dinner-was-served/">Read article →</a>
@@ -1050,7 +1111,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 6, 2026</div>
-        <h2><a href="/blog/tiktok-closes-nashville-office-business-relevance-amid-staff-layoffs/">TikTok Closes Nashville Office: Business Relevance Amid Staff Layoffs</a></h2>
+        <h3><a href="/blog/tiktok-closes-nashville-office-business-relevance-amid-staff-layoffs/">TikTok Closes Nashville Office: Business Relevance Amid Staff Layoffs</a></h3>
         <p>TikTok has announced the closure of its Nashville office on Music Row and layoffs affecting staff. The move reflects broader changes within the creator economy and raises questions about how creators build sustainable businesses.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span></div>
         <a class="blog-btn" href="/blog/tiktok-closes-nashville-office-business-relevance-amid-staff-layoffs/">Read article →</a>
@@ -1062,7 +1123,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 5, 2026</div>
-        <h2><a href="/blog/universal-has-sold-a-chunk-of-spotify-stock-for-around-467m-artists-will-likely-be-paid-ov/">Universal Has Sold a Chunk of Spotify Stock for Around $467M: Artists Will Likely Be Paid Over $100M</a></h2>
+        <h3><a href="/blog/universal-has-sold-a-chunk-of-spotify-stock-for-around-467m-artists-will-likely-be-paid-ov/">Universal Has Sold a Chunk of Spotify Stock for Around $467M: Artists Will Likely Be Paid Over $100M</a></h3>
         <p>Universal Music Group has sold approximately $467 million worth of Spotify shares. While more than $100 million is expected to be distributed to artists, the sale also highlights the structural issues within today&#39;s streaming economy.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span><span>AI</span></div>
         <a class="blog-btn" href="/blog/universal-has-sold-a-chunk-of-spotify-stock-for-around-467m-artists-will-likely-be-paid-ov/">Read article →</a>
@@ -1074,7 +1135,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 4, 2026</div>
-        <h2><a href="/blog/merlin-spotify-licensed-fan-creations-certifyd-infrastructure/">Merlin and Spotify Signal the Future of Licensed Fan Creations. Certifyd Builds the Infrastructure.</a></h2>
+        <h3><a href="/blog/merlin-spotify-licensed-fan-creations-certifyd-infrastructure/">Merlin and Spotify Signal the Future of Licensed Fan Creations. Certifyd Builds the Infrastructure.</a></h3>
         <p>Merlin&#39;s licensing agreement with Spotify shows the music industry is embracing fan-made covers, remixes and AI-assisted creativity. The next challenge is managing ownership, permissions and royalties at scale.</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span><span>AI</span><span>creator ownership</span></div>
         <a class="blog-btn" href="/blog/merlin-spotify-licensed-fan-creations-certifyd-infrastructure/">Read article →</a>
@@ -1086,7 +1147,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 3, 2026</div>
-        <h2><a href="/blog/clique-apps-validates-the-superfan-market-certifyd-goes-further/">Clique Apps Validates the Superfan Market. Certifyd Goes Further.</a></h2>
+        <h3><a href="/blog/clique-apps-validates-the-superfan-market-certifyd-goes-further/">Clique Apps Validates the Superfan Market. Certifyd Goes Further.</a></h3>
         <p>Clique Apps&#39; move into standalone fan apps highlights an important shift in the creator economy. But while branded apps strengthen individual fan communities, Certifyd is building the infrastructure that lets creators own their identity, audience, commerce, an</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span></div>
         <a class="blog-btn" href="/blog/clique-apps-validates-the-superfan-market-certifyd-goes-further/">Read article →</a>
@@ -1098,7 +1159,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 3, 2026</div>
-        <h2><a href="/blog/vassal-benford-feature-profile-july-2026-feature-profile-reinvention-in-the-modern-enterta/">VASSAL BENFORD | REINVENTION IN THE MODERN ENTERTAINMENT ECONOMY</a></h2>
+        <h3><a href="/blog/vassal-benford-feature-profile-july-2026-feature-profile-reinvention-in-the-modern-enterta/">VASSAL BENFORD | REINVENTION IN THE MODERN ENTERTAINMENT ECONOMY</a></h3>
         <p>From R&amp;B’s golden era to contemporary dance music, Latin pop, hip-hop, creator technology, film production and cultural stewardship, Vassal Benford has built his career around one governing idea: stay in motion</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>AI</span></div>
         <a class="blog-btn" href="/blog/vassal-benford-feature-profile-july-2026-feature-profile-reinvention-in-the-modern-enterta/">Read article →</a>
@@ -1110,7 +1171,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · August 1, 2026</div>
-        <h2><a href="/blog/sony-s-recordings-revenue-growth-connecting-to-certifyd-s-value-proposition/">Sony&#39;s Recordings Revenue Growth: Connecting to Certifyd&#39;s Value Proposition</a></h2>
+        <h3><a href="/blog/sony-s-recordings-revenue-growth-connecting-to-certifyd-s-value-proposition/">Sony&#39;s Recordings Revenue Growth: Connecting to Certifyd&#39;s Value Proposition</a></h3>
         <p>Sony&#39;s Recordings Revenue Growth: Connecting to Certifyd&#39;s Value Proposition In the realm of business operations, metrics are crucial for tracking progress and making informed decisions. One recent quarter saw Sony gener</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span></div>
         <a class="blog-btn" href="/blog/sony-s-recordings-revenue-growth-connecting-to-certifyd-s-value-proposition/">Read article →</a>
@@ -1122,7 +1183,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · July 31, 2026</div>
-        <h2><a href="/blog/socan-acquires-cmrra-from-soundexchange-a-strategic-move-for-creators/">SOCAN Acquires CMRRA from SoundExchange: A Strategic Move for Creators</a></h2>
+        <h3><a href="/blog/socan-acquires-cmrra-from-soundexchange-a-strategic-move-for-creators/">SOCAN Acquires CMRRA from SoundExchange: A Strategic Move for Creators</a></h3>
         <p>SOCAN Acquires CMRRA from SoundExchange: A Strategic Move for Creators In a significant move that underscores the importance of transparency, accountability, and fair compensation in the music industry, SOCAN has acquire</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>creator ownership</span></div>
         <a class="blog-btn" href="/blog/socan-acquires-cmrra-from-soundexchange-a-strategic-move-for-creators/">Read article →</a>
@@ -1134,7 +1195,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · July 31, 2026</div>
-        <h2><a href="/blog/why-federated-data-discovery-is-better-than-legacy-blackbox-discovery-for-creators/">Why Federated Data Discovery is Better Than Legacy Blackbox Discovery for Creators</a></h2>
+        <h3><a href="/blog/why-federated-data-discovery-is-better-than-legacy-blackbox-discovery-for-creators/">Why Federated Data Discovery is Better Than Legacy Blackbox Discovery for Creators</a></h3>
         <p>Introduction In today’s digital landscape, creators rely on robust tools to manage their work, track financials, and engage with audiences effectively. One critical aspect of this ecosystem is the ability to discover and</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>creator ownership</span></div>
         <a class="blog-btn" href="/blog/why-federated-data-discovery-is-better-than-legacy-blackbox-discovery-for-creators/">Read article →</a>
@@ -1146,7 +1207,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · July 30, 2026</div>
-        <h2><a href="/blog/the-business-relevance-of-preserving-b-b-king-s-legacy-beyond-the-music-a-look-at-vassal-b/">The Business Relevance of Preserving B.B. King&#39;s Legacy Beyond the Music: A Look at Vassal Benford</a></h2>
+        <h3><a href="/blog/the-business-relevance-of-preserving-b-b-king-s-legacy-beyond-the-music-a-look-at-vassal-b/">The Business Relevance of Preserving B.B. King&#39;s Legacy Beyond the Music: A Look at Vassal Benford</a></h3>
         <p>Introduction In today’s digital age, preserving cultural heritage is more important than ever. One example that stands out is the legacy of legendary musician B.B. King. His music has touched countless hearts and continu</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span></div>
         <a class="blog-btn" href="/blog/the-business-relevance-of-preserving-b-b-king-s-legacy-beyond-the-music-a-look-at-vassal-b/">Read article →</a>
@@ -1158,7 +1219,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · July 30, 2026</div>
-        <h2><a href="/blog/the-future-of-music-chart-eligibility-majors-believe-bmg-concord-hybe-propose-new-rules-fo/">The Future of Music Chart Eligibility: Majors, Believe, BMG, Concord, HYBE Propose New Rules for AI Generated Songs</a></h2>
+        <h3><a href="/blog/the-future-of-music-chart-eligibility-majors-believe-bmg-concord-hybe-propose-new-rules-fo/">The Future of Music Chart Eligibility: Majors, Believe, BMG, Concord, HYBE Propose New Rules for AI Generated Songs</a></h3>
         <p>The Future of Music Chart Eligibility: Majors, Believe, BMG, Concord, HYBE Propose New Rules for AI Generated Songs As artificial intelligence continues to evolve, so too does the landscape of music chart eligibility. Ma</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span><span>AI</span></div>
         <a class="blog-btn" href="/blog/the-future-of-music-chart-eligibility-majors-believe-bmg-concord-hybe-propose-new-rules-fo/">Read article →</a>
@@ -1170,7 +1231,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · July 28, 2026</div>
-        <h2><a href="/blog/ariana-grande-sues-unnamed-hackers-over-theft-of-unreleased-music-sold-on-the-dark-web/">Ariana Grande sues unnamed hackers over theft of unreleased music sold on the dark web</a></h2>
+        <h3><a href="/blog/ariana-grande-sues-unnamed-hackers-over-theft-of-unreleased-music-sold-on-the-dark-web/">Ariana Grande sues unnamed hackers over theft of unreleased music sold on the dark web</a></h3>
         <p>Provenance: The Foundation of Trust in Digital Content In today’s digital landscape, creators rely on robust systems to ensure the authenticity and provenance of their work. One such system that is gaining traction is Certifyd</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span></div>
         <a class="blog-btn" href="/blog/ariana-grande-sues-unnamed-hackers-over-theft-of-unreleased-music-sold-on-the-dark-web/">Read article →</a>
@@ -1182,7 +1243,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · July 28, 2026</div>
-        <h2><a href="/blog/respect-your-fans-above-everything-else-why/">Respect Your Fans Above Everything Else: Why</a></h2>
+        <h3><a href="/blog/respect-your-fans-above-everything-else-why/">Respect Your Fans Above Everything Else: Why</a></h3>
         <p>Respect Your Fans Above Everything Else: Why This Connects to Creator Commerce and Direct Fan Relationships In today’s digital age, creators are at the forefront of innovation and creativity. They use Certifyd Core to bu</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>creator ownership</span></div>
         <a class="blog-btn" href="/blog/respect-your-fans-above-everything-else-why/">Read article →</a>
@@ -1194,7 +1255,7 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · July 28, 2026</div>
-        <h2><a href="/blog/uk-recorded-music-exports-hit-record-1-05b-in-2025-a-boost-for-creator-commerce-and-direct/">UK Recorded Music Exports Hit Record $1.05B in 2025: A Boost for Creator Commerce and Direct Channels</a></h2>
+        <h3><a href="/blog/uk-recorded-music-exports-hit-record-1-05b-in-2025-a-boost-for-creator-commerce-and-direct/">UK Recorded Music Exports Hit Record $1.05B in 2025: A Boost for Creator Commerce and Direct Channels</a></h3>
         <p>UK Recorded Music Exports Hit Record $1.05B in 2025: A Boost for Creator Commerce and Direct Channels In a year marked by significant growth, the United Kingdom’s recorded music exports reached an impressive milestone of</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span><span>creator ownership</span></div>
         <a class="blog-btn" href="/blog/uk-recorded-music-exports-hit-record-1-05b-in-2025-a-boost-for-creator-commerce-and-direct/">Read article →</a>
@@ -1206,171 +1267,12 @@
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">Certifyd · July 28, 2026</div>
-        <h2><a href="/blog/universal-music-group-completes-500-million-share-buyback-program-connecting-to-creator-co/">Universal Music Group Completes €500 Million Share Buyback Program: Connecting to Creator Commerce and Direct Finance</a></h2>
+        <h3><a href="/blog/universal-music-group-completes-500-million-share-buyback-program-connecting-to-creator-co/">Universal Music Group Completes €500 Million Share Buyback Program: Connecting to Creator Commerce and Direct Finance</a></h3>
         <p>Introduction The universal music group has recently completed its €500 million share buyback program, a significant milestone that underscores the company&#39;s commitment to financial health and strategic growth. This news</p>
         <div class="tag-list" aria-label="Tags"><span>Certifyd</span><span>music</span><span>creator ownership</span></div>
         <a class="blog-btn" href="/blog/universal-music-group-completes-500-million-share-buyback-program-connecting-to-creator-co/">Read article →</a>
       </div>
-    </article></div><details class="topic-browser"><summary>Browse all topics</summary><div class="category-tags" aria-label="All article topics"><span class="category-tag">- AI</span>
-<span class="category-tag">AFM</span>
-<span class="category-tag">AI</span>
-<span class="category-tag">AI agents</span>
-<span class="category-tag">AI deepfakes</span>
-<span class="category-tag">AI music</span>
-<span class="category-tag">AI voice</span>
-<span class="category-tag">Amazon Music</span>
-<span class="category-tag">Ansolas</span>
-<span class="category-tag">Anthropic</span>
-<span class="category-tag">Artist Identity</span>
-<span class="category-tag">Audiomack</span>
-<span class="category-tag">Audiomack Pro</span>
-<span class="category-tag">B.B. King</span>
-<span class="category-tag">BMG</span>
-<span class="category-tag">Believe</span>
-<span class="category-tag">Bitcoin</span>
-<span class="category-tag">Busta Rhymes</span>
-<span class="category-tag">Certifyd</span>
-<span class="category-tag">Certifyd Core</span>
-<span class="category-tag">Certifyd Fan</span>
-<span class="category-tag">Claude Code</span>
-<span class="category-tag">Creator Economy</span>
-<span class="category-tag">Creator Infrastructure</span>
-<span class="category-tag">DDEX</span>
-<span class="category-tag">Disctopia</span>
-<span class="category-tag">Dolly Parton</span>
-<span class="category-tag">Drake</span>
-<span class="category-tag">EVEN</span>
-<span class="category-tag">ElevenLabs</span>
-<span class="category-tag">Fanfare</span>
-<span class="category-tag">Indian music industry</span>
-<span class="category-tag">Jason Isbell</span>
-<span class="category-tag">Josh Remsberg</span>
-<span class="category-tag">Lightning</span>
-<span class="category-tag">Logic Loop Manager</span>
-<span class="category-tag">Luxottica</span>
-<span class="category-tag">MLC</span>
-<span class="category-tag">Madverse Music Group</span>
-<span class="category-tag">Mary J. Blige</span>
-<span class="category-tag">Mechanical Licensing Collective</span>
-<span class="category-tag">Meta</span>
-<span class="category-tag">Meta Muse</span>
-<span class="category-tag">Montreux Jazz Festival</span>
-<span class="category-tag">Music</span>
-<span class="category-tag">Music AI</span>
-<span class="category-tag">Music Business</span>
-<span class="category-tag">Music Fights Fraud Alliance</span>
-<span class="category-tag">Music Reports</span>
-<span class="category-tag">Music Rights</span>
-<span class="category-tag">Musixmatch</span>
-<span class="category-tag">News/Media Alliance</span>
-<span class="category-tag">Notes.fm</span>
-<span class="category-tag">OVO</span>
-<span class="category-tag">OpenAI</span>
-<span class="category-tag">Patreon</span>
-<span class="category-tag">Primary Wave</span>
-<span class="category-tag">Raspberry Pi</span>
-<span class="category-tag">Ray-Ban</span>
-<span class="category-tag">Reservoir</span>
-<span class="category-tag">Robert Palmer</span>
-<span class="category-tag">Round Hill Music</span>
-<span class="category-tag">Song Pulse</span>
-<span class="category-tag">Songdex</span>
-<span class="category-tag">Songkick</span>
-<span class="category-tag">Sony Music</span>
-<span class="category-tag">SoundCloud</span>
-<span class="category-tag">SportsPro Media</span>
-<span class="category-tag">Spotify</span>
-<span class="category-tag">Stability AI</span>
-<span class="category-tag">Stella Lefty</span>
-<span class="category-tag">SubmitHub</span>
-<span class="category-tag">Suno</span>
-<span class="category-tag">The Montreux Years</span>
-<span class="category-tag">Ticketmaster</span>
-<span class="category-tag">Tim Curry</span>
-<span class="category-tag">TuneCore</span>
-<span class="category-tag">UMG</span>
-<span class="category-tag">Vassal Benford</span>
-<span class="category-tag">Warner Music</span>
-<span class="category-tag">Warner Music Group</span>
-<span class="category-tag">artist development</span>
-<span class="category-tag">artist identity</span>
-<span class="category-tag">artist management</span>
-<span class="category-tag">artist payouts</span>
-<span class="category-tag">artist verification</span>
-<span class="category-tag">athlete voices</span>
-<span class="category-tag">attribution</span>
-<span class="category-tag">audiobooks</span>
-<span class="category-tag">authorization</span>
-<span class="category-tag">black box royalties</span>
-<span class="category-tag">blues</span>
-<span class="category-tag">bundling</span>
-<span class="category-tag">catalog management</span>
-<span class="category-tag">catalogs</span>
-<span class="category-tag">commercial partnerships</span>
-<span class="category-tag">creator commerce</span>
-<span class="category-tag">creator economy</span>
-<span class="category-tag">creator infrastructure</span>
-<span class="category-tag">creator ownership</span>
-<span class="category-tag">creator payouts</span>
-<span class="category-tag">creator platforms</span>
-<span class="category-tag">creator rights</span>
-<span class="category-tag">creator tools</span>
-<span class="category-tag">digital identity</span>
-<span class="category-tag">direct commerce</span>
-<span class="category-tag">direct-to-fan</span>
-<span class="category-tag">distribution</span>
-<span class="category-tag">fan relationships</span>
-<span class="category-tag">fan remixes</span>
-<span class="category-tag">federated network</span>
-<span class="category-tag">independent artists</span>
-<span class="category-tag">independent music charts</span>
-<span class="category-tag">licensing</span>
-<span class="category-tag">live events</span>
-<span class="category-tag">live music</span>
-<span class="category-tag">mechanical royalties</span>
-<span class="category-tag">metadata</span>
-<span class="category-tag">music</span>
-<span class="category-tag">music analytics</span>
-<span class="category-tag">music business</span>
-<span class="category-tag">music charts</span>
-<span class="category-tag">music copyright</span>
-<span class="category-tag">music credits</span>
-<span class="category-tag">music discovery</span>
-<span class="category-tag">music downloads</span>
-<span class="category-tag">music industry</span>
-<span class="category-tag">music infrastructure</span>
-<span class="category-tag">music licensing</span>
-<span class="category-tag">music metadata</span>
-<span class="category-tag">music publishing</span>
-<span class="category-tag">music rights</span>
-<span class="category-tag">music royalties</span>
-<span class="category-tag">music sales</span>
-<span class="category-tag">name image likeness</span>
-<span class="category-tag">paid downloads</span>
-<span class="category-tag">peer-to-peer</span>
-<span class="category-tag">performers</span>
-<span class="category-tag">podcast memberships</span>
-<span class="category-tag">podcasts</span>
-<span class="category-tag">provenance</span>
-<span class="category-tag">publisher rights</span>
-<span class="category-tag">recording agreements</span>
-<span class="category-tag">release records</span>
-<span class="category-tag">rights authorization</span>
-<span class="category-tag">rights data</span>
-<span class="category-tag">royalties</span>
-<span class="category-tag">royalty transparency</span>
-<span class="category-tag">social media</span>
-<span class="category-tag">songwriters</span>
-<span class="category-tag">sovereign infrastructure</span>
-<span class="category-tag">sports media</span>
-<span class="category-tag">streaming</span>
-<span class="category-tag">streaming economics</span>
-<span class="category-tag">streaming fraud</span>
-<span class="category-tag">training data</span>
-<span class="category-tag">trust</span>
-<span class="category-tag">verified listening</span>
-<span class="category-tag">web scraping</span>
-<span class="category-tag">weekly roundup</span></div></details></section></main>
+    </article></div></section></div></main>
   <footer><div class="wrap">Certifyd · <a href="/feed.xml">RSS</a> · <a href="mailto:hello@certifyd.me">hello@certifyd.me</a></div></footer>
 </body>
 </html>
