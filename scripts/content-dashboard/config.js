@@ -114,7 +114,7 @@ export function getDashboardConfig(env = process.env) {
     blogImages: {
       enabled: env.BLOG_IMAGE_ENABLED === 'true',
       provider: normalizeBlogImageProvider(env.BLOG_IMAGE_PROVIDER || 'openai'),
-      model: env.BLOG_IMAGE_MODEL || env.OPENAI_IMAGE_MODEL || 'gpt-image-1',
+      model: env.BLOG_IMAGE_MODEL || env.OPENAI_IMAGE_MODEL || 'gpt-image-2.5-flare',
       size: normalizeBlogImageSize(env.BLOG_IMAGE_SIZE || '1536x1024'),
       styleGuidePath: path.resolve(env.BLOG_IMAGE_STYLE_GUIDE_PATH || path.join(env.CONTENT_AGENT_ROOT || defaultAgentRoot, 'image-generation', 'style-guide.md')),
       canonicalLogoPath: path.resolve(env.BLOG_IMAGE_CANONICAL_LOGO_PATH || path.join(siteRoot, 'images', 'certifyd_logo_transparent.svg')),

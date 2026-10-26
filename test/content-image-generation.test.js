@@ -22,6 +22,12 @@ const env = {
 };
 const MOCK_PROVIDER_IMAGE_BYTES = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);
 
+test('blog image model defaults to a supported model and allows an explicit override', () => {
+  const { BLOG_IMAGE_MODEL, OPENAI_IMAGE_MODEL, ...withoutImageModel } = env;
+  assert.equal(getDashboardConfig(withoutImageModel).blogImages.model, 'gpt-image-2.5-flare');
+  assert.equal(getDashboardConfig({ ...withoutImageModel, BLOG_IMAGE_MODEL: 'gpt-image-1.5' }).blogImages.model, 'gpt-image-1.5');
+});
+
 test('blog image brief uses article signals and image style guide only', async () => {
   const { config, run } = await fixture();
   const brief = await buildImageBrief(config, run);

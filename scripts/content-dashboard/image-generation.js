@@ -264,7 +264,7 @@ export async function generateBlogImage({ config, runs, actor, runId, imageBrief
   try {
     const result = await imageProvider.generate({
       prompt: brief.prompt,
-      model: config.blogImages?.model || 'gpt-image-1',
+      model: config.blogImages?.model || 'gpt-image-2.5-flare',
       size: brief.size,
       article: run.blogPackage,
     });
