@@ -2540,7 +2540,12 @@ test('distribution safety: a GitHub write remains pending until the exact public
   const fixture = await distributionSafetyFixture({ verified: false, status: 'READY_TO_PUBLISH' });
   let calls = 0;
   fixture.actions.distributionAdapters = [fixture.actions.distributionAdapters.find((item) => item.id === 'certifyd'), fakeDestination('devto', { publish: async () => { calls++; return { externalPostId: 'one' }; } })];
-  const html = '<html><title>Safety Article</title><link rel="canonical" href="https://certifyd.me/blog/safety-article/"><article>Exact version</article></html>';
+  const html = '<html><title>Safety Article</title><link rel="canonical" href="https://certifyd.me/blog/safety-article/"><article>Exact version</article><footer><a href="mailto:hello@certifyd.me">hello@certifyd.me</a></footer></html>';
+  const encodeEmail = (email, key) => Buffer.from([key, ...Buffer.from(email).map((byte) => byte ^ key)]).toString('hex');
+  const protectedHtml = html.replace(
+    '<a href="mailto:hello@certifyd.me">hello@certifyd.me</a>',
+    `<a href="/cdn-cgi/l/email-protection#${encodeEmail('hello@certifyd.me', 0x23)}"><span class="__cf_email__" data-cfemail="${encodeEmail('hello@certifyd.me', 0xb6)}">[email&#160;protected]</span></a>`,
+  ).replace('</html>', '<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script></html>');
   const manifestPath = path.join(fixture.runDir, 'publication-manifest.json');
   fixture.actions.publishToCertifyd = async ({ version }) => {
     await markVerifiedRun(fixture.runDir, version);
@@ -2562,8 +2567,10 @@ test('distribution safety: a GitHub write remains pending until the exact public
     await assert.rejects(fixture.actions.verifyLivePublication({ actor: fixture.actor, runId: fixture.runId }), /not available/);
     globalThis.fetch = async () => new Response('<html><title>Safety Article</title><article>Old version</article></html>', { status: 200 });
     await assert.rejects(fixture.actions.verifyLivePublication({ actor: fixture.actor, runId: fixture.runId }), /exact published version/);
+    globalThis.fetch = async () => new Response(protectedHtml.replace('Exact version', 'Tampered version'), { status: 200 });
+    await assert.rejects(fixture.actions.verifyLivePublication({ actor: fixture.actor, runId: fixture.runId }), /exact published version/);
     assert.equal(calls, 0);
-    globalThis.fetch = async () => new Response(html, { status: 200 });
+    globalThis.fetch = async () => new Response(protectedHtml, { status: 200 });
     await fixture.actions.verifyLivePublication({ actor: fixture.actor, runId: fixture.runId });
   } finally { globalThis.fetch = oldFetch; }
   const sent = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto'] });

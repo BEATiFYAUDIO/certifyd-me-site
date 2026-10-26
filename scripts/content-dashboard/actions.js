@@ -1082,7 +1082,7 @@ export class ContentDashboardActions {
       throw Object.assign(new Error(`Live URL is not available yet: HTTP ${response.status}`), { statusCode: 409 });
     }
     const html = await response.text();
-    if (cryptoHash(html) !== run.manifest.publishing.articleHtmlHash) {
+    if (cryptoHash(html) !== run.manifest.publishing.articleHtmlHash && cryptoHash(restoreCloudflareEmailProtection(html)) !== run.manifest.publishing.articleHtmlHash) {
       throw Object.assign(new Error('The live article does not match the exact published version. Wait for deployment and verify again.'), { statusCode: 409 });
     }
     if (!html.includes(`<link rel="canonical" href="${canonicalUrl}"`)) {
@@ -1575,6 +1575,27 @@ function preflightApiDistribution(adapter, article = {}, previous = {}, operatio
 
 function cryptoHash(value = '') {
   return crypto.createHash('sha256').update(String(value || '')).digest('hex');
+}
+
+// Cloudflare's email protection rewrites mailto links and appends its decoder
+// script at the edge. Reverse only that transformation before checking the
+// complete, published HTML hash; any other page change still fails closed.
+function restoreCloudflareEmailProtection(html) {
+  const decode = (encoded) => {
+    if (!/^(?:[a-f0-9]{2}){4,}$/i.test(encoded)) return '';
+    const bytes = Buffer.from(encoded, 'hex');
+    return Buffer.from(bytes.subarray(1).map((byte) => byte ^ bytes[0])).toString('utf8');
+  };
+  const restored = String(html).replace(
+    /<a href="\/cdn-cgi\/l\/email-protection#([a-f0-9]+)"><span class="__cf_email__" data-cfemail="([a-f0-9]+)">\[email&#160;protected\]<\/span><\/a>/gi,
+    (match, link, label) => {
+      const address = decode(link);
+      return address && address === decode(label) && /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(address)
+        ? `<a href="mailto:${address}">${address}</a>`
+        : match;
+    },
+  );
+  return restored.replace(/<script data-cfasync="false" src="\/cdn-cgi\/scripts\/[a-f0-9]+\/cloudflare-static\/email-decode\.min\.js"><\/script>/gi, '');
 }
 
 function manualReadyState(previous = {}, publishResult = {}) {
