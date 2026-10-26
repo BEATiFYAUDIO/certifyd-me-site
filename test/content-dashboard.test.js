@@ -3125,6 +3125,8 @@ test('distribution phase 2: Publish Everywhere form shows selected destinations 
     const form = page.match(/<form[^>]+action="\/app\/content\/actions\/distribution\/publish"[\s\S]*?<\/form>/)?.[0] || '';
     assert.match(form, /data-publish-everywhere/);
     assert.match(form, /value="markdown" checked/);
+    assert.match(page, /No publication attempt yet\. Checked destinations are ready for the next action\./);
+    assert.doesNotMatch(page, /Not Selected/);
     const csrf = form.match(/name="_csrf" value="([^"]+)"/)?.[1];
     assert.ok(csrf);
     const response = await fetch(`${base}/app/content/actions/distribution/publish`, { method: 'POST', headers: { Cookie: cookie, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ _csrf: csrf, runId: fixture.runId, version: 'v1', destinations: 'markdown' }), redirect: 'manual' });
