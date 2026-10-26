@@ -152,20 +152,20 @@ class DevToDestination extends EnvHttpDestination {
 
 class BloggerDestination extends EnvHttpDestination {
   constructor(config) {
-    super({ id: 'blogger', displayName: 'Blogger', kind: 'full-article', supportsCanonical: false, supportsUpdate: true, supportsDelete: false }, config.env || process.env, ['CONTENT_DISTRIBUTION_BLOGGER_BLOG_ID', 'CONTENT_DISTRIBUTION_BLOGGER_CLIENT_ID', 'CONTENT_DISTRIBUTION_BLOGGER_CLIENT_SECRET']);
+    super({ id: 'blogger', displayName: 'Blogger', kind: 'full-article', supportsCanonical: false, supportsUpdate: true, supportsDelete: false, supportsImage: true }, config.env || process.env, ['CONTENT_DISTRIBUTION_BLOGGER_BLOG_ID', 'CONTENT_DISTRIBUTION_BLOGGER_CLIENT_ID', 'CONTENT_DISTRIBUTION_BLOGGER_CLIENT_SECRET']);
     this.oauth = new BloggerOAuth(config);
   }
   async testConnection() { return this.oauth.testConnection(); }
   async publishArticle(article) {
     const url = `https://www.googleapis.com/blogger/v3/blogs/${encodeURIComponent(this.env.CONTENT_DISTRIBUTION_BLOGGER_BLOG_ID)}/posts/`;
-    const json = await this.request(url, { method: 'POST', headers: jsonHeaders({ Authorization: `Bearer ${await this.oauth.accessToken()}` }), body: JSON.stringify({ title: article.title, content: markdownToHtml(withCanonicalFooter(article.markdown, article.canonicalUrl)), labels: article.tags }) });
+    const json = await this.request(url, { method: 'POST', headers: jsonHeaders({ Authorization: `Bearer ${await this.oauth.accessToken()}` }), body: JSON.stringify({ title: article.title, content: bloggerArticleHtml(article), labels: article.tags }) });
     if (!positiveId(json.id) || !isHttpsUrl(json.url)) throw new Error('Blogger returned no valid post ID or URL; reconcile before retrying.');
     return { externalPostId: String(json.id || ''), externalUrl: json.url || '', raw: json };
   }
   async updateArticle(article, state) {
     if (!positiveId(state.externalPostId)) throw new Error('Blogger update requires a valid existing post ID. Reconcile the destination first.');
     const url = `https://www.googleapis.com/blogger/v3/blogs/${encodeURIComponent(this.env.CONTENT_DISTRIBUTION_BLOGGER_BLOG_ID)}/posts/${encodeURIComponent(state.externalPostId)}`;
-    const json = await this.request(url, { method: 'PUT', headers: jsonHeaders({ Authorization: `Bearer ${await this.oauth.accessToken()}` }), body: JSON.stringify({ title: article.title, content: markdownToHtml(withCanonicalFooter(article.markdown, article.canonicalUrl)), labels: article.tags }) });
+    const json = await this.request(url, { method: 'PUT', headers: jsonHeaders({ Authorization: `Bearer ${await this.oauth.accessToken()}` }), body: JSON.stringify({ title: article.title, content: bloggerArticleHtml(article), labels: article.tags }) });
     if (json.id && String(json.id) !== String(state.externalPostId)) throw new Error('Blogger returned a different post ID; reconcile before retrying.');
     if (!isHttpsUrl(json.url || state.externalUrl)) throw new Error('Blogger returned no valid post URL; reconcile before retrying.');
     return { externalPostId: String(json.id || state.externalPostId), externalUrl: json.url || state.externalUrl || '', raw: json };
@@ -368,10 +368,18 @@ function jsonHeaders(extra = {}) { return { 'Content-Type': 'application/json', 
 function devHeaders(key, json = false) { return { ...(json ? { 'Content-Type': 'application/json' } : {}), Accept: 'application/vnd.forem.api-v1+json', 'api-key': key }; }
 function devArticle(article) { return { title: article.title, body_markdown: withCanonicalFooter(article.markdown, article.canonicalUrl), published: true, tags: normalizeDevTags(article.tags).join(','), canonical_url: article.canonicalUrl, description: article.excerpt, ...(publicImageUrl(article) ? { main_image: publicImageUrl(article) } : {}) }; }
 function publicImageUrl(article) {
-  const value = String(article.featuredImage || '');
+  // The publisher ships a raster social cover alongside SVG covers. Downstream
+  // image proxies (including DEV's) cannot reliably render the embedded SVG.
+  const source = String(article.featuredImage || '');
+  const value = /\.svg$/i.test(source) ? source.replace(/\.svg$/i, '-social.png') : source;
   if (/^https:\/\/certifyd\.me\/images\/[a-zA-Z0-9/_.,%-]+$/.test(value)) return value;
   if (/^\/images\/[a-zA-Z0-9/_.,%-]+$/.test(value)) return `https://certifyd.me${value}`;
   return '';
+}
+function bloggerArticleHtml(article) {
+  const image = publicImageUrl(article);
+  const cover = image ? `<p><img src="${escapeHtml(image)}" alt="${escapeHtml(article.title || 'Article cover')}" /></p>\n` : '';
+  return `${cover}${markdownToHtml(withCanonicalFooter(article.markdown, article.canonicalUrl))}`;
 }
 function positiveId(value) { return /^[1-9][0-9]*$/.test(String(value || '')); }
 function isHttpsUrl(value) { try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password; } catch { return false; } }

@@ -2833,6 +2833,9 @@ test('distribution phase 2: DEV account test, create, update, and identity valid
     assert.equal(payload.main_image, 'https://certifyd.me/images/blog/cover.jpg');
     assert.equal(payload.tags, 'creatorrights');
     assert.equal(payload.canonical_url, article.canonicalUrl);
+    article.featuredImage = '/images/blog/cover-logo.svg';
+    await adapter.updateArticle(article, { externalPostId: '99' });
+    assert.equal(JSON.parse(calls.at(-1).options.body).article.main_image, 'https://certifyd.me/images/blog/cover-logo-social.png');
     await assert.rejects(adapter.updateArticle(article, { externalPostId: 'missing' }), /valid existing article ID/);
     globalThis.fetch = async () => Response.json({ id: 99 });
     await assert.rejects(adapter.publishArticle(article), /public URL/);
@@ -3042,16 +3045,18 @@ test('Blogger OAuth: expired access token refreshes before existing create/updat
   };
   try {
     await adapter.oauth.complete({ actor, sessionId: 'session', state, code: 'code' });
-    const article = { title: 'Article', markdown: '# Article\n\nText', canonicalUrl: 'https://certifyd.me/blog/article/', tags: ['music'] };
+    const article = { title: 'Article', markdown: '# Article\n\nText', canonicalUrl: 'https://certifyd.me/blog/article/', tags: ['music'], featuredImage: '/images/blog/cover-logo.svg' };
     const created = await adapter.publishArticle(article);
     assert.equal(created.externalPostId, '98765');
     assert.equal(calls.filter((call) => call.target.includes('/token')).length, 2);
     const createCall = calls.find((call) => call.target.endsWith('/posts/'));
     assert.equal(createCall.options.headers.Authorization, 'Bearer fresh-access');
     assert.match(JSON.parse(createCall.options.body).content, /Originally published on/);
+    assert.match(JSON.parse(createCall.options.body).content, /<img src="https:\/\/certifyd\.me\/images\/blog\/cover-logo-social\.png" alt="Article" \/>/);
     const updated = await adapter.updateArticle(article, { externalPostId: '98765' });
     assert.equal(updated.externalPostId, '98765');
     assert.equal(calls.find((call) => call.target.endsWith('/posts/98765')).options.method, 'PUT');
+    assert.match(JSON.parse(calls.find((call) => call.target.endsWith('/posts/98765')).options.body).content, /cover-logo-social\.png/);
     assert.equal(adapter.supportsDelete, false);
     await assert.rejects(adapter.updateArticle(article, { externalPostId: '' }), /valid existing post ID/);
     const testAdapter = buildDistributionAdapters(config).find((item) => item.id === 'blogger');
