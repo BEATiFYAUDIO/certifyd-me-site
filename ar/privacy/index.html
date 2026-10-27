@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Certifyd AR Privacy Policy</title>
+  <meta name="description" content="How the Certifyd AR browser extension handles creator information, local keys, and published AR cards.">
+  <link rel="icon" type="image/png" href="/images/certifyd-ar-logo.png">
+  <style>
+    :root{color-scheme:dark;font:16px/1.65 system-ui,-apple-system,Segoe UI,sans-serif}
+    *{box-sizing:border-box}body{margin:0;color:#e9f2fc;background:radial-gradient(circle at 10% 0%,#352047 0,transparent 34%),radial-gradient(circle at 90% 10%,#143d66 0,transparent 30%),#080d17}
+    a{color:#8bdfff}a:focus-visible{outline:3px solid #8bdfff;outline-offset:4px}
+    header{border-bottom:1px solid #b9dfff29;background:#070c17c9}header>div{max-width:920px;margin:auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+    .brand{display:flex;align-items:center;gap:11px;color:#fff;text-decoration:none;font-size:20px;font-weight:800}.brand img{width:38px;height:38px;border-radius:10px}nav{display:flex;gap:18px;font-size:14px}
+    main{max-width:920px;margin:auto;padding:58px 24px 88px}.eyebrow{color:#99deff;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}h1{margin:10px 0 8px;font-size:clamp(2.3rem,6vw,4.2rem);letter-spacing:-.055em;line-height:1.1}h2{font-size:1.3rem;margin:0 0 12px}p{margin:0 0 14px}.intro{max-width:720px;color:#c6d6e7;font-size:18px}.updated{color:#9db5c9;font-size:14px;margin-top:20px}
+    .grid{display:grid;gap:18px;margin-top:32px}.card{padding:26px;border:1px solid #a9d7f934;border-radius:18px;background:#101b2bd9;box-shadow:0 14px 42px #0004}.card p,.card li{color:#d0dfed}.card ul{padding-left:21px;margin:0}.card li{margin:7px 0}.card p:last-child{margin-bottom:0}
+    footer{border-top:1px solid #b9dfff29;padding:25px 24px;color:#a9bbce;text-align:center;font-size:14px}@media(max-width:600px){header>div{padding:13px 16px}nav{gap:12px;font-size:12px}main{padding:36px 16px 60px}.card{padding:20px}}
+  </style>
+</head>
+<body>
+  <header><div><a class="brand" href="/" aria-label="Certifyd home"><img src="/images/certifyd-ar-logo.png" alt="">Certifyd AR</a><nav aria-label="Page navigation"><a href="/ar/guide/">How it works</a><a href="mailto:hello@certifyd.me">Contact</a></nav></div></header>
+  <main>
+    <div class="eyebrow">Browser extension</div>
+    <h1>Privacy policy</h1>
+    <p class="intro">Certifyd AR checks public creator proofs on supported pages and shows creator-published information. This page describes the browser extension and its AR publishing service; other Certifyd products may handle data differently.</p>
+    <p class="updated">Effective October 27, 2026</p>
+    <div class="grid">
+      <section class="card"><h2>What the extension reads</h2><p>When you open a supported page, the extension reads the public creator account or profile information needed to check whether that page belongs to a verified Certifyd creator. It fetches public proof bundles, profile assets, and signed AR records from the creator's Core and the public AR registry. It does not require a fan account to view public creator information.</p><p>The extension does not upload your browsing history to Certifyd or include advertising or third-party analytics code.</p></section>
+      <section class="card"><h2>Creator keys and publishing</h2><p>If a creator connects this browser, the extension generates a signing key and stores its non-exportable private key in the browser's local extension storage. The private key is not sent to Core or the publishing service. The creator's public key and signed AR content are used to verify and publish creator-controlled cards.</p><p>When a creator chooses Publish, the extension sends the signed record to Certifyd's AR publishing service. Approved records become publicly accessible through the AR registry. The service checks the creator's current Core authorization and uses the request's network address for abuse protection and rate limiting.</p></section>
+      <section class="card"><h2>Storage and third-party services</h2><p>Saved drafts and the signing key remain in the browser's extension storage. Public records are stored in a GitHub-backed registry. Verification requests contact the creator's independently operated Core, and the browser continues to contact the supported website you are visiting. Those services may process normal network information under their own policies. Hosting providers may keep operational access logs.</p></section>
+      <section class="card"><h2>Your choices</h2><ul><li>Use the extension only on pages where you want creator context; Safari lets you manage the extension's website access.</li><li>Creators can deactivate published AR content and revoke a connected browser key through Core. Revocation prevents that key from authorizing future publishing.</li><li>Removing the extension removes its local browser storage. Public records and service logs may remain subject to their operators' retention practices.</li></ul></section>
+      <section class="card"><h2>Questions or changes</h2><p>For privacy questions or requests concerning Certifyd AR, email <a href="mailto:hello@certifyd.me">hello@certifyd.me</a>. We may update this policy as the service changes; the current version will remain available at this URL.</p></section>
+    </div>
+  </main>
+  <footer>Certifyd AR · <a href="/ar/guide/">User guide</a> · <a href="mailto:hello@certifyd.me">hello@certifyd.me</a></footer>
+</body>
+</html>
