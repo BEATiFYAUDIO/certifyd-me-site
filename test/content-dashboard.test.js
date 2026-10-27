@@ -2506,6 +2506,30 @@ test('distribution safety: canonical live verification gates automatic posting a
   assert.match((await fixture.state()).destinations.devto.blockedReason, /verified live/);
 });
 
+test('distribution verifies the exact live Certifyd page before sending selected destinations', async () => {
+  const fixture = await distributionSafetyFixture();
+  const canonicalUrl = 'https://certifyd.me/blog/safety-article/';
+  const html = `<html><head><link rel="canonical" href="${canonicalUrl}"></head><body>Safety Article</body></html>`;
+  const file = path.join(fixture.runDir, 'publication-manifest.json');
+  const manifest = JSON.parse(await fs.readFile(file, 'utf8'));
+  manifest.currentStatus = 'PUBLISHING';
+  manifest.publishability = 'PUBLISHING_DEPLOYMENT';
+  manifest.liveVerifiedAt = '';
+  manifest.liveVerifiedVersion = '';
+  manifest.publishing.articleHtmlHash = crypto.createHash('sha256').update(html).digest('hex');
+  await fs.writeFile(file, JSON.stringify(manifest));
+  let posts = 0;
+  fixture.actions.distributionAdapters = [fakeDestination('devto', { publish: async () => { posts++; return { externalPostId: 'one', externalUrl: 'https://dev.to/test/article' }; } })];
+  const original = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => new Response(html);
+    const result = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto'] });
+    assert.equal(result.results[0].status, 'sent');
+    assert.equal(posts, 1);
+    assert.ok(JSON.parse(await fs.readFile(file, 'utf8')).liveVerifiedAt);
+  } finally { globalThis.fetch = original; }
+});
+
 test('distribution safety: editing the approved source invalidates its live distribution gate', async () => {
   const fixture = await distributionSafetyFixture();
   await fs.writeFile(path.join(fixture.runDir, 'final', 'article.md'), '# Safety Article\n\nChanged after live verification.');
@@ -2933,6 +2957,44 @@ test('distribution phase 2: connection tests persist only status and distinguish
     assert.equal((await fixture.actions.distributionOverview()).destinations.find((item) => item.id === 'devto').status, 'connection_error');
     persisted = await fs.readFile(path.join(fixture.root, 'dashboard', 'distribution-connections.json'), 'utf8');
     assert.doesNotMatch(persisted, /credential denied|private-dev-key/);
+  } finally { globalThis.fetch = original; }
+});
+
+test('distribution rechecks an old DEV connection automatically without reposting', async () => {
+  const fixture = await distributionSafetyFixture({ envOverrides: { CONTENT_DISTRIBUTION_DEVTO_API_KEY: 'private-dev-key' } });
+  const file = path.join(fixture.root, 'dashboard', 'distribution-connections.json');
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  await fs.writeFile(file, JSON.stringify({ devto: { status: 'connected', testedAt: '2020-01-01T00:00:00.000Z' } }));
+  assert.equal((await fixture.actions.distributionOverview()).destinations.find((item) => item.id === 'devto').status, 'connected');
+  const original = globalThis.fetch;
+  let checks = 0;
+  let posts = 0;
+  try {
+    globalThis.fetch = async (url) => {
+      if (String(url).endsWith('/users/me')) { checks++; return Response.json({ id: 8, username: 'certifyd' }); }
+      if (String(url).endsWith('/articles')) { posts++; return Response.json({ id: 42, url: 'https://dev.to/certifyd/article' }); }
+      throw new Error('Unexpected request');
+    };
+    const first = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto'] });
+    assert.equal(first.results[0].status, 'sent');
+    assert.equal(checks, 1);
+    assert.equal(posts, 1);
+    const second = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto'] });
+    assert.equal(second.results[0].skipped, true);
+    assert.equal(posts, 1);
+    assert.ok(Date.parse(JSON.parse(await fs.readFile(file, 'utf8')).devto.testedAt) > Date.parse('2020-01-01T00:00:00.000Z'));
+  } finally { globalThis.fetch = original; }
+});
+
+test('distribution does not post when automatic recheck rejects saved credentials', async () => {
+  const fixture = await distributionSafetyFixture({ envOverrides: { CONTENT_DISTRIBUTION_DEVTO_API_KEY: 'invalid-dev-key' } });
+  const original = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => new Response('denied', { status: 401 });
+    const result = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['devto'] });
+    assert.equal(result.results[0].status, 'failed');
+    assert.match(result.results[0].error, /connection verification failed/);
+    assert.equal((await fixture.state()).destinations.devto.uncertainAcceptance, false);
   } finally { globalThis.fetch = original; }
 });
 
