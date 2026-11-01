@@ -12,8 +12,8 @@ coverImageCreditUrl: ""
 coverImageProvider: "openai"
 tags: ["MLC", "mechanical royalties", "black box royalties", "music publishing", "songwriters", "rights data", "Certifyd"]
 status: "published"
-seoTitle: "MLC Black-Box Royalties: What the April 2027 Distribution Means"
-seoDescription: "The MLC plans an April 2027 distribution of unmatched and unclaimed 2021 mechanical royalties. Here is why matching failures can become market-share allocations."
+seoTitle: "MLC 2027 Distribution: Date, Black-Box Royalties and Who Gets Paid"
+seoDescription: "In April 2027, the MLC plans to distribute remaining unmatched and unclaimed 2021 mechanical royalties. Unresolved claims may shift payments to market-share allocations."
 ---
 
 # The MLC’s 2027 Black-Box Distribution Turns Unmatched Royalties Into a Market-Share Question
