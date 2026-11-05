@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <link rel="icon" type="image/svg+xml" href="/images/certifyd-tab-icon.svg?v=20260601a" />
+  <link rel="shortcut icon" type="image/svg+xml" href="/images/certifyd-tab-icon.svg?v=20260601a" />
+  <link rel="apple-touch-icon" href="/images/certifyd-tab-icon.svg?v=20260601a" />
+  <title>How to Install Certifyd Core: Local Creator Infrastructure Guide</title>
+  <meta name="description" content="Install Certifyd Core on Windows, macOS or Linux/Pi, create a local owner account, and understand the difference between Core’s private dashboard and public creator" />
+  <meta name="author" content="Certifyd" />
+  <link rel="canonical" href="https://certifyd.me/blog/install-certifyd-core-local-creator-infrastructure/" />
+
+
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="How to Install Certifyd Core and Set Up Your Local Creator Dashboard" />
+  <meta property="og:description" content="Install Certifyd Core on Windows, macOS or Linux/Pi, create a local owner account, and understand the difference between Core’s private dashboard and public creator" />
+  <meta property="og:url" content="https://certifyd.me/blog/install-certifyd-core-local-creator-infrastructure/" />
+  <meta property="og:site_name" content="Certifyd" />
+  <meta property="og:image" content="https://certifyd.me/images/blog/2026/11/install-certifyd-core-local-creator-infrastructure-r1-logo-social.png" />
+  <meta property="og:image:secure_url" content="https://certifyd.me/images/blog/2026/11/install-certifyd-core-local-creator-infrastructure-r1-logo-social.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="How to Install Certifyd Core and Set Up Your Local Creator Dashboard" />
+  <meta property="article:published_time" content="2026-11-05T00:00:00.000Z" />
+  <meta property="article:modified_time" content="2026-11-05T00:00:00.000Z" />
+  <meta property="article:author" content="Certifyd" />
+  <meta property="article:tag" content="Certifyd Core" />
+  <meta property="article:tag" content="creator infrastructure" />
+  <meta property="article:tag" content="music technology" />
+  <meta property="article:tag" content="creator ownership" />
+  <meta property="article:tag" content="local software" />
+  <meta property="article:tag" content="Windows" />
+  <meta property="article:tag" content="macOS" />
+  <meta property="article:tag" content="Linux" />
+  <meta name="keywords" content="Certifyd Core, creator infrastructure, music technology, creator ownership, local software, Windows, macOS, Linux" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="How to Install Certifyd Core and Set Up Your Local Creator Dashboard" />
+  <meta name="twitter:description" content="Install Certifyd Core on Windows, macOS or Linux/Pi, create a local owner account, and understand the difference between Core’s private dashboard and public creator" />
+  <meta name="twitter:image" content="https://certifyd.me/images/blog/2026/11/install-certifyd-core-local-creator-infrastructure-r1-logo-social.png" />
+  <meta name="twitter:image:alt" content="How to Install Certifyd Core and Set Up Your Local Creator Dashboard" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","@id":"https://certifyd.me/blog/install-certifyd-core-local-creator-infrastructure/#article","url":"https://certifyd.me/blog/install-certifyd-core-local-creator-infrastructure/","headline":"How to Install Certifyd Core and Set Up Your Local Creator Dashboard","description":"Install Certifyd Core on Windows, macOS or Linux/Pi, create a local owner account, and understand the difference between Core’s private dashboard and public creator","image":["https://certifyd.me/images/blog/2026/11/install-certifyd-core-local-creator-infrastructure-r1-logo-social.png"],"author":{"@type":"Organization","name":"Certifyd","url":"https://certifyd.me"},"publisher":{"@type":"Organization","name":"Certifyd","logo":{"@type":"ImageObject","url":"https://certifyd.me/images/certifyd-tab-icon.svg"}},"datePublished":"2026-11-05T00:00:00.000Z","dateModified":"2026-11-05T00:00:00.000Z","mainEntityOfPage":{"@type":"WebPage","@id":"https://certifyd.me/blog/install-certifyd-core-local-creator-infrastructure/"}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"Certifyd","email":"hello@certifyd.me","url":"https://certifyd.me","logo":{"@type":"ImageObject","url":"https://certifyd.me/images/certifyd-tab-icon.svg"},"description":"Certifyd provides creator-owned publishing, identity, attribution and direct commerce infrastructure."}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://certifyd.me/"},{"@type":"ListItem","position":2,"name":"Blog","item":"https://certifyd.me/blog/"},{"@type":"ListItem","position":3,"name":"How to Install Certifyd Core and Set Up Your Local Creator Dashboard","item":"https://certifyd.me/blog/install-certifyd-core-local-creator-infrastructure/"}]}</script>
+  <style>
+    :root{--bg-deep:#062337;--panel-strong:rgba(5,24,38,.74);--border:rgba(205,238,255,.24);--text:#e8ecf1;--muted:#b4bdc8;--brand:#ff8a00;--blue:#5f9fff;--wrap:1560px;--pad:clamp(18px,4vw,48px)}*{box-sizing:border-box}html{background:var(--bg-deep);scroll-behavior:smooth}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--text);background:linear-gradient(180deg,rgba(7,34,52,.96),rgba(8,55,78,.9)),radial-gradient(900px 620px at 14% -8%,rgba(95,159,255,.24),transparent 60%),radial-gradient(740px 520px at 90% 8%,rgba(255,138,0,.12),transparent 62%),var(--bg-deep);line-height:1.65}a{color:inherit;text-decoration:none}img{display:block;max-width:100%}.skip-link{position:absolute;left:var(--pad);top:10px;z-index:100;transform:translateY(-140%);border-radius:999px;background:#000;color:#fff;padding:10px 14px;font-weight:900;transition:transform .18s ease}.skip-link:focus{transform:translateY(0)}:focus-visible{outline:3px solid var(--blue);outline-offset:4px;box-shadow:0 0 0 5px rgba(95,159,255,.28);border-radius:12px}.wrap{width:100%;max-width:var(--wrap);margin:0 auto;padding-inline:var(--pad)}header.site-header{position:sticky;top:0;z-index:10;border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(8,10,13,.82),rgba(8,10,13,.68));backdrop-filter:blur(16px);box-shadow:0 18px 70px rgba(0,0,0,.30)}.header-rail{background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.008))}.header-inner{max-width:1560px;min-height:82px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px}.brand{display:flex;align-items:center;height:64px;overflow:visible;min-width:0}.brand img{height:56px;width:auto;object-fit:contain;filter:drop-shadow(0 12px 28px rgba(0,0,0,.45))}.nav-desktop{justify-self:stretch;width:100%;display:flex;justify-content:space-evenly;gap:0;align-items:center;white-space:nowrap}.nav-desktop a{padding:10px 7px;font-size:.9rem;border-radius:12px;min-height:44px;display:flex;align-items:center;justify-content:center;text-align:center;border:1px solid transparent;opacity:.9}.nav-desktop a:hover,.nav-desktop a[aria-current="page"]{opacity:1;background:rgba(255,255,255,.07);border-color:var(--border);color:#fff}.nav-mobile{display:none;position:relative;justify-self:end}.nav-mobile summary{list-style:none;cursor:pointer;padding:8px 10px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.07);min-height:40px;width:50px;display:flex;align-items:center;justify-content:center}.nav-mobile summary::-webkit-details-marker{display:none}.burger{display:inline-block;width:22px;height:14px;position:relative}.burger::before,.burger::after,.burger span{content:"";position:absolute;left:0;right:0;height:2px;background:#d9e0ea;border-radius:999px}.burger::before{top:0}.burger::after{bottom:0}.burger span{top:6px}.nav-drawer{position:absolute;right:0;top:calc(100% + 12px);min-width:260px;padding:10px;border-radius:18px;border:1px solid var(--border);background:rgba(8,10,13,.88);backdrop-filter:blur(16px);display:grid;gap:6px;box-shadow:0 30px 90px rgba(0,0,0,.55)}.nav-drawer a{padding:12px;border-radius:14px;min-height:44px;display:flex;align-items:center}.nav-drawer a:hover,.nav-drawer a[aria-current="page"]{background:rgba(255,255,255,.07)}main{padding:clamp(44px,7vw,96px) 0}.eyebrow{margin:0 0 14px;color:var(--brand);font-size:.78rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase}h1{margin:0;font-size:clamp(3rem,8vw,6.6rem);line-height:.9;letter-spacing:-.08em;text-wrap:balance}.description{margin:22px 0 0;max-width:760px;color:#d8ecf8;font-size:clamp(1.08rem,2vw,1.38rem)}.article-meta{display:flex;flex-wrap:wrap;gap:9px;margin:28px 0 0;color:#d8ecf8}.chip{border:1px solid var(--border);border-radius:999px;padding:8px 12px;background:rgba(255,255,255,.06);font-weight:800;font-size:.82rem}.tag-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.tag-list span{border:1px solid var(--border);border-radius:999px;padding:6px 9px;color:#d8ecf8;font-size:.78rem;font-weight:800}.article-hero-image{margin:36px 0;border:1px solid var(--border);border-radius:28px;overflow:hidden;background:#071421;box-shadow:0 30px 90px rgba(0,0,0,.34)}.article-hero-image img{width:100%;height:auto;object-fit:contain}.article-image-credit{margin:0;padding:9px 14px;color:#bfd9e8;font-size:.82rem;background:rgba(0,0,0,.22)}.article-image-credit a{text-decoration:underline;text-underline-offset:3px}article{border:1px solid var(--border);border-radius:28px;background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.025)),var(--panel-strong);padding:clamp(24px,5vw,54px);box-shadow:0 30px 90px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.08)}article :first-child{margin-top:0}article h1{font-size:clamp(2rem,5vw,4rem)}article h2{margin:2em 0 .5em;font-size:clamp(1.7rem,3vw,2.45rem);line-height:1;letter-spacing:-.05em}article p,article li{color:#d8ecf8;font-size:1.04rem}article ol>li+li{margin-top:1.35em}article li>ul{margin-top:.55em;margin-bottom:.2em}article li>p{margin:.2em 0 .45em}article blockquote{margin:0 0 1.4em;padding:16px 18px;border-left:3px solid var(--brand);border-radius:14px;background:rgba(255,138,0,.08)}article blockquote p{margin:0;color:#fff;font-weight:800}article ul{padding-left:1.3em}footer{border-top:1px solid var(--border);padding:24px 0;color:#bfd9e8;background:rgba(5,24,38,.52)}@media(max-width:1120px){.nav-desktop{display:none}.nav-mobile{display:block}.header-inner{min-height:96px;padding-block:8px}}@media(max-width:720px){.brand img{height:62px;max-width:min(70vw,410px)}main{padding-top:38px}article{border-radius:22px}}
+  </style>
+  <link rel="stylesheet" href="/styles/grouped-navigation.css" />
+  <script src="/scripts/grouped-navigation.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="site-header"><div class="header-rail"><div class="wrap header-inner"><a class="brand" href="/"><img src="/images/certifyd_logo_transparent.svg" alt="Certifyd" /></a><nav class="nav-desktop" aria-label="Primary">
+          <details class="nav-group"><summary>About</summary><div class="nav-group-menu"><a href="/profile/">Profile</a><a href="https://awards.certifyd.me" target="_blank" rel="noreferrer">Awards</a></div></details>
+          <details class="nav-group is-current"><summary>Explore</summary><div class="nav-group-menu"><a href="https://fan.certifyd.me" target="_blank" rel="noreferrer">Discover</a><a href="/blog/" aria-current="page">Blog</a></div></details>
+          <details class="nav-group"><summary>Work With Us</summary><div class="nav-group-menu"><a href="/retail-partners/">Partners</a><a href="/join/">Join Network</a></div></details>
+          <a href="/downloads/">Downloads</a>
+          <a href="/services/">Checkout</a>
+          <a href="https://investor.certifyd.me/">Invest</a>
+        </nav><details class="nav-mobile"><summary aria-label="Open menu"><span class="burger" aria-hidden="true"><span></span></span></summary><nav class="nav-drawer" aria-label="Mobile navigation">
+            <a href="/profile/">Profile</a>
+            <a href="/downloads/">Downloads</a>
+            <a href="/retail-partners/">Partners</a>
+            <a href="/services/">Checkout</a>
+            <a href="https://awards.certifyd.me" target="_blank" rel="noreferrer">Awards</a>
+            <a href="/blog/" aria-current="page">Blog</a>
+            <a href="https://fan.certifyd.me" target="_blank" rel="noreferrer">Discover</a>
+            <a href="/join/">Join Network</a>
+            <a href="https://investor.certifyd.me/">Invest</a>
+          </nav></details></div></div></header>
+  <main id="main"><section class="wrap"><p class="eyebrow">Certifyd Blog</p><h1>How to Install Certifyd Core and Set Up Your Local Creator Dashboard</h1><p class="description">Certifyd Core is built to run on the computer that holds your work. This guide walks through the published beta installation path for Windows, macOS and Linux/Pi, explains first-owner setup, and clarifies what a local dashboard does—and does not—set up.</p><div class="article-meta"><span class="chip">By Certifyd</span><span class="chip">Published November 5, 2026</span><span class="chip">Updated November 5, 2026</span></div><div class="tag-list" aria-label="Tags"><span>Certifyd Core</span><span>creator infrastructure</span><span>music technology</span><span>creator ownership</span><span>local software</span><span>Windows</span><span>macOS</span><span>Linux</span></div><div class="article-hero-image"><img src="/images/blog/2026/11/install-certifyd-core-local-creator-infrastructure-r1-logo.svg" alt="" loading="eager" decoding="async" onerror="this.src='/images/certifyd-main-image-independent-scene-20260613.png'" /></div><article><p>Creators are used to being handed a login page and told that control begins there. Certifyd Core starts with a more practical question: where does the software that manages your work actually run?</p>
+<p>Core is designed to run on the computer that holds a creator’s work. Its published installation walkthrough, labelled <strong>v0.1.0-beta.20</strong>, covers Windows, macOS and Linux/Pi. The immediate goal is modest but important: install Core, open its local dashboard in a browser, and create or sign into the owner account for that installation.</p>
+<p>That is not the same thing as publishing work, opening a public creator page, connecting payments or making material available to listeners. Those are separate stages. The distinction matters because Core separates the private place where an owner manages work from the public-facing service used to share it.</p>
+<h2>Before you start</h2>
+<p>Go to the <a href="https://certifyd.me/downloads/">Certifyd downloads page</a> and choose the package for the computer that will hold your work.</p>
+<p>The published walkthrough describes a specific beta release, while the downloads page may list newer Core artifacts. Read and follow the instructions included with the package you download when they differ from the older walkthrough, particularly on Linux where package formats can change.</p>
+<h2>Install Certifyd Core on Windows</h2>
+<p>The documented Windows path is straightforward:</p>
+<ol>
+<li>Download the <strong>Windows x64 installer</strong> from the Certifyd downloads page.</li>
+<li>Run the installer.</li>
+<li>Launch Certifyd Core from the <strong>Start Menu</strong> or desktop.</li>
+</ol>
+<p>When Core starts successfully, its dashboard should open in your browser.</p>
+<h2>Install Certifyd Core on macOS</h2>
+<p>For macOS, choose the package that matches your processor:</p>
+<ol>
+<li>Download the <strong>Apple Silicon</strong> or <strong>Intel</strong> DMG.</li>
+<li>Open the DMG.</li>
+<li>Drag <strong>Certifyd Core.app</strong> into <strong>Applications</strong>.</li>
+<li>Open Certifyd Core from Applications.</li>
+</ol>
+<p>As with Windows, a successful launch leads to the Core dashboard in a browser.</p>
+<h2>Install Certifyd Core on Linux or Pi</h2>
+<p>The published Linux instructions describe unpacked packages for <strong>x64</strong> and <strong>ARM64</strong> systems.</p>
+<p>After extracting the package, open a terminal in the extracted folder. To add a desktop launcher, run this once:</p>
+<pre><code class="language-bash">./install-desktop.sh
+</code></pre>
+<p>You can then open Core from the apps menu. The documented direct-start alternative is:</p>
+<pre><code class="language-bash">./start.sh
+</code></pre>
+<p>The tray icon depends on support from the desktop environment, so its appearance is not the essential test. The useful test is whether the Core dashboard becomes available in a browser.</p>
+<h2>Open the local dashboard</h2>
+<p>Core’s owner dashboard is local by default. If it does not open automatically after launch, open a browser <strong>on the computer running Core</strong> and go to:</p>
+<pre><code class="language-text">http://127.0.0.1:4000
+</code></pre>
+<p><code>127.0.0.1</code> refers to that same computer. This is Core’s private dashboard surface, not a public web address that listeners can visit from elsewhere.</p>
+<p>That boundary is central to the product’s model. Core’s local runtime keeps work and state in SQLite-backed storage, while its private dashboard and API routes are separated from an allowlisted public creator server. The default configuration uses port <strong>4000</strong> for the private dashboard and <strong>4010</strong> for the separate public creator surface.</p>
+<p>In plain English: installing Core gives you a local place to manage your work. It does not automatically expose that work to the internet.</p>
+<h2>Create the first owner account</h2>
+<p>When the sign-in screen appears on a new installation:</p>
+<ol>
+<li>Choose <strong>New here?</strong></li>
+<li>Complete <strong>Create owner</strong>.</li>
+<li>Keep any recovery key shown during setup somewhere safe.</li>
+</ol>
+<p>If this is an existing installation, use <strong>Sign in</strong> instead.</p>
+<p>The success check is simple: you reach the signed-in dashboard. The published guide describes the local account and published work as remaining with that installation through upgrades.</p>
+<h2>What installation establishes—and what it does not</h2>
+<p>It is tempting to treat installation as a launch button. It is better understood as the moment you establish the local home for the system that manages your work.</p>
+<p>Core has structures for work, media, profiles and splits. Its publication helpers can calculate canonical manifest hashes and receipt bindings, while its access and purchase helpers provide playback, entitlement and accounting state. Those details point toward a serious creator-owned stack, but they do not collapse into one automatic setup action.</p>
+<p>Public sharing has its own lifecycle and consent requirement. Core coordinates startup for the listener-facing service and checks participation and payment readiness separately. Fan can discover work from configured Core origins using the public contracts Core provides, but this does not mean that installing Core automatically replicates your work across a peer-to-peer network.</p>
+<p>That separation is a feature, not friction for its own sake. A private management dashboard should not become public merely because an installer finished. The creator should be able to distinguish between setting up the machine, managing the catalog, deciding what to share, and preparing any payment-related activity.</p>
+<h2>A practical first-session checklist</h2>
+<p>After installation, confirm the basics:</p>
+<ul>
+<li>Core launches on the computer where you intend to keep your work.</li>
+<li>The dashboard opens, either automatically or at <code>http://127.0.0.1:4000</code>.</li>
+<li>You can create the first owner account or sign into the existing one.</li>
+<li>You have stored any recovery key provided during owner creation.</li>
+<li>You understand that the local dashboard on port 4000 is separate from the public creator surface on port 4010.</li>
+</ul>
+<p>That is the right finish line for installation. From there, the creator has a local dashboard and an owner account—not an accidental public launch.</p>
+<h2>Why this model matters</h2>
+<p>“Own your infrastructure” can become empty language quickly. Here, it begins with a concrete technical boundary: the place where you manage your work is private and local, while public access is a separate, deliberate service.</p>
+<p>For creators, partners and investors, that is the meaningful part of the installation story. Core is not asking creators to confuse an account on someone else’s platform with control over the system holding their work. It puts the local runtime and owner setup first, then keeps publication, listener access and payment readiness as distinct choices.</p>
+<p>Start by installing the package that matches your computer from the <a href="https://certifyd.me/downloads/">Certifyd downloads page</a>, then use the package’s included instructions alongside this published beta walkthrough.</p>
+</article></section></main>
+  <footer><div class="wrap"><a href="/blog/">Blog</a> · <a href="/feed.xml">RSS</a> · Certifyd · <a href="mailto:hello@certifyd.me">hello@certifyd.me</a></div></footer>
+</body>
+</html>

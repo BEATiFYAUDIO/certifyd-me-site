@@ -7,6 +7,21 @@
     <language>en</language>
     <lastBuildDate>Thu, 05 Nov 2026 00:00:00 GMT</lastBuildDate>
     <item>
+      <title>How to Install Certifyd Core and Set Up Your Local Creator Dashboard</title>
+      <link>https://certifyd.me/blog/install-certifyd-core-local-creator-infrastructure/</link>
+      <guid>https://certifyd.me/blog/install-certifyd-core-local-creator-infrastructure/</guid>
+      <description>Certifyd Core is built to run on the computer that holds your work. This guide walks through the published beta installation path for Windows, macOS and Linux/Pi, explains first-owner setup, and clarifies what a local dashboard does—and does not—set up.</description>
+      <pubDate>Thu, 05 Nov 2026 00:00:00 GMT</pubDate>
+      <category>Certifyd Core</category>
+      <category>creator infrastructure</category>
+      <category>music technology</category>
+      <category>creator ownership</category>
+      <category>local software</category>
+      <category>Windows</category>
+      <category>macOS</category>
+      <category>Linux</category>
+    </item>
+    <item>
       <title>SoundCloud and ElevenLabs Turn AI Music Publishing Into a Controlled Release Path</title>
       <link>https://certifyd.me/blog/soundcloud-elevenlabs-ai-music-publishing-rights-context/</link>
       <guid>https://certifyd.me/blog/soundcloud-elevenlabs-ai-music-publishing-rights-context/</guid>
