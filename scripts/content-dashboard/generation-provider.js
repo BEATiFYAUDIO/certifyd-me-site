@@ -1044,7 +1044,8 @@ function certifydTechnologySubjects(input = {}, context = {}) {
   const topic = String(input.topic || input.workingTitle || '').trim();
   const request = topic.replace(/^(?:please\s+)?(?:write|draft|create|generate)\s+(?:(?:an?|the)\s+)?(?:(?:article|explainer|blog(?:\s+post)?)\s+)?(?:about\s+)?/i, '')
     .replace(/^(?:please\s+)?(?:explain|describe|explore|understand)\s+/i, '');
-  const brandLed = /^(?:(?:how|why|what)(?:\s+(?:does|do|is|are|can|to|makes))?\s+)?certifyd(?:['’]s)?\b/i.test(request);
+  const brandLed = /^(?:(?:how|why|what)(?:\s+(?:does|do|is|are|can|to|makes))?\s+)?certifyd(?:['’]s)?\b/i.test(request)
+    || /^how\s+to\s+install\s+certifyd(?:['’]s)?\b/i.test(request);
   const capabilityLed = /^(?:how|why|what)\b/i.test(request) && /\b(?:in|with|using|through|of|by)\s+certifyd\b/i.test(request);
   if (!brandLed && !capabilityLed) return [];
   const subjects = TECHNOLOGY_SUBJECTS.filter((subject) => subject.topic.test(topic));

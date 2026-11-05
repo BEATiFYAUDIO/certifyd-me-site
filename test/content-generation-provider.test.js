@@ -4585,3 +4585,77 @@ test('manual technology retrieval: existing eight-record budget and duplicate su
   const dedupedCalls = await runMockTechnologyWriter(config, input, deduped);
   assert.equal(technologyEvidenceIn(dedupedCalls[1]).length, 1);
 });
+
+const coreInstallationTopic = 'How to Install Certifyd Core: A Step-by-Step Guide to Running Your Own Creator Infrastructure';
+
+test('Core installation regression: exact live topic supplies real Brain facts and idea support to the unchanged gate', async (t) => {
+  const config = await realTechnologyBrain(t);
+  const input = manualTechnologyInput(coreInstallationTopic);
+  const context = await buildGroundedContext(config, input);
+  const core = context.approvedKnowledge.find((record) => record.id === 'brain:products/core');
+  assert.ok(core, 'The actual approved Core record must be retrieved');
+  const facts = core.supportedClaims.slice(0, 2);
+  const support = [{ idea: 'Explain Core local state and its separate public surface.', factIds: [core.id] }];
+  const calls = [];
+  // Model responses are mocked. The industry response cannot cite hidden Brain;
+  // the technology response can cite the actual evidence supplied in its prompt.
+  const technologyClient = mockOpenAIClient({ calls, reasoning: validReasoning({ verifiedFacts: facts, editorialIdeaSupport: support }), article: validArticle(core.id) });
+  const industryClient = mockOpenAIClient({ calls, reasoning: validReasoning({ verifiedFacts: [], editorialIdeaSupport: [] }) });
+  const provider = new OpenAIGenerationProvider(config, { openaiClient: { responses: { create: (payload) => (
+    payload.instructions.includes('Approved Certifyd Brain and product documentation are the primary factual sources')
+      ? technologyClient : industryClient
+  ).responses.create(payload) } } });
+  await provider.generateArticle(input, context);
+  assert.equal(context.generationDiagnostics.brainSelectionMode, 'certifyd-technology');
+  assert.equal(context.externalSourceFacts.length, 0);
+  assert.equal(calls.length, 2, 'No replacement reasoning, automatic repair or additional model stage');
+  for (const payload of calls) {
+    assert.equal(technologyEvidenceIn(payload).find((record) => record.sourceId === core.id).relevantFacts[0], facts[0]);
+    assert.doesNotMatch(payload.instructions, /Stage A1: source-only thesis evaluation/);
+  }
+  const normalized = context.generationDiagnostics.openAIReasoning;
+  assert.deepEqual(normalized.verifiedFacts, facts, 'CORE FACTS must preserve the mocked evidence-backed output');
+  assert.deepEqual(normalized.editorialIdeaSupport, support, 'EDITORIAL IDEA SUPPORT must preserve explicit Brain provenance');
+});
+
+test('Core installation regression: empty reasoning is blocked without inventing facts from available Brain', async (t) => {
+  const config = await realTechnologyBrain(t);
+  const input = manualTechnologyInput(coreInstallationTopic);
+  const context = await buildGroundedContext(config, input);
+  const calls = [];
+  const provider = new OpenAIGenerationProvider(config, { openaiClient: mockOpenAIClient({ calls, reasoning: validReasoning({ verifiedFacts: [], editorialIdeaSupport: [] }) }) });
+  await assert.rejects(provider.generateArticle(input, context), /Article generation blocked by editorial gate: CORE FACTS is empty; EDITORIAL IDEA SUPPORT is empty\./);
+  assert.equal(calls.length, 1, 'An empty response stops before writing or retries');
+  technologyEvidenceIn(calls[0]);
+});
+
+test('Core installation regression: unsupported idea provenance still fails before writing', async (t) => {
+  const config = await realTechnologyBrain(t);
+  const input = manualTechnologyInput(coreInstallationTopic);
+  const context = await buildGroundedContext(config, input);
+  const facts = context.approvedKnowledge.find((record) => record.id === 'brain:products/core').supportedClaims.slice(0, 2);
+  for (const factIds of [[], ['brain:unverified-installation-instructions']]) {
+    const calls = [];
+    const provider = new OpenAIGenerationProvider(config, { openaiClient: mockOpenAIClient({ calls, reasoning: validReasoning({
+      verifiedFacts: facts,
+      editorialIdeaSupport: [{ idea: 'Core automatically installs and configures every external payment service.', factIds }],
+    }) }) });
+    await assert.rejects(provider.generateArticle(input, context), /unsupported material idea|must cite the supplied approved Brain record IDs/);
+    assert.equal(calls.length, 1);
+    technologyEvidenceIn(calls[0]);
+  }
+});
+
+test('Core installation regression: an external installation story retains industry evidence rules', async (t) => {
+  const config = await realTechnologyBrain(t);
+  await writeTrendSources(config, [{ id: 'installation-industry-fixture', title: 'A creator hardware company changes installation policy', summary: 'The company changed its installation requirements for creator computers. Its support policy now applies to newly configured machines.', articleUrl: 'https://example.test/installation-policy', publisher: 'Offline source fixture' }]);
+  const input = manualTechnologyInput(coreInstallationTopic, { trendSourceItemIds: 'installation-industry-fixture' });
+  const context = await buildGroundedContext(config, input);
+  assert.equal(context.generationDiagnostics.brainSelectionMode, 'industry');
+  const calls = [];
+  const provider = new OpenAIGenerationProvider(config, { openaiClient: mockOpenAIClient({ calls, reasoning: validReasoning({ verifiedFacts: [], editorialIdeaSupport: [] }) }) });
+  await assert.rejects(provider.generateArticle(input, context), /CORE FACTS is empty; EDITORIAL IDEA SUPPORT is empty/);
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].instructions, /Stage A1: source-only thesis evaluation/);
+  assert.doesNotMatch(calls[0].input, /APPROVED CERTIFYD TECHNOLOGY EVIDENCE/);
+});
