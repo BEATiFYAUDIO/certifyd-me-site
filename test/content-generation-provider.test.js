@@ -76,7 +76,7 @@ async function makeConfig(overrides = {}) {
 
 async function makeContext(config, input = {}) {
   return buildGroundedContext(config, {
-    topic: 'What Certifyd Core Is',
+    topic: 'Core explainer',
     audience: 'Creators and investors',
     objective: 'Explain Certifyd Core accurately.',
     contentType: 'article',
@@ -2656,11 +2656,13 @@ test('current OpenAI writing prompt only exposes current allowed Brain source ID
     '',
     'Certifyd Network supports discovery, routing and distribution.',
   ].join('\n'));
+  await fs.mkdir(path.join(config.agentRoot, 'knowledge/capabilities'), { recursive: true });
+  await fs.copyFile(new URL('../content-agent/knowledge/capabilities/network-distribution.md', import.meta.url), path.join(config.agentRoot, 'knowledge/capabilities/network-distribution.md'));
   const context = await makeContext(config, { topic: 'Certifyd Network distribution' });
   context.allowedBrainSourceIds = ['brain:capabilities/stale-record'];
   const sourceId = context.sourceRecords[0].id;
   const provider = new OpenAIGenerationProvider(config, {
-    openaiClient: mockOpenAIClient({ calls, article: validArticle(sourceId) }),
+    openaiClient: mockOpenAIClient({ calls, reasoning: validReasoning({ editorialIdeaSupport: [{ idea: 'Explain Certifyd Network distribution.', factIds: [sourceId] }] }), article: validArticle(sourceId) }),
   });
   await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Certifyd Network distribution', audience: 'Creators', objective: 'Explain Network.' }, context);
   assert.match(calls[1].input, /ALLOWED_BRAIN_SOURCE_IDS/);
@@ -4260,4 +4262,326 @@ test('no approved Brain context stops generation before any provider call', asyn
     () => provider.generateArticle({ topic: 'Empty', audience: 'Creators', objective: 'Explain.' }, context),
     GenerationConfigurationError,
   );
+});
+
+
+async function technologyFixture(config) {
+  const id = 'brain:capabilities/ar';
+  const file = path.join(config.agentRoot, 'knowledge/capabilities/ar.md');
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  await fs.writeFile(file, [
+    '# Certifyd AR Browser', 'APPROVED', '', '## Current Status', '`BETA`', '', '## Confidence', '`HIGH`',
+    '', '## Supported Current Claims',
+    '- Certifyd AR Browser verifies creator signatures before showing creator context on Web2 profiles.',
+    '- Signed creator context can be displayed alongside an existing Web2 profile.',
+    '', '## Qualified Claims', '- This workflow is in beta.',
+    '', '## Prohibited Claims', '- A verified profile proves copyright ownership.',
+  ].join('\n'));
+  const input = { actorEmail: 'writer@example.test', topic: 'How Certifyd AR uses cryptographic signatures to augment existing Web2 profiles.', audience: 'Creators and fans', objective: 'Explain the technology and supported workflow in plain language.' };
+  const context = await buildGroundedContext(config, input);
+  const reasoning = validReasoning({
+    eventSummary: 'Certifyd AR Browser displays signed creator context alongside a Web2 profile.',
+    editorialIdea: 'Signatures connect context to the creator while the existing profile remains in use.',
+    verifiedFacts: ['AR Browser verifies creator signatures.', 'Signed creator context appears alongside Web2 profiles.'],
+    editorialIdeaSupport: [{ idea: 'Verified signatures connect the displayed context to the creator.', factIds: [id] }],
+  });
+  const article = validArticle(id, {
+    title: 'How Certifyd AR Adds Signed Context to Web2 Profiles', suggestedSlug: 'certifyd-ar-signed-web2-profile-context',
+    seoTitle: 'How Certifyd AR Adds Signed Context to Web2 Profiles',
+    seoDescription: 'Learn how Certifyd AR Browser verifies signed creator context alongside existing Web2 profiles, and what that beta workflow means for creators and fans.',
+    focusKeyword: 'Certifyd AR signatures', secondaryKeywords: ['Web2 creator profiles', 'signed creator context'], category: 'Certifyd Technology',
+    bodyMarkdown: '# How Certifyd AR Adds Signed Context to Web2 Profiles\n\nA creator can keep an existing Web2 profile while presenting signed context alongside it. In its beta workflow, Certifyd AR Browser verifies the creator signature before showing that context.\n\n## A signature connects the context to its creator\n\nThe verification happens before the additional creator context is displayed. That relationship gives the reader a reason to distinguish the signed context from other information on the page.\n\n## What creators and fans can do\n\nCreators can present signed context alongside an existing Web2 profile. Fans can view that context in Certifyd AR Browser without the creator rebuilding the existing profile.\n',
+    claims: [{ text: 'Certifyd AR Browser verifies creator signatures before showing creator context on Web2 profiles.', sourceIds: [id], confidence: 'supported' }],
+  });
+  return { id, input, context, reasoning, article };
+}
+
+test('manual Certifyd technology request uses approved Brain without news and persists the same complete review package', async () => {
+  const config = await makeConfig(); const calls = [];
+  const fixture = await technologyFixture(config);
+  const provider = new OpenAIGenerationProvider(config, { openaiClient: mockOpenAIClient({ calls, reasoning: fixture.reasoning, article: fixture.article }) });
+  const article = await provider.generateArticle(fixture.input, fixture.context);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].text.format.name, 'certifyd_editorial_reasoning');
+  assert.equal(calls[1].text.format.name, 'certifyd_article');
+  assert.match(calls[0].instructions, /Approved Certifyd Brain and product documentation are the primary factual sources/);
+  assert.doesNotMatch(calls[0].instructions, /Certifyd Brain content.*not available in this stage/);
+  assert.match(calls[0].input, /brain:capabilities\/ar/);
+  assert.match(calls[1].input, /This workflow is in beta/);
+  assert.match(calls[1].input, /A verified profile proves copyright ownership/);
+  assert.match(calls[1].instructions, /Write with the voice of an intelligent, opinionated founder/);
+  assert.match(calls[1].instructions, /Preserve useful SEO entity coverage/);
+  assert.equal(fixture.context.externalSourceFacts.length, 0);
+  const result = await persistGeneratedArticleRun(config, article, fixture.input, fixture.context, provider);
+  const base = path.join(config.outputDir, result.runId);
+  const manifest = JSON.parse(await fs.readFile(path.join(base, 'publication-manifest.json'), 'utf8'));
+  assert.equal(manifest.currentStatus, 'PENDING_FOUNDER_REVIEW'); assert.equal(manifest.publishability, 'BLOCKED_PENDING_APPROVAL');
+  const markdown = await fs.readFile(path.join(base, 'final/article.md'), 'utf8');
+  for (const field of ['title', 'slug', 'date', 'excerpt', 'coverImage', 'tags', 'seoTitle', 'seoDescription', 'focusKeyword', 'secondaryKeywords', 'category']) assert.match(markdown, new RegExp(`^${field}:`, 'm'));
+  const seo = JSON.parse(await fs.readFile(path.join(base, 'seo-package.json'), 'utf8'));
+  assert.equal(seo.focusKeyword, 'Certifyd AR signatures');
+  assert.equal(await fs.stat(path.join(base, 'blog/image-generation.json')).catch(() => null), null);
+  assert.equal(await fs.stat(path.join(config.siteRoot, 'content/blog/certifyd-ar-signed-web2-profile-context.md')).catch(() => null), null);
+});
+
+test('industry story mentioning Certifyd technology retains exact source-only evidence rules', async () => {
+  const config = await makeConfig(); const calls = [];
+  const fixture = await technologyFixture(config);
+  const input = { ...fixture.input, topic: 'How Certifyd AR relates to an industry platform story', trendSourceItemIds: 'industry-source', trendOpportunityId: 'industry-opportunity' };
+  const context = { ...fixture.context, externalSourceFacts: [] };
+  const provider = new OpenAIGenerationProvider(config, { openaiClient: mockOpenAIClient({ calls, article: validArticle(fixture.id) }) });
+  await provider.generateArticle(input, context);
+  assert.match(calls[0].instructions, /This is Stage A1: source-only thesis evaluation/);
+  assert.match(calls[0].instructions, /Certifyd Brain content.*not available in this stage/);
+  assert.doesNotMatch(calls[0].input, /APPROVED CERTIFYD TECHNOLOGY EVIDENCE/);
+  assert.match(calls[1].instructions, /The external story is the factual foundation/);
+});
+
+test('technology words in an ordinary industry prompt do not switch evidence modes', async () => {
+  const config = await makeConfig(); const calls = [];
+  const fixture = await technologyFixture(config);
+  const provider = new OpenAIGenerationProvider(config, { openaiClient: mockOpenAIClient({ calls, article: validArticle(fixture.id) }) });
+  await provider.generateArticle({ ...fixture.input, topic: 'Spotify creator profiles and why Certifyd AR matters' }, fixture.context);
+  assert.match(calls[0].instructions, /source-only thesis evaluation/);
+  await assert.rejects(buildGroundedContext(config, { ...fixture.input, topic: 'Certifyd AR launches a Spotify partnership' }), /Cannot generate news article/);
+});
+
+test('missing, unapproved or unclear technology evidence stops before any model call', async () => {
+  const config = await makeConfig(); const calls = [];
+  const input = { topic: 'How Certifyd AR uses cryptographic signatures to augment existing Web2 profiles.', audience: 'Creators', objective: 'Explain AR.' };
+  const provider = new OpenAIGenerationProvider(config, { openaiClient: mockOpenAIClient({ calls }) });
+  await assert.rejects(provider.generateArticle(input, await buildGroundedContext(config, input)), GenerationConfigurationError);
+  const fixture = await technologyFixture(config);
+  for (const reviewState of ['NEEDS_REVIEW', 'STALE']) {
+    const context = { ...fixture.context, sourceRecords: fixture.context.sourceRecords.map((record) => record.id === fixture.id ? { ...record, reviewState } : record) };
+    await assert.rejects(provider.generateArticle(input, context), /documentation is missing/);
+  }
+  const unclear = { ...fixture.context, sourceRecords: fixture.context.sourceRecords.map((record) => record.id === fixture.id ? { ...record, currentStatus: 'UNCLEAR' } : record) };
+  await assert.rejects(provider.generateArticle(input, unclear), /documentation is missing/);
+  assert.equal(calls.length, 0);
+});
+
+test('technology reasoning declines insufficient facts without a writing or replacement request', async () => {
+  const config = await makeConfig(); const calls = [];
+  const fixture = await technologyFixture(config);
+  const provider = new OpenAIGenerationProvider(config, { openaiClient: mockOpenAIClient({ calls, reasoning: { ...fixture.reasoning, worthPublishing: false, rejectionReason: 'The implementation mechanism is undocumented.' } }) });
+  await assert.rejects(provider.generateArticle(fixture.input, fixture.context), /implementation mechanism is undocumented/);
+  assert.equal(calls.length, 1);
+});
+
+test('technology reasoning cannot invent Brain provenance', async () => {
+  const config = await makeConfig(); const calls = [];
+  const fixture = await technologyFixture(config);
+  const provider = new OpenAIGenerationProvider(config, { openaiClient: mockOpenAIClient({ calls, reasoning: { ...fixture.reasoning, editorialIdeaSupport: [{ idea: 'Unsupported claim.', factIds: ['brain:invented'] }] } }) });
+  await assert.rejects(provider.generateArticle(fixture.input, fixture.context), /must cite the supplied approved Brain record IDs/);
+  assert.equal(calls.length, 1);
+});
+
+test('technology article retains existing governance and approval-state validation', async () => {
+  const config = await makeConfig(); const calls = [];
+  const fixture = await technologyFixture(config);
+  const leaky = { ...fixture.article, bodyMarkdown: fixture.article.bodyMarkdown + '\n## Brain Context\nPrivate prompt instructions.\n' };
+  const provider = new OpenAIGenerationProvider(config, { openaiClient: mockOpenAIClient({ calls, reasoning: fixture.reasoning, article: [leaky, leaky] }) });
+  await assert.rejects(provider.generateArticle(fixture.input, fixture.context), /internal context leaked/);
+  assert.ok(calls.length <= 3);
+  const malformed = new OpenAIGenerationProvider(config, { openaiClient: mockOpenAIClient({ reasoning: fixture.reasoning, article: { ...fixture.article, approved: true } }) });
+  await assert.rejects(malformed.generateArticle(fixture.input, fixture.context), /cannot set publication/);
+});
+
+// Exercise the real manual retrieval/provider path against copies of the approved
+// repository Brain. Expected IDs below name existing records, never injected IDs.
+const technologyRetrievalCases = [
+  ['Core', 'How does Certifyd Core let creators publish directly from their own computers?', ['brain:capabilities/publishing', 'brain:products/core']],
+  ['Fan', 'How does Certifyd Fan discover and play content from creator-operated infrastructure?', ['brain:capabilities/fan', 'brain:capabilities/network-distribution']],
+  ['AR', 'How does Certifyd AR augment existing websites with verified creator identity?', ['brain:products/ar', 'brain:capabilities/identity']],
+  ['identity', 'How does Certifyd verify that a social media account belongs to a creator?', ['brain:capabilities/identity']],
+  ['Lightning', 'How do Bitcoin and Lightning purchases work in Certifyd Core?', ['brain:capabilities/payments', 'brain:capabilities/commerce']],
+  ['entitlements', 'How does Certifyd Core give fans access to content after payment?', ['brain:capabilities/access', 'brain:capabilities/payments']],
+  ['splits', 'How does Certifyd Core manage collaborators and royalty splits?', ['brain:capabilities/splits']],
+];
+
+async function realTechnologyBrain(t, overrides = {}) {
+  const config = await makeConfig(overrides);
+  t.after(() => fs.rm(config.siteRoot, { recursive: true, force: true }));
+  await fs.cp(new URL('../content-agent/knowledge/', import.meta.url), path.join(config.agentRoot, 'knowledge'), { recursive: true });
+  return config;
+}
+
+function manualTechnologyInput(topic, overrides = {}) {
+  return { topic, audience: 'Creators and fans', objective: 'Explain the technology and supported workflow in plain language.', contentType: 'article', ...overrides };
+}
+
+function technologyEvidenceIn(payload) {
+  const evidence = payload.input.match(/APPROVED CERTIFYD TECHNOLOGY EVIDENCE:\n([^\n]+)\nALLOWED_BRAIN_SOURCE_IDS:/);
+  assert.ok(evidence, 'Actual provider payload must contain the technology evidence package');
+  return JSON.parse(evidence[1]);
+}
+
+async function runMockTechnologyWriter(config, input, context) {
+  const calls = [];
+  const primary = context.sourceRecords.find((record) => record.reviewState === 'APPROVED');
+  assert.ok(primary);
+  const reasoning = validReasoning({
+    eventSummary: 'The requested Certifyd technology uses a documented creator-controlled contract.',
+    verifiedFacts: primary.supportedClaims.slice(0, 3),
+    editorialIdeaSupport: [{ idea: 'Explain the documented mechanism and supported scope.', factIds: [primary.id] }],
+  });
+  const provider = new OpenAIGenerationProvider(config, { openaiClient: mockOpenAIClient({
+    calls, reasoning,
+    article: validArticle(primary.id, { claims: [{ text: primary.supportedClaims[0], sourceIds: [primary.id], confidence: 'supported' }] }),
+  }) });
+  await provider.generateArticle(input, context);
+  assert.equal(calls.length, 2, 'Only the existing reasoning and writing stages; no repair or extra stage');
+  return calls;
+}
+
+for (const [subject, topic, expectedIds] of technologyRetrievalCases) {
+  test(`manual technology retrieval: natural-language ${subject} evidence reaches the writer`, async (t) => {
+    const config = await realTechnologyBrain(t);
+    const input = manualTechnologyInput(topic);
+    const context = await buildGroundedContext(config, input);
+    assert.equal(context.generationDiagnostics.brainSelectionMode, 'certifyd-technology');
+    assert.equal(context.externalSourceFacts.length, 0);
+    const selectedIds = context.sourceRecords.map((record) => record.id);
+    for (const id of expectedIds) {
+      assert.ok(context.generationDiagnostics.brainRecordsRetrieved.some((record) => record.id === id), `${id} must be indexed from its actual file`);
+      assert.ok(selectedIds.includes(id), `${id} must survive production selection`);
+    }
+    assert.equal(selectedIds[0], expectedIds[0], 'The specific technology record precedes broad architecture');
+    assert.ok(selectedIds.length <= 8);
+    assert.equal(new Set(selectedIds).size, selectedIds.length);
+    assert.ok(!selectedIds.includes('brain:capabilities/consistency-review'));
+    for (const record of context.sourceRecords) {
+      assert.equal(record.reviewState, 'APPROVED');
+      assert.match(record.currentStatus, /^(BETA|LIVE|CURRENT|APPROVED)$/);
+    }
+    const calls = await runMockTechnologyWriter(config, input, context);
+    for (const payload of calls) {
+      const evidence = technologyEvidenceIn(payload);
+      for (const id of expectedIds) assert.ok(evidence.some((record) => record.sourceId === id), `${id} must reach both actual provider stages`);
+      for (const record of evidence) {
+        assert.ok(record.relevantFacts.length > 0);
+        assert.doesNotMatch(record.relevantFacts.join(' '), /NEEDS_REVIEW|Unresolved Issues|supportAmountSats|popup-test failures|\/home\/Darryl|\/tmp\//);
+      }
+    }
+    assert.deepEqual(context.generationDiagnostics.allowedBrainSourceIds, selectedIds);
+  });
+}
+
+test('manual technology retrieval: short AR question needs no record IDs or special prompt syntax', async (t) => {
+  const config = await realTechnologyBrain(t);
+  const input = manualTechnologyInput('How does Certifyd AR augment existing websites?');
+  const context = await buildGroundedContext(config, input);
+  assert.deepEqual(context.sourceRecords.map((record) => record.id), ['brain:products/ar']);
+  const calls = await runMockTechnologyWriter(config, input, context);
+  assert.equal(technologyEvidenceIn(calls[1])[0].sourceId, 'brain:products/ar');
+});
+
+test('manual technology retrieval: unrelated and ambiguous brand mentions retain industry mode', async (t) => {
+  const config = await realTechnologyBrain(t);
+  for (const topic of [
+    'Spotify creator profiles and why Certifyd AR matters',
+    'How do Spotify creators use social media accounts, and where does Certifyd AR fit?',
+    'Tell me about Certifyd',
+    'Certifyd updates',
+    'What does the creator economy mean for Certifyd?',
+  ]) {
+    const context = await buildGroundedContext(config, manualTechnologyInput(topic));
+    assert.equal(context.generationDiagnostics.brainSelectionMode, 'industry', topic);
+    assert.deepEqual(context.generationDiagnostics.technologySubjects, []);
+  }
+  await assert.rejects(buildGroundedContext(config, manualTechnologyInput('Certifyd AR launches a Spotify partnership')), /Cannot generate news article/);
+});
+
+test('manual technology retrieval: attached industry evidence overrides a brand-led technology question', async (t) => {
+  const config = await realTechnologyBrain(t);
+  await writeTrendSources(config, [{ id: 'industry-platform-story', title: 'A platform changes creator profile policy', publisher: 'Source fixture', summary: 'The platform changed its public profile policy. Creators must update account information under the revised policy.', articleUrl: 'https://example.test/creator-profile-policy' }]);
+  const input = manualTechnologyInput('How does Certifyd AR relate to this platform policy?', { trendSourceItemIds: 'industry-platform-story' });
+  const context = await buildGroundedContext(config, input);
+  assert.equal(context.generationDiagnostics.brainSelectionMode, 'industry');
+  assert.equal(context.sourceRecords.length, 3, 'Existing source-backed three-record budget');
+  const calls = [];
+  const provider = new OpenAIGenerationProvider(config, { openaiClient: mockOpenAIClient({ calls, article: validArticle(context.sourceRecords[0].id) }) });
+  await provider.generateArticle(input, context);
+  assert.match(calls[0].instructions, /Stage A1: source-only thesis evaluation/);
+  assert.doesNotMatch(calls[0].input, /APPROVED CERTIFYD TECHNOLOGY EVIDENCE/);
+  assert.match(calls[1].instructions, /The external story is the factual foundation/);
+  await assert.rejects(buildGroundedContext(config, { ...input, trendSourceItemIds: 'missing-source' }), /selected source evidence is unavailable/);
+});
+
+test('manual technology retrieval: generic architecture cannot substitute for missing AR evidence', async (t) => {
+  const config = await realTechnologyBrain(t);
+  await fs.rm(path.join(config.agentRoot, 'knowledge/products/ar.md'));
+  const corePath = path.join(config.agentRoot, 'knowledge/products/core.md');
+  await fs.appendFile(corePath, '\nCertifyd AR cryptographic signatures and verified creator identity appear in this architecture discussion.\n');
+  const input = manualTechnologyInput('How does Certifyd AR augment existing websites with verified creator identity?');
+  const context = await buildGroundedContext(config, input);
+  assert.ok(!context.sourceRecords.some((record) => record.id === 'brain:products/ar'));
+  const calls = [];
+  const provider = new OpenAIGenerationProvider(config, { openaiClient: mockOpenAIClient({ calls }) });
+  await assert.rejects(provider.generateArticle(input, context), GenerationConfigurationError);
+  assert.equal(calls.length, 0);
+});
+
+test('manual technology retrieval: unapproved, historical, planned and unresolved-only records cannot supply positive facts', async (t) => {
+  const config = await realTechnologyBrain(t);
+  const file = path.join(config.agentRoot, 'knowledge/products/ar.md');
+  const original = await fs.readFile(file, 'utf8');
+  const input = manualTechnologyInput('How does Certifyd AR augment existing websites?');
+  const calls = [];
+  const provider = new OpenAIGenerationProvider(config, { openaiClient: mockOpenAIClient({ calls }) });
+  const variants = [
+    original.replace('`BETA`', '`UNCLEAR`'),
+    original.replace('`BETA`', '`PLANNED`'),
+    original.replace('`BETA`', '`HISTORICAL`'),
+    original.replace('`HIGH`', '`LOW`'),
+    original + '\nNo capability-specific public claim is currently approved.\n',
+    '# Certifyd AR\n\nAPPROVED\n\n## Current Status\n\n`BETA`\n\n## Confidence\n\n`HIGH`\n\n## Unresolved Issues\n\nThe creator popup is not verified.\n',
+  ];
+  for (const text of variants) {
+    await fs.writeFile(file, text);
+    const context = await buildGroundedContext(config, input);
+    assert.ok(!context.sourceRecords.some((record) => record.id === 'brain:products/ar'));
+    await assert.rejects(provider.generateArticle(input, context), GenerationConfigurationError);
+  }
+  assert.equal(calls.length, 0);
+});
+
+test('manual technology retrieval: availability and unresolved scope reach the writer only as constraints', async (t) => {
+  const config = await realTechnologyBrain(t);
+  const input = manualTechnologyInput('How does Certifyd AR augment existing websites?');
+  const context = await buildGroundedContext(config, input);
+  const calls = await runMockTechnologyWriter(config, input, context);
+  const record = technologyEvidenceIn(calls[1]).find((record) => record.sourceId === 'brain:products/ar');
+  assert.equal(record.status, 'BETA');
+  assert.match(record.relevantFacts.join(' '), /Ed25519|signature/);
+  assert.doesNotMatch(record.relevantFacts.join(' '), /popup|released binary|Verified Mechanism|NEEDS_REVIEW|failing/i);
+  assert.match(record.qualifiedClaims.join(' '), /No released binary or production deployment was verified/);
+  assert.match(record.qualifiedClaims.join(' '), /complete creator popup\/editor flow/i);
+  assert.match(record.qualifiedClaims.join(' '), /failing popup assertions/i);
+  assert.doesNotMatch(record.relevantFacts.join(' '), /supportAmountSats/);
+  const fanInput = manualTechnologyInput('How does Certifyd Fan discover and play content?');
+  const fanContext = await buildGroundedContext(config, fanInput);
+  const fanCalls = await runMockTechnologyWriter(config, fanInput, fanContext);
+  const fan = technologyEvidenceIn(fanCalls[1]).find((record) => record.sourceId === 'brain:capabilities/fan');
+  assert.equal(fan.status, 'LIVE');
+  assert.match(fan.qualifiedClaims.join(' '), /LIVE.*limited|LIVE refers/i);
+  assert.match(fan.qualifiedClaims.join(' '), /beta implementation subsets|not extend to every mechanism/i);
+});
+
+test('manual technology retrieval: existing eight-record budget and duplicate suppression are preserved', async (t) => {
+  const config = await realTechnologyBrain(t);
+  config.openai.maxContextChars = 16000;
+  const broad = manualTechnologyInput('How does Certifyd Core handle identity, publishing, payments, commerce, access, splits, catalog, receipts, nodes and release records?');
+  const context = await buildGroundedContext(config, broad);
+  assert.ok(context.generationDiagnostics.technologySubjects.length > 8);
+  assert.equal(context.sourceRecords.length, 8);
+  const calls = await runMockTechnologyWriter(config, broad, context);
+  assert.equal(technologyEvidenceIn(calls[1]).length, 8);
+  const input = manualTechnologyInput('How does Certifyd AR augment existing websites?', { trendBrainRecordIds: 'brain:products/ar,brain:products/ar,brain:products/core,brain:capabilities/consistency-review' });
+  const deduped = await buildGroundedContext(config, input);
+  assert.deepEqual(deduped.sourceRecords.map((record) => record.id), ['brain:products/ar']);
+  assert.equal(deduped.contextSizing.maxContextChars, 16000);
+  const dedupedCalls = await runMockTechnologyWriter(config, input, deduped);
+  assert.equal(technologyEvidenceIn(dedupedCalls[1]).length, 1);
 });

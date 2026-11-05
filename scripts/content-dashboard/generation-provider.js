@@ -12,6 +12,21 @@ const DEFAULT_OPENAI_MODEL = 'gpt-5.6-terra';
 const SAFE_SOURCE_LIMIT = 20;
 const SOURCE_BACKED_BRAIN_LIMIT = 3;
 const EXPLAINER_BRAIN_LIMIT = 8;
+const TECHNOLOGY_SUBJECTS = [
+  { id: 'ar', topic: /\bcertifyd(?:['’]s)?\s+ar\b/i, record: /\bar\b|augmented reality/i },
+  { id: 'fan', topic: /\bcertifyd(?:['’]s)?\s+fan\b/i, record: /\bfan\b/i },
+  { id: 'core', topic: /\bcertifyd(?:['’]s)?\s+core\b|\blocal[- ]first\b/i, record: /\bcore\b/i },
+  { id: 'identity', topic: /\bidentity\b|\bsigning keys?\b|\bcryptographic verification\b|\bsocial(?: media)? accounts?\b|\bverify\b.*\baccount\b|\baccount\b.*\b(?:verification|belongs|control)\b/i, record: /\bidentity\b|\baccount verification\b/i },
+  { id: 'publishing', topic: /\bpublish(?:ing|es)?\b/i, record: /\bpublishing\b/i },
+  { id: 'payments', topic: /\b(?:bitcoin|lightning|payments?|purchases?|invoices?)\b/i, record: /\b(?:payments?|bitcoin|lightning)\b/i },
+  { id: 'commerce', topic: /\b(?:commerce|purchases?|checkout)\b/i, record: /\bcommerce\b/i },
+  { id: 'access', topic: /\b(?:entitlements?|access|unlock|paid content)\b/i, record: /\b(?:access|entitlements?)\b/i },
+  { id: 'splits', topic: /\b(?:collaborators?|splits?)\b/i, record: /\bsplits?\b/i },
+  { id: 'network', topic: /\b(?:nodes?|network|peer[- ]to[- ]peer|creator[- ]operated infrastructure)\b/i, record: /\b(?:network|nodes?)\b/i },
+  { id: 'catalog', topic: /\b(?:catalog|library|work metadata)\b/i, record: /\bcatalog\b/i },
+  { id: 'receipts', topic: /\breceipts?\b/i, record: /\breceipts?\b/i },
+  { id: 'release-records', topic: /\brelease records?\b/i, record: /\brelease records?\b/i },
+];
 const MAX_INTERACTIVE_OUTPUT_TOKENS = 6000;
 const MAX_ARTICLE_GENERATION_TOKENS = 1200;
 const MAX_OPENAI_ARTICLE_GENERATION_TOKENS = 5000;
@@ -313,13 +328,15 @@ export class OpenAIGenerationProvider {
     if (!this.config.openai?.apiKey) {
       throw new GenerationConfigurationError('OpenAI is not configured. Set OPENAI_API_KEY before using AI generation.');
     }
+    const technology = isCertifydTechnologyRequest(input, groundedContext);
+    const technologyContext = technology ? certifydTechnologyContext(input, groundedContext) : null;
     const userKey = input.actorUserId || input.actorEmail || 'local-user';
     enterGenerationSlot(this.config, userKey);
     const started = Date.now();
     const stages = [];
     try {
-      const reasoningSystemInstruction = buildReasoningSystemInstruction();
-      const reasoningPrompt = buildReasoningPrompt(input, groundedContext);
+      const reasoningSystemInstruction = technology ? buildTechnologyInstruction('reasoning') : buildReasoningSystemInstruction();
+      const reasoningPrompt = technology ? buildTechnologyPrompt(input, groundedContext, technologyContext) : buildReasoningPrompt(input, groundedContext);
       const reasoningResponse = await this.createStructuredResponse({
         stage: 'editorial-reasoning',
         schemaName: 'certifyd_editorial_reasoning',
@@ -331,12 +348,15 @@ export class OpenAIGenerationProvider {
       });
       const reasoning = normalizeOpenAIReasoning(parseJsonContent(reasoningResponse.text), groundedContext);
       assertOpenAIReasoningReady(reasoning, groundedContext);
-      applyOpenAIReasoningWarnings(groundedContext, reasoning);
-      const postA1Reasoning = attachPostA1CertifydConcepts(reasoning, groundedContext);
-      const writingContext = buildOpenAIWritingContext(groundedContext, postA1Reasoning);
+      if (technology) {
+        if (!reasoning.worthPublishing) throw new GenerationValidationError(`Certifyd technology evidence is insufficient: ${reasoning.rejectionReason || 'No useful supported article can be written.'}`);
+        if (reasoning.editorialIdeaSupport.some((item) => item.factIds.some((id) => !technologyContext.allowedBrainSourceIds.includes(id)))) throw new GenerationValidationError('Technology reasoning must cite the supplied approved Brain record IDs.');
+      } else applyOpenAIReasoningWarnings(groundedContext, reasoning);
+      const postA1Reasoning = technology ? reasoning : attachPostA1CertifydConcepts(reasoning, groundedContext);
+      const writingContext = technologyContext || buildOpenAIWritingContext(groundedContext, postA1Reasoning);
       groundedContext.allowedBrainSourceIds = writingContext.allowedBrainSourceIds;
-      const articleSystemInstruction = buildArticleSystemInstruction();
-      const articlePrompt = buildArticlePrompt(input, groundedContext, postA1Reasoning, writingContext);
+      const articleSystemInstruction = technology ? buildTechnologyInstruction('writing') : buildArticleSystemInstruction();
+      const articlePrompt = technology ? buildTechnologyPrompt(input, groundedContext, writingContext, reasoning) : buildArticlePrompt(input, groundedContext, postA1Reasoning, writingContext);
       recordGenerationPromptDiagnostics(input, groundedContext, {
         provider: this.providerName,
         model: this.modelName,
@@ -346,6 +366,7 @@ export class OpenAIGenerationProvider {
         articlePrompt,
         reasoning: postA1Reasoning,
         writingContext,
+        evidenceMode: technology ? 'certifyd-technology' : 'industry',
       });
       const articleResponse = await this.createStructuredResponse({
         stage: 'article-writing',
@@ -558,11 +579,18 @@ export async function buildGroundedContext(config, input) {
     throw new GenerationConfigurationError('Cannot generate news article — attach at least one original article URL with a source summary before generation.');
   }
   const editorialBrief = buildEditorialBrief(input, externalSourceFacts);
+  const technologySubjects = certifydTechnologySubjects(input, { externalSourceFacts });
   await walkMarkdown(brainRoot, async (file) => {
     const relative = path.relative(brainRoot, file);
     const text = await fs.readFile(file, 'utf8');
     if (!isSafeBrainText(relative, text)) return;
     const metadata = extractBrainRecordMetadata(text);
+    if (technologySubjects.length) {
+      // Availability and unresolved observations constrain facts; they are never
+      // added to Supported Current Claims or used to approve a record.
+      metadata.qualifiedClaims.push(...['Current Availability', 'Unresolved Issues']
+        .map((heading) => extractMarkdownSection(text, heading)).filter(Boolean));
+    }
     sourceRecords.push({
       id: sourceId(relative),
       path: `content-agent/knowledge/${relative}`,
@@ -655,6 +683,8 @@ export async function buildGroundedContext(config, input) {
       editorialThesisGenerated: editorialBrief.possibleThesis,
       editorialBrief,
       brainSelectionStage: 'after-editorial-brief',
+      brainSelectionMode: technologySubjects.length ? 'certifyd-technology' : 'industry',
+      technologySubjects: technologySubjects.map((subject) => subject.id),
       selectedSourceCount: requestedSourceIds.length || externalSourceFacts.length,
       externalSourcesLoaded: externalSourceFacts.length,
       externalSourceIdsLoaded: externalSourceFacts.map((source) => source.id),
@@ -1003,18 +1033,80 @@ function formatSourceOnlyEditorialBriefForPrompt(brief = {}) {
   ].join('\n');
 }
 
-function buildArticleSystemInstruction() {
+// Classify the manual topic, not incidental brand mentions or its generated
+// industry brief. Attached sources and news requests retain source-only rules.
+function isCertifydTechnologyRequest(input = {}, context = {}) {
+  return certifydTechnologySubjects(input, context).length > 0;
+}
+
+function certifydTechnologySubjects(input = {}, context = {}) {
+  if (input.trendOpportunityId || parseIdList(input.trendSourceItemIds, 40).length || context.externalSourceFacts?.length || looksLikeExternalNewsArticle(input)) return [];
+  const topic = String(input.topic || input.workingTitle || '').trim();
+  const request = topic.replace(/^(?:please\s+)?(?:write|draft|create|generate)\s+(?:(?:an?|the)\s+)?(?:(?:article|explainer|blog(?:\s+post)?)\s+)?(?:about\s+)?/i, '')
+    .replace(/^(?:please\s+)?(?:explain|describe|explore|understand)\s+/i, '');
+  const brandLed = /^(?:(?:how|why|what)(?:\s+(?:does|do|is|are|can|to|makes))?\s+)?certifyd(?:['’]s)?\b/i.test(request);
+  const capabilityLed = /^(?:how|why|what)\b/i.test(request) && /\b(?:in|with|using|through|of|by)\s+certifyd\b/i.test(request);
+  if (!brandLed && !capabilityLed) return [];
+  const subjects = TECHNOLOGY_SUBJECTS.filter((subject) => subject.topic.test(topic));
+  if (!brandLed && !subjects.some((subject) => !['core', 'fan', 'ar'].includes(subject.id))) return [];
+  return subjects;
+}
+
+function primaryTechnologySubjects(subjects) {
+  const product = subjects.find((subject) => ['ar', 'fan'].includes(subject.id));
+  return product ? [product] : subjects.filter((subject) => subject.id !== 'core').length
+    ? subjects.filter((subject) => subject.id !== 'core') : subjects;
+}
+
+function technologySubjectScore(source, subjects) {
+  const heading = `${path.basename(source.path || '', '.md').replace(/[-_]/g, ' ')} ${source.title || ''}`;
+  const primary = primaryTechnologySubjects(subjects);
+  return subjects.reduce((score, subject) => score + (subject.record.test(heading) ? (primary.includes(subject) ? 30 : 10) : 0), 0);
+}
+
+function isApprovedTechnologySource(source) {
+  return source.reviewState === 'APPROVED' && /^(BETA|LIVE|CURRENT|APPROVED)$/i.test(source.currentStatus || '')
+    && !/^LOW$/i.test(source.confidence || '')
+    && [...(source.supportedClaims || []), ...(source.safeWording || [])].some(isPublishableBrainFact);
+}
+
+function certifydTechnologyContext(input, context) {
+  const subjects = certifydTechnologySubjects(input, context);
+  const approvedIds = new Set((context.sourceRecords || []).filter(isApprovedTechnologySource).map((record) => record.id));
+  const knowledge = (context.approvedKnowledge || []).filter((record) => approvedIds.has(record.id) && technologySubjectScore(record, subjects) > 0 && publishableBrainFacts(record).length);
+  // Generic Core claims mentioning AR/Fan do not substitute for a record about it.
+  if (!knowledge.some((record) => technologySubjectScore(record, primaryTechnologySubjects(subjects)) > 0)) throw new GenerationConfigurationError('Cannot generate this Certifyd technology article: relevant approved Brain documentation is missing or insufficient. No model request was made.');
+  return { approvedKnowledge: knowledge, allowedBrainSourceIds: knowledge.map((record) => record.id) };
+}
+
+function buildTechnologyInstruction(stage) {
   return [
-    buildSystemInstruction(),
-    '',
-    'Return only JSON matching the requested schema.',
-    'Use the verified source facts, advisory editorial notes and selected Certifyd Brain together as the writing context.',
-    'The canonical editorial thesis is the source-of-truth for the article’s structural interpretation, Certifyd relevance and image brief.',
-    'You own the final thesis only inside the boundaries of the canonical editorial thesis, which is the source-of-truth. Use source-only reasoning as advisory analysis; challenge it, deepen it, combine it or replace its proposed thesis only when doing so reinforces the canonical thesis instead of replacing it with a generic commerce, provenance, catalog-context or creator-foundation angle.',
-    'Distinguish news facts, the first structural interpretation, the deeper architectural change, and supporting operational consequences.',
-    'After identifying the first structural interpretation, ask what larger change makes that interpretation possible or necessary.',
-    'Do not confuse operational implications such as metadata, attribution, records, transparency, workflow continuity, release context, settlement, discovery, commerce, permissions, or administrative complexity with the deepest thesis.',
-    'A reasoned editorial inference may be drawn from supported facts, but it must read as analysis rather than falsely attributed reporting.',
+    stage === 'reasoning' ? 'Return only JSON matching the existing editorial reasoning schema. This is private reasoning, not the article.' : 'Return only JSON matching the existing article schema. Generate the usual title, suggestedSlug, excerpt, tags, seoTitle, seoDescription, focusKeyword, secondaryKeywords, category, coverImage, bodyMarkdown, claims and warnings; the dashboard assigns the author.',
+    'This is an explicitly requested Certifyd technology article. Approved Certifyd Brain and product documentation are the primary factual sources; no external news event is required.',
+    'Explain a specific Certifyd technology: how it works, why it matters, and what creators or fans can actually do. Use concrete supported workflows and plain language for intelligent nontechnical readers. Preserve technical accuracy and depth.',
+    'Use the supplied supported facts and their qualifications only. Never invent cryptographic algorithms, UI controls, steps, integrations, customers, fees, guarantees or implementation details. Generic positioning is not evidence of a technical mechanism.',
+    'Current and beta capabilities must remain distinct from planned architecture. Identify beta features accurately. Omit unverified details; do not turn roadmap or unclear items into released functionality.',
+    'Respect qualifiedClaims and prohibitedClaims silently; never narrate internal governance, source IDs or review rules in public prose. Separate documented facts from clearly reasoned explanation.',
+    stage === 'reasoning' ? 'Use eventSummary for the technology question, editorialTension for the practical creator problem, verifiedFacts for documented facts, and articleProgression for at least four useful steps if worthPublishing=true. Cite exact approved Brain record IDs in editorialIdeaSupport.factIds. Return certifydConcepts as []. Set worthPublishing=false with a reason if the documentation cannot support a useful, specific article.' : 'Use only ALLOWED_BRAIN_SOURCE_IDS in claims[].sourceIds. Do not set approval or publication fields. Do not pad the article with repeated creator-operated infrastructure claims; let length follow supported substance. Include a useful next step only if documented.',
+    'The brand is Certifyd. Preserve its creator-operated infrastructure perspective through the specific supported technical advantage, without generic promotional filler or keyword stuffing.',
+    ...articleEditorialVoice(),
+  ].join('\n');
+}
+
+function buildTechnologyPrompt(input, context, writingContext, reasoning) {
+  return [
+    `Topic: ${input.topic || input.workingTitle}`, `Audience: ${input.audience || input.targetAudience || 'Creators'}`,
+    `Objective: ${input.objective || input.businessObjective || ''}`, `Style: ${input.writingStyle || ''}`, `Founder instructions: ${input.sourceRestrictions || ''}`,
+    'APPROVED CERTIFYD TECHNOLOGY EVIDENCE:',
+    JSON.stringify(writingContext.approvedKnowledge.map((record) => ({ ...formatBrainSourceForPrompt(record), qualifiedClaims: record.qualifiedClaims || [], prohibitedClaims: record.prohibitedClaims || [] }))),
+    'ALLOWED_BRAIN_SOURCE_IDS:', JSON.stringify(writingContext.allowedBrainSourceIds),
+    'SILENT CLAIM CONSTRAINTS:', formatSilentBrainConstraints(writingContext.approvedKnowledge, context.prohibitedClaims),
+    reasoning ? `PRIVATE EDITORIAL DIRECTION:\n${formatEditorialDirectionForWriter(reasoning)}` : 'Find a useful, non-repetitive technical explanation grounded in this evidence. Do not require or invent outside news.',
+  ].join('\n');
+}
+
+function articleEditorialVoice() {
+  return [
     'Write like an informed technology/music-business publication, not a compliance memo.',
     'Use plain, direct language for intelligent creators, musicians, producers and general music-business readers. Aim roughly for Grade 8 to 10 readability without simplifying the underlying reasoning.',
     'Write with the voice of an intelligent, opinionated founder who understands the creative industries and cares about creators: conversational without becoming casual, confident without exaggeration, curious, skeptical of centralized systems and willing to make a clear source-backed argument.',
@@ -1033,6 +1125,22 @@ function buildArticleSystemInstruction() {
     'Do not mention the validation system, source-support restrictions, uncertainty machinery, prompt rules, or internal editorial rules in article prose.',
     'Do not add defensive disclaimers merely to show what the article is not claiming.',
     'When uncertainty is genuinely required, express it naturally and briefly, for example “The case remains unresolved” or “The ruling does not decide the underlying dispute.”',
+  ];
+}
+
+function buildArticleSystemInstruction() {
+  return [
+    buildSystemInstruction(),
+    '',
+    'Return only JSON matching the requested schema.',
+    'Use the verified source facts, advisory editorial notes and selected Certifyd Brain together as the writing context.',
+    'The canonical editorial thesis is the source-of-truth for the article’s structural interpretation, Certifyd relevance and image brief.',
+    'You own the final thesis only inside the boundaries of the canonical editorial thesis, which is the source-of-truth. Use source-only reasoning as advisory analysis; challenge it, deepen it, combine it or replace its proposed thesis only when doing so reinforces the canonical thesis instead of replacing it with a generic commerce, provenance, catalog-context or creator-foundation angle.',
+    'Distinguish news facts, the first structural interpretation, the deeper architectural change, and supporting operational consequences.',
+    'After identifying the first structural interpretation, ask what larger change makes that interpretation possible or necessary.',
+    'Do not confuse operational implications such as metadata, attribution, records, transparency, workflow continuity, release context, settlement, discovery, commerce, permissions, or administrative complexity with the deepest thesis.',
+    'A reasoned editorial inference may be drawn from supported facts, but it must read as analysis rather than falsely attributed reporting.',
+    ...articleEditorialVoice(),
     'When selected Certifyd Brain is supplied, use it to develop a meaningful Certifyd perspective where it materially deepens the source-backed argument.',
     'Let the outside story lead naturally to its architectural question, then introduce Certifyd where it becomes relevant to that argument. Do not bolt on a formulaic Certifyd section or make the transition read like an advertisement; vary where and how Certifyd enters according to the story.',
     'When Certifyd is relevant, explain why the source development creates a stronger need for creator-controlled infrastructure before listing what Certifyd provides.',
@@ -1599,7 +1707,10 @@ function recordOpenAIGenerationPromptDiagnostics(input, groundedContext, details
     promptTemplateVersion: 'dashboard-openai-responses-v1',
     modelProvider: details.provider,
     model: details.model,
-    finalPromptStructure: [
+    finalPromptStructure: details.evidenceMode === 'certifyd-technology' ? [
+      'stage A: editorial reasoning from approved Certifyd technology evidence',
+      'stage B: same article schema, using approved Brain as primary evidence',
+    ] : [
       'stage A: editorial reasoning from source facts',
       'stage A: story-specific thesis and selected Certifyd concepts',
       'stage B: article writing from verified source package, advisory source observations and selected Certifyd Brain',
@@ -3416,6 +3527,7 @@ function normalizeBlogCoverImage(value, context = {}) {
 }
 
 function selectRelevantSources(sources, input, externalSourceFacts = [], editorialBrief = {}) {
+  const technologySubjects = certifydTechnologySubjects(input, { externalSourceFacts });
   const sourceQuery = externalSourceFacts.map((source) => `${source.title || ''} ${sourceTextForEditorial(source)} ${(source.categories || []).join(' ')}`).join(' ');
   const canonical = editorialBrief.canonicalThesis || {};
   const canonicalQuery = canonical.mode === 'centralized-intermediary'
@@ -3431,6 +3543,15 @@ function selectRelevantSources(sources, input, externalSourceFacts = [], editori
   const selectionLimit = sourceBacked ? SOURCE_BACKED_BRAIN_LIMIT : EXPLAINER_BRAIN_LIMIT;
   const queryTerms = [...new Set(query.split(/[^a-z0-9]+/).filter((term) => term.length > 3 && !/^(brain|source|story|article|certifyd|about|with|from|that|this|their|will|should|would|relevant|approved|records|company|companies|industry|creator|creators|business)$/.test(term)))].slice(0, sourceBacked ? 14 : 20);
   const scored = sources.map((source) => {
+    if (technologySubjects.length) {
+      const relevance = technologySubjectScore(source, technologySubjects);
+      const score = isApprovedTechnologySource(source) && relevance > 0
+        ? relevance + termOverlapScore(String(input.topic || input.workingTitle || '').toLowerCase(), `${source.title} ${(source.supportedClaims || []).join(' ')}`.toLowerCase()) : 0;
+      return {
+        source: { ...source, selectionScore: score, primarySelectionTheme: 'Certifyd technology', selectionThemes: technologySubjects.map((subject) => subject.id), selectionReason: `explicit Certifyd technology subject; title/capability relevance; score ${score}` },
+        score,
+      };
+    }
     const haystack = `${source.path} ${source.title} ${source.excerpt}`.toLowerCase();
     const themes = matchedBrainThemes(source);
     let score = brainBaseScore(source);
@@ -3459,7 +3580,7 @@ function selectRelevantSources(sources, input, externalSourceFacts = [], editori
   const ranked = scored.sort((a, b) => b.score - a.score || a.source.path.localeCompare(b.source.path));
   const selected = [];
   const selectedIds = new Set();
-  if (!sourceBacked) {
+  if (!sourceBacked && !technologySubjects.length) {
     for (const item of ranked) {
       if (/content-agent\/knowledge\/(?:facts\/approved-public-claims|products\/core)\.md$/i.test(item.source.path)) addSelected(item.source);
     }
@@ -3472,6 +3593,7 @@ function selectRelevantSources(sources, input, externalSourceFacts = [], editori
 
   function addSelected(source) {
     if (selectedIds.has(source.id) || selected.length >= selectionLimit) return;
+    if (technologySubjects.length && source.selectionScore <= 0) return;
     if (sourceBacked && isAvoidedBrainSource(source, avoidText, sourceQuery, selectedConceptText)) return;
     if (sourceBacked && !brainSourceMatchesSelectedConcept(source, selectedConceptText, storyThemes)) return;
     selectedIds.add(source.id);

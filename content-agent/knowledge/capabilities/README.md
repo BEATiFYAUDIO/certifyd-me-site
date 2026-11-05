@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Capability files describe what Certifyd does or intends to do at the functional level. They are not product pages, marketing copy, or implementation documentation.
+Capability files describe what Certifyd does or intends to do at the functional level. They are not product pages or marketing copy. Verified mechanism/workflow sections can now link to exact implementation and test evidence, with public facts kept separate from internal verification metadata.
 
 ## Capability Files Versus Product Files
 
@@ -54,8 +54,12 @@ Technical verification should later update these files with implementation evide
 
 ## Initial Source Set
 
-Initial capability files use only the current public and investor knowledge base. They do not inspect application code or additional repositories.
+The July 2026 first-pass files used only public and investor knowledge and did not inspect application code. The November 5, 2026 enrichment adds explicitly scoped implementation/test evidence for the records listed in `consistency-review.md`. That enrichment does not change the status taxonomy or turn source inspection into proof of production availability.
 
 ## Update History
 
 - 2026-07-26: Created first-pass capability structure from existing public and investor knowledge. Approval status: first-pass internal knowledge, not public claim approval.
+
+## Technical Evidence Use
+
+Use Supported Current Claims for publishable facts. Keep exact paths, test results, source revisions, failures, historical comparisons and verification status in private research context. Qualified and prohibited claims are boundaries, not article filler. Successful source/fixture verification is not confirmation of a shipped build. Failing tests and uncertain workflow observations belong in the explicitly unapproved consistency audit and must never be promoted into supported claims. Consult `products/ar.md` for AR rather than creating a duplicate AR capability definition. Preserve unresolved conflicts and inspect the intended build before making deployment-specific claims.
