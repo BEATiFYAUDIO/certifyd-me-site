@@ -7,6 +7,19 @@
     <language>en</language>
     <lastBuildDate>Fri, 06 Nov 2026 00:00:00 GMT</lastBuildDate>
     <item>
+      <title>How to Set Up Cloudflare Tunnel for Certifyd Core</title>
+      <link>https://certifyd.me/blog/how-to-setup-cloudflare-tunnel-certifyd-core/</link>
+      <guid>https://certifyd.me/blog/how-to-setup-cloudflare-tunnel-certifyd-core/</guid>
+      <description>A step-by-step guide to connecting Certifyd Core Beta 27 to the internet using Cloudflare Tunnel, from domain nameservers and DNS to public sharing.</description>
+      <pubDate>Fri, 06 Nov 2026 00:00:00 GMT</pubDate>
+      <category>Certifyd Core</category>
+      <category>Cloudflare Tunnel</category>
+      <category>creator infrastructure</category>
+      <category>music technology</category>
+      <category>creator tools</category>
+      <category>self-hosting</category>
+    </item>
+    <item>
       <title>Music Ally’s Startups 2026 Report Shows Music’s Infrastructure Questions Are Still Open</title>
       <link>https://certifyd.me/blog/music-ally-startups-2026-creator-infrastructure/</link>
       <guid>https://certifyd.me/blog/music-ally-startups-2026-creator-infrastructure/</guid>
