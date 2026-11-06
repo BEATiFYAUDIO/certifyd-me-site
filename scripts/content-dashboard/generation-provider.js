@@ -343,7 +343,9 @@ export class OpenAIGenerationProvider {
         schema: EDITORIAL_REASONING_SCHEMA,
         systemInstruction: reasoningSystemInstruction,
         userPrompt: reasoningPrompt,
-        maxOutputTokens: Math.min(this.config.openai.maxOutputTokens, 1800),
+        // Technology reasoning maps qualified technical evidence into the same
+        // schema; allow the configured budget while preserving the industry cap.
+        maxOutputTokens: Math.min(this.config.openai.maxOutputTokens, technology ? MAX_OPENAI_ARTICLE_GENERATION_TOKENS : 1800),
         abortSignal,
       });
       const reasoning = normalizeOpenAIReasoning(parseJsonContent(reasoningResponse.text), groundedContext);
@@ -385,7 +387,7 @@ export class OpenAIGenerationProvider {
         stages,
       };
       try {
-        return validateGeneratedArticle(article, groundedContext);
+        return validateGeneratedArticle(article, groundedContext, { certifydTechnology: technology });
       } catch (error) {
         if (!(error instanceof GenerationValidationError) || !isRepairablePostGenerationError(error)) throw error;
         const revisionPrompt = buildArticleRevisionPrompt(articlePrompt, article, error.warnings, error.validationFindings);
@@ -405,7 +407,7 @@ export class OpenAIGenerationProvider {
           tokenUsage: mergeOpenAITokenUsage(stages.map((stage) => stage.tokenUsage)),
           stages,
         };
-        const validated = validateGeneratedArticle(revisedArticle, groundedContext, { preserveCertifydNeedFailure: true });
+        const validated = validateGeneratedArticle(revisedArticle, groundedContext, { preserveCertifydNeedFailure: true, certifydTechnology: technology });
         logPostGenerationValidationFindings(error.validationFindings, true);
         return validated;
       }
@@ -435,7 +437,13 @@ export class OpenAIGenerationProvider {
         store: false,
       }, { signal: abortSignal, timeout: positiveNumber(this.config.openai?.timeoutMs, DEFAULT_OPENAI_TIMEOUT_MS) });
       if (response.status === 'incomplete') {
-        throw new GenerationValidationError(`OpenAI returned an incomplete ${stage} response. Increase OPENAI_MAX_OUTPUT_TOKENS or reduce the requested draft size.`);
+        const reason = response.incomplete_details?.reason;
+        const detail = reason === 'max_output_tokens'
+          ? `: max_output_tokens (stage limit: ${maxOutputTokens}). Reduce the request scope or review this stage's bounded token budget.`
+          : reason === 'content_filter'
+            ? ': content_filter.'
+            : '; the API did not report a recognized reason.';
+        throw new GenerationValidationError(`OpenAI returned an incomplete ${stage} response${detail} No automatic retry was made.`);
       }
       const text = extractOpenAIResponseText(response);
       if (!text.trim()) throw new GenerationValidationError(`OpenAI returned no ${stage} content.`);
@@ -723,7 +731,7 @@ export function validateGeneratedArticle(value, groundedContext, options = {}) {
   if (value.coverImage && typeof value.coverImage !== 'string') throw new GenerationValidationError('Generated coverImage is malformed.');
   if (value.bodyMarkdown.length > 18000) throw new GenerationValidationError('Generated article is too long.');
   value.bodyMarkdown = repairInternalContextHeadings(value.bodyMarkdown);
-  if (detectInternalContextLeak(value.bodyMarkdown).length) {
+  if (detectInternalContextLeak(value.bodyMarkdown, { allowProceduralSteps: options.certifydTechnology === true && !groundedContext.externalSourceFacts?.length }).length) {
     throw new GenerationValidationError('Generation failed validation — internal context leaked into article.');
   }
   const governanceLeakHits = detectInternalGovernanceLeak(value.bodyMarkdown);
@@ -3879,8 +3887,13 @@ function detectProhibitedLanguage(bodyMarkdown) {
   return warnings;
 }
 
-function detectInternalContextLeak(bodyMarkdown) {
-  const text = String(bodyMarkdown || '');
+function detectInternalContextLeak(bodyMarkdown, { allowProceduralSteps = false } = {}) {
+  // A technology walkthrough may have public "Step 1: Download Core" headings.
+  // Check their actual labels for leaks; keep bare steps and private rubric
+  // labels blocked. This only changes detection, never the article's copy.
+  const text = allowProceduralSteps
+    ? String(bodyMarkdown || '').replace(/^([ \t]{0,3}(?:#{1,6}[ \t]+)?)step[ \t]+[1-9]\d*[ \t]*[-—:][ \t]*(\S[^\r\n]*)$/gim, '$1$2')
+    : String(bodyMarkdown || '');
   const internalHeadings = [
     'Definition',
     'Source Scope',

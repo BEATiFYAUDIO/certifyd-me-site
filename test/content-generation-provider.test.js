@@ -496,6 +496,7 @@ test('normal generation uses OpenAI Responses with separate reasoning and writin
   assert.equal(calls[1].text.format.name, 'certifyd_article');
   assert.equal(calls[0].model, 'gpt-5.6-terra');
   assert.equal(calls[1].model, 'gpt-5.6-terra');
+  assert.equal(calls[0].max_output_tokens, 1800);
   assert.equal(calls[1].max_output_tokens, 5000);
 });
 
@@ -2871,16 +2872,18 @@ test('malformed OpenAI model output fails safely', async () => {
   );
 });
 
-test('incomplete OpenAI article response fails with token-limit guidance', async () => {
+test('incomplete OpenAI article response reports its actual token limit without retrying', async () => {
+  const calls = [];
   const config = await makeConfig();
   const context = await makeContext(config);
   const provider = new OpenAIGenerationProvider(config, {
-    openaiClient: mockOpenAIClient({ incompleteAt: 'article' }),
+    openaiClient: mockOpenAIClient({ calls, incompleteAt: 'article' }),
   });
   await assert.rejects(
     () => provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context),
-    /OpenAI returned an incomplete article-writing response\. Increase OPENAI_MAX_OUTPUT_TOKENS/,
+    /incomplete article-writing response: max_output_tokens \(stage limit: 5000\)/,
   );
+  assert.equal(calls.length, 2, 'Incomplete writing must not trigger a revision or retry');
 });
 
 test('OpenAI API failure creates no bogus draft', async () => {
@@ -4658,4 +4661,177 @@ test('Core installation regression: an external installation story retains indus
   assert.equal(calls.length, 1);
   assert.match(calls[0].instructions, /Stage A1: source-only thesis evaluation/);
   assert.doesNotMatch(calls[0].input, /APPROVED CERTIFYD TECHNOLOGY EVIDENCE/);
+});
+
+async function coreInstallationWritingFixture(t) {
+  const config = await realTechnologyBrain(t);
+  const input = manualTechnologyInput(coreInstallationTopic);
+  const context = await buildGroundedContext(config, input);
+  const core = context.approvedKnowledge.find((record) => record.id === 'brain:products/core');
+  const reasoning = validReasoning({
+    verifiedFacts: core.supportedClaims.slice(0, 2),
+    editorialIdeaSupport: [{ idea: 'Explain the documented local Core workflow.', factIds: [core.id] }],
+  });
+  const article = validArticle(core.id, {
+    title: coreInstallationTopic,
+    bodyMarkdown: `# ${coreInstallationTopic}\n\n${core.supportedClaims.slice(0, 2).join(' ')}\n`,
+  });
+  return { config, input, context, reasoning, article };
+}
+
+test('Core installation headings: reader-facing numbered steps pass without altering copy or extra calls', async (t) => {
+  const { config, input, context, reasoning, article } = await coreInstallationWritingFixture(t);
+  const body = article.bodyMarkdown + [
+    '', '## Step 1: Download Certifyd Core', '', 'Follow the documented installation guide for your operating system.',
+    '', '### Step 2 — Run Core on your computer', '', 'Keep the Core state on your own device.',
+    '', 'Step 3 - Read the setup guidance', '', 'Use the documentation to check the next supported action.', '',
+  ].join('\n');
+  const calls = [];
+  const provider = new OpenAIGenerationProvider(config, { openaiClient: mockOpenAIClient({ calls, reasoning, article: { ...article, bodyMarkdown: body } }) });
+  const result = await provider.generateArticle(input, context);
+  assert.equal(result.bodyMarkdown, body.trim(), 'Step headings are reader-facing copy, not text to strip or rewrite');
+  assert.equal(calls.length, 2, 'The existing reasoning and writing calls are sufficient');
+});
+
+test('Core installation headings: internal labels and editorial steps remain blocked without retries', async (t) => {
+  const { config, input, context, reasoning, article } = await coreInstallationWritingFixture(t);
+  for (const heading of [
+    '## STEP 1 - IDENTIFY WHAT ACTUALLY HAPPENED',
+    '## Step 2: FIND THE EDITORIAL TENSION',
+    '## Step 3: Brain Context',
+    'Step 4 - Approved Certifyd Knowledge',
+    '## Brain Context',
+    '## Step 1',
+  ]) {
+    const calls = [];
+    const provider = new OpenAIGenerationProvider(config, { openaiClient: mockOpenAIClient({ calls, reasoning, article: { ...article, bodyMarkdown: `${article.bodyMarkdown}\n${heading}\nPrivate planning text.\n` } }) });
+    await assert.rejects(provider.generateArticle(input, context), /internal context leaked into article/, heading);
+    assert.equal(calls.length, 2, 'Actual internal-context leaks must not trigger a repair request');
+  }
+});
+
+test('Core installation headings: industry validation still rejects the same numbered heading', async (t) => {
+  const { config, input, article } = await coreInstallationWritingFixture(t);
+  await writeTrendSources(config, [{ id: 'offline-industry', title: 'A creator hardware company changes installation policy', summary: 'The company changed its installation requirements for creator computers. Its support policy now applies to newly configured machines.', articleUrl: 'https://example.test/installation-policy', publisher: 'Offline source fixture' }]);
+  const industryInput = { ...input, trendSourceItemIds: 'offline-industry' };
+  const industryContext = await buildGroundedContext(config, industryInput);
+  const bodyMarkdown = `${article.bodyMarkdown}\n## Step 1: Download Certifyd Core\nRead the setup guide.\n`;
+  assert.throws(() => validateGeneratedArticle({ ...article, bodyMarkdown }, industryContext), /internal context leaked into article/);
+  const calls = [];
+  const provider = new OpenAIGenerationProvider(config, { openaiClient: mockOpenAIClient({ calls, article: { ...article, bodyMarkdown } }) });
+  await assert.rejects(provider.generateArticle(industryInput, industryContext), /internal context leaked into article/);
+  assert.match(calls[0].instructions, /source-only thesis evaluation/);
+  assert.equal(calls.length, 2);
+});
+
+const namedTunnelTopic = 'Certifyd Core: Connecting a Named Cloudflare Tunnel with cloudflared';
+
+async function namedTunnelReasoningFixture(t) {
+  const config = await makeConfig();
+  t.after(() => fs.rm(config.siteRoot, { recursive: true, force: true }));
+  const capabilityDir = path.join(config.agentRoot, 'knowledge/capabilities');
+  await fs.mkdir(capabilityDir, { recursive: true });
+  await fs.writeFile(path.join(capabilityDir, 'core-named-tunnels.md'), [
+    '# Certifyd Core Named Cloudflare Tunnels and cloudflared',
+    '', '## Current Status', '', '`BETA`',
+    '', '## Confidence', '', '`HIGH`',
+    '', '## Review State', '', 'APPROVED',
+    '', '## Supported Current Claims', '',
+    '- The documented beta workflow uses cloudflared on the Core host to connect a named Cloudflare Tunnel to a creator hostname.',
+    '- The documented public route targets http://127.0.0.1:4010 and keeps the private operator dashboard on port 4000 separate.',
+    '- Core public sharing requires explicit enablement; a healthy connector alone does not establish sharing or payment readiness.',
+    '', '## Qualified Claims', '',
+    '- This is a test-only evidence fixture for request budgets, not verification of released functionality.',
+  ].join('\n'));
+  const input = manualTechnologyInput(namedTunnelTopic);
+  const context = await buildGroundedContext(config, input);
+  const record = context.approvedKnowledge.find((item) => item.id === 'brain:capabilities/core-named-tunnels');
+  assert.ok(record, 'The approved named-tunnel documentation must reach technology reasoning');
+  const reasoning = validReasoning({
+    verifiedFacts: record.supportedClaims.slice(0, 3),
+    editorialIdeaSupport: [{ idea: 'Explain the documented public route and sharing workflow.', factIds: [record.id] }],
+  });
+  const article = validArticle(record.id, {
+    title: namedTunnelTopic,
+    bodyMarkdown: `# ${namedTunnelTopic}\n\n${record.supportedClaims.slice(0, 2).join(' ')}\n`,
+  });
+  return { config, input, context, reasoning, article };
+}
+
+test('technology reasoning budget: named-tunnel response can exceed the industry limit within the configured ceiling', async (t) => {
+  const { config, input, context, reasoning, article } = await namedTunnelReasoningFixture(t);
+  const calls = [];
+  const mocked = mockOpenAIClient({ calls, reasoning, article });
+  const provider = new OpenAIGenerationProvider(config, { openaiClient: { responses: {
+    create: async (payload) => {
+      const response = await mocked.responses.create(payload);
+      if (payload.text.format.name === 'certifyd_editorial_reasoning') {
+        // Simulate a response needing 2,500 total output/reasoning tokens.
+        // The former 1,800-token cap must reproduce the production failure.
+        if (payload.max_output_tokens < 2500) return {
+          ...response, status: 'incomplete', output_text: '{"eventSummary"',
+          incomplete_details: { reason: 'max_output_tokens' },
+        };
+        response.usage = { input_tokens: 100, output_tokens: 2500, total_tokens: 2600 };
+      }
+      return response;
+    },
+  } } });
+  const result = await provider.generateArticle(input, context);
+  assert.equal(result.status, 'draft');
+  assert.equal(calls.length, 2, 'Only the established reasoning and writing requests');
+  assert.equal(calls[0].max_output_tokens, 5000);
+  assert.equal(calls[1].max_output_tokens, 5000);
+  assert.equal(provider.lastRequest.stages[0].tokenUsage.completionTokens, 2500);
+  assert.match(calls[0].instructions, /explicitly requested Certifyd technology article/);
+  assert.ok(technologyEvidenceIn(calls[0]).some((item) => item.sourceId === 'brain:capabilities/core-named-tunnels'));
+});
+
+test('technology reasoning budget: configured lower limits and the existing 5000-token cap are respected', async (t) => {
+  const { config, input, context, reasoning, article } = await namedTunnelReasoningFixture(t);
+  for (const [configured, expected] of [[1024, 1024], [6000, 5000]]) {
+    config.openai.maxOutputTokens = configured;
+    const calls = [];
+    const provider = new OpenAIGenerationProvider(config, { openaiClient: mockOpenAIClient({ calls, reasoning, article }) });
+    await provider.generateArticle(input, context);
+    assert.equal(calls.length, 2);
+    assert.equal(calls[0].max_output_tokens, expected);
+    assert.equal(calls[1].max_output_tokens, expected);
+  }
+});
+
+test('technology reasoning budget: incomplete reasoning reports the stage limit and stops before writing or draft creation', async (t) => {
+  const { config, input, context } = await namedTunnelReasoningFixture(t);
+  const calls = [];
+  const provider = new OpenAIGenerationProvider(config, { openaiClient: mockOpenAIClient({ calls, incompleteAt: 'reasoning' }) });
+  await assert.rejects(provider.generateArticle(input, context), (error) => {
+    assert.ok(error instanceof GenerationValidationError);
+    assert.match(error.message, /incomplete editorial-reasoning response: max_output_tokens \(stage limit: 5000\)/);
+    assert.doesNotMatch(error.message, /Increase OPENAI_MAX_OUTPUT_TOKENS/);
+    return true;
+  });
+  assert.equal(calls.length, 1, 'No automatic retry, writing or repair request');
+  await assert.rejects(fs.access(config.outputDir), { code: 'ENOENT' });
+});
+
+test('incomplete reasoning reasons: filtered and unknown responses are never misreported as token exhaustion', async () => {
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  for (const reason of ['content_filter', undefined, 'unknown-provider-detail']) {
+    let count = 0;
+    const provider = new OpenAIGenerationProvider(config, { openaiClient: { responses: {
+      create: async () => {
+        count += 1;
+        return { status: 'incomplete', incomplete_details: reason ? { reason } : null, output_text: 'Partial unvalidated output' };
+      },
+    } } });
+    await assert.rejects(provider.generateArticle({ topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context), (error) => {
+      assert.ok(error instanceof GenerationValidationError);
+      assert.match(error.message, /incomplete editorial-reasoning response/);
+      assert.match(error.message, reason === 'content_filter' ? /content_filter/ : /did not report a recognized reason/);
+      assert.doesNotMatch(error.message, /max_output_tokens|Increase OPENAI_MAX_OUTPUT_TOKENS|unknown-provider-detail|Partial unvalidated output/);
+      return true;
+    });
+    assert.equal(count, 1);
+  }
 });
