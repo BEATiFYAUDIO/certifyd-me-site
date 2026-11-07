@@ -57,15 +57,21 @@ class CoreReleaseDocsTest(unittest.TestCase):
     def test_live_guide_requires_reviewed_content_even_when_version_matches(self):
         downloads = (ROOT / "downloads/index.html").read_text()
         reviewed_guide = module.generated_guide(self.data)
+        beacon = '<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/test" data-cf-beacon=\'{}\'></script>\n'
+        deployed_guide = reviewed_guide.replace("</footer>\n", "</footer>\n" + beacon)
         stale_guide = reviewed_guide.replace(
             "On a Debian-compatible desktop, open the matching .deb with the graphical package installer",
             "Extract the Linux archive and run ./install-desktop.sh",
-        )
+        ).replace("</footer>\n", "</footer>\n" + beacon)
         self.assertNotEqual(stale_guide, reviewed_guide)
         self.assertIn('content="0.1.0-beta.27"', stale_guide)
-        with patch.object(module, "fetch_text", side_effect=[downloads, reviewed_guide]):
+        with patch.object(module, "fetch_text", side_effect=[downloads, deployed_guide]):
             module.verify_live(self.data)
         with patch.object(module, "fetch_text", side_effect=[downloads, stale_guide]):
+            with self.assertRaisesRegex(ValueError, "Published guide content differs"):
+                module.verify_live(self.data)
+        unexpected_script = reviewed_guide.replace("</footer>\n", "</footer>\n<script src=\"/unreviewed.js\"></script>\n")
+        with patch.object(module, "fetch_text", side_effect=[downloads, unexpected_script]):
             with self.assertRaisesRegex(ValueError, "Published guide content differs"):
                 module.verify_live(self.data)
 
