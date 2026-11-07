@@ -4,6 +4,7 @@ import json
 import re
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("core_release_docs", ROOT / "scripts/sync-core-release.py")
@@ -52,6 +53,21 @@ class CoreReleaseDocsTest(unittest.TestCase):
         self.assertIn('content="noindex"', archived)
         for path in re.findall(r'(?:src|href)="(/core/guide/images/[^"]+)"', archived):
             self.assertTrue((ROOT / path.lstrip("/")).is_file(), path)
+
+    def test_live_guide_requires_reviewed_content_even_when_version_matches(self):
+        downloads = (ROOT / "downloads/index.html").read_text()
+        reviewed_guide = module.generated_guide(self.data)
+        stale_guide = reviewed_guide.replace(
+            "On a Debian-compatible desktop, open the matching .deb with the graphical package installer",
+            "Extract the Linux archive and run ./install-desktop.sh",
+        )
+        self.assertNotEqual(stale_guide, reviewed_guide)
+        self.assertIn('content="0.1.0-beta.27"', stale_guide)
+        with patch.object(module, "fetch_text", side_effect=[downloads, reviewed_guide]):
+            module.verify_live(self.data)
+        with patch.object(module, "fetch_text", side_effect=[downloads, stale_guide]):
+            with self.assertRaisesRegex(ValueError, "Published guide content differs"):
+                module.verify_live(self.data)
 
 
 if __name__ == "__main__":

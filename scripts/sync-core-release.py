@@ -30,7 +30,7 @@ def fetch_json(url):
 
 
 def fetch_text(url):
-    request = urllib.request.Request(url, headers={"User-Agent": "certifyd-core-doc-check"})
+    request = urllib.request.Request(url, headers={"User-Agent": "certifyd-core-doc-check", "Cache-Control": "no-cache"})
     with urllib.request.urlopen(request, timeout=30) as response:
         return response.read().decode("utf-8")
 
@@ -212,12 +212,20 @@ def verify_live(data):
     for item in data["assets"]:
         if item["filename"] not in cards or item["sha256"] not in cards:
             raise ValueError(f"Published download card differs from manifest: {item['id']}")
+    expected_cards = DOWNLOADS.read_text().split("const CORE_DOWNLOADS = ", 1)[1].split("const EXTENSION_DOWNLOADS = ", 1)[0]
+    if cards.replace("\r\n", "\n") != expected_cards:
+        raise ValueError("Published Core download cards differ from reviewed generated cards")
     match = re.search(r'<meta name="certifyd-core-release" content="([^"]+)"', guide)
     if not match:
         match = re.search(r'Based on Certifyd Core <code>v([^<]+)</code>', guide)
     guide_version = match.group(1) if match else None
     if guide_version != version:
         raise ValueError(f"Published guide is {guide_version or 'unversioned'}, downloads are {version}")
+    expected_guide = generated_guide(data)
+    if guide.replace("\r\n", "\n") != expected_guide:
+        expected_hash = hashlib.sha256(expected_guide.encode("utf-8")).hexdigest()
+        deployed_hash = hashlib.sha256(guide.encode("utf-8")).hexdigest()
+        raise ValueError(f"Published guide content differs from reviewed generated guide (expected SHA-256 {expected_hash}, deployed {deployed_hash})")
 
 
 def prepare_tag(tag):
