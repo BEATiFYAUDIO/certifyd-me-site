@@ -18,6 +18,9 @@ GUIDE = ROOT / "core/guide/index.html"
 IDS = {"windows-x64", "linux-x64", "linux-arm64", "linux-x64-portable",
        "linux-arm64-portable", "macos-arm64", "macos-x64"}
 API = "https://api.github.com/repos/BEATiFYAUDIO/contentbox/releases"
+PAGES_BEACON = re.compile(
+    r'(?<=</footer>\n)<script type="module" src="https://static\.cloudflareinsights\.com/beacon\.min\.js/[^\"]+"[^>]*></script>\n'
+)
 
 
 def fetch_json(url):
@@ -222,9 +225,13 @@ def verify_live(data):
     if guide_version != version:
         raise ValueError(f"Published guide is {guide_version or 'unversioned'}, downloads are {version}")
     expected_guide = generated_guide(data)
-    if guide.replace("\r\n", "\n") != expected_guide:
+    normalized_guide = guide.replace("\r\n", "\n")
+    normalized_guide, beacon_count = PAGES_BEACON.subn("", normalized_guide)
+    if beacon_count > 1:
+        raise ValueError("Published guide contains multiple Cloudflare beacon injections")
+    if normalized_guide != expected_guide:
         expected_hash = hashlib.sha256(expected_guide.encode("utf-8")).hexdigest()
-        deployed_hash = hashlib.sha256(guide.encode("utf-8")).hexdigest()
+        deployed_hash = hashlib.sha256(normalized_guide.encode("utf-8")).hexdigest()
         raise ValueError(f"Published guide content differs from reviewed generated guide (expected SHA-256 {expected_hash}, deployed {deployed_hash})")
 
 
