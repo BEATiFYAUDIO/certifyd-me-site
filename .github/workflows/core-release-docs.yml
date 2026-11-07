@@ -1,0 +1,42 @@
+name: Core release documentation
+
+on:
+  pull_request:
+    paths:
+      - 'core/release/**'
+      - 'core/guide/**'
+      - 'downloads/index.html'
+      - 'scripts/sync-core-release.py'
+      - 'test/test_core_release_docs.py'
+      - '.github/workflows/core-release-docs.yml'
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 12 * * *'
+  workflow_dispatch:
+  repository_dispatch:
+    types: [core-release-published]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check generated pages and guide review
+        run: python3 scripts/sync-core-release.py
+      - name: Check exact published Core release and asset digests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/sync-core-release.py --verify-release
+      - name: Test mismatch and stale-guide gates
+        run: python3 -m unittest discover -s test -p 'test_core_release_docs.py'
+      - name: Check deployed pages after publication
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch'
+        run: python3 scripts/sync-core-release.py --verify-live

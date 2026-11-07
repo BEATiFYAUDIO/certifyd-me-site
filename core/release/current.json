@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "releaseTag": "v0.1.0-beta.27",
+  "sourceCommit": "e657c4f062e64551fd65a203d04bed8dc0ddb9ef",
+  "releaseUrl": "https://github.com/BEATiFYAUDIO/contentbox/releases/tag/v0.1.0-beta.27",
+  "assets": [
+    {
+      "id": "windows-x64",
+      "platform": "Windows x64",
+      "family": "windows",
+      "label": "Windows",
+      "architecture": "Windows x64",
+      "status": "Unsigned beta",
+      "version": "0.1.0-beta.27",
+      "filename": "Certifyd-Core-Setup-0.1.0-beta.27-win-x64.exe",
+      "size": "93,671,135 bytes",
+      "sha256": "d99679c5f433673a2e5c8064595aa56f8e1556e3a68948086a5d4d0da6feadc0",
+      "url": "https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.27/Certifyd-Core-Setup-0.1.0-beta.27-win-x64.exe",
+      "note": "This Windows installer is unsigned. Download it, run it, then launch Certifyd Core from your desktop or Start Menu.",
+      "tags": [
+        "windows"
+      ]
+    },
+    {
+      "id": "linux-x64",
+      "platform": "Linux x64 (Debian installer)",
+      "family": "linux",
+      "label": "Linux",
+      "architecture": "Linux x64",
+      "status": "Validated beta",
+      "version": "0.1.0-beta.27",
+      "filename": "Certifyd-Core-0.1.0-beta.27-linux-x64.deb",
+      "size": "95,532,526 bytes",
+      "sha256": "57e49d9da68c5ccfa842aad6a56e23960e957f4c2911a1fb5bd192a326821b6e",
+      "url": "https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.27/Certifyd-Core-0.1.0-beta.27-linux-x64.deb",
+      "note": "Download the Debian installer, open it with your package installer, then launch Certifyd Core from the application menu.",
+      "tags": [
+        "linux"
+      ]
+    },
+    {
+      "id": "linux-arm64",
+      "platform": "Linux ARM64 (Debian installer)",
+      "family": "linux",
+      "label": "Linux",
+      "architecture": "Linux ARM64",
+      "status": "Validated beta",
+      "version": "0.1.0-beta.27",
+      "filename": "Certifyd-Core-0.1.0-beta.27-linux-arm64.deb",
+      "size": "93,606,238 bytes",
+      "sha256": "ff6d20ebb28a13fe28008dc0e6f246fe37712849af935b9550aa6f49fc63e2e3",
+      "url": "https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.27/Certifyd-Core-0.1.0-beta.27-linux-arm64.deb",
+      "note": "Download the Debian ARM64 installer, open it with your package installer, then launch Certifyd Core from the application menu. Physical Raspberry Pi validation is separate.",
+      "tags": [
+        "linux",
+        "arm"
+      ]
+    },
+    {
+      "id": "linux-x64-portable",
+      "platform": "Linux x64 (portable archive)",
+      "family": "linux",
+      "label": "Linux portable",
+      "architecture": "Linux x64",
+      "status": "Validated beta",
+      "version": "0.1.0-beta.27",
+      "filename": "Certifyd-Core-0.1.0-beta.27-linux-x64.tar.gz",
+      "size": "166,316,484 bytes",
+      "sha256": "158df402cbf260cac5331edd0bd066e03a65b6b0877611caaa4a0c507462e945",
+      "url": "https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.27/Certifyd-Core-0.1.0-beta.27-linux-x64.tar.gz",
+      "note": "Portable / advanced: extract the archive, then run ./start.sh from the extracted folder.",
+      "tags": [
+        "linux"
+      ]
+    },
+    {
+      "id": "linux-arm64-portable",
+      "platform": "Linux ARM64 (portable archive)",
+      "family": "linux",
+      "label": "Linux portable",
+      "architecture": "Linux ARM64",
+      "status": "Validated beta",
+      "version": "0.1.0-beta.27",
+      "filename": "Certifyd-Core-0.1.0-beta.27-linux-arm64.tar.gz",
+      "size": "163,870,002 bytes",
+      "sha256": "ca1f7e88a1c0fad1aa8f55cbca52e2285dbfa3e48633326447289eaf3d7f8189",
+      "url": "https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.27/Certifyd-Core-0.1.0-beta.27-linux-arm64.tar.gz",
+      "note": "Portable / advanced: extract the archive, then run ./start.sh from the extracted folder. Physical Raspberry Pi validation is separate.",
+      "tags": [
+        "linux",
+        "arm"
+      ]
+    },
+    {
+      "id": "macos-arm64",
+      "platform": "macOS Apple Silicon",
+      "family": "mac",
+      "label": "macOS",
+      "architecture": "macOS ARM64",
+      "status": "Signed and notarized beta",
+      "version": "0.1.0-beta.27",
+      "filename": "Certifyd-Core-0.1.0-beta.27-macos-arm64.dmg",
+      "size": "266,585,260 bytes",
+      "sha256": "6c4526e0015694eb4890c68f1783afd3c01f8b731e94525eac6f0ec373705f87",
+      "url": "https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.27/Certifyd-Core-0.1.0-beta.27-macos-arm64.dmg",
+      "note": "Developer ID signed, Apple notarized and stapled. Gatekeeper and runtime validation passed on native Apple Silicon.",
+      "tags": [
+        "mac",
+        "arm"
+      ]
+    },
+    {
+      "id": "macos-x64",
+      "platform": "macOS Intel",
+      "family": "mac",
+      "label": "macOS",
+      "architecture": "macOS x64",
+      "status": "Signed and notarized beta",
+      "version": "0.1.0-beta.27",
+      "filename": "Certifyd-Core-0.1.0-beta.27-macos-x64.dmg",
+      "size": "281,290,919 bytes",
+      "sha256": "b76eaf8371ef317b689fa5f9753495de1d5b65775ae55590e756b29adde3de74",
+      "url": "https://github.com/BEATiFYAUDIO/contentbox/releases/download/v0.1.0-beta.27/Certifyd-Core-0.1.0-beta.27-macos-x64.dmg",
+      "note": "Developer ID signed, Apple notarized and stapled. Gatekeeper and runtime validation passed on native Intel macOS.",
+      "tags": [
+        "mac"
+      ]
+    }
+  ],
+  "guide": {
+    "screenshotStatus": "none",
+    "instructions": {
+      "windows": "Run the Windows x64 installer, then launch Certifyd Core from the Start Menu or desktop.",
+      "macos": "Choose the DMG for Apple Silicon or Intel, open it, drag Certifyd Core.app to Applications, then open the app.",
+      "linuxDeb": "On a Debian-compatible desktop, open the matching .deb with the graphical package installer, then launch Certifyd Core from the application menu.",
+      "linuxPortable": "For an advanced portable install, extract the matching .tar.gz and run ./start.sh from the extracted folder.",
+      "owner": "On the local sign-in screen, choose New here?, complete Create owner, and keep any recovery material private.",
+      "dashboard": "Open http://127.0.0.1:4000 on the computer running Core if the dashboard does not open automatically."
+    },
+    "reviewedReleaseTag": "v0.1.0-beta.27",
+    "reviewedBy": "Core documentation audit (source/release metadata)",
+    "reviewedAt": "2026-11-07",
+    "validationEvidence": [
+      "GitHub release v0.1.0-beta.27 and SHA256SUMS.txt",
+      "Core source commit e657c4f062e64551fd65a203d04bed8dc0ddb9ef: packaging/linux/README.md, packaging/linux/start.sh, scripts/build-linux-deb.sh, apps/dashboard/src/pages/AuthPage.tsx, README.md",
+      "Seven package bytes independently SHA-256 checked in certifyd-core-lab/audit/release.json; no installation or graphical UI test claimed"
+    ],
+    "screenshots": []
+  }
+}
