@@ -5,7 +5,22 @@
     <link>https://certifyd.me/blog/</link>
     <description>Articles from Certifyd on creator-owned publishing, attribution, discovery and direct commerce.</description>
     <language>en</language>
-    <lastBuildDate>Fri, 06 Nov 2026 00:00:00 GMT</lastBuildDate>
+    <lastBuildDate>Mon, 09 Nov 2026 00:00:00 GMT</lastBuildDate>
+    <item>
+      <title>Elvis and Eminem Rights Holders Sue Suno, Putting AI Music Permissions Inside the Product</title>
+      <link>https://certifyd.me/blog/elvis-eminem-rights-holders-sue-suno-ai-music-permissions/</link>
+      <guid>https://certifyd.me/blog/elvis-eminem-rights-holders-sue-suno-ai-music-permissions/</guid>
+      <description>New lawsuits against Suno over alleged AI music and lyric mimicry show why permissions and rights context cannot remain an after-the-fact policy problem.</description>
+      <pubDate>Mon, 09 Nov 2026 00:00:00 GMT</pubDate>
+      <category>AI music</category>
+      <category>Suno</category>
+      <category>Elvis Presley</category>
+      <category>Eminem</category>
+      <category>music rights</category>
+      <category>artist likeness</category>
+      <category>permissions</category>
+      <category>rights context</category>
+    </item>
     <item>
       <title>How to Set Up Cloudflare Tunnel for Certifyd Core</title>
       <link>https://certifyd.me/blog/how-to-setup-cloudflare-tunnel-certifyd-core/</link>
