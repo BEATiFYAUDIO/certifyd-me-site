@@ -118,6 +118,18 @@ function validateImagePath(value, file) {
   return raw;
 }
 
+function validateVideo(data, file) {
+  if (!data.videoSrc) return null;
+  const src = String(data.videoSrc).trim();
+  if (!/^\/media\/videos\/[a-zA-Z0-9_-]+\.mp4$/.test(src)) {
+    throw new Error(`${file}: videoSrc must be a root-relative /media/videos/<filename>.mp4 path`);
+  }
+  const duration = Number(data.videoDuration);
+  if (!Number.isFinite(duration) || duration <= 0) throw new Error(`${file}: videoDuration must be positive seconds`);
+  if (!data.coverImage) throw new Error(`${file}: a video requires a coverImage poster`);
+  return { src, duration };
+}
+
 function validateOptionalImagePath(value, file, field) {
   const raw = String(value || '').trim();
   if (!raw) return '';
@@ -339,6 +351,7 @@ async function readArticles() {
       author,
       excerpt,
       coverImage,
+      video: validateVideo(data, file),
       socialImage,
       socialImageWidth: Number(data.socialImageWidth) || SOCIAL_IMAGE_WIDTH,
       socialImageHeight: Number(data.socialImageHeight) || SOCIAL_IMAGE_HEIGHT,
@@ -473,7 +486,36 @@ function breadcrumbJsonLd(article) {
 }
 
 function jsonLdScriptsForArticle(article) {
-  return [articleJsonLd(article), organizationJsonLd(), breadcrumbJsonLd(article)].map(jsonLdScript).join('\n  ');
+  const schemas = [articleJsonLd(article), organizationJsonLd(), breadcrumbJsonLd(article)];
+  if (article.video) {
+    schemas[0].video = { '@id': `${articleUrl(article)}#video` };
+    schemas.push({
+      '@context': 'https://schema.org',
+      '@type': 'VideoObject',
+      '@id': `${articleUrl(article)}#video`,
+      name: article.title,
+      description: article.excerpt,
+      thumbnailUrl: absoluteUrl(article.coverImage),
+      contentUrl: absoluteUrl(article.video.src),
+      uploadDate: article.date.toISOString(),
+      duration: `PT${article.video.duration}S`,
+      inLanguage: 'en',
+    });
+  }
+  return schemas.map(jsonLdScript).join('\n  ');
+}
+
+function heroMediaHtml(article) {
+  if (!article.video) return `<div class="article-hero-image"><img src="${escapeHtml(article.coverImage)}" alt="${escapeHtml(article.coverImageAlt)}" loading="eager" decoding="async" onerror="this.src='${DEFAULT_IMAGE}'" />${imageCreditHtml(article)}</div>`;
+  const duration = Math.round(article.video.duration);
+  const clock = `${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, '0')}`;
+  return `<figure class="article-hero-image" id="video">
+    <video controls playsinline preload="metadata" poster="${escapeHtml(article.coverImage)}" width="1920" height="1080" aria-label="${escapeHtml(article.title)}" style="display:block;width:100%;height:auto;aspect-ratio:16/9;background:#000">
+      <source src="${escapeHtml(article.video.src)}" type="video/mp4" />
+      <p><a href="${escapeHtml(article.video.src)}">Watch the commercial (MP4)</a>.</p>
+    </video>
+    <figcaption class="article-image-credit">Watch Can It Run Core? · ${clock} · <a href="${escapeHtml(article.video.src)}">Open video</a></figcaption>
+  </figure>`;
 }
 
 function imageCreditHtml(article) {
@@ -534,7 +576,7 @@ async function writeArticle(article, template) {
     excerpt: escapeHtml(article.excerpt),
     publishedAt: escapeHtml(formatDisplayDate(article.date)),
     updatedAt: escapeHtml(formatDisplayDate(article.updated)),
-    heroImage: `<div class="article-hero-image"><img src="${escapeHtml(article.coverImage)}" alt="${escapeHtml(article.coverImageAlt)}" loading="eager" decoding="async" onerror="this.src='${DEFAULT_IMAGE}'" />${imageCreditHtml(article)}</div>`,
+    heroImage: heroMediaHtml(article),
     tags: tagList(article),
     body: article.body,
   });

@@ -76,3 +76,15 @@ The dashboard GitHub publisher should:
 4. keep `status: "draft"` until founder review approves publication;
 5. run or request `npm run build` validation before merge;
 6. never commit directly to the GitHub Pages publishing branch.
+
+## Video-led articles
+
+An article may replace its hero image with a native video player:
+
+```yaml
+coverImage: "/images/blog/2026/11/can-it-run-core-video-poster.jpg"
+videoSrc: "/media/videos/can-it-run-core-v80.mp4"
+videoDuration: 123.136
+```
+
+The cover image is the video poster and the blog/social thumbnail. Video duration is in seconds. The player uses controls, inline mobile playback and metadata-only preloading; it does not autoplay. The build emits VideoObject metadata. Commit the approved MP4 and poster with the article; verify media hashes and playback on every destination. Mirrored sites need the same root-relative media asset. Large binaries are published through Git, not the dashboard image uploader.

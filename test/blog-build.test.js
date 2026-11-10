@@ -297,3 +297,41 @@ test('social dimensions and Bitcoin duplicate redirect preserve the canonical ar
   assert.equal((index.match(/class="blog-card"/g) || []).length, 1);
   await fs.rm(root, { recursive: true, force: true });
 });
+
+test('video-led article uses one responsive player, poster and VideoObject instead of a hero image', async () => {
+  const source = article({ title: 'Video Article', slug: 'video-article', date: '2026-11-10' })
+    .replace('status: "published"', 'videoSrc: "/media/videos/core.mp4"\nvideoDuration: 123.136\nstatus: "published"');
+  const root = await makeFixture({ 'video.md': source });
+  try {
+    const result = runBuild(root);
+    assert.equal(result.status, 0, result.stderr);
+    const html = await fs.readFile(path.join(root, 'blog/video-article/index.html'), 'utf8');
+    assert.equal((html.match(/<video\b/g) || []).length, 1);
+    assert.match(html, /controls playsinline preload="metadata"/);
+    assert.match(html, /poster="\/images\/fallback.png"/);
+    assert.match(html, /width:100%;height:auto;aspect-ratio:16\/9/);
+    assert.match(html, /<source src="\/media\/videos\/core.mp4" type="video\/mp4"/);
+    assert.doesNotMatch(html, /autoplay|<div class="article-hero-image"><img/);
+    const schemas = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map(m => JSON.parse(m[1]));
+    const video = schemas.find(s => s['@type'] === 'VideoObject');
+    assert.equal(video.duration, 'PT123.136S');
+    assert.equal(video.contentUrl, 'https://certifyd.me/media/videos/core.mp4');
+    assert.equal(video.thumbnailUrl, 'https://certifyd.me/images/fallback.png');
+    assert.equal(schemas.find(s => s['@type'] === 'BlogPosting').video['@id'], video['@id']);
+    const index = await fs.readFile(path.join(root, 'blog/index.html'), 'utf8');
+    assert.doesNotMatch(index, /src="\/media\/videos\/core.mp4"/);
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
+});
+
+test('video metadata rejects unsafe paths and invalid durations', async () => {
+  for (const [src, duration] of [['javascript:alert(1)', 10], ['/media/videos/../secret.mp4', 10], ['/media/videos/%2e%2e.mp4', 10], ['/media/videos/core.mp4', 0], ['/media/videos/core.mp4', 'nope']]) {
+    const source = article({ title: 'Video', slug: 'video', date: '2026-11-10' })
+      .replace('status: "published"', `videoSrc: "${src}"\nvideoDuration: "${duration}"\nstatus: "published"`);
+    const root = await makeFixture({ 'video.md': source });
+    try {
+      const result = runBuild(root);
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /videoSrc must|videoDuration must/);
+    } finally { await fs.rm(root, { recursive: true, force: true }); }
+  }
+});
