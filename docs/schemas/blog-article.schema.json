@@ -12,10 +12,13 @@
     "author": { "type": "string", "minLength": 1 },
     "excerpt": { "type": "string", "minLength": 1 },
     "coverImage": { "type": "string", "pattern": "^/images/[^\\\\]+$" },
+    "videoSrc": { "type": "string", "pattern": "^/media/videos/[a-zA-Z0-9_-]+\\.mp4$" },
+    "videoDuration": { "type": "number", "exclusiveMinimum": 0 },
     "tags": { "type": "array", "items": { "type": "string" } },
     "status": { "type": "string", "enum": ["published", "draft"] },
     "seoTitle": { "type": "string" },
     "seoDescription": { "type": "string" }
   },
+  "dependentRequired": { "videoSrc": ["videoDuration", "coverImage"] },
   "additionalProperties": true
 }
