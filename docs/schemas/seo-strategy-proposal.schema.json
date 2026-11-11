@@ -1,0 +1,524 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Stored pending SEO proposal",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cluster",
+        "audience",
+        "intent",
+        "evidence",
+        "cornerstone",
+        "internalLinks",
+        "closestArticles",
+        "duplicationRisk",
+        "indexReason",
+        "accuracyNotes",
+        "scores",
+        "notes",
+        "substantialDuplication",
+        "staleInstructions",
+        "unsupportedClaims",
+        "schemaVersion",
+        "advisoryOnly"
+      ],
+      "properties": {
+        "cluster": {
+          "type": "string",
+          "enum": [
+            "",
+            "creator-ownership",
+            "music-rights",
+            "ai-identity",
+            "direct-commerce"
+          ]
+        },
+        "audience": {
+          "type": "string"
+        },
+        "intent": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "string"
+        },
+        "cornerstone": {
+          "type": "string"
+        },
+        "internalLinks": {
+          "type": "string"
+        },
+        "closestArticles": {
+          "type": "string"
+        },
+        "duplicationRisk": {
+          "type": "string"
+        },
+        "indexReason": {
+          "type": "string"
+        },
+        "accuracyNotes": {
+          "type": "string"
+        },
+        "scores": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "topicFit",
+            "audienceProblem",
+            "usefulness",
+            "linkPlan",
+            "distinctPurpose",
+            "accuracy"
+          ],
+          "properties": {
+            "topicFit": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 20
+            },
+            "audienceProblem": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 20
+            },
+            "usefulness": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 20
+            },
+            "linkPlan": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 15
+            },
+            "distinctPurpose": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 15
+            },
+            "accuracy": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10
+            }
+          }
+        },
+        "notes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "topicFit",
+            "audienceProblem",
+            "usefulness",
+            "linkPlan",
+            "distinctPurpose",
+            "accuracy"
+          ],
+          "properties": {
+            "topicFit": {
+              "type": "string"
+            },
+            "audienceProblem": {
+              "type": "string"
+            },
+            "usefulness": {
+              "type": "string"
+            },
+            "linkPlan": {
+              "type": "string"
+            },
+            "distinctPurpose": {
+              "type": "string"
+            },
+            "accuracy": {
+              "type": "string"
+            }
+          }
+        },
+        "substantialDuplication": {
+          "type": "boolean"
+        },
+        "staleInstructions": {
+          "type": "boolean"
+        },
+        "unsupportedClaims": {
+          "type": "boolean"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "advisoryOnly": {
+          "const": true
+        }
+      }
+    },
+    "recommendations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cluster",
+        "cornerstone",
+        "duplication",
+        "indexing",
+        "hubPromotion",
+        "socialOnly"
+      ],
+      "properties": {
+        "cluster": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "clusterId",
+            "confidence",
+            "reason",
+            "evidenceRefs"
+          ],
+          "properties": {
+            "clusterId": {
+              "type": "string",
+              "enum": [
+                "",
+                "creator-ownership",
+                "music-rights",
+                "ai-identity",
+                "direct-commerce"
+              ]
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "high",
+                "medium",
+                "low",
+                "unknown"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "cornerstone": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "url",
+            "confidence",
+            "reason",
+            "evidenceRefs"
+          ],
+          "properties": {
+            "url": {
+              "type": "string"
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "high",
+                "medium",
+                "low",
+                "unknown"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "duplication": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "risk",
+            "closestUrls",
+            "confidence",
+            "reason",
+            "evidenceRefs"
+          ],
+          "properties": {
+            "risk": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high",
+                "unknown"
+              ]
+            },
+            "closestUrls": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "high",
+                "medium",
+                "low",
+                "unknown"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "indexing": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "confidence",
+            "reason",
+            "evidenceRefs"
+          ],
+          "properties": {
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "high",
+                "medium",
+                "low",
+                "unknown"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "hubPromotion": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "consider",
+            "confidence",
+            "reason",
+            "evidenceRefs"
+          ],
+          "properties": {
+            "consider": {
+              "type": "boolean"
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "high",
+                "medium",
+                "low",
+                "unknown"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "socialOnly": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "consider",
+            "confidence",
+            "reason",
+            "evidenceRefs"
+          ],
+          "properties": {
+            "consider": {
+              "type": "boolean"
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "high",
+                "medium",
+                "low",
+                "unknown"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "recommendedLinks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sourceUrl",
+          "destinationUrl",
+          "anchorText",
+          "reason",
+          "linkType"
+        ],
+        "properties": {
+          "sourceUrl": {
+            "type": "string"
+          },
+          "destinationUrl": {
+            "type": "string"
+          },
+          "anchorText": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "linkType": {
+            "type": "string",
+            "enum": [
+              "article → cornerstone",
+              "article → article",
+              "cornerstone → article"
+            ]
+          }
+        }
+      }
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "advisoryOnly": {
+      "const": true
+    },
+    "proposalId": {
+      "type": "string"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "draftHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "brain-model",
+        "lexical-fallback"
+      ]
+    },
+    "score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "decision": {
+      "enum": [
+        "Indexed article recommended",
+        "Revise before indexing",
+        "Consider social/distribution post instead",
+        "Off-strategy for indexed article"
+      ]
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidenceBasis": {
+      "const": "Editorial inference; Search Console evidence not supplied. No measured search-demand or ranking claims."
+    },
+    "corpusCoverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "publishedPagesScanned": {
+          "type": "integer"
+        },
+        "articles": {
+          "type": "integer"
+        },
+        "guides": {
+          "type": "integer"
+        },
+        "bodyBasedRetrieval": {
+          "const": true
+        }
+      },
+      "required": [
+        "publishedPagesScanned",
+        "articles",
+        "guides",
+        "bodyBasedRetrieval"
+      ]
+    }
+  },
+  "required": [
+    "plan",
+    "recommendations",
+    "recommendedLinks",
+    "schemaVersion",
+    "advisoryOnly",
+    "proposalId",
+    "generatedAt",
+    "draftHash",
+    "provider",
+    "model",
+    "mode",
+    "score",
+    "decision",
+    "warnings",
+    "evidenceBasis",
+    "corpusCoverage"
+  ]
+}

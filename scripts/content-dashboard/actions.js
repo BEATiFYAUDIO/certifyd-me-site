@@ -1,4 +1,4 @@
-import { normalizeStrategy, draftHash } from './seo-strategy.js';
+import { normalizeStrategy, draftHash, readSeoCorpus, buildSeoProposalContext, validateSeoProposal, fallbackSeoProposal } from './seo-strategy.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -64,8 +64,11 @@ export class AuditLogRepository {
 }
 
 export class ContentDashboardActions {
-  constructor(config) {
+  constructor(config, options = {}) {
     this.config = config;
+    this.scheduleSeo = options.scheduleSeo || (task => task());
+    this.seoInFlight = new Map();
+    this.seoReviewLocks = new Map();
     this.runs = new ContentRunRepository(config);
     this.audit = new AuditLogRepository(config);
     this.publisher = createPublisher(config, this.runs);
@@ -105,6 +108,7 @@ export class ContentDashboardActions {
     try {
       const article = await provider.generateArticle(input, groundedContext, signal);
       const result = await persistGeneratedArticleRun(this.config, article, input, groundedContext, provider);
+      await this.queueSeoAssessment({ actor, runId: result.runId, provider });
       await this.audit.append({ action: 'article_generation', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId: result.runId, result: 'SUCCESS', note: `${provider.providerName}:${provider.modelName}` });
       return result;
     } catch (error) {
@@ -113,6 +117,7 @@ export class ContentDashboardActions {
         const fallbackProvider = createGenerationProvider(this.config, { provider: 'deterministic' });
         const article = await createDeterministicFallbackArticle(input, groundedContext, safeError(error));
         const result = await persistGeneratedArticleRun(this.config, article, input, groundedContext, fallbackProvider);
+        await this.queueSeoAssessment({ actor, runId: result.runId, provider: fallbackProvider });
         await this.audit.append({ action: 'article_generation_fallback', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId: result.runId, result: 'SUCCESS', note: `deterministic:${safeError(error)}` });
         return {
           ...result,
@@ -269,6 +274,7 @@ export class ContentDashboardActions {
       responseStatus: 'NOT_APPLICABLE',
       deterministicFallbackUsed: false,
     });
+    await this.queueSeoAssessment({ actor, runId });
     await this.audit.append({ action: 'article_manual_paste', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, version: 'v1', result: 'SUCCESS', note: title });
     return {
       ok: true,
@@ -1262,14 +1268,117 @@ export class ContentDashboardActions {
     return { ok: true, output: `Archived ${run.summary.title || runId}.` };
   }
 
+  async withSeoReviewLock(runId, task) {
+    const previous = this.seoReviewLocks.get(runId) || Promise.resolve();
+    const next = previous.catch(() => {}).then(task);
+    this.seoReviewLocks.set(runId, next);
+    try { return await next; } finally { if (this.seoReviewLocks.get(runId) === next) this.seoReviewLocks.delete(runId); }
+  }
+
+  async queueSeoAssessment({ actor, runId, provider }) {
+    validateRunId(runId);
+    const run = await this.runs.readRun(runId);
+    const hash = draftHash(run.articleMarkdown || run.draftMarkdown || '');
+    const key = `${runId}:${hash}`;
+    if (this.seoInFlight.has(key)) return { ok: true, runId, output: 'SEO assessment is already running for this draft.' };
+    const requestId = crypto.randomUUID();
+    this.seoInFlight.set(key, requestId);
+    const base = this.runs.runPath(runId);
+    try {
+      const current = await this.withSeoReviewLock(runId, async () => {
+        const latest = await this.runs.readRun(runId);
+        if (draftHash(latest.articleMarkdown || latest.draftMarkdown || '') !== hash) return false;
+        await this.writeRunJson(base, 'seo/proposal-status.json', { state: 'running', requestId, draftHash: hash, requestedAt: new Date().toISOString() });
+        return true;
+      });
+      if (!current) { this.seoInFlight.delete(key); return { ok: true, runId, output: 'Draft changed before assessment started. Reassess the current draft.' }; }
+      await this.scheduleSeo(async () => {
+        try { return await this.generateSeoProposal({ actor, runId, provider, requestId, hash }); }
+        finally { if (this.seoInFlight.get(key) === requestId) this.seoInFlight.delete(key); }
+      }, actor, runId);
+    } catch (error) {
+      this.seoInFlight.delete(key);
+      await this.withSeoReviewLock(runId, async () => {
+        const latest = await this.runs.readRun(runId);
+        if (latest.seoProposalStatus?.requestId === requestId) await this.writeRunJson(base, 'seo/proposal-status.json', { state: 'unavailable', requestId, draftHash: hash, message: 'SEO assessment unavailable. The draft and founder approval remain unchanged.' });
+      });
+    }
+    return { ok: true, runId, output: 'SEO assessment requested. Existing accepted strategy remains unchanged.' };
+  }
+
+  async generateSeoProposal({ actor, runId, provider, requestId, hash }) {
+    const base = this.runs.runPath(runId);
+    const run = await this.runs.readRun(runId);
+    try {
+      const corpus = await readSeoCorpus(this.config.siteRoot);
+      const release = await fs.readFile(path.join(this.config.siteRoot, 'core/release/current.json'), 'utf8').then(JSON.parse).catch(() => ({}));
+      const packet = buildSeoProposalContext(run, corpus, release.releaseTag || '', this.config.openai?.maxContextChars || 18000);
+      const generator = typeof provider?.proposeSeoStrategy === 'function' ? provider : createGenerationProvider(this.config, { provider: this.config.modelProvider });
+      let proposal;
+      try {
+        if (typeof generator.proposeSeoStrategy !== 'function') throw new Error('The selected provider has no semantic SEO assessment method.');
+        const raw = await generator.proposeSeoStrategy({ actorUserId: actor.id, actorEmail: actor.email }, packet);
+        proposal = { ...validateSeoProposal(raw, packet, run), mode: 'brain-model' };
+      } catch {
+        proposal = fallbackSeoProposal(packet, run, 'Model assessment was unavailable or invalid. No semantic certainty is claimed.');
+      }
+      const result = { ...proposal, schemaVersion: 1, proposalId: requestId, generatedAt: new Date().toISOString(), provider: generator.providerName, model: proposal.mode === 'brain-model' ? generator.modelName : 'none', draftHash: hash, advisoryOnly: true };
+      return await this.withSeoReviewLock(runId, async () => {
+        const latest = await this.runs.readRun(runId);
+        if (latest.seoProposalStatus?.requestId !== requestId) return { ok: true, runId, output: 'Superseded SEO result discarded.' };
+        if (draftHash(latest.articleMarkdown || latest.draftMarkdown || '') !== hash) {
+          await this.writeRunJson(base, 'seo/proposal-status.json', { state: 'stale', requestId, draftHash: hash });
+          return { ok: true, runId, output: 'Draft changed during assessment. Reassess the current draft.' };
+        }
+        await this.writeRunJson(base, 'seo/proposal.json', result);
+        await this.writeRunJson(base, 'seo/proposal-status.json', { state: 'ready', requestId, draftHash: hash });
+        await this.writeRunJson(base, 'model-requests/seo-assessment.json', { stage: 'seo-strategy-assessment', provider: result.provider, model: result.model, mode: result.mode, draftHash: hash, corpusPages: corpus.length, generatedAt: result.generatedAt, request: proposal.mode === 'brain-model' ? generator.lastRequest : undefined });
+        await this.audit.append({ action: 'seo_proposal_generated', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: 'SUCCESS', note: result.mode });
+        return { ok: true, runId, output: 'SEO proposal ready for editor review.' };
+      });
+    } catch {
+      await this.withSeoReviewLock(runId, async () => {
+        const latest = await this.runs.readRun(runId);
+        if (latest.seoProposalStatus?.requestId === requestId) await this.writeRunJson(base, 'seo/proposal-status.json', { state: 'unavailable', requestId, draftHash: hash, message: 'SEO assessment unavailable. Reassess or use the manual editor.' });
+      });
+      return { ok: true, runId, output: 'Draft saved; SEO assessment unavailable.' };
+    }
+  }
+
+  requireCurrentSeoProposal(run, proposalId) {
+    const proposal = run.seoProposal;
+    const reviewed = run.seoProposalReview;
+    if (!proposal || proposal.proposalId !== proposalId || (reviewed?.proposalId === proposalId && ['accepted', 'edited', 'rejected'].includes(reviewed?.decision))) throw Object.assign(new Error('SEO proposal is missing, replaced or rejected. Reassess before accepting.'), { statusCode: 409 });
+    if (proposal.draftHash !== draftHash(run.articleMarkdown || run.draftMarkdown || '')) throw Object.assign(new Error('SEO proposal is stale. Reassess the current draft.'), { statusCode: 409 });
+    return proposal;
+  }
+
+  async reviewSeoProposal({ actor, runId, proposalId, decision }) {
+    validateRunId(runId);
+    if (!['accept', 'reject'].includes(decision)) throw Object.assign(new Error('Invalid SEO proposal decision.'), { statusCode: 400 });
+    return this.withSeoReviewLock(runId, async () => {
+      const run = await this.runs.readRun(runId);
+      const proposal = decision === 'accept' ? this.requireCurrentSeoProposal(run, proposalId) : run.seoProposal;
+      if (!proposal || proposal.proposalId !== proposalId) throw Object.assign(new Error('SEO proposal was replaced.'), { statusCode: 409 });
+      const base = this.runs.runPath(runId);
+      const now = new Date().toISOString();
+      if (decision === 'accept') await this.writeRunJson(base, 'seo/strategy.json', { ...normalizeStrategy(proposal.plan), recommendations: proposal.recommendations, recommendedLinks: proposal.recommendedLinks, evidenceBasis: proposal.evidenceBasis, proposalId, assessedAt: now, reviewer: actor.email, draftHash: proposal.draftHash });
+      await this.writeRunJson(base, 'seo/proposal-review.json', { proposalId, decision: decision === 'accept' ? 'accepted' : 'rejected', reviewer: actor.email, reviewedAt: now, draftHash: proposal.draftHash });
+      await this.audit.append({ action: `seo_proposal_${decision}`, actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: 'SUCCESS' });
+      return { ok: true, runId, output: `SEO proposal ${decision === 'accept' ? 'accepted' : 'rejected'}. Founder approval and publishing are unchanged.` };
+    });
+  }
+
   async saveSeoStrategy({ actor, runId, input = {} }) {
     validateRunId(runId);
     const run = await this.runs.readRun(runId);
+    if (input.proposalId) this.requireCurrentSeoProposal(run, input.proposalId);
     const plan = normalizeStrategy(input);
     await this.writeRunJson(this.runs.runPath(runId), 'seo/strategy.json', {
-      ...plan, assessedAt: new Date().toISOString(), reviewer: actor.email,
+      ...plan, ...(input.proposalId ? { proposalId: input.proposalId, editedFromProposal: true, evidenceBasis: run.seoProposal.evidenceBasis } : {}), assessedAt: new Date().toISOString(), reviewer: actor.email,
       draftHash: draftHash(run.articleMarkdown || run.draftMarkdown || ''),
     });
+    if (input.proposalId) await this.writeRunJson(this.runs.runPath(runId), 'seo/proposal-review.json', { proposalId: input.proposalId, decision: 'edited', reviewer: actor.email, reviewedAt: new Date().toISOString(), draftHash: draftHash(run.articleMarkdown || run.draftMarkdown || '') });
     await this.audit.append({ action: 'seo_strategy_advisory', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: 'SUCCESS' });
     return { ok: true, runId, output: 'Saved advisory SEO assessment. Approval and publishing status unchanged.' };
   }
@@ -1335,6 +1444,7 @@ export class ContentDashboardActions {
       note: 'Article Markdown saved from dashboard.',
       at: now,
     });
+    if (draftHash(run.articleMarkdown || run.draftMarkdown || '') !== draftHash(`${markdown}\n`)) await this.queueSeoAssessment({ actor, runId });
     await this.audit.append({ action: 'article_save', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, version, result: 'SUCCESS' });
     return {
       ok: true,

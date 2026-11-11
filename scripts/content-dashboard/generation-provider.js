@@ -1,3 +1,4 @@
+import { SEO_PROPOSAL_SCHEMA, seoProposalPrompt } from './seo-strategy.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -417,6 +418,23 @@ export class OpenAIGenerationProvider {
     } finally {
       leaveGenerationSlot(userKey);
     }
+  }
+
+  async proposeSeoStrategy(input, packet, abortSignal) {
+    if (!this.config.openai?.apiKey) throw new GenerationConfigurationError('OpenAI is not configured for SEO assessment.');
+    const userKey = input.actorUserId || input.actorEmail || 'local-user';
+    enterGenerationSlot(this.config, userKey);
+    const started = Date.now();
+    try {
+      const prompt = seoProposalPrompt(packet);
+      const response = await this.createStructuredResponse({
+        stage: 'seo-strategy-assessment', schemaName: 'certifyd_seo_strategy',
+        schema: SEO_PROPOSAL_SCHEMA, ...prompt,
+        maxOutputTokens: Math.min(this.config.openai.maxOutputTokens, 5000), abortSignal,
+      });
+      this.lastRequest = { durationMs: Date.now() - started, stages: [response.stageMeta], tokenUsage: response.stageMeta.tokenUsage };
+      return parseJsonContent(response.text);
+    } finally { leaveGenerationSlot(userKey); }
   }
 
   async createStructuredResponse({ stage, schemaName, schema, systemInstruction, userPrompt, maxOutputTokens, abortSignal }) {

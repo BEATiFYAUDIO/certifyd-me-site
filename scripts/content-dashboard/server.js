@@ -1,4 +1,4 @@
-import { assessStrategy, closestExistingArticles, strategyPanel } from './seo-strategy.js';
+import { assessStrategy, closestExistingArticles, seoProposalPanel } from './seo-strategy.js';
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -36,7 +36,7 @@ export function createContentDashboardServer(options = {}) {
   const config = options.config || getDashboardConfig(options.env || process.env);
   const runRepo = new ContentRunRepository(config);
   const brainRepo = new ContentBrainRepository(config);
-  const actions = new ContentDashboardActions(config);
+  const actions = new ContentDashboardActions(config, { scheduleSeo: (operation, actor, runId) => startGenerationJob({ user: actor }, null, { operation, kind: 'seo', runId }) });
   const audit = new AuditLogRepository(config);
   const userRepo = new DashboardUserRepository(config);
   const trendScheduler = startTrendDailyScheduler(config);
@@ -191,7 +191,9 @@ async function handleAction(req, res, url, ctx) {
   else if (action.endsWith('/distribution/test')) { needs('content.distribution.manage'); result = await ctx.actions.testDistributionConnection({ actor: ctx.user, destinationId: form.get('destinationId') }); }
   else if (action.endsWith('/distribution/blogger/connect')) { needs('content.distribution.manage'); return redirect(res, ctx.actions.startBloggerConnection({ actor: ctx.user, sessionId: ctx.user.sid })); }
   else if (action.endsWith('/distribution/blogger/disconnect')) { needs('content.distribution.manage'); result = await ctx.actions.disconnectBlogger({ actor: ctx.user }); }
-  else if (action.endsWith('/seo/strategy')) { needs('content.article.edit'); result = await ctx.actions.saveSeoStrategy({ actor: ctx.user, runId: form.get('runId'), input: Object.fromEntries([...['cluster', 'audience', 'intent', 'evidence', 'cornerstone', 'internalLinks', 'closestArticles', 'duplicationRisk', 'indexReason', 'accuracyNotes', 'substantialDuplication', 'staleInstructions', 'unsupportedClaims'], ...['topicFit','audienceProblem','usefulness','linkPlan','distinctPurpose','accuracy'].flatMap(k => [`score_${k}`, `note_${k}`])].map(k => [k, form.get(k)])) }); }
+  else if (action.endsWith('/seo/reassess')) { needs('content.article.edit'); result = await ctx.actions.queueSeoAssessment({ actor: ctx.user, runId: form.get('runId') }); }
+  else if (action.endsWith('/seo/proposal')) { needs('content.article.edit'); result = await ctx.actions.reviewSeoProposal({ actor: ctx.user, runId: form.get('runId'), proposalId: form.get('proposalId'), decision: form.get('decision') }); }
+  else if (action.endsWith('/seo/strategy')) { needs('content.article.edit'); result = await ctx.actions.saveSeoStrategy({ actor: ctx.user, runId: form.get('runId'), input: Object.fromEntries([...['proposalId', 'cluster', 'audience', 'intent', 'evidence', 'cornerstone', 'internalLinks', 'closestArticles', 'duplicationRisk', 'indexReason', 'accuracyNotes', 'substantialDuplication', 'staleInstructions', 'unsupportedClaims'], ...['topicFit','audienceProblem','usefulness','linkPlan','distinctPurpose','accuracy'].flatMap(k => [`score_${k}`, `note_${k}`])].map(k => [k, form.get(k)])) }); }
   else if (action.endsWith('/article/save')) { needs('content.article.edit'); result = await ctx.actions.saveArticleMarkdown({ actor: ctx.user, runId: form.get('runId'), articleMarkdown: form.get('articleMarkdown') }); }
   else if (action.endsWith('/article/archive')) { needs('content.article.archive'); result = await ctx.actions.archiveArticle({ actor: ctx.user, runId: form.get('runId') }); }
   else if (action.endsWith('/article/delete-draft')) { needs('content.article.delete'); result = await ctx.actions.deleteDraft({ actor: ctx.user, runId: form.get('runId'), confirmDelete: form.get('confirmDelete') }); }
@@ -740,7 +742,7 @@ async function renderArticle(ctx, runId, csrf) {
   const siteRoot = path.resolve(import.meta.dirname, '../..');
   const release = await fs.readFile(path.join(siteRoot, 'core/release/current.json'), 'utf8').then(JSON.parse).catch(() => ({}));
   const assessment = assessStrategy(run, run.seoStrategy, { currentRelease: release.releaseTag, closest: await closestExistingArticles(siteRoot, run) });
-  const seoPanel = card('SEO strategy — advisory', strategyPanel(assessment, runId, csrf, ctx.permissions.includes('content.article.edit')));
+  const seoPanel = card('Brain SEO strategy — advisory', seoProposalPanel(run, assessment, runId, csrf, ctx.permissions.includes('content.article.edit')));
   const body = `<section class="article-workspace-head"><p class="eyebrow">Article Workspace</p><h1>${escapeHtml(summary.title || 'Untitled article')}</h1>${runSummaryHtml(summary)}</section><section id="cover-image" class="workspace-section">${card('Cover Image', coverImageControls(run, csrf, ctx.permissions, ctx.config))}</section>${brainContextWarning(brainEvidence, run)}${actionButtons(summary, csrf, ctx.permissions, ctx.config)}<div class="workspace-tabs"><a href="#write">Write</a><a href="#preview">Preview</a><a href="#sources">Sources</a><a href="#distribution">Distribution</a><a href="#history">History</a></div><section id="write" class="workspace-section">${card('Write', articleEditor(run, csrf, ctx.permissions))}</section>${seoPanel}<section id="preview" class="workspace-section">${card('Preview', articlePreviewHtml(run))}</section><section id="sources" class="workspace-section"><div class="source-evidence-grid">${card('Source coverage', `<p>Claims: ${claims.length}</p><p>Unresolved blockers: ${escapeHtml(summary.unresolvedIssueCount ?? 0)}</p><p>Approved Brain records: ${brainEvidence.length}</p><p>External original articles: ${externalCount}</p>`)}${card('Generation diagnostics', generationDiagnosticsHtml(run.research?.generationDiagnostics))}${card('Original articles used', externalSourceList(externalSources))}${card('Approved Brain context', brainContextList(brainEvidence, run))}${card('Claims', claimTable(claims))}</div></section><section id="distribution" class="workspace-section">${card('Distribution', distributionList(distributionAssets, run.distribution?.plan, run.distribution?.package, summary, csrf, ctx.permissions.includes('content.distribution.manage'), `/app/content/articles/${encodeURIComponent(runId)}#distribution`))}</section><section id="history" class="workspace-section">${card('History', versions.map((item) => `<p>${escapeHtml(item.version)}</p>`).join('') || '<p>No versions found.</p>')}</section>`;
   return layout({ title: summary.title || 'Article', user: ctx.user, permissions: ctx.permissions, active: 'Blog Engine', body });
 }
@@ -991,13 +993,14 @@ function snapshotForm(form) {
   return formAdapter(fields, new Map());
 }
 
-function startGenerationJob(ctx, form) {
+function startGenerationJob(ctx, form, { operation, kind = 'draft', runId = '' } = {}) {
   pruneGenerationJobs();
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
   const job = {
     id,
     actorId: ctx.user.id,
+    kind, runId,
     actorEmail: ctx.user.email,
     status: 'running',
     createdAt,
@@ -1006,7 +1009,7 @@ function startGenerationJob(ctx, form) {
     error: null,
   };
   generationJobs.set(id, job);
-  ctx.actions.generateDraft({ actor: ctx.user, form })
+  Promise.resolve().then(() => operation ? operation() : ctx.actions.generateDraft({ actor: ctx.user, form }))
     .then((result) => {
       job.status = 'complete';
       job.result = result;
@@ -1029,9 +1032,10 @@ function renderGenerationStatus(ctx, id) {
   if (!job || job.actorId !== ctx.user.id) {
     return layout({ title: 'Generation Status', user: ctx.user, permissions: ctx.permissions, body: '<p class="eyebrow">Generation</p><h1>Generation not found.</h1><p class="notice danger">This generation job expired or is not available for this account.</p><p><a class="ghost" href="/app/content/articles?view=ideas">Back to articles</a></p>' });
   }
+  const seoJob = job.kind === 'seo';
   if (job.status === 'complete') {
     const output = escapeHtml(job.result?.output || 'Generated draft is ready.');
-    return layout({ title: 'Generation Complete', user: ctx.user, permissions: ctx.permissions, body: `<p class="eyebrow">Generation</p><h1>Draft ready.</h1><pre>${output}</pre>${actionResultLinks(job.result)}<p><a class="ghost" href="/app/content">Back to dashboard</a></p>` });
+    return layout({ title: 'Generation Complete', user: ctx.user, permissions: ctx.permissions, body: `<p class="eyebrow">Generation</p><h1>${seoJob ? 'SEO assessment complete.' : 'Draft ready.'}</h1><pre>${output}</pre>${actionResultLinks(job.result)}<p><a class="ghost" href="/app/content">Back to dashboard</a></p>` });
   }
   if (job.status === 'failed') {
     const message = escapeHtml(job.error?.message || 'Generation failed.');
@@ -1041,7 +1045,7 @@ function renderGenerationStatus(ctx, id) {
     title: 'Generating Draft',
     user: ctx.user,
     permissions: ctx.permissions,
-    body: `<meta http-equiv="refresh" content="8"><p class="eyebrow">Generation</p><h1>Generating draft.</h1><section class="panel"><div class="generation-progress" role="status" aria-live="polite"><span>AI generation is running in the background. This page will refresh automatically; you can leave it open without hitting the Cloudflare timeout.</span><i></i></div><p class="muted">Started ${escapeHtml(formatDashboardDateTime(job.createdAt))}. Last updated ${escapeHtml(formatDashboardDateTime(job.updatedAt))}.</p></section><p><a class="ghost" href="/app/content/articles?view=drafts">View Drafts</a></p>`,
+    body: `<meta http-equiv="refresh" content="8"><p class="eyebrow">Generation</p><h1>${seoJob ? 'Assessing SEO.' : 'Generating draft.'}</h1><section class="panel"><div class="generation-progress" role="status" aria-live="polite"><span>${seoJob ? 'SEO analysis is running in the background.' : 'AI generation is running in the background.'} This page will refresh automatically; you can leave it open without hitting the Cloudflare timeout.</span><i></i></div><p class="muted">Started ${escapeHtml(formatDashboardDateTime(job.createdAt))}. Last updated ${escapeHtml(formatDashboardDateTime(job.updatedAt))}.</p></section><p><a class="ghost" href="/app/content/articles?view=drafts">View Drafts</a></p>`,
   });
 }
 

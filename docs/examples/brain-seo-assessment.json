@@ -1,0 +1,137 @@
+{
+  "plan": {
+    "schemaVersion": 1,
+    "advisoryOnly": true,
+    "cluster": "music-rights",
+    "scores": {
+      "topicFit": 20,
+      "audienceProblem": 19,
+      "usefulness": 10,
+      "linkPlan": 12,
+      "distinctPurpose": 2,
+      "accuracy": 7
+    },
+    "notes": {
+      "topicFit": "Strong, direct fit with the Music Rights, Royalties & Metadata cluster. [draft]",
+      "audienceProblem": "It names a specific release-preparation problem: avoiding inconsistent identifiers, credits and downstream corrections. [draft]",
+      "usefulness": "The checklist-style next action is practical, but the supplied cornerstone already provides substantially the same workflow and concepts. [draft, page:https://certifyd.me/guides/music-metadata-checklist/]",
+      "linkPlan": "A clear applicable cornerstone exists and several supplied related articles can provide supporting context. The plan is limited because the draft is highly overlapping rather than complementary. [draft, page:https://certifyd.me/guides/music-metadata-checklist/]",
+      "distinctPurpose": "The draft's stated purpose substantially duplicates the cornerstone's stated purpose, headings and excerpt; no differentiated audience, format or scenario is evident. This is semantic overlap, not demonstrated cannibalization. [draft, page:https://certifyd.me/guides/music-metadata-checklist/]",
+      "accuracy": "Core identifier framing is consistent with the supplied IFPI reference, while the metadata/ownership/royalty limitation remains an unresolved claim marked NEEDS_REVIEW. [draft, external:ifpi-isrc, external:mlc-tracking, claim:metadata-limit]"
+    },
+    "audience": "Independent musicians preparing a release and trying to keep recording identifiers, credits, rights records and correction processes consistent.",
+    "intent": "Practical informational: provide a pre-delivery release-data workflow and explain the limits of metadata accuracy.",
+    "evidence": "Editorial inference only. The draft directly addresses music metadata, identifiers, credits, rights context and correction logs. No Search Console, keyword, ranking or measured-demand evidence was supplied.",
+    "cornerstone": "Music Metadata Checklist for Independent Artists: https://certifyd.me/guides/music-metadata-checklist/",
+    "internalLinks": "article → cornerstone: https://certifyd.me/blog/example-release-sheet-for-musicians/ -> https://certifyd.me/guides/music-metadata-checklist/; anchor: Music Metadata Checklist for Independent Artists\narticle → article: https://certifyd.me/blog/example-release-sheet-for-musicians/ -> https://certifyd.me/blog/digital-music-news-metadata-royalties-mistaken-identity/; anchor: consistent metadata does not guarantee royalties\narticle → article: https://certifyd.me/blog/example-release-sheet-for-musicians/ -> https://certifyd.me/blog/qwantumrights-music-data-royalties-creator-control/; anchor: Keep recording-owner and composition-administrator records separately",
+    "closestArticles": "Music Metadata Checklist for Independent Artists: https://certifyd.me/guides/music-metadata-checklist/\nDigital Music News Shows Why Accurate Metadata Still May Not Get You Paid: https://certifyd.me/blog/digital-music-news-metadata-royalties-mistaken-identity/",
+    "duplicationRisk": "High semantic-overlap risk with the Music Metadata Checklist. This is not proven search cannibalization because Search Console and query-performance evidence are absent. The draft repeats the guide's core task, sequence and several specific concepts: one authoritative release sheet, credits, ISRC versus release identifier, separate master/composition records, approved masters and correction logs.",
+    "indexReason": "Do not make an indexing decision from this review. The draft may have a weak standalone purpose because it substantially duplicates a current cornerstone, but no crawl, canonical, performance or search-demand evidence was supplied.",
+    "accuracyNotes": "The ISRC/recording distinction is broadly aligned with the supplied IFPI reference. The statement that consistent metadata does not establish ownership or guarantee royalties is appropriately cautious, but remains marked NEEDS_REVIEW and should not be treated as fully verified solely from the supplied references. The draft has no cited source links or jurisdictional qualification for rights-record language.",
+    "substantialDuplication": true,
+    "staleInstructions": false,
+    "unsupportedClaims": true
+  },
+  "recommendations": {
+    "cluster": {
+      "clusterId": "music-rights",
+      "confidence": "high",
+      "reason": "The draft is a practical release-metadata and rights-records piece, directly matching the cluster description's focus on records, permissions and payment rules.",
+      "evidenceRefs": [
+        "draft"
+      ]
+    },
+    "cornerstone": {
+      "url": "https://certifyd.me/guides/music-metadata-checklist/",
+      "confidence": "high",
+      "reason": "The guide covers the same release-sheet process, artist identity and credits, ISRCs, separate composition/master records, approved masters and correction logs.",
+      "evidenceRefs": [
+        "draft",
+        "page:https://certifyd.me/guides/music-metadata-checklist/"
+      ]
+    },
+    "duplication": {
+      "risk": "high",
+      "closestUrls": [
+        "https://certifyd.me/guides/music-metadata-checklist/",
+        "https://certifyd.me/blog/digital-music-news-metadata-royalties-mistaken-identity/"
+      ],
+      "confidence": "high",
+      "reason": "The guide's title, description, headings and excerpt closely reproduce the draft's core subject and workflow. The related article overlaps on metadata's limits but has a more news-analysis purpose. This establishes semantic duplication risk only; search cannibalization cannot be proven without performance evidence.",
+      "evidenceRefs": [
+        "draft",
+        "page:https://certifyd.me/guides/music-metadata-checklist/",
+        "page:https://certifyd.me/blog/digital-music-news-metadata-royalties-mistaken-identity/"
+      ]
+    },
+    "indexing": {
+      "confidence": "low",
+      "reason": "No indexing, crawl, canonical, Search Console or query-demand evidence is supplied. The high semantic-overlap risk is a reason to review standalone value before an indexing decision, not evidence for a specific indexing action. Existing claim review remains unresolved.",
+      "evidenceRefs": [
+        "draft",
+        "page:https://certifyd.me/guides/music-metadata-checklist/"
+      ]
+    },
+    "hubPromotion": {
+      "consider": false,
+      "confidence": "medium",
+      "reason": "The material has durable practical value, but the supplied cornerstone already serves the same durable practical purpose more comprehensively. Topic fit alone is insufficient for hub promotion.",
+      "evidenceRefs": [
+        "draft",
+        "page:https://certifyd.me/guides/music-metadata-checklist/"
+      ]
+    },
+    "socialOnly": {
+      "consider": false,
+      "confidence": "low",
+      "reason": "No evidence was supplied about social audience, format performance or a social-only publishing objective. The draft's overlap does not by itself establish that social-only treatment is appropriate.",
+      "evidenceRefs": [
+        "draft"
+      ]
+    }
+  },
+  "recommendedLinks": [
+    {
+      "sourceUrl": "https://certifyd.me/blog/example-release-sheet-for-musicians/",
+      "destinationUrl": "https://certifyd.me/guides/music-metadata-checklist/",
+      "anchorText": "Music Metadata Checklist for Independent Artists",
+      "reason": "The supplied cornerstone is the more complete operational checklist for the exact release-sheet, credits, identifier, rights-record and correction-log workflow introduced in this draft.",
+      "linkType": "article → cornerstone"
+    },
+    {
+      "sourceUrl": "https://certifyd.me/blog/example-release-sheet-for-musicians/",
+      "destinationUrl": "https://certifyd.me/blog/digital-music-news-metadata-royalties-mistaken-identity/",
+      "anchorText": "consistent metadata does not guarantee royalties",
+      "reason": "This supplied article provides supporting context for the draft's caution that accurate fields alone may not resolve identity or payment problems.",
+      "linkType": "article → article"
+    },
+    {
+      "sourceUrl": "https://certifyd.me/blog/example-release-sheet-for-musicians/",
+      "destinationUrl": "https://certifyd.me/blog/qwantumrights-music-data-royalties-creator-control/",
+      "anchorText": "Keep recording-owner and composition-administrator records separately",
+      "reason": "This related article can provide broader context on maintaining rights and repertoire records as an ongoing creator-control practice.",
+      "linkType": "article → article"
+    }
+  ],
+  "score": 70,
+  "decision": "Revise before indexing",
+  "warnings": [
+    "Unresolved substantial duplication: compare the closest articles and document the distinct purpose.",
+    "Unsupported or unresolved claims: review the claim ledger and original sources."
+  ],
+  "evidenceBasis": "Editorial inference; Search Console evidence not supplied. No measured search-demand or ranking claims.",
+  "corpusCoverage": {
+    "publishedPagesScanned": 114,
+    "articles": 112,
+    "guides": 2,
+    "bodyBasedRetrieval": true
+  },
+  "draftHash": "0622e47b644195cab175216c239e939c7bac5fdc57ceac63b36710968078232e",
+  "mode": "brain-model",
+  "provider": "openai",
+  "model": "gpt-5.6-terra",
+  "schemaVersion": 1,
+  "advisoryOnly": true,
+  "proposalId": "00000000-0000-4000-8000-000000000001",
+  "generatedAt": "2026-11-11T04:15:25.397120+00:00"
+}
