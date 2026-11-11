@@ -25,7 +25,7 @@ For a concrete example, the [Can It Run Core? demonstration](/blog/can-it-run-co
 
 ## 3. Make the published work discoverable
 
-A public link and discovery are separate steps. Check where the work appears: your public profile, your own site, a discovery service or a link you share with fans. Confirm that those links open the intended work.
+A public link and discovery are separate steps. Check where the work appears: [your public profile](/profile/), your own site, a discovery service or a link you share with fans. Confirm that those links open the intended work.
 
 In the recorded Certifyd workflow, creators manage work in Core and fans discover public work through [Certifyd Discovery](https://fan.certifyd.me/). Availability depends on the installation and public-service setup. A dashboard running locally does not by itself establish a reachable storefront.
 

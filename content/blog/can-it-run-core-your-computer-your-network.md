@@ -130,6 +130,8 @@ We're still building and testing Certifyd Core in beta. This commercial captures
 
 If you have a computer and something digital to share, take a look.
 
+To turn the music-selling example into a practical checklist, [walk through a direct music sale](/guides/sell-music-directly-to-fans/), from the public offer to payment confirmation and access.
+
 [Download Certifyd Core](https://certifyd.me/downloads/) · [Explore Certifyd Discovery](https://fan.certifyd.me/) · [Get Certifyd Browser](https://certifyd.me/downloads/#browser-extension)
 
 **Run it. Sell it. Get paid.**

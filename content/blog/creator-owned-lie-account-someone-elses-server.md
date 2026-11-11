@@ -108,6 +108,8 @@ Instead, creators operate Core. Independent nodes connect. Applications provide 
 
 That is what “creator-owned” should actually mean.
 
+For musicians, one practical next step is to [plan a direct-to-fan sale](/guides/sell-music-directly-to-fans/): define the offer, explain checkout, and check payment and access separately.
+
 The **Certifyd Fan Player is available now for Certifyd Core users.**
 
 **AVAILABLE NOW FOR CORE USERS.**
