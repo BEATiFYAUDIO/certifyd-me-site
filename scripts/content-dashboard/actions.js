@@ -1352,7 +1352,7 @@ export class ContentDashboardActions {
       this.seoInFlight.delete(key);
       await this.withSeoReviewLock(runId, async () => {
         const latest = await this.runs.readRun(runId);
-        if (latest.seoProposalStatus?.requestId === requestId) await this.writeRunJson(base, 'seo/proposal-status.json', { state: 'unavailable', requestId, draftHash: hash, message: 'SEO assessment unavailable. The draft and founder approval remain unchanged.' });
+        if (latest.seoProposalStatus?.requestId === requestId) await this.writeRunJson(base, 'seo/proposal-status.json', { state: 'unavailable', requestId, draftHash: hash, message: 'SEO assessment unavailable. The draft and founder approval remain unchanged.', diagnostic: seoFailureDiagnostic(error, 'scheduling') });
       });
     }
     return { ok: true, runId, output: 'SEO assessment requested. Existing accepted strategy remains unchanged.' };
@@ -1361,19 +1361,24 @@ export class ContentDashboardActions {
   async generateSeoProposal({ actor, runId, provider, requestId, hash }) {
     const base = this.runs.runPath(runId);
     const run = await this.runs.readRun(runId);
+    let stage = 'context';
     try {
       const corpus = await readSeoCorpus(this.config.siteRoot);
       const release = await fs.readFile(path.join(this.config.siteRoot, 'core/release/current.json'), 'utf8').then(JSON.parse).catch(() => ({}));
       const packet = buildSeoProposalContext(run, corpus, release.releaseTag || '', this.config.openai?.maxContextChars || 18000);
+      stage = 'provider';
       const generator = typeof provider?.proposeSeoStrategy === 'function' ? provider : createGenerationProvider(this.config, { provider: this.config.modelProvider });
-      let proposal;
+      let proposal, diagnostic;
       try {
         if (typeof generator.proposeSeoStrategy !== 'function') throw new Error('The selected provider has no semantic SEO assessment method.');
         const raw = await generator.proposeSeoStrategy({ actorUserId: actor.id, actorEmail: actor.email }, packet);
+        stage = 'validation';
         proposal = { ...validateSeoProposal(raw, packet, run), mode: 'brain-model' };
-      } catch {
+      } catch (error) {
+        diagnostic = seoFailureDiagnostic(error, stage);
         proposal = fallbackSeoProposal(packet, run, 'Model assessment was unavailable or invalid. No semantic certainty is claimed.');
       }
+      stage = 'persistence';
       const result = { ...proposal, schemaVersion: 1, proposalId: requestId, generatedAt: new Date().toISOString(), provider: generator.providerName, model: proposal.mode === 'brain-model' ? generator.modelName : 'none', draftHash: hash, advisoryOnly: true };
       return await this.withSeoReviewLock(runId, async () => {
         const latest = await this.runs.readRun(runId);
@@ -1383,15 +1388,15 @@ export class ContentDashboardActions {
           return { ok: true, runId, output: 'Draft changed during assessment. Reassess the current draft.' };
         }
         await this.writeRunJson(base, 'seo/proposal.json', result);
-        await this.writeRunJson(base, 'seo/proposal-status.json', { state: 'ready', requestId, draftHash: hash });
-        await this.writeRunJson(base, 'model-requests/seo-assessment.json', { stage: 'seo-strategy-assessment', provider: result.provider, model: result.model, mode: result.mode, draftHash: hash, corpusPages: corpus.length, generatedAt: result.generatedAt, request: proposal.mode === 'brain-model' ? generator.lastRequest : undefined });
+        await this.writeRunJson(base, 'seo/proposal-status.json', { state: 'ready', requestId, draftHash: hash, ...(diagnostic ? { diagnostic } : {}) });
+        await this.writeRunJson(base, 'model-requests/seo-assessment.json', { stage: 'seo-strategy-assessment', provider: result.provider, model: result.model, mode: result.mode, draftHash: hash, corpusPages: corpus.length, generatedAt: result.generatedAt, ...(diagnostic ? { diagnostic } : {}), request: proposal.mode === 'brain-model' ? generator.lastRequest : undefined });
         await this.audit.append({ action: 'seo_proposal_generated', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: 'SUCCESS', note: result.mode });
         return { ok: true, runId, output: 'SEO proposal ready for editor review.' };
       });
-    } catch {
+    } catch (error) {
       await this.withSeoReviewLock(runId, async () => {
         const latest = await this.runs.readRun(runId);
-        if (latest.seoProposalStatus?.requestId === requestId) await this.writeRunJson(base, 'seo/proposal-status.json', { state: 'unavailable', requestId, draftHash: hash, message: 'SEO assessment unavailable. Reassess or use the manual editor.' });
+        if (latest.seoProposalStatus?.requestId === requestId) await this.writeRunJson(base, 'seo/proposal-status.json', { state: 'unavailable', requestId, draftHash: hash, message: 'SEO assessment unavailable. Reassess or use the manual editor.', diagnostic: seoFailureDiagnostic(error, stage) });
       });
       return { ok: true, runId, output: 'Draft saved; SEO assessment unavailable.' };
     }
@@ -1614,6 +1619,26 @@ export class ContentDashboardActions {
     }
     throw Object.assign(new Error('Could not create a unique draft ID.'), { statusCode: 500 });
   }
+}
+
+// Classify failures without retaining provider messages, prompts, credentials or bodies.
+function seoFailureDiagnostic(error, stage) {
+  let code = 'SEO_ASSESSMENT_FAILED';
+  let reason = 'SEO assessment could not complete.';
+  if (error?.code === 'SEO_CONTEXT_BUDGET') {
+    code = 'SEO_CONTEXT_BUDGET'; reason = 'Completed SEO context exceeds the configured character budget.';
+  } else if (error?.name === 'GenerationConfigurationError') {
+    code = 'SEO_PROVIDER_CONFIGURATION'; reason = 'The SEO provider is unavailable or not configured correctly.';
+  } else if (error?.statusCode === 408 || ['AbortError', 'APIConnectionTimeoutError'].includes(error?.name)) {
+    code = 'SEO_MODEL_TIMEOUT'; reason = 'The SEO model request timed out.';
+  } else if (stage === 'validation' || error?.name === 'GenerationValidationError' || error instanceof SyntaxError) {
+    code = 'SEO_RESPONSE_VALIDATION'; reason = 'The SEO response failed structured-response validation.';
+  } else if (stage === 'provider') {
+    code = 'SEO_PROVIDER_FAILURE'; reason = 'The SEO provider request failed.';
+  } else if (stage === 'context') {
+    code = 'SEO_CONTEXT_CONSTRUCTION'; reason = 'SEO context construction failed.';
+  }
+  return { code, stage, reason };
 }
 
 function cryptoRandomId() {

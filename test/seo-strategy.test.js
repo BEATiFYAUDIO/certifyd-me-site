@@ -3,7 +3,7 @@ import test from 'node:test';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { assessStrategy, normalizeStrategy, SEO_CRITERIA, SEO_FIELDS, draftHash, strategyPanel, SEO_PROPOSAL_SCHEMA, readSeoCorpus, buildSeoProposalContext, validateSeoProposal, fallbackSeoProposal, seoProposalPanel } from '../scripts/content-dashboard/seo-strategy.js';
+import { assessStrategy, normalizeStrategy, SEO_CRITERIA, SEO_FIELDS, draftHash, strategyPanel, SEO_PROPOSAL_SCHEMA, readSeoCorpus, buildSeoProposalContext, validateSeoProposal, fallbackSeoProposal, seoProposalPanel, seoProposalPrompt } from '../scripts/content-dashboard/seo-strategy.js';
 import { ContentDashboardActions } from '../scripts/content-dashboard/actions.js';
 import { getDashboardConfig } from '../scripts/content-dashboard/config.js';
 
@@ -224,4 +224,123 @@ test('invalid model output falls back explicitly without inventing acceptance or
     const run=await f.actions.runs.readRun(f.runId);assert.equal(run.seoProposal.mode,'lexical-fallback');assert.deepEqual(run.seoStrategy,{});
     assert.ok(run.seoProposal.limitations.length);for(const rec of Object.values(run.seoProposal.recommendations))assert.equal(rec.confidence,'low');
   }finally{await fs.rm(f.root,{recursive:true,force:true});}
+});
+
+const budgetFixture = () => ({
+  ...sampleRun(), articleMarkdown:'metadata recording credits '.repeat(2000),
+  research:{selectedEvidence:Array.from({length:5},(_,i)=>({id:`s${i}`,title:'Evidence '.repeat(25),excerpt:'source '.repeat(100),supportedClaims:['fact '.repeat(50),'detail '.repeat(40)],qualifiedClaims:['limit '.repeat(35)]})),externalSourceFacts:Array.from({length:3},(_,i)=>({id:`e${i}`,summary:'external facts '.repeat(60)}))},
+  claimLedger:{claims:Array.from({length:10},(_,i)=>({claimId:`c${i}`,text:'claim '.repeat(50),status:'SUPPORTED',sourceIds:['s0']}))},
+});
+const budgetCorpus = () => Array.from({length:8},(_,i)=>({...sampleCorpus[i===0?0:1],url:`https://certifyd.me/${i===0?'guides':'blog'}/budget-${i}/`,body:'metadata recording credits '.repeat(60)}));
+
+test('complete context fits the 18000 boundary that previously overflowed after metadata', () => {
+  const run=budgetFixture(),corpus=budgetCorpus();
+  // An escaped newline removed during trimming reproduces the exact 17,999 boundary.
+  run.articleMarkdown=run.articleMarkdown.slice(0,7000)+'\n'+run.articleMarkdown.slice(7000);
+  // Replay the former trim order with the same data: metadata was appended last.
+  const legacy=structuredClone(buildSeoProposalContext(run,corpus,'',36000).context);
+  const retrievalLimit=legacy.retrievalLimit;
+  delete legacy.retrievalLimit;delete legacy.draft.truncated;
+  legacy.draft.markdown=run.articleMarkdown.slice(0,7200);
+  while(JSON.stringify(legacy).length>18000 && legacy.closestArticles.length>2)legacy.closestArticles.pop();
+  legacy.draft.markdown=legacy.draft.markdown.slice(0,Math.max(300,legacy.draft.markdown.length-(JSON.stringify(legacy).length-18000)));
+  assert.equal(JSON.stringify(legacy).length,17999);
+  legacy.draft.truncated=true;legacy.retrievalLimit=retrievalLimit;
+  assert.ok(JSON.stringify(legacy).length>18000,'old metadata order must reproduce the overflow');
+  const {context}=buildSeoProposalContext(run,corpus);
+  assert.ok(JSON.stringify(context).length<=18000);
+  assert.deepEqual(JSON.parse(JSON.stringify(context)),context);
+  assert.equal(context.draft.truncated,true);
+  assert.ok(context.draft.markdown.length>=300);
+  assert.equal(context.retrievalLimit,retrievalLimit);
+  assert.equal(context.corpusCoverage.publishedPagesScanned,corpus.length);
+  assert.equal(context.closestArticles.length,2,'reduce candidates before draft text');
+});
+
+test('normal drafts stay intact, large escaped drafts stay bounded, and truncation is accurate', () => {
+  const normal=sampleRun();const {context}=buildSeoProposalContext(normal,sampleCorpus);
+  assert.equal(context.draft.markdown,normal.articleMarkdown);assert.equal(context.draft.truncated,false);
+  assert.equal(context.closestArticles.length,1);assert.equal(context.guides.length,1);
+  const bounded=buildSeoProposalContext({...budgetFixture(),articleMarkdown:'metadata '.repeat(700)},budgetCorpus()).context;
+  assert.equal(bounded.draft.truncated,true);
+  assert.ok(bounded.draft.markdown.length<6300,'budget trimming can truncate an initially complete draft');
+  for(const text of ['x'.repeat(1000000),'"\\\n'.repeat(100000)]) {
+    const packet=buildSeoProposalContext({...budgetFixture(),articleMarkdown:text},budgetCorpus());
+    assert.ok(JSON.stringify(packet.context).length<=18000);
+    assert.equal(packet.context.draft.truncated,packet.context.draft.markdown.length<text.length);
+  }
+  assert.throws(()=>buildSeoProposalContext(normal,sampleCorpus,'x'.repeat(20000)),error=>error.code==='SEO_CONTEXT_BUDGET');
+});
+
+test('SEO failures retain safe categorical diagnostics without exposing provider payloads or changing protected state', async () => {
+  const f=await seoActionsFixture();
+  try {
+    const protectedFiles=['publication-manifest.json','reviews/founder-review.json'];
+    const before=await Promise.all(protectedFiles.map(p=>fs.readFile(path.join(f.base,p),'utf8')));
+    const accepted=JSON.stringify({...complete(),draftHash:draftHash('accepted draft')});
+    await fs.writeFile(path.join(f.base,'seo/strategy.json'),accepted);
+    const cases=[
+      [{name:'GenerationConfigurationError'},'SEO_PROVIDER_CONFIGURATION'],
+      [{statusCode:408},'SEO_MODEL_TIMEOUT'],
+      [{name:'APIConnectionTimeoutError'},'SEO_MODEL_TIMEOUT'],
+      [{name:'GenerationValidationError'},'SEO_RESPONSE_VALIDATION'],
+      [{},'SEO_PROVIDER_FAILURE'],
+    ];
+    for(const [properties,code] of cases) {
+      await f.actions.queueSeoAssessment({...f,provider:{providerName:'fixture',modelName:'fixture',proposeSeoStrategy:async()=>{throw Object.assign(new Error('SECRET_TOKEN request body private draft'),properties);}}});
+      const run=await f.actions.runs.readRun(f.runId);
+      assert.equal(run.seoProposalStatus.diagnostic.code,code);
+      assert.equal(run.seoProposal.mode,'lexical-fallback');
+      const record=await fs.readFile(path.join(f.base,'model-requests/seo-assessment.json'),'utf8');
+      assert.equal(JSON.parse(record).diagnostic.code,code);
+      assert.doesNotMatch(record,/SECRET_TOKEN|request body|private draft/);
+    }
+    await f.actions.queueSeoAssessment({...f,provider:{providerName:'fixture',modelName:'fixture',proposeSeoStrategy:async()=>({secret:'SECRET_TOKEN'})}});
+    let run=await f.actions.runs.readRun(f.runId);
+    assert.equal(run.seoProposalStatus.diagnostic.code,'SEO_RESPONSE_VALIDATION');
+    f.actions.config.openai.maxContextChars=100;
+    let calls=0;
+    await f.actions.queueSeoAssessment({...f,provider:{proposeSeoStrategy:async()=>{calls++;}}});
+    run=await f.actions.runs.readRun(f.runId);
+    assert.equal(calls,0);assert.equal(run.seoProposalStatus.state,'unavailable');
+    assert.equal(run.seoProposalStatus.diagnostic.code,'SEO_CONTEXT_BUDGET');
+    assert.match(run.seoProposalStatus.message,/assessment unavailable/);
+    assert.doesNotMatch(JSON.stringify(run.seoProposalStatus),/SECRET_TOKEN|request body|private draft/);
+    assert.deepEqual(await Promise.all(protectedFiles.map(p=>fs.readFile(path.join(f.base,p),'utf8'))),before);
+    assert.equal(await fs.readFile(path.join(f.base,'seo/strategy.json'),'utf8'),accepted);
+  } finally {await fs.rm(f.root,{recursive:true,force:true});}
+});
+
+
+test('curated topic membership is not page evidence and the prompt states the distinction', () => {
+  const run=sampleRun(),packet=buildSeoProposalContext(run,sampleCorpus);
+  const curatedUrl=packet.context.topics[0].curatedUrls.find(url=>!packet.evidenceRefs.includes(`page:${url}`));
+  assert.ok(curatedUrl);
+  // The page genuinely exists in the corpus, but its content was not supplied.
+  packet.corpus=[...packet.corpus,{...sampleCorpus[1],url:curatedUrl}];
+  const raw=modelRaw(packet,run);
+  raw.recommendations.duplication.closestUrls=[curatedUrl];
+  raw.recommendations.duplication.evidenceRefs=[`page:${curatedUrl}`];
+  assert.throws(()=>validateSeoProposal(raw,packet,run),/Invented evidence reference/);
+  const prompt=seoProposalPrompt(packet).systemInstruction;
+  assert.match(prompt,/topics\[\]\.curatedUrls indicate topic membership only/);
+  assert.match(prompt,/not evidence of page contents unless that page also appears in guides or closestArticles/);
+  assert.match(prompt,/page: evidence references only for pages supplied with content in guides or closestArticles/);
+  assert.match(prompt,/Copy source:, external: and claim: evidence references exactly from the supplied ref fields/);
+  assert.match(prompt,/Never infer semantic duplication or content similarity from a URL alone/);
+  assert.match(prompt,/lower confidence.*rather than citing an unsupported page/);
+});
+
+test('supplied guide, article, source, external and claim evidence refs retain exact-match validation', () => {
+  const run={...sampleRun(),research:{selectedEvidence:[{id:'source-1',excerpt:'Supported source material'}],externalSourceFacts:[{id:'external-1',summary:'External source facts'}]},claimLedger:{claims:[{claimId:'claim-1',text:'Supported claim',status:'SUPPORTED'}]}};
+  const packet=buildSeoProposalContext(run,sampleCorpus),raw=modelRaw(packet,run);
+  const refs=['draft',...packet.context.guides.map(p=>`page:${p.url}`),...packet.context.closestArticles.map(p=>`page:${p.url}`),...packet.context.sources.map(p=>p.ref),...packet.context.externalSources.map(p=>p.ref),...packet.context.claims.map(p=>p.ref)];
+  raw.recommendations.duplication.evidenceRefs=refs;
+  assert.deepEqual(validateSeoProposal(raw,packet,run).recommendations.duplication.evidenceRefs,refs);
+  for(const ref of refs.filter(r=>/^(source|external|claim):/.test(r))) {
+    for(const invalid of [ref+'-invented',ref.replace(/^[^:]+:/,''),ref.toUpperCase()]) {
+      const altered=structuredClone(raw);altered.recommendations.duplication.evidenceRefs=[invalid];
+      assert.throws(()=>validateSeoProposal(altered,packet,run),/Invented evidence reference/);
+    }
+  }
 });
