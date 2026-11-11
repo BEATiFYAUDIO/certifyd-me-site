@@ -53,7 +53,12 @@ export class BloggerOAuth {
   async testConnection() {
     if (!this.configured()) return { status: 'not_connected', label: 'Not connected', message: 'Blogger OAuth credentials are not configured.' };
     if (!await this.connected()) return { status: 'not_connected', label: 'Not connected', message: 'Connect Blogger with the founder Google account first.' };
-    const blog = await this.verifyBlog(await this.accessToken());
+    let blog;
+    try { blog = await this.verifyBlog(await this.accessToken()); }
+    catch (error) {
+      if (error.code === 'BLOGGER_REFRESH_TOKEN_EXPIRED') return { status: 'not_connected', label: 'Reconnect required', message: 'Google expired or revoked the Blogger authorization. Reconnect Blogger with the founder Google account.' };
+      throw error;
+    }
     return { status: 'connected', label: 'Connected', message: `Blogger blog ${blog.name || blog.id} verified.`, accountId: String(blog.id) };
   }
 
@@ -86,7 +91,15 @@ export class BloggerOAuth {
 
   async tokenRequest(fields) {
     const response = await fetch(TOKEN_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: this.config.env.CONTENT_DISTRIBUTION_BLOGGER_CLIENT_ID, client_secret: this.config.env.CONTENT_DISTRIBUTION_BLOGGER_CLIENT_SECRET, ...fields }), signal: AbortSignal.timeout(20_000) });
-    if (!response.ok) throw new Error(`Google Blogger OAuth token exchange failed: HTTP ${response.status}. Response body withheld.`);
+    if (!response.ok) {
+      // Google returns invalid_grant when a refresh token has expired or been revoked.
+      // Inspect only the error code; never include Google's response body in logs or state.
+      const code = await response.json().then((body) => body?.error).catch(() => '');
+      if (fields.grant_type === 'refresh_token' && code === 'invalid_grant') {
+        throw Object.assign(new Error('Google expired or revoked the Blogger authorization. Reconnect Blogger.'), { code: 'BLOGGER_REFRESH_TOKEN_EXPIRED' });
+      }
+      throw new Error(`Google Blogger OAuth token exchange failed: HTTP ${response.status}. Response body withheld.`);
+    }
     const tokens = await response.json();
     if (!tokens || typeof tokens !== 'object') throw new Error('Google Blogger OAuth returned invalid token data.');
     return tokens;

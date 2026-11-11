@@ -13,7 +13,7 @@
     "daemon:blog-engine:restart": "bash scripts/blog-engine-daemon.sh restart",
     "daemon:blog-engine:status": "bash scripts/blog-engine-daemon.sh status",
     "start:admin": "node scripts/content-dashboard-server.js",
-    "test:dashboard": "node --test test/content-dashboard.test.js test/seo-strategy.test.js",
+    "test:dashboard": "node --test test/content-dashboard.test.js test/seo-strategy.test.js test/linkedin-oauth.test.js test/content-static-security.test.js",
     "build:blog": "node scripts/build-blog.js",
     "test:blog": "node --test test/blog-build.test.js",
     "test": "npm run test:blog && npm run test:dashboard && npm run test:generation && npm run test:trends && npm run test:images",
