@@ -7,7 +7,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { createContentDashboardServer, trendOpportunityTopicForIntake } from '../scripts/content-dashboard/server.js';
 import { getDashboardConfig } from '../scripts/content-dashboard/config.js';
-import { validateRunId, safeReturnPath } from '../scripts/content-dashboard/security.js';
+import { validateRunId, safeReturnPath, verifySession, createCsrfToken } from '../scripts/content-dashboard/security.js';
 import { AuditLogRepository, ContentDashboardActions } from '../scripts/content-dashboard/actions.js';
 import { ContentBrainRepository } from '../scripts/content-dashboard/repository.js';
 import { KNOWLEDGE_SUGGESTIONS, applyKnowledgeSuggestion, listPendingKnowledgeSuggestions } from '../scripts/content-dashboard/brain-suggestions.js';
@@ -3242,4 +3242,50 @@ test('distribution phase 2: edited article cannot expose or confirm a stale manu
     assert.match(page, /Export is stale/);
     assert.doesNotMatch(page, /View Markdown export content/);
   }, { CONTENT_AGENT_ROOT: fixture.root, CONTENT_AGENT_OUTPUT_DIR: path.join(fixture.root, 'engine', 'outputs') });
+});
+
+test('Brain SEO dashboard runs the first pass in background, requires editor permission/CSRF and keeps founder approval authoritative', async () => {
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'certifyd-seo-dashboard-'));
+  const outputs=path.join(root,'outputs');
+  const waitReady=async(runDir)=>{
+    for(let i=0;i<200;i++){
+      const status=await fs.readFile(path.join(runDir,'seo/proposal-status.json'),'utf8').then(JSON.parse).catch(()=>({}));
+      if(status.state==='ready')return JSON.parse(await fs.readFile(path.join(runDir,'seo/proposal.json'),'utf8'));
+      await new Promise(resolve=>setTimeout(resolve,10));
+    }
+    assert.fail('SEO background assessment did not finish');
+  };
+  try {
+    await withServer(async(base)=>{
+      const cookie=await login(base,'founder@example.test');const csrf=await getCsrf(base,cookie);
+      const post=(action,values,auth=cookie)=>fetch(base+'/app/content/actions/'+action,{method:'POST',headers:{cookie:auth,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({_csrf:csrf,...values})});
+      const created=await post('manual-paste',{title:'Music metadata and release credits',articleMarkdown:'# Music metadata and release credits\n\nKeep recording ISRC, songwriter credits and release identifiers consistent.'});
+      assert.equal(created.status,200);const result=await created.text();
+      const runId=result.match(/href="\/app\/content\/articles\/([^"/]+)"/)?.[1];assert.ok(runId,result);
+      const runDir=path.join(outputs,runId);const proposal=await waitReady(runDir);
+      const state=await fs.readFile(path.join(runDir,'publication-manifest.json'),'utf8');
+      const original=await fetch(base+'/app/content/articles/'+runId,{headers:{cookie}});const html=await original.text();
+      assert.match(html,/Brain proposal/);assert.match(html,/Confidence and evidence by recommendation/);
+      assert.match(html,/Editorial inference; Search Console evidence not supplied/);
+      assert.match(html,/Accept proposed assessment/);assert.match(html,/Reject proposal/);assert.match(html,/Edit proposed assessment/);
+      assert.equal(JSON.parse(await fs.readFile(path.join(runDir,'seo/proposal.json'),'utf8')).proposalId,proposal.proposalId);
+      const viewer=await login(base,'viewer@example.test');
+      const readOnly=await fetch(base+'/app/content/articles/'+runId,{headers:{cookie:viewer}});
+      assert.doesNotMatch(await readOnly.text(),/action="\/app\/content\/actions\/seo\//);
+      const viewerSession=verifySession(decodeURIComponent(viewer.split('=')[1]),env.CONTENT_DASHBOARD_SESSION_SECRET);
+      const viewerCsrf=createCsrfToken(env.CONTENT_DASHBOARD_SESSION_SECRET,viewerSession.sid);
+      const forbidden=await post('seo/proposal',{_csrf:viewerCsrf,runId,proposalId:proposal.proposalId,decision:'accept'},viewer);assert.equal(forbidden.status,403);assert.match(await forbidden.text(),/Forbidden/);
+      const noCsrf=await fetch(base+'/app/content/actions/seo/reassess',{method:'POST',headers:{cookie,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({runId})});assert.equal(noCsrf.status,403);
+      const accepted=await post('seo/proposal',{runId,proposalId:proposal.proposalId,decision:'accept'});assert.equal(accepted.status,200);
+      const acceptedBytes=await fs.readFile(path.join(runDir,'seo/strategy.json'),'utf8');
+      assert.equal(JSON.parse(acceptedBytes).proposalId,proposal.proposalId);
+      const rerun=await post('seo/reassess',{runId});assert.equal(rerun.status,200);const next=await waitReady(runDir);
+      assert.notEqual(next.proposalId,proposal.proposalId);
+      assert.equal(await fs.readFile(path.join(runDir,'seo/strategy.json'),'utf8'),acceptedBytes);
+      const rejected=await post('seo/proposal',{runId,proposalId:next.proposalId,decision:'reject'});assert.equal(rejected.status,200);
+      assert.equal(await fs.readFile(path.join(runDir,'seo/strategy.json'),'utf8'),acceptedBytes);
+      assert.equal(await fs.readFile(path.join(runDir,'publication-manifest.json'),'utf8'),state);
+      assert.equal(JSON.parse(await fs.readFile(path.join(runDir,'reviews/founder-review.json'),'utf8')).reviewStatus,'PENDING_FOUNDER_REVIEW');
+    },{CONTENT_AGENT_ROOT:root,CONTENT_AGENT_OUTPUT_DIR:outputs,CONTENT_MODEL_PROVIDER:'deterministic'});
+  } finally {await fs.rm(root,{recursive:true,force:true});}
 });

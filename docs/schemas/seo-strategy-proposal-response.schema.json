@@ -1,0 +1,422 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Model SEO strategy response (before server normalization)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "plan",
+    "recommendations",
+    "recommendedLinks"
+  ],
+  "properties": {
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cluster",
+        "audience",
+        "intent",
+        "evidence",
+        "cornerstone",
+        "internalLinks",
+        "closestArticles",
+        "duplicationRisk",
+        "indexReason",
+        "accuracyNotes",
+        "scores",
+        "notes",
+        "substantialDuplication",
+        "staleInstructions",
+        "unsupportedClaims"
+      ],
+      "properties": {
+        "cluster": {
+          "type": "string",
+          "enum": [
+            "",
+            "creator-ownership",
+            "music-rights",
+            "ai-identity",
+            "direct-commerce"
+          ]
+        },
+        "audience": {
+          "type": "string"
+        },
+        "intent": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "string"
+        },
+        "cornerstone": {
+          "type": "string"
+        },
+        "internalLinks": {
+          "type": "string"
+        },
+        "closestArticles": {
+          "type": "string"
+        },
+        "duplicationRisk": {
+          "type": "string"
+        },
+        "indexReason": {
+          "type": "string"
+        },
+        "accuracyNotes": {
+          "type": "string"
+        },
+        "scores": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "topicFit",
+            "audienceProblem",
+            "usefulness",
+            "linkPlan",
+            "distinctPurpose",
+            "accuracy"
+          ],
+          "properties": {
+            "topicFit": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 20
+            },
+            "audienceProblem": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 20
+            },
+            "usefulness": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 20
+            },
+            "linkPlan": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 15
+            },
+            "distinctPurpose": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 15
+            },
+            "accuracy": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10
+            }
+          }
+        },
+        "notes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "topicFit",
+            "audienceProblem",
+            "usefulness",
+            "linkPlan",
+            "distinctPurpose",
+            "accuracy"
+          ],
+          "properties": {
+            "topicFit": {
+              "type": "string"
+            },
+            "audienceProblem": {
+              "type": "string"
+            },
+            "usefulness": {
+              "type": "string"
+            },
+            "linkPlan": {
+              "type": "string"
+            },
+            "distinctPurpose": {
+              "type": "string"
+            },
+            "accuracy": {
+              "type": "string"
+            }
+          }
+        },
+        "substantialDuplication": {
+          "type": "boolean"
+        },
+        "staleInstructions": {
+          "type": "boolean"
+        },
+        "unsupportedClaims": {
+          "type": "boolean"
+        }
+      }
+    },
+    "recommendations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cluster",
+        "cornerstone",
+        "duplication",
+        "indexing",
+        "hubPromotion",
+        "socialOnly"
+      ],
+      "properties": {
+        "cluster": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "clusterId",
+            "confidence",
+            "reason",
+            "evidenceRefs"
+          ],
+          "properties": {
+            "clusterId": {
+              "type": "string",
+              "enum": [
+                "",
+                "creator-ownership",
+                "music-rights",
+                "ai-identity",
+                "direct-commerce"
+              ]
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "high",
+                "medium",
+                "low",
+                "unknown"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "cornerstone": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "url",
+            "confidence",
+            "reason",
+            "evidenceRefs"
+          ],
+          "properties": {
+            "url": {
+              "type": "string"
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "high",
+                "medium",
+                "low",
+                "unknown"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "duplication": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "risk",
+            "closestUrls",
+            "confidence",
+            "reason",
+            "evidenceRefs"
+          ],
+          "properties": {
+            "risk": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high",
+                "unknown"
+              ]
+            },
+            "closestUrls": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "high",
+                "medium",
+                "low",
+                "unknown"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "indexing": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "confidence",
+            "reason",
+            "evidenceRefs"
+          ],
+          "properties": {
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "high",
+                "medium",
+                "low",
+                "unknown"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "hubPromotion": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "consider",
+            "confidence",
+            "reason",
+            "evidenceRefs"
+          ],
+          "properties": {
+            "consider": {
+              "type": "boolean"
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "high",
+                "medium",
+                "low",
+                "unknown"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "socialOnly": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "consider",
+            "confidence",
+            "reason",
+            "evidenceRefs"
+          ],
+          "properties": {
+            "consider": {
+              "type": "boolean"
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "high",
+                "medium",
+                "low",
+                "unknown"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "recommendedLinks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sourceUrl",
+          "destinationUrl",
+          "anchorText",
+          "reason",
+          "linkType"
+        ],
+        "properties": {
+          "sourceUrl": {
+            "type": "string"
+          },
+          "destinationUrl": {
+            "type": "string"
+          },
+          "anchorText": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "linkType": {
+            "type": "string",
+            "enum": [
+              "article → cornerstone",
+              "article → article",
+              "cornerstone → article"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

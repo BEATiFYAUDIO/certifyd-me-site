@@ -4835,3 +4835,31 @@ test('incomplete reasoning reasons: filtered and unknown responses are never mis
     assert.equal(count, 1);
   }
 });
+
+test('SEO assessment reuses the configured OpenAI structured transport, schema, timeouts and generation slot', async () => {
+  const { SEO_PROPOSAL_SCHEMA, buildSeoProposalContext, fallbackSeoProposal } = await import('../scripts/content-dashboard/seo-strategy.js');
+  const config = await makeConfig();
+  const run = { summary: {title:'Creator publishing records',slug:'creator-publishing-records'},articleMarkdown:'# Creator publishing records\n\nKeep clear records.' };
+  const packet = buildSeoProposalContext(run, []);
+  const fallback = fallbackSeoProposal(packet, run);
+  const raw = Object.fromEntries(Object.keys(SEO_PROPOSAL_SCHEMA.properties).map(key=>[key,fallback[key]]));
+  raw.plan = Object.fromEntries(Object.keys(SEO_PROPOSAL_SCHEMA.properties.plan.properties).map(key=>[key,raw.plan[key]]));
+  let request, options, release;
+  const provider = new OpenAIGenerationProvider(config,{openaiClient:{responses:{create:async(body,opts)=>{
+    request=body;options=opts;await new Promise(resolve=>release=resolve);
+    return {id:'seo-test-response',status:'completed',output_text:JSON.stringify(raw),usage:{input_tokens:20,output_tokens:30}};
+  }}}});
+  resetGenerationState();
+  try {
+    const first = provider.proposeSeoStrategy({actorUserId:'seo-editor'},packet);
+    await assert.rejects(provider.proposeSeoStrategy({actorUserId:'seo-editor'},packet),/already|concurrent|generation/i);
+    release();const result=await first;
+    assert.deepEqual(result,raw);
+    assert.equal(request.model,config.openai.model);assert.equal(request.store,false);
+    assert.equal(request.text.format.strict,true);assert.deepEqual(request.text.format.schema,SEO_PROPOSAL_SCHEMA);
+    assert.equal(request.text.format.name,'certifyd_seo_strategy');assert.equal(options.timeout,config.openai.timeoutMs);
+    assert.match(request.instructions,/untrusted data/);assert.match(request.input,/Search Console evidence not supplied/);
+    assert.equal(provider.lastRequest.stages[0].stage,'seo-strategy-assessment');
+    assert.equal(provider.lastRequest.tokenUsage.totalTokens,50);
+  } finally {resetGenerationState();await fs.rm(config.siteRoot,{recursive:true,force:true});}
+});

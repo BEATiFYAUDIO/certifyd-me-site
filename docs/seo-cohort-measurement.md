@@ -42,10 +42,14 @@ Keep the November 1 Stella Lefty/MLC experiment isolated. Do not alter its metad
 
 ## Advisory dashboard review
 
-The six criteria total 100 points: topic fit 20, audience problem 20, evidence/usefulness 20, cornerstone/link plan 15, distinct purpose 15, accuracy/sources/next action 10. Editors provide planning fields, points and rationales. Missing supporting fields earn zero for their criterion.
+The six criteria total 100 points: topic fit 20, audience problem 20, evidence/usefulness 20, cornerstone/link plan 15, distinct purpose 15, accuracy/sources/next action 10. The existing Brain proposes the planning fields, points and rationales after the draft exists. The same deterministic scorer computes the result. Editors accept, edit or reject the proposal rather than starting with a blank form. Missing supporting fields still earn zero for their criterion.
 
-Decisions: 80–100 indexed article recommended; 60–79 revise before indexing; 40–59 consider social/distribution instead; below 40 off-strategy. These are recommendations only. Saving an assessment changes neither approval nor publication/indexing status.
+Decisions remain: 80–100 indexed article recommended; 60–79 revise before indexing; 40–59 consider social/distribution instead; below 40 off-strategy. These are recommendations only. No score or proposal changes founder approval, publication/indexing status, actual internal links or hub membership.
 
-Warnings cover editor-flagged duplication/stale instructions/unsupported claims, close title matches, older-beta installation references, unresolved claim-ledger entries and a draft changed since assessment. Title matching is only a review aid; no semantic duplication or factual verification is claimed. Existing publishing claim checks retain their prior behavior. Reassess after substantive draft edits.
+Automatic proposals are stored separately from accepted strategy. Confidence is qualitative and separate for cluster, cornerstone, duplication/cannibalization, indexing, hub promotion and social-only suitability. Every link recommendation includes exact source/destination URLs, an anchor, relevance and direction. See [dashboard behavior](content-dashboard.md#brain-driven-seo-proposals).
+
+The assessment uses the completed draft, stored sources/claims and relevant corpus/guide excerpts. These establish editorial fit, not observed search demand. Search Console evidence is not currently supplied to this stage; the dashboard labels that absence explicitly. Do not count an AI-selected cluster or a high confidence rating as a GSC-validated search opportunity.
+
+Warnings retain stale-instruction and unsupported-claim checks. Body-based retrieval finds related pages, but semantic overlap remains an editorial judgment and actual search cannibalization requires search evidence. Draft-hash changes make old proposals unusable and keep accepted-assessment warnings visible until an editor explicitly reassesses/accepts the current draft. Model failures are labelled low-confidence lexical fallbacks rather than factual assessments. Existing publishing claim checks retain their prior behavior.
 
 Sources: [Google: performance data limitations](https://developers.google.com/search/blog/2022/10/performance-data-deep-dive), [Search Analytics API aggregation and dates](https://developers.google.com/webmaster-tools/v1/searchanalytics/query).

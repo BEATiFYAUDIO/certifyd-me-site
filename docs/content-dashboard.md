@@ -244,3 +244,33 @@ Before production use, configure:
 - GitHub publishing is disabled until the GitHub App is installed and configured.
 - Local filesystem storage is acceptable for the initial internal deployment but must be backed up.
 - Local token login is development-only; production should use Cloudflare Access.
+
+## Brain-driven SEO proposals
+
+The existing generation provider performs an advisory SEO pass after a draft exists. Generated drafts, deterministic fallback drafts and pasted drafts request a first pass automatically; changed Markdown requests a fresh proposal. The dashboard uses its existing background job mechanism, so creation/save requests do not wait for the model. Viewing an article reads saved results and never starts a model call. Existing drafts can use **Reassess**; there is no bulk model run at startup.
+
+The assessment receives the draft, intake, stored research and claim context, the four topic definitions, actual published guides and relevant excerpts retrieved after scanning the complete published article/guide corpus. It reuses the configured provider/model, structured-response transport, concurrency limit and timeout. There is no new model service, key configuration, crawler, vector database or publishing adapter. The existing article-writing and founder-review logic remains authoritative.
+
+The Brain proposes the existing six rubric scores and rationales. The existing deterministic scoring function alone computes totals and the unchanged decision bands. Confidence is separate for topic cluster, cornerstone, duplication/cannibalization, indexing, hub promotion and social/distribution suitability. Each area reports `high`, `medium`, `low` or `unknown`, with a reason and evidence references. These are qualitative editorial estimates, not calibrated probabilities or measured search demand.
+
+Every proposed link has an exact `sourceUrl`, `destinationUrl`, `anchorText`, relevance `reason` and `linkType`: `article → cornerstone`, `article → article` or `cornerstone → article`. Source and destination types are checked against the real corpus and draft. A reverse link to the draft is explicitly a suggestion for after publication. No link is inserted. A nonexistent cornerstone is rejected; no applicable guide is a valid result.
+
+The response shape is in [the model-response schema](schemas/seo-strategy-proposal-response.schema.json); persistence is described by [the stored-proposal schema](schemas/seo-strategy-proposal.schema.json). A real, isolated model result is in [the generated example](examples/brain-seo-assessment.json). Its sample draft was not created as a production article.
+
+Per-run records:
+
+- `seo/proposal.json`: latest proposed plan, structured recommendations, confidence, score/decision, evidence basis, draft hash, provider/model and proposal identity.
+- `seo/proposal-status.json`: running, ready, stale or unavailable state and request/draft identity.
+- `seo/proposal-review.json`: explicit accept/edit/reject decision, reviewer and proposal identity.
+- `seo/strategy.json`: accepted/editor-authored assessment. Automatic analysis never writes this file.
+- `model-requests/seo-assessment.json`: provider diagnostics without credentials or prompt text.
+
+**Accept** copies a current, unreviewed proposal into accepted strategy. **Edit** prefills the existing strategy editor with the proposed fields; saving records an edited assessment. Modified assessments do not carry over model confidence claims for fields the human changed. **Reject** records rejection and leaves the accepted strategy and article state intact. **Reassess** creates a new pending proposal without changing any accepted assessment.
+
+All actions use existing article-edit permission and CSRF validation. A reviewed proposal cannot be replayed to replace a later human decision. Draft-hash mismatches block acceptance/editing of that proposal and retain the existing accepted-assessment hash warning. A model result for an older/superseded request cannot replace a newer proposal. Same-run/same-hash work is deduplicated while running. Following a process restart, a stale running indicator can be recovered with Reassess; no model request is started by opening a page.
+
+Model refusal, invalid output, a missing configured provider or a busy provider produces an explicitly labelled **lexical fallback** with low confidence and limitations. It does not fail an otherwise saved draft. The fallback score is provisional, reflecting incomplete evidence; it is not an automatic indexing rejection. Context is bounded; truncation is disclosed and reduces confidence in recommendations requiring full-draft analysis.
+
+Search Console evidence is not supplied to this stage. Every assessment says **Editorial inference; Search Console evidence not supplied**. It must not claim observed impressions, demand, rankings or actual query cannibalization. Existing source IDs are not treated as independent factual verification.
+
+Neither automatic analysis nor acceptance changes founder approval, claim blockers, robots/indexing directives, article Markdown, curated hub membership, `scripts/blog-topics.js`, published guides or the sitemap. Those changes remain explicit human-controlled work.
