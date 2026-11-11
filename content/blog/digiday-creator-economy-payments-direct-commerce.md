@@ -42,6 +42,8 @@ That is the specific gap Certifyd addresses in a different part of creator busin
 
 It makes the underlying architectural contrast visible: a creator should not need a centralized company to sit between every commercial interaction and the customer connection it creates. As Certifyd builds toward a creator-operated network, direct purchases give creators a starting point for running more of their commerce closer to their own business rather than solely as accounts inside intermediary systems.
 
+Before promoting a paid release, check the [steps from direct music checkout to confirmed access](/guides/sell-music-directly-to-fans/). A visible buy button alone does not establish a complete buyer journey.
+
 ## From payment bottleneck to creator control
 
 Creator advertising will still require serious operational discipline as budgets rise. Digiday is right to focus on payment complexity as a constraint on the market’s next phase. But the longer-term question is who owns the infrastructure that turns commercial activity into an ongoing creator business.

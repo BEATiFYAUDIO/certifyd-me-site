@@ -46,6 +46,8 @@ Certifyd Core takes the opposite direction through its creator-operated infrastr
 
 Certifyd is building toward a broader shift in which creators are not required to place more of their operation inside a single company’s environment just to take part in commercial relationships. For an artist, the practical outcome is a more durable role in operating the infrastructure around their work, rather than relying solely on a third party’s account, rules and business connections.
 
+If you are choosing how to make a direct offer, the [guide to selling music directly to fans](/guides/sell-music-directly-to-fans/) turns those operating questions into a buyer-journey checklist.
+
 ## A test for the next phase of direct-to-fan
 
 Remsberg’s remit shows that direct-to-fan is becoming part of the music industry’s commercial plumbing. The next question is who controls that plumbing as it grows.

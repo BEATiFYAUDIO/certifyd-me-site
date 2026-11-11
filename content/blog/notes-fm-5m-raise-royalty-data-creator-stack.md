@@ -48,6 +48,8 @@ That distinction matters here. Royalty recovery helps find money when records ar
 
 Notes.fm and Certifyd therefore address different parts of the same problem. Notes.fm is making it easier to find and collect royalties across a fragmented industry. Certifyd asks what happens if the creator controls the underlying release context before that information is scattered across those systems in the first place.
 
+A useful first step is to compare the recording and composition records you already hold. The [music metadata checklist](/guides/music-metadata-checklist/) shows which identifiers, credits and source records to keep together.
+
 ## A new expectation for artist operations
 
 Notes.fm's $5 million raise is another sign that credits, royalty data and release information are becoming part of the everyday creator stack. They are no longer just administrative details to clean up after a song is released.

@@ -38,6 +38,8 @@ Certifyd is building in that direction. Certifyd Core, currently in beta, mainta
 
 As direct usage data becomes more important, the music business will need stronger connections between a reported play and the work it represents. The durable opportunity is not simply to make central systems better informed. It is to move more of the foundational record of creative work toward infrastructure creators can participate in operating themselves.
 
+Creators can make their own side of that record clearer with a [consistent release metadata sheet](/guides/music-metadata-checklist/), while recognizing that playback reporting and royalty matching require additional systems.
+
 ## Accuracy is only one part of the argument
 
 PRS’s partnership with Soundtrack is a practical improvement in how a defined set of public performances can be reflected in royalty distributions. It also makes the dependency visible: a creator’s recognition depends on a chain of services capturing, sharing and interpreting the right information.

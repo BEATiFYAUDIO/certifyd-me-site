@@ -1,3 +1,4 @@
+import { normalizeStrategy, draftHash } from './seo-strategy.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -1259,6 +1260,18 @@ export class ContentDashboardActions {
       note: 'Article archived.',
     });
     return { ok: true, output: `Archived ${run.summary.title || runId}.` };
+  }
+
+  async saveSeoStrategy({ actor, runId, input = {} }) {
+    validateRunId(runId);
+    const run = await this.runs.readRun(runId);
+    const plan = normalizeStrategy(input);
+    await this.writeRunJson(this.runs.runPath(runId), 'seo/strategy.json', {
+      ...plan, assessedAt: new Date().toISOString(), reviewer: actor.email,
+      draftHash: draftHash(run.articleMarkdown || run.draftMarkdown || ''),
+    });
+    await this.audit.append({ action: 'seo_strategy_advisory', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, runId, result: 'SUCCESS' });
+    return { ok: true, runId, output: 'Saved advisory SEO assessment. Approval and publishing status unchanged.' };
   }
 
   async saveArticleMarkdown({ actor, runId, articleMarkdown = '' }) {

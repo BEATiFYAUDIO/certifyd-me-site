@@ -78,6 +78,7 @@ export class ContentRunRepository {
       externalResearch: await this.readJson(base, 'external-research.json', {}),
       topicOpportunity: await this.readJson(base, 'topic-opportunity.json', {}),
       claimLedger: await this.readJson(base, 'claim-ledgers/v2.json', null) || await this.readJson(base, 'claim-ledgers/v1.json', null) || await this.readJson(base, 'claim-ledger.json', {}),
+      seoStrategy: await this.readJson(base, 'seo/strategy.json', {}),
       seo: await this.readJson(base, 'seo/seo-package.json', null) || await this.readJson(base, 'seo-package.json', {}),
       distribution: await this.readDistribution(base),
       lifecycle: await this.readJson(base, 'lifecycle.json', {}),

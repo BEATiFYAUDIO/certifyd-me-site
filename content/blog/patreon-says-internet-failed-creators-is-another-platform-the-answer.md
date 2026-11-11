@@ -112,6 +112,8 @@ Certifyd Core separates those layers. The infrastructure can remain under the pa
 
 That distinction creates a healthier relationship between creators and technology companies. Platforms still have every incentive to build great products, but creators gain considerably more freedom to decide which products deserve their participation.
 
+To assess that control in practice, use the [direct-to-fan music selling guide](/guides/sell-music-directly-to-fans/) to compare checkout, access recovery and customer-relationship responsibilities.
+
 ## The Next Internet for Creators
 
 Patreon is right about something fundamental. The internet promised creators direct relationships and then gradually inserted increasingly powerful intermediaries between them and their audiences.

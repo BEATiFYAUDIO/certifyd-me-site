@@ -264,6 +264,8 @@ That's powerful.
 
 The relationship is bigger than the platform.
 
+For a practical way to evaluate the whole sale, follow the [direct-to-fan music selling guide](/guides/sell-music-directly-to-fans/): the offer, checkout, confirmed access and return visit all need to work.
+
 ## Use SoundCloud. Don't Become Dependent on SoundCloud.
 
 Creators shouldn't abandon platforms.
