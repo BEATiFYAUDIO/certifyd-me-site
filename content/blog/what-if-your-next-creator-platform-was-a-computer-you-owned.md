@@ -198,6 +198,8 @@ But the philosophy behind it is much bigger.
 
 **The personal computer is getting personal again. Maybe the creator economy should too.**
 
+If you want to [run Core on your own computer](/core/guide/), the maintained installation guide explains the supported operating systems and current setup steps.
+
 ---
 
 *Certifyd covers developments in technology, music and the creator economy and examines what they mean for creator ownership, sovereign infrastructure and direct digital commerce.*

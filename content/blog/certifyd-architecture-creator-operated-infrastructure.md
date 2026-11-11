@@ -90,4 +90,6 @@ The long-term opportunity is bigger than making today's creator platforms slight
 
 That is the architecture behind Certifyd: **creator-operated infrastructure for a more open creative economy.**
 
+For the practical first step, follow the current guide to [install Certifyd Core](/core/guide/). Installation and making a public service available are separate steps.
+
 Own your work. On your terms.
