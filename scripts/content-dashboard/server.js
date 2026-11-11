@@ -26,6 +26,7 @@ import {
 } from './trends.js';
 import { ensureImageBriefForRun } from './image-generation.js';
 import { BLOGGER_REDIRECT_URI } from './blogger-oauth.js';
+import { LINKEDIN_REDIRECT_URI } from './linkedin-oauth.js';
 
 const STATIC_TYPES = new Map([['.html','text/html; charset=utf-8'],['.css','text/css; charset=utf-8'],['.js','text/javascript; charset=utf-8'],['.svg','image/svg+xml'],['.png','image/png'],['.jpg','image/jpeg'],['.jpeg','image/jpeg'],['.webp','image/webp'],['.xml','application/xml; charset=utf-8'],['.txt','text/plain; charset=utf-8'],['.mp4','video/mp4']]);
 const generationJobs = new Map();
@@ -116,6 +117,12 @@ async function handleProtected(req, res, url, ctx) {
     await ctx.actions.completeBloggerConnection({ actor: user, sessionId: user.sid, state: url.searchParams.get('state'), code: url.searchParams.get('code'), error: url.searchParams.get('error') });
     return redirect(res, '/app/content/distribution?blogger=connected');
   }
+  if (url.pathname === '/app/content/oauth/linkedin/callback') {
+    if (req.method !== 'GET') return sendStatus(res, 405, 'Method not allowed');
+    if (user.role !== 'founder') return sendStatus(res, 403, 'Forbidden');
+    await ctx.actions.completeLinkedInConnection({ actor: user, sessionId: user.sid, state: url.searchParams.get('state'), code: url.searchParams.get('code'), error: url.searchParams.get('error') });
+    return redirect(res, '/app/content/distribution?linkedin=connected');
+  }
   if (req.method === 'POST') return handleAction(req, res, url, { ...ctx, user, permissions });
   await ctx.audit.append({ action: 'dashboard_access', actorUserId: user.id, actorDisplayName: user.email, actorRole: user.role, result: 'SUCCESS', requestId: ctx.requestId });
   return handlePage(req, res, url, { ...ctx, user, permissions });
@@ -152,7 +159,7 @@ async function handleAction(req, res, url, ctx) {
     if (!ctx.permissions.includes(permission)) throw Object.assign(new Error('Forbidden'), { statusCode: 403 });
   };
   let result;
-  if (action.endsWith('/generate')) {
+  if (action === '/app/content/actions/generate') {
     needs('content.article.create');
     validateIntake(form);
     const job = startGenerationJob(ctx, snapshotForm(form));
@@ -191,6 +198,8 @@ async function handleAction(req, res, url, ctx) {
   else if (action.endsWith('/distribution/test')) { needs('content.distribution.manage'); result = await ctx.actions.testDistributionConnection({ actor: ctx.user, destinationId: form.get('destinationId') }); }
   else if (action.endsWith('/distribution/blogger/connect')) { needs('content.distribution.manage'); return redirect(res, ctx.actions.startBloggerConnection({ actor: ctx.user, sessionId: ctx.user.sid })); }
   else if (action.endsWith('/distribution/blogger/disconnect')) { needs('content.distribution.manage'); result = await ctx.actions.disconnectBlogger({ actor: ctx.user }); }
+  else if (action.endsWith('/distribution/linkedin/connect')) { needs('content.distribution.manage'); return redirect(res, ctx.actions.startLinkedInConnection({ actor: ctx.user, sessionId: ctx.user.sid })); }
+  else if (action.endsWith('/distribution/linkedin/disconnect')) { needs('content.distribution.manage'); result = await ctx.actions.disconnectLinkedIn({ actor: ctx.user }); }
   else if (action.endsWith('/seo/reassess')) { needs('content.article.edit'); result = await ctx.actions.queueSeoAssessment({ actor: ctx.user, runId: form.get('runId') }); }
   else if (action.endsWith('/seo/proposal')) { needs('content.article.edit'); result = await ctx.actions.reviewSeoProposal({ actor: ctx.user, runId: form.get('runId'), proposalId: form.get('proposalId'), decision: form.get('decision') }); }
   else if (action.endsWith('/seo/strategy')) { needs('content.article.edit'); result = await ctx.actions.saveSeoStrategy({ actor: ctx.user, runId: form.get('runId'), input: Object.fromEntries([...['proposalId', 'cluster', 'audience', 'intent', 'evidence', 'cornerstone', 'internalLinks', 'closestArticles', 'duplicationRisk', 'indexReason', 'accuracyNotes', 'substantialDuplication', 'staleInstructions', 'unsupportedClaims'], ...['topicFit','audienceProblem','usefulness','linkPlan','distinctPurpose','accuracy'].flatMap(k => [`score_${k}`, `note_${k}`])].map(k => [k, form.get(k)])) }); }
@@ -1213,6 +1222,7 @@ function distributionPackagePanel(pkg = {}, run = {}, csrf = '', canManage = fal
 
 function distributionCopyCard(id, label, text, status = 'ready', csrf = '', runId = '', returnTo = '', characterCount = null, fieldName = 'text') {
   const target = `distribution-copy-${escapeHtml(runId)}-${escapeHtml(id)}`;
+  if (id === 'linkedin') return `<article class="distribution-copy-card"><h4>LinkedIn</h4><p class="muted">Publish prepares and validates this post automatically. Saved edits are used while the article is unchanged.</p><form method="post" action="/app/content/actions/distribution/package/save"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="destinationId" value="linkedin"><input type="hidden" name="returnTo" value="${escapeHtml(returnTo)}"><textarea name="text" rows="7">${escapeHtml(text)}</textarea><button class="ghost" type="submit">Save copy</button></form></article>`;
   const count = id === 'x' ? `<span class="pill ${Number(characterCount || 0) <= 280 ? 'good' : 'bad'}">${escapeHtml(String(characterCount || 0))}/280</span>` : '';
   const warning = ['linkedin', 'x', 'facebook'].includes(id) ? '<p class="notice">Limited edit/repost capability. Preflight and approve the exact final payload before sending.</p>' : '';
   return `<article class="distribution-copy-card"><div class="meta-row"><h4>${escapeHtml(label)}</h4>${statusPill(status || 'draft')}${count}</div><form method="post" action="/app/content/actions/distribution/package/save"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="runId" value="${escapeHtml(runId)}"><input type="hidden" name="destinationId" value="${escapeHtml(id)}"><input type="hidden" name="returnTo" value="${escapeHtml(returnTo)}"><textarea id="${target}" name="${escapeHtml(fieldName)}" rows="7">${escapeHtml(text)}</textarea>${warning}<div class="mini-actions"><button class="ghost" type="button" data-copy-target="${target}">Copy</button><button class="ghost" type="submit">Save</button>${distributionPackageAction('Regenerate', 'generate', runId, id, csrf, returnTo)}${distributionPackageAction('Preflight', 'preflight', runId, id, csrf, returnTo)}${distributionPackageAction('Approve', 'status', runId, id, csrf, returnTo, 'approved')}${distributionPackageAction('Mark sent', 'status', runId, id, csrf, returnTo, 'sent')}</div></form></article>`;
@@ -1294,6 +1304,12 @@ function destinationChip(destination, csrf, canManage, isFounder = false) {
     const connectLabel = destination.status === 'connected' ? 'Reconnect Blogger' : 'Connect Blogger';
     const controls = isFounder ? `${test}<form method="post" action="/app/content/actions/distribution/blogger/connect"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><button class="ghost small-button" type="submit">${connectLabel}</button></form><form method="post" action="/app/content/actions/distribution/blogger/disconnect"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><button class="ghost small-button" type="submit">Disconnect Blogger</button></form>` : test;
     return `<article class="destination-chip"><div><strong>Blogger</strong><p>${statusPill(destination.label)} <span class="muted">${escapeHtml(destination.message || '')}</span></p><p class="muted">Google OAuth redirect URI: <code>${escapeHtml(BLOGGER_REDIRECT_URI)}</code></p></div><div class="mini-actions">${controls}</div></article>`;
+  }
+  if (destination.id === 'linkedin') {
+    const test = canManage ? `<form method="post" action="/app/content/actions/distribution/test"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="destinationId" value="linkedin"><button class="ghost small-button" type="submit">Test connection</button></form>` : '';
+    const connectLabel = destination.status === 'connected' ? 'Reconnect LinkedIn' : 'Connect LinkedIn';
+    const controls = isFounder ? `${test}<form method="post" action="/app/content/actions/distribution/linkedin/connect"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><button class="ghost small-button" type="submit">${connectLabel}</button></form><form method="post" action="/app/content/actions/distribution/linkedin/disconnect"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><button class="ghost small-button" type="submit">Disconnect LinkedIn</button></form>` : test;
+    return `<article class="destination-chip"><div><strong>LinkedIn</strong><p>${statusPill(destination.label)} <span class="muted">${escapeHtml(destination.message || '')}</span></p><p class="muted">LinkedIn OAuth redirect URI: <code>${escapeHtml(LINKEDIN_REDIRECT_URI)}</code></p></div><div class="mini-actions">${controls}</div></article>`;
   }
   const controls = canManage
     ? `<form method="post" action="/app/content/actions/distribution/test"><input type="hidden" name="_csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="destinationId" value="${escapeHtml(destination.id)}"><button class="ghost small-button" type="submit">Test connection</button></form>`
@@ -1486,22 +1502,48 @@ function validateIntake(form) {
 
 async function serveStatic(req, res, url, config) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return sendStatus(res, 405, 'Method not allowed');
-  const siteRoot = config.siteRoot;
-  let pathname = decodeURIComponent(url.pathname);
+  const siteRoot = await fs.realpath(config.siteRoot);
+  let pathname;
+  try { pathname = decodeURIComponent(url.pathname); }
+  catch { return sendStatus(res, 400, 'Invalid path'); }
+  if (pathname.includes('\0')) return sendStatus(res, 400, 'Invalid path');
   if (pathname === '/') pathname = '/index.html';
+  const privateRoots = await Promise.all([config.agentRoot, config.outputDir].filter(Boolean)
+    .map(root => fs.realpath(root).catch(() => path.resolve(root))));
   let file = path.resolve(siteRoot, `.${pathname}`);
-  if (!file.startsWith(siteRoot)) return sendStatus(res, 403, 'Forbidden');
-  if (file === path.resolve(config.agentRoot, 'dashboard', 'blogger-oauth.enc.json')) return sendStatus(res, 403, 'Forbidden');
+  if (isPrivateStaticPath(siteRoot, file, privateRoots, config.databasePath)) return sendStatus(res, 403, 'Forbidden');
   let stat = await fs.stat(file).catch(() => null);
-  if (stat?.isDirectory()) {
-    file = path.join(file, 'index.html');
-    if (!file.startsWith(siteRoot)) return sendStatus(res, 403, 'Forbidden');
-    stat = await fs.stat(file).catch(() => null);
-  }
+  if (stat?.isDirectory()) file = path.join(file, 'index.html');
+  file = await fs.realpath(file).catch(() => null);
+  if (!file) return sendStatus(res, 404, 'Not found');
+  if (isPrivateStaticPath(siteRoot, file, privateRoots, config.databasePath)) return sendStatus(res, 403, 'Forbidden');
+  stat = await fs.stat(file).catch(() => null);
   if (!stat?.isFile()) return sendStatus(res, 404, 'Not found');
   res.writeHead(200, { 'Content-Type': STATIC_TYPES.get(path.extname(file)) || 'application/octet-stream' });
   if (req.method === 'HEAD') return res.end();
   res.end(await fs.readFile(file));
+}
+
+function isPrivateStaticPath(siteRoot, file, privateRoots, databasePath) {
+  const relative = path.relative(siteRoot, file);
+  const parts = relative.split(path.sep);
+  if (!isWithinStaticDirectory(siteRoot, file)) return true;
+  // Raw runtime files are never a public API, including for logged-in users.
+  // Article Workspace and Brain access continue through their protected routes.
+  if (['content-agent', 'node_modules', 'deploy'].includes(parts[0])) return true;
+  if (parts.some((part, index) => (part.startsWith('.') && !(index === 0 && part === '.well-known')) || part.endsWith('.env'))) return true;
+  if (['blogger-oauth.enc.json', 'linkedin-oauth.enc.json'].includes(path.basename(file))) return true;
+  if (privateRoots.some(root => isWithinStaticDirectory(root, file))) return true;
+  if (databasePath && databasePath !== ':memory:') {
+    const database = path.resolve(databasePath);
+    if ([database, `${database}-wal`, `${database}-shm`].includes(file)) return true;
+  }
+  return false;
+}
+
+function isWithinStaticDirectory(root, file) {
+  const relative = path.relative(root, file);
+  return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
 }
 
 function setSecurityHeaders(res) {

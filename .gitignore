@@ -14,3 +14,6 @@ content-agent/review/*.log.jsonl
 content-agent/engine/outputs/
 content-agent/dashboard/trends/
 content-agent/dashboard/trash/
+
+content-agent/dashboard/linkedin-oauth.enc.json
+content-agent/dashboard/linkedin-oauth.enc.json.*.tmp

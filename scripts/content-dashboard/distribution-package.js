@@ -183,6 +183,7 @@ export function finalPayloadForDestination(pkg = {}, destinationId = '') {
     articleSlug: pkg.articleSlug || '',
     articleTitle: pkg.articleTitle || '',
     canonicalUrl: pkg.canonicalUrl || '',
+    sourceFingerprint: pkg.sourceFingerprint || '',
     coverImage: pkg.coverImage || '',
   };
   if (destination === 'instagram') {

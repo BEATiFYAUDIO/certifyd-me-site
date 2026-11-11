@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import { Marked, Renderer } from 'marked';
 import { validateRunId } from './security.js';
 import { BloggerOAuth } from './blogger-oauth.js';
+import { LinkedInOAuth } from './linkedin-oauth.js';
 
 export const DESTINATION_STATES = {
   NOT_SELECTED: 'not_selected',
@@ -46,10 +47,11 @@ export function buildDistributionAdapters(config = {}) {
     new CertifydDestination(),
     new DevToDestination(env),
     new BloggerDestination(config),
+    new LinkedInPageDestination(config),
     new WordPressDestination(env),
     new GhostDestination(env),
     new HashnodeDestination(env),
-    ...socialDestinations.map(([id, displayName]) => new ScaffoldDestination(id, displayName, 'social')),
+    ...socialDestinations.filter(([id]) => id !== 'linkedin').map(([id, displayName]) => new ScaffoldDestination(id, displayName, 'social')),
     ...manualDestinations.map(([id, displayName]) => new ManualExportDestination(id, displayName)),
   ];
 }
@@ -69,7 +71,7 @@ export function publicDestinationStatus(adapter) {
     supportsImage: Boolean(adapter.supportsImage),
     manual: adapter.kind === 'manual',
     automatic: adapter.kind === 'canonical' || adapter.kind === 'full-article' || adapter.kind === 'social',
-    availableInPhase2: ['certifyd', 'devto', 'wordpress', 'blogger'].includes(adapter.id) || adapter.kind === 'manual',
+    availableInPhase2: ['certifyd', 'devto', 'wordpress', 'blogger', 'linkedin'].includes(adapter.id) || adapter.kind === 'manual',
   };
 }
 
@@ -147,6 +149,71 @@ class DevToDestination extends EnvHttpDestination {
     if (json.id && String(json.id) !== String(state.externalPostId)) throw new Error('DEV Community returned a different article ID; reconcile before retrying.');
     if (!isHttpsUrl(json.url || state.externalUrl)) throw new Error('DEV Community returned no valid public URL; reconcile before retrying.');
     return { externalPostId: String(json.id || state.externalPostId), externalUrl: json.url || state.externalUrl || '', raw: json };
+  }
+}
+
+class LinkedInPageDestination extends EnvHttpDestination {
+  constructor(config) {
+    const env = config.env || process.env;
+    super({ id: 'linkedin', displayName: 'LinkedIn Page', kind: 'social', supportsCanonical: true, supportsUpdate: false, supportsDelete: false, supportsImage: true }, env, ['CONTENT_DISTRIBUTION_LINKEDIN_CLIENT_ID', 'CONTENT_DISTRIBUTION_LINKEDIN_CLIENT_SECRET', 'CONTENT_DISTRIBUTION_LINKEDIN_ORGANIZATION_ID']);
+    this.oauth = new LinkedInOAuth(config);
+  }
+  headers(token) {
+    const version = this.env.CONTENT_DISTRIBUTION_LINKEDIN_VERSION || '202610';
+    if (!/^20\d{4}$/.test(version)) throw new Error('LinkedIn API version must use YYYYMM format.');
+    return { Authorization: `Bearer ${token}`, 'Linkedin-Version': version, 'X-Restli-Protocol-Version': '2.0.0', 'Content-Type': 'application/json' };
+  }
+  organizationUrn() {
+    const id = String(this.env.CONTENT_DISTRIBUTION_LINKEDIN_ORGANIZATION_ID || '').trim();
+    if (!/^\d+$/.test(id)) throw new Error('LinkedIn organization ID must be numeric.');
+    return `urn:li:organization:${id}`;
+  }
+  async testConnection() { return this.oauth.testConnection(); }
+  async prepareArticle(article, state = {}, { checkpoint = async () => {} } = {}) {
+    const source = publicImageUrl(article);
+    if (!article.featuredImage) return { ...article, linkedinImageUrn: '' };
+    if (!source) throw new Error('The article cover must be a public Certifyd image.');
+    const token = await this.oauth.accessToken();
+    const owner = this.organizationUrn();
+    let imageUrn = state.mediaSourceUrl === source && state.mediaOwner === owner && /^urn:li:image:[A-Za-z0-9_-]+$/.test(state.mediaId || '') ? state.mediaId : '';
+    if (!imageUrn) {
+      const image = await fetch(source, { redirect: 'error', signal: AbortSignal.timeout(20_000) });
+      const type = (image.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+      if (!image.ok || !['image/png', 'image/jpeg', 'image/gif'].includes(type)) throw new Error('LinkedIn cover upload requires a readable PNG, JPEG or GIF cover.');
+      const bytes = Buffer.from(await image.arrayBuffer());
+      if (!bytes.length) throw new Error('The article cover is empty.');
+      const upload = await this.request('https://api.linkedin.com/rest/images?action=initializeUpload', { method: 'POST', headers: this.headers(token), body: JSON.stringify({ initializeUploadRequest: { owner } }) });
+      const value = upload.value || {};
+      const url = new URL(value.uploadUrl || 'https://invalid.invalid');
+      if (url.protocol !== 'https:' || url.hostname !== 'www.linkedin.com' || url.port || url.username || url.password || !url.pathname.startsWith('/dms-uploads/') || !/^urn:li:image:[A-Za-z0-9_-]+$/.test(value.image || '')) throw new Error('LinkedIn returned an invalid image upload destination.');
+      const uploaded = await fetch(url.href, { method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Type': type }, body: bytes, redirect: 'error', signal: AbortSignal.timeout(30_000) });
+      if (!uploaded.ok) throw new Error(`LinkedIn image upload failed: HTTP ${uploaded.status}.`);
+      imageUrn = value.image;
+      await checkpoint({ mediaId: imageUrn, mediaSourceUrl: source, mediaOwner: owner });
+    }
+    for (let attempt = 0; attempt < 15; attempt++) {
+      const image = await this.request(`https://api.linkedin.com/rest/images/${encodeURIComponent(imageUrn)}`, { headers: this.headers(token) });
+      if (image.owner !== owner) throw new Error('LinkedIn cover belongs to a different company page.');
+      if (image.status === 'AVAILABLE') return { ...article, linkedinImageUrn: imageUrn };
+      if (image.status === 'PROCESSING_FAILED') {
+        await checkpoint({ mediaId: '', mediaSourceUrl: '', mediaOwner: '' });
+        throw new Error('LinkedIn could not process the cover. Retry the failed destination.');
+      }
+      if (!['PROCESSING', 'WAITING_UPLOAD'].includes(image.status)) throw new Error('LinkedIn returned an unexpected image processing status.');
+      if (attempt < 14) await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    throw new Error('LinkedIn is still processing the cover. Retry this destination shortly; the uploaded image is saved.');
+  }
+  async publishArticle(article) {
+    const text = String(article.linkedinText || '').trim();
+    if (!article.linkedinApproved || !text || text.length > 3000 || !text.includes(article.canonicalUrl)) throw new Error('Approved LinkedIn copy with the Certifyd article link is required.');
+    if (article.featuredImage && !/^urn:li:image:[A-Za-z0-9_-]+$/.test(article.linkedinImageUrn || '')) throw new Error('LinkedIn cover must finish uploading before publishing.');
+    const body = { author: this.organizationUrn(), commentary: text, visibility: 'PUBLIC', distribution: { feedDistribution: 'MAIN_FEED', targetEntities: [], thirdPartyDistributionChannels: [] }, content: { article: { source: article.canonicalUrl, title: article.title, description: article.excerpt, ...(article.linkedinImageUrn ? { thumbnail: article.linkedinImageUrn } : {}) } }, lifecycleState: 'PUBLISHED', isReshareDisabledByAuthor: false };
+    const response = await fetch('https://api.linkedin.com/rest/posts', { method: 'POST', headers: this.headers(await this.oauth.accessToken()), body: JSON.stringify(body), signal: AbortSignal.timeout(20_000) });
+    if (response.status !== 201) throw new Error(`LinkedIn Page API failed: HTTP ${response.status}. Response body withheld from logs and state.`);
+    const postId = response.headers.get('x-restli-id') || '';
+    if (!/^urn:li:(share|ugcPost):\d+$/.test(postId)) throw new Error('LinkedIn Page returned no valid post ID; reconcile before retrying.');
+    return { externalPostId: postId, externalUrl: `https://www.linkedin.com/feed/update/${postId}/` };
   }
 }
 

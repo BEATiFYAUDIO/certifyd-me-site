@@ -722,16 +722,17 @@ export class ContentDashboardActions {
     return {
       destinations: await Promise.all(this.distributionAdapters.map(async (adapter) => {
         const item = publicDestinationStatus(adapter);
-        if (adapter.id === 'blogger' && item.status === 'configured') {
+        if (['blogger', 'linkedin'].includes(adapter.id) && item.status === 'configured') {
           try {
-            if (!await adapter.oauth.connected()) return { ...item, status: 'not_connected', label: 'Not connected', message: 'Connect Blogger once to save an encrypted refresh token.' };
+            if (!await adapter.oauth.connected()) return { ...item, status: 'not_connected', label: 'Not connected', message: 'Connect the account to authorize publishing.' };
           } catch {
-            return { ...item, status: 'connection_error', label: 'Connection unavailable', message: 'The saved Blogger connection cannot be read. Check the dashboard session secret.' };
+            return { ...item, status: 'connection_error', label: 'Connection unavailable', message: 'The saved connection cannot be read. Check the dashboard session secret.' };
           }
         }
         const checked = tests[adapter.id];
         if (item.status === 'configured' && checked?.status === 'connected') return { ...item, ...checked, label: 'Connected' };
         if (item.status === 'configured' && checked?.status === 'connection_error') return { ...item, ...checked, label: 'Connection test failed' };
+        if (item.status === 'configured' && checked?.status === 'not_connected') return { ...item, ...checked, label: 'Reconnect required' };
         return item;
       })),
       defaults: await readDistributionDefaults(this.config),
@@ -744,7 +745,7 @@ export class ContentDashboardActions {
     let result;
     try { result = await adapter.testConnection(); }
     catch { result = { status: 'connection_error', label: 'Connection test failed', message: `${adapter.displayName} account verification failed. Check server-side credentials and permissions.` }; }
-    if (['devto', 'wordpress', 'blogger'].includes(adapter.id)) {
+    if (['devto', 'wordpress', 'blogger', 'linkedin'].includes(adapter.id)) {
       const tests = await readConnectionTests(this.config);
       tests[adapter.id] = { status: result.status, message: result.message, accountId: result.accountId || '', testedAt: new Date().toISOString() };
       await writeConnectionTests(this.config, tests);
@@ -754,6 +755,9 @@ export class ContentDashboardActions {
   }
 
   async ensureDistributionConnection({ actor, adapter, connectionTests }) {
+    if (adapter.id === 'linkedin' && !await adapter.oauth.connected()) {
+      throw Object.assign(new Error('LinkedIn authorization is missing or expired. Reconnect LinkedIn before publishing.'), { notConnected: true });
+    }
     const status = adapter.connectionStatus().status;
     if (status === 'connected') return;
     if (status !== 'configured') throw new Error(`${adapter.displayName} is not connected. Configure its server-side credentials first.`);
@@ -797,6 +801,33 @@ export class ContentDashboardActions {
     return { ok: true, output: 'Blogger disconnected. The stored refresh token was removed.' };
   }
 
+  linkedinAdapter() { return this.distributionAdapters.find((item) => item.id === 'linkedin'); }
+
+  startLinkedInConnection({ actor, sessionId }) {
+    if (actor.role !== 'founder') throw Object.assign(new Error('Only the founder can connect LinkedIn.'), { statusCode: 403 });
+    return this.linkedinAdapter().oauth.start({ actor, sessionId });
+  }
+
+  async completeLinkedInConnection({ actor, sessionId, state, code, error }) {
+    if (actor.role !== 'founder') throw Object.assign(new Error('Only the founder can connect LinkedIn.'), { statusCode: 403 });
+    const page = await this.linkedinAdapter().oauth.complete({ actor, sessionId, state, code, error });
+    const tests = await readConnectionTests(this.config);
+    tests.linkedin = { status: 'connected', message: `LinkedIn Page ${page.id} verified.`, accountId: `urn:li:organization:${page.id}`, testedAt: new Date().toISOString() };
+    await writeConnectionTests(this.config, tests);
+    await this.audit.append({ action: 'linkedin_oauth_connect', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, result: 'SUCCESS', note: `organization:${page.id}` });
+    return { ok: true, output: `LinkedIn Page ${page.id} connected.` };
+  }
+
+  async disconnectLinkedIn({ actor }) {
+    if (actor.role !== 'founder') throw Object.assign(new Error('Only the founder can disconnect LinkedIn.'), { statusCode: 403 });
+    await this.linkedinAdapter().oauth.disconnect();
+    const tests = await readConnectionTests(this.config);
+    delete tests.linkedin;
+    await writeConnectionTests(this.config, tests);
+    await this.audit.append({ action: 'linkedin_oauth_disconnect', actorUserId: actor.id, actorDisplayName: actor.email, actorRole: actor.role, result: 'SUCCESS' });
+    return { ok: true, output: 'LinkedIn disconnected. The stored authorization was removed.' };
+  }
+
   async saveDistributionDefaults({ actor, destinations = [] }) {
     const selected = this.normalizeDistributionSelections(destinations, { allowCertifyd: true });
     await writeDistributionDefaults(this.config, { destinations: selected, updatedBy: actor.email, updatedAt: new Date().toISOString() });
@@ -811,6 +842,7 @@ export class ContentDashboardActions {
     const previous = await readDistributionPackage(this.runs, runId);
     const pkg = {
       ...generateDistributionPackage(run, previous, cleanString(destinationId, 40)),
+      sourceFingerprint: distributionSourceFingerprint(run),
       updatedBy: actor.email,
     };
     await writeDistributionPackage(this.runs, runId, pkg);
@@ -938,7 +970,7 @@ export class ContentDashboardActions {
       }
       for (const adapter of this.distributionAdapters.filter((item) => item.id !== 'certifyd' && selected.includes(item.id))) {
         if (canonicalBlock) continue;
-        if (adapter.kind !== 'manual' && !['devto', 'wordpress', 'blogger'].includes(adapter.id)) {
+        if (adapter.kind !== 'manual' && !['devto', 'wordpress', 'blogger', 'linkedin'].includes(adapter.id)) {
           const reason = 'This automatic destination is outside Distribution Phase 2.';
           const prior = state.destinations[adapter.id] || {};
           if ([DESTINATION_STATES.SENDING, DESTINATION_STATES.UNCERTAIN].includes(prior.status) || prior.uncertainAcceptance) {
@@ -999,6 +1031,26 @@ export class ContentDashboardActions {
         let publishResult;
         try {
           if (adapter.kind !== 'manual') await this.ensureDistributionConnection({ actor, adapter, connectionTests });
+          if (adapter.id === 'linkedin') {
+            // The founder's Publish action authorizes preparation and sending.
+            // This runs after live verification and duplicate/uncertain checks.
+            const saved = await readDistributionPackage(this.runs, runId);
+            const fingerprint = distributionSourceFingerprint(run);
+            let pkg = saved.sourceFingerprint === fingerprint && saved.canonicalUrl === article.canonicalUrl && saved.linkedin?.text
+              ? saved : { ...generateDistributionPackage(run, saved, 'linkedin'), sourceFingerprint: fingerprint };
+            const checked = preflightDistributionDestination(pkg, 'linkedin', previous, adapter);
+            if (!checked.ok) throw new Error(`LinkedIn validation failed: ${checked.errors.join(' ')}`);
+            pkg = markDistributionPackageStatus(applyDistributionPreflight(pkg, 'linkedin', checked), 'linkedin', 'approved');
+            pkg.updatedBy = actor.email;
+            await writeDistributionPackage(this.runs, runId, pkg);
+            Object.assign(article, distributionArticle({ ...run, distribution: { ...run.distribution, package: pkg } }));
+          }
+          if (adapter.prepareArticle) {
+            Object.assign(article, await adapter.prepareArticle(article, previous, { checkpoint: async progress => {
+              state.destinations[adapter.id] = { ...state.destinations[adapter.id], ...progress, updatedAt: new Date().toISOString() };
+              await writeDistributionState(this.runs, runId, { ...state, updatedAt: new Date().toISOString() });
+            } }));
+          }
           const preflight = preflightApiDistribution(adapter, article, previous, operation);
           if (!preflight.ok) throw new Error(`Distribution preflight failed: ${preflight.errors.join(' ')}`);
           const sendingAt = new Date().toISOString();
@@ -1643,8 +1695,8 @@ export function isVerifiedCanonical(run = {}) {
     && manifest.publishing?.canonicalUrl === summary.canonicalUrl;
 }
 
-function distributionSourceFingerprint(run) {
-  const article = distributionArticle(run);
+function distributionSourceFingerprint(run) { return sourceFingerprintForArticle(distributionArticle(run)); }
+function sourceFingerprintForArticle(article) {
   return cryptoHash(JSON.stringify({ title: article.title, markdown: article.markdown, excerpt: article.excerpt, tags: article.tags, featuredImage: article.featuredImage }));
 }
 
@@ -1662,7 +1714,7 @@ function isSafeExternalUrl(value) {
 function distributionArticle(run = {}) {
   const pkg = run.blogPackage || {};
   const summary = run.summary || {};
-  return {
+  const article = {
     title: pkg.title || summary.title || 'Untitled article',
     markdown: publicArticleBodyMarkdown(pkg.body, run.articleMarkdown, run.draftMarkdown),
     excerpt: pkg.description || pkg.excerpt || summary.topic || '',
@@ -1671,6 +1723,18 @@ function distributionArticle(run = {}) {
     date: pkg.date || new Date().toISOString(),
     canonicalUrl: summary.canonicalUrl || pkg.canonicalUrl || '',
   };
+  const social = run.distribution?.package || {};
+  const linkedin = social.linkedin || {};
+  const approved = linkedin.approvedPayload || {};
+  article.linkedinApproved = linkedin.status === 'approved'
+    && social.canonicalUrl === article.canonicalUrl
+    && social.articleTitle === article.title
+    && social.sourceFingerprint === sourceFingerprintForArticle(article)
+    && approved.canonicalUrl === article.canonicalUrl
+    && approved.sourceFingerprint === social.sourceFingerprint
+    && approved.text === linkedin.text;
+  article.linkedinText = article.linkedinApproved ? String(approved.text || '').trim() : '';
+  return article;
 }
 
 function buildPreparedFinalMarkdown(originalMarkdown, publicBody) {
@@ -1719,6 +1783,15 @@ function preflightApiDistribution(adapter, article = {}, previous = {}, operatio
   if (!payload.title.trim()) errors.push('Article title is required.');
   if (!payload.canonicalUrl || !/^https?:\/\//i.test(payload.canonicalUrl)) errors.push('Canonical URL is required.');
   if (!String(article.markdown || '').trim()) errors.push('Article body is required.');
+  if (adapter.id === 'linkedin') {
+    const text = String(article.linkedinText || '').trim();
+    if (!article.linkedinApproved || !text) errors.push('Preflight and approve LinkedIn copy for this exact Certifyd article before publishing.');
+    else {
+      if (text.length > 3000) errors.push('LinkedIn copy exceeds 3000 characters.');
+      if (!text.includes(payload.canonicalUrl)) errors.push('LinkedIn copy must link to the Certifyd canonical article.');
+      payload.socialText = text;
+    }
+  }
   if (operation === 'publish' && (previous.externalPostId || [DESTINATION_STATES.PUBLISHED, DESTINATION_STATES.SENT].includes(previous.status))) errors.push('Duplicate posting risk: this destination already appears published.');
   if (operation === 'update' && (!previous.externalPostId || !adapter.supportsUpdate)) errors.push('This destination cannot update an existing post.');
   if (adapter.supportsUpdate === false) warnings.push(`${adapter.displayName} has limited edit/repost capability. Review the exact final payload before sending.`);

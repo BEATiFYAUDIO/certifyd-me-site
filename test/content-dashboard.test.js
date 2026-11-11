@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { LINKEDIN_REDIRECT_URI } from '../scripts/content-dashboard/linkedin-oauth.js';
 import test from 'node:test';
 import { once } from 'node:events';
 import fs from 'node:fs/promises';
@@ -654,7 +655,9 @@ test('12b GitHub publishing can configure a Vassal preview mirror', () => {
 test('13 dashboard does not return absolute engine paths in settings', async () => withServer(async (base) => {
   const cookie = await login(base, 'founder@example.test');
   const response = await fetch(`${base}/app/content/settings`, { headers: { cookie } });
-  assert.doesNotMatch(await response.text(), /\/home\/Darryl\/Projects\/contentbox\/content-agent\/engine\/outputs/);
+  const html = await response.text();
+  const config = getDashboardConfig(env);
+  for (const privatePath of [config.agentRoot, config.outputDir]) assert.equal(html.includes(privatePath), false);
 }));
 
 test('14 invalid run IDs are rejected', () => {
@@ -3104,6 +3107,26 @@ test('Blogger OAuth: missing refresh token, invalid credentials, and wrong blog 
   } finally { globalThis.fetch = nativeFetch; }
 });
 
+test('Blogger OAuth: expired refresh token explains that reconnection is required', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-blogger-expired-'));
+  const config = getDashboardConfig({ ...env, CONTENT_AGENT_ROOT: root, CONTENT_DISTRIBUTION_BLOGGER_CLIENT_ID: 'test-client', CONTENT_DISTRIBUTION_BLOGGER_CLIENT_SECRET: 'private-client-secret', CONTENT_DISTRIBUTION_BLOGGER_BLOG_ID: '12345', CONTENT_DASHBOARD_PUBLIC_URL: 'https://admin.certifyd.me' });
+  const oauth = buildDistributionAdapters(config).find((item) => item.id === 'blogger').oauth;
+  const actor = { id: 'founder@example.test', role: 'founder' };
+  const nativeFetch = globalThis.fetch;
+  try {
+    const state = new URL(oauth.start({ actor, sessionId: 'session' })).searchParams.get('state');
+    globalThis.fetch = async (url) => String(url).includes('/token')
+      ? Response.json({ access_token: 'private-access', refresh_token: 'private-refresh', expires_in: 1 })
+      : Response.json({ items: [{ id: '12345', name: 'Certifyd Blogger' }] });
+    await oauth.complete({ actor, sessionId: 'session', state, code: 'code' });
+    globalThis.fetch = async () => Response.json({ error: 'invalid_grant', error_description: 'private details' }, { status: 400 });
+    const result = await oauth.testConnection();
+    assert.equal(result.status, 'not_connected');
+    assert.match(result.message, /Reconnect Blogger/);
+    assert.doesNotMatch(result.message, /private details/);
+  } finally { globalThis.fetch = nativeFetch; }
+});
+
 test('Blogger OAuth: expired access token refreshes before existing create/update requests', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-blogger-refresh-'));
   const config = getDashboardConfig({ ...env, CONTENT_AGENT_ROOT: root, CONTENT_DISTRIBUTION_BLOGGER_CLIENT_ID: 'test-client', CONTENT_DISTRIBUTION_BLOGGER_CLIENT_SECRET: 'private-client-secret', CONTENT_DISTRIBUTION_BLOGGER_BLOG_ID: '12345', CONTENT_DASHBOARD_PUBLIC_URL: 'https://admin.certifyd.me' });
@@ -3288,4 +3311,170 @@ test('Brain SEO dashboard runs the first pass in background, requires editor per
       assert.equal(JSON.parse(await fs.readFile(path.join(runDir,'reviews/founder-review.json'),'utf8')).reviewStatus,'PENDING_FOUNDER_REVIEW');
     },{CONTENT_AGENT_ROOT:root,CONTENT_AGENT_OUTPUT_DIR:outputs,CONTENT_MODEL_PROVIDER:'deterministic'});
   } finally {await fs.rm(root,{recursive:true,force:true});}
+});
+
+test('distribution phase 3: LinkedIn publish prepares copy automatically and skips duplicate submissions', async () => {
+  const fixture = await distributionSafetyFixture({ envOverrides: { CONTENT_DISTRIBUTION_LINKEDIN_CLIENT_ID: 'client-id', CONTENT_DISTRIBUTION_LINKEDIN_CLIENT_SECRET: 'client-secret', CONTENT_DISTRIBUTION_LINKEDIN_ORGANIZATION_ID: '12345' } });
+  const oauth = fixture.actions.linkedinAdapter().oauth;
+  await oauth.writeEncryptedCredentials(JSON.stringify({ accessToken: 'private-linkedin-token', expiresAt: Date.now() + 3600000, organizationId: '12345', clientId: 'client-id' }));
+  const original = globalThis.fetch;
+  let posts = 0;
+  globalThis.fetch = async (url, options = {}) => {
+    if (String(url).includes('/organizationAcls')) return Response.json({ elements: [{ organizationTarget: 'urn:li:organization:12345', state: 'APPROVED', role: 'ADMINISTRATOR' }] });
+    if (String(url).endsWith('/posts') && options.method === 'POST') {
+      posts++;
+      return new Response(null, { status: 201, headers: { 'x-restli-id': 'urn:li:share:98765' } });
+    }
+    throw new Error('Unexpected LinkedIn request');
+  };
+  try {
+    assert.equal((await fixture.actions.testDistributionConnection({ actor: fixture.actor, destinationId: 'linkedin' })).ok, true);
+    const sent = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['linkedin'] });
+    assert.equal(sent.results[0].status, 'sent');
+    assert.equal(posts, 1);
+    assert.equal((await fixture.state()).destinations.linkedin.externalPostId, 'urn:li:share:98765');
+    const repeated = await fixture.actions.distributeArticle({ actor: fixture.actor, runId: fixture.runId, version: 'v1', destinations: ['linkedin'] });
+    assert.equal(repeated.results[0].skipped, true);
+    assert.equal(posts, 1);
+    const saved = await fs.readFile(path.join(fixture.root, 'dashboard', 'distribution-connections.json'), 'utf8');
+    assert.doesNotMatch(saved, /private-linkedin-token|Authorization/);
+  } finally { globalThis.fetch = original; }
+});
+
+test('LinkedIn OAuth: founder start, callback state, encrypted storage, connection test, and disconnect', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-linkedin-oauth-'));
+  const nativeFetch = globalThis.fetch;
+  let tokenCalls = 0;
+  let blogCalls = 0;
+  globalThis.fetch = async (url, options = {}) => {
+    const target = String(url);
+    if (target === 'https://www.linkedin.com/oauth/v2/accessToken') {
+      tokenCalls++;
+      assert.equal(new URLSearchParams(options.body).get('redirect_uri'), LINKEDIN_REDIRECT_URI);
+      return Response.json({ access_token: 'private-access-token', refresh_token: 'private-refresh-token', expires_in: 3600 });
+    }
+    if (target.includes('/rest/organizationAcls')) {
+      blogCalls++;
+      assert.equal(options.headers.Authorization, 'Bearer private-access-token');
+      return Response.json({ elements: [{ organization: 'urn:li:organization:12345', role: 'ADMINISTRATOR', state: 'APPROVED' }] });
+    }
+    return nativeFetch(url, options);
+  };
+  try {
+    await withServer(async (base) => {
+      const founder = await login(base, 'founder@example.test');
+      const editor = await login(base, 'editor@example.test');
+      const page = await nativeFetch(`${base}/app/content/distribution`, { headers: { cookie: founder } });
+      const html = await page.text();
+      assert.match(html, /https:\/\/admin\.certifyd\.me\/app\/content\/oauth\/linkedin\/callback/);
+      assert.doesNotMatch(html, /private-client-secret|private-refresh-token|private-access-token/);
+      const csrf = html.match(/name="_csrf" value="([^"]+)"/)?.[1];
+      const startPath = '/app/content/actions/distribution/linkedin/connect';
+      const body = new URLSearchParams({ _csrf: csrf });
+      assert.equal((await nativeFetch(`${base}${startPath}`, { method: 'POST', redirect: 'manual', headers: { cookie: founder }, body: new URLSearchParams({ _csrf: 'bad' }) })).status, 403);
+      assert.equal((await nativeFetch(`${base}${startPath}`, { method: 'POST', redirect: 'manual', headers: { cookie: editor }, body })).status, 403);
+      const start = await nativeFetch(`${base}${startPath}`, { method: 'POST', redirect: 'manual', headers: { cookie: founder }, body });
+      assert.equal(start.status, 303);
+      const auth = new URL(start.headers.get('location'));
+      assert.equal(auth.origin, 'https://www.linkedin.com');
+      assert.equal(auth.searchParams.get('redirect_uri'), LINKEDIN_REDIRECT_URI);
+      assert.equal(auth.searchParams.get('scope'), 'w_organization_social rw_organization_admin');
+      const state = auth.searchParams.get('state');
+      const callback = '/app/content/oauth/linkedin/callback';
+      assert.equal((await nativeFetch(`${base}${callback}?state=wrong&code=private-code`, { redirect: 'manual', headers: { cookie: founder } })).status, 403);
+      assert.equal((await nativeFetch(`${base}${callback}?state=${state}&code=private-code`, { redirect: 'manual', headers: { cookie: editor } })).status, 403);
+      const done = await nativeFetch(`${base}${callback}?state=${state}&code=private-code`, { redirect: 'manual', headers: { cookie: founder } });
+      assert.equal(done.status, 303);
+      assert.equal(done.headers.get('location'), '/app/content/distribution?linkedin=connected');
+      assert.equal(tokenCalls, 1);
+      assert.equal(blogCalls, 1);
+      assert.equal((await nativeFetch(`${base}${callback}?state=${state}&code=private-code`, { redirect: 'manual', headers: { cookie: founder } })).status, 403);
+      const storedPath = path.join(root, 'dashboard', 'linkedin-oauth.enc.json');
+      const stored = await fs.readFile(storedPath, 'utf8');
+      assert.doesNotMatch(stored, /private-refresh-token|private-access-token|private-client-secret/);
+      assert.equal((await fs.stat(storedPath)).mode & 0o777, 0o600);
+      assert.notEqual((await nativeFetch(`${base}/content-agent/dashboard/linkedin-oauth.enc.json`)).status, 200);
+      const tested = await nativeFetch(`${base}/app/content/actions/distribution/test`, { method: 'POST', redirect: 'manual', headers: { cookie: founder }, body: new URLSearchParams({ _csrf: csrf, destinationId: 'linkedin' }) });
+      assert.equal(tested.status, 303);
+      assert.equal(blogCalls, 2);
+      const connection = await fs.readFile(path.join(root, 'dashboard', 'distribution-connections.json'), 'utf8');
+      assert.doesNotMatch(connection, /private-refresh-token|private-access-token|private-client-secret/);
+      const disconnected = await nativeFetch(`${base}/app/content/actions/distribution/linkedin/disconnect`, { method: 'POST', redirect: 'manual', headers: { cookie: founder }, body });
+      assert.equal(disconnected.status, 303);
+      await assert.rejects(fs.stat(storedPath), { code: 'ENOENT' });
+    }, { CONTENT_AGENT_ROOT: root, CONTENT_AGENT_OUTPUT_DIR: path.join(root, 'engine', 'outputs'), CONTENT_DASHBOARD_PUBLIC_URL: 'https://admin.certifyd.me', CONTENT_DISTRIBUTION_LINKEDIN_CLIENT_ID: 'test-client', CONTENT_DISTRIBUTION_LINKEDIN_CLIENT_SECRET: 'private-client-secret', CONTENT_DISTRIBUTION_LINKEDIN_ORGANIZATION_ID: '12345' });
+  } finally { globalThis.fetch = nativeFetch; }
+});
+
+
+test('LinkedIn credentials and dashboard storage cannot be served as public static files', async () => {
+  await withServer(async base => {
+    for (const resource of ['/deploy/admin/local.env', '/.env.blog-engine.local', '/content-agent/dashboard/linkedin-oauth.enc.json', '/.git/config']) {
+      assert.equal((await fetch(base + resource, {method: 'HEAD'})).status, 403);
+    }
+  });
+});
+
+test('distribution Generate routes to social copy, not new-article intake', async () => {
+  const fixture = await distributionSafetyFixture();
+  await withServer(async base => {
+    const cookie = await login(base, 'founder@example.test');
+    const html = await (await fetch(`${base}/app/content/distribution?runId=${fixture.runId}`, { headers: { cookie } })).text();
+    const csrf = html.match(/name="_csrf" value="([^"]+)"/)?.[1];
+    assert.ok(csrf);
+    for (const destinationId of ['', 'linkedin']) {
+      const response = await fetch(`${base}/app/content/actions/distribution/package/generate`, {
+        method: 'POST', redirect: 'manual', headers: { cookie },
+        body: new URLSearchParams({ _csrf: csrf, runId: fixture.runId, destinationId, returnTo: `/app/content/distribution?runId=${fixture.runId}` }),
+      });
+      assert.equal(response.status, 303, await response.text());
+      const pkg = JSON.parse(await fs.readFile(path.join(fixture.runDir, 'distribution', 'package.json'), 'utf8'));
+      assert.ok(pkg.linkedin.text);
+      assert.equal(pkg.linkedin.status, 'draft');
+      assert.ok(pkg.sourceFingerprint);
+    }
+    const intake = await fetch(`${base}/app/content/actions/generate`, {
+      method: 'POST', redirect: 'manual', headers: { cookie }, body: new URLSearchParams({ _csrf: csrf }),
+    });
+    assert.equal(intake.status, 400);
+    assert.match(await intake.text(), /Missing required intake field: topic/);
+  }, { CONTENT_AGENT_ROOT: fixture.root, CONTENT_AGENT_OUTPUT_DIR: path.join(fixture.root, 'engine', 'outputs') });
+});
+
+test('distribution media preparation failure retries only the failed destination and preserves successful posts', async () => {
+  const fixture = await distributionSafetyFixture();
+  let prepared = 0, firstPosts = 0, secondPosts = 0;
+  const first = fakeDestination('devto', { publish: async () => { firstPosts++; return {externalPostId:'first', externalUrl:'https://example.test/first'}; } });
+  const second = fakeDestination('wordpress', { publish: async article => {
+    assert.equal(article.preparedCover, true); secondPosts++;
+    return {externalPostId:'second', externalUrl:'https://example.test/second'};
+  } });
+  second.prepareArticle = async (article, state, {checkpoint}) => {
+    prepared++;
+    if (prepared === 1) {
+      await checkpoint({mediaId:123,mediaSourceUrl:'https://certifyd.me/images/cover.png'});
+      throw new Error('Cover processing is still pending');
+    }
+    assert.equal(state.mediaId,123);
+    return {...article,preparedCover:true};
+  };
+  fixture.actions.distributionAdapters = [first, second];
+  await fixture.actions.distributeArticle({actor:fixture.actor,runId:fixture.runId,version:'v1',destinations:['devto','wordpress']});
+  const failed = (await fixture.state()).destinations.wordpress;
+  assert.equal(failed.status,'failed'); assert.equal(failed.uncertainAcceptance,false);
+  assert.equal(firstPosts,1); assert.equal(secondPosts,0);
+  await fixture.actions.distributeArticle({actor:fixture.actor,runId:fixture.runId,version:'v1',retryFailed:true});
+  assert.equal(firstPosts,1); assert.equal(secondPosts,1);
+  await fixture.actions.distributeArticle({actor:fixture.actor,runId:fixture.runId,version:'v1',destinations:['devto','wordpress']});
+  assert.equal(firstPosts,1); assert.equal(secondPosts,1);
+});
+
+
+test('reconciliation: default dashboard fixtures use disposable runtime paths', () => {
+  const config = getDashboardConfig(env);
+  assert.equal(config.agentRoot, defaultTestRoot);
+  assert.equal(config.outputDir, path.join(defaultTestRoot, 'engine', 'outputs'));
+  assert.equal(config.databasePath, ':memory:');
+  const relative = path.relative(os.tmpdir(), config.agentRoot);
+  assert.ok(relative && !relative.startsWith('..') && !path.isAbsolute(relative));
 });
