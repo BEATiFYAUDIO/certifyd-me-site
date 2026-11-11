@@ -1,3 +1,5 @@
+import { IMPORTANT_PUBLIC_PAGES } from './public-pages.js';
+import { isDeepStrictEqual } from 'node:util';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -6,6 +8,8 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import matter from 'gray-matter';
 import { marked } from 'marked';
+import { FEATURED_SLUGS, BLOG_TOPICS, RELATED_READING } from './blog-topics.js';
+import { readGuides, writeGuides } from './build-guides.js';
 import { sanitizePublicArticleMarkdown } from './content-dashboard/public-markdown.js';
 
 const ROOT = process.cwd();
@@ -24,17 +28,6 @@ const ORGANIZATION = {
   logo: `${BASE_URL}/images/certifyd-tab-icon.svg`,
   description: 'Certifyd provides creator-owned publishing, identity, attribution and direct commerce infrastructure.',
 };
-const IMPORTANT_PUBLIC_PAGES = [
-  { path: '/', file: 'index.html', priority: '1.0' },
-  { path: '/profile/', file: 'profile/index.html', priority: '0.8' },
-  { path: '/join/', file: 'join/index.html', priority: '0.8' },
-  { path: '/downloads/', file: 'downloads/index.html', priority: '0.8' },
-  { path: '/network.html', file: 'network.html', priority: '0.7' },
-  { path: '/retail-partners/', file: 'retail-partners/index.html', priority: '0.8' },
-  { path: '/media-promotion/', file: 'media-promotion/index.html', priority: '0.8' },
-  { path: '/services/', file: 'services/index.html', priority: '0.8' },
-  { path: '/blog/', file: 'blog/index.html', priority: '0.8' },
-];
 const STATIC_COMPAT_REDIRECTS = [
   {
     fromPath: '/blog/bitcoin-after-us-miguel-abascal-tim-sae-koo/',
@@ -52,6 +45,8 @@ const HOME_CSS_START = '/* BLOG_STYLES_START */';
 const HOME_CSS_END = '/* BLOG_STYLES_END */';
 const HOME_SECTION_START = '<!-- BLOG_RECENT_START -->';
 const HOME_SECTION_END = '<!-- BLOG_RECENT_END -->';
+
+const RELATED_STYLES = '.related-reading{margin-top:28px;border:1px solid var(--border);border-radius:22px;background:var(--panel-strong);padding:24px}.related-reading h2{font-size:1.5rem}.related-reading ul{display:grid;gap:12px;padding-left:22px}.related-reading a{color:var(--text);text-decoration:underline}.related-topic{display:inline-block;margin-top:8px}';
 
 marked.setOptions({ async: false, breaks: false, gfm: true });
 
@@ -399,7 +394,7 @@ function renderArticleCard(article) {
       </a>
       <div class="blog-card-body">
         <div class="blog-card-meta">${escapeHtml(article.author)} · ${escapeHtml(formatDisplayDate(article.date))}</div>
-        <h2><a href="${localArticlePath(article)}">${escapeHtml(article.title)}</a></h2>
+        <h3><a href="${localArticlePath(article)}">${escapeHtml(article.title)}</a></h3>
         <p>${escapeHtml(article.excerpt)}</p>
         ${tagList(article)}
         <a class="blog-btn" href="${localArticlePath(article)}">Read article →</a>
@@ -408,25 +403,58 @@ function renderArticleCard(article) {
   `.trim();
 }
 
-function renderCategoryTags(articles) {
-  const tags = [...new Set(articles.flatMap((article) => article.tags))].sort();
-  if (!tags.length) return '<span class="category-tag">Certifyd</span>';
-  return tags.map((tag) => `<span class="category-tag">${escapeHtml(tag)}</span>`).join('\n');
+function curatedArticles(slugs, bySlug) {
+  return slugs.map((slug) => bySlug.get(slug)).filter(Boolean);
 }
 
-function renderFeaturedCategoryTags(articles) {
-  const tags = new Set(articles.flatMap((article) => article.tags).map((tag) => String(tag || '').toLowerCase()));
-  const featured = [
-    'creator ownership',
-    'AI music',
-    'music rights',
-    'direct-to-fan',
-    'creator infrastructure',
-    'artist identity',
-  ].filter((tag) => tags.has(tag.toLowerCase()));
-  const fallback = featured.length ? featured : ['creator ownership', 'AI music', 'music rights', 'direct-to-fan'];
-  return fallback.map((tag) => `<span class="category-tag featured">${escapeHtml(tag)}</span>`).join('\n');
+function availableTopics(bySlug) {
+  return BLOG_TOPICS.map((topic) => ({ ...topic, articles: curatedArticles(topic.slugs, bySlug) }))
+    .filter((topic) => topic.articles.length);
 }
+
+let publishedGuides = [];
+function guideEntryLinks() {
+  return publishedGuides.length ? `<ul class="topic-links">${publishedGuides.map(g => `<li><a href="/guides/${g.slug}/">${escapeHtml(g.title)}</a></li>`).join('')}</ul>` : '';
+}
+function renderTopicNavigation(topics) {
+  return topics.map((topic) => `<a class="category-tag featured" href="/blog/#${topic.id}">${escapeHtml(topic.title)}</a>`).join('\n');
+}
+
+function renderFeaturedArticles(bySlug) {
+  const articles = curatedArticles(FEATURED_SLUGS, bySlug);
+  if (!articles.length && !publishedGuides.length) return '';
+  return `<section class="hub-section" aria-labelledby="featured-heading">
+    <h2 id="featured-heading">Start Here</h2>
+    ${guideEntryLinks()}
+    <p class="hub-intro">A few places to begin exploring creator ownership, music rights and direct relationships with fans.</p>
+    <div class="featured-grid">${articles.map((article) => `<article class="hub-feature-card">
+      <h3><a href="${localArticlePath(article)}">${escapeHtml(article.title)}</a></h3>
+      <p>${escapeHtml(article.excerpt)}</p>
+    </article>`).join('\n')}</div>
+  </section>`;
+}
+
+function renderTopicSections(topics) {
+  return topics.map((topic) => `<section class="hub-section hub-topic" id="${topic.id}" aria-labelledby="${topic.id}-heading">
+    <h2 id="${topic.id}-heading">${escapeHtml(topic.title)}</h2>
+    <p class="hub-intro">${escapeHtml(topic.description)}</p>
+    <ul class="topic-links">${publishedGuides.filter(g => (topic.guideSlugs || []).includes(g.slug)).map(g => `<li><a href="/guides/${g.slug}/">${escapeHtml(g.title)}</a></li>`).join('')}${topic.articles.map((article) => `<li><a href="${localArticlePath(article)}">${escapeHtml(article.title)}</a></li>`).join('\n')}</ul>
+  </section>`).join('\n');
+}
+
+function renderRelatedReading(article, bySlug) {
+  const selection = RELATED_READING[article.slug];
+  if (!selection) return '';
+  const related = curatedArticles(selection.slugs, bySlug).filter((item) => item.slug !== article.slug);
+  if (!related.length) return '';
+  const topic = BLOG_TOPICS.find((item) => item.id === selection.topicId);
+  return `<aside class="related-reading" aria-labelledby="related-reading-heading">
+    <h2 id="related-reading-heading">Related reading</h2>
+    <ul>${related.map((item) => `<li><a href="${localArticlePath(item)}">${escapeHtml(item.title)}</a></li>`).join('\n')}</ul>
+    ${topic ? `<a class="related-topic" href="/blog/#${topic.id}">Explore ${escapeHtml(topic.title)} →</a>` : ''}
+  </aside>`;
+}
+
 
 function jsonLdScript(data) {
   return `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`;
@@ -437,13 +465,13 @@ function organizationJsonLd() {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: ORGANIZATION.name,
-    email: ORGANIZATION.email,
     url: ORGANIZATION.url,
     logo: {
       '@type': 'ImageObject',
       url: ORGANIZATION.logo,
     },
     description: ORGANIZATION.description,
+    email: ORGANIZATION.email,
   };
 }
 
@@ -530,6 +558,8 @@ function imageCreditHtml(article) {
 }
 
 async function writeBlogIndex(articles, template) {
+  const bySlug = new Map(articles.map(article => [article.slug, article]));
+  const topics = availableTopics(bySlug);
   const html = renderTemplate(template, {
     metaTitle: 'Certifyd Blog | Creator-Owned Commerce Infrastructure',
     metaDescription: 'Articles from Certifyd on creator ownership, publishing, discovery, attribution and direct commerce.',
@@ -540,21 +570,22 @@ async function writeBlogIndex(articles, template) {
     socialImageWidth: SOCIAL_IMAGE_WIDTH,
     socialImageHeight: SOCIAL_IMAGE_HEIGHT,
     socialImageAlt: 'Certifyd creator-owned commerce infrastructure',
-    featuredCategories: renderFeaturedCategoryTags(articles),
-    categories: renderCategoryTags(articles),
+    topicNavigation: renderTopicNavigation(topics),
+    featuredArticles: renderFeaturedArticles(bySlug),
+    topicSections: renderTopicSections(topics),
     articles: articles.length ? articles.map(renderArticleCard).join('\n') : '<p class="empty-state">No published articles yet.</p>',
   });
   await fs.mkdir(OUT_DIR, { recursive: true });
   await fs.writeFile(path.join(OUT_DIR, 'index.html'), html);
 }
 
-async function writeArticle(article, template) {
+async function writeArticle(article, template, bySlug, previousHtml = '') {
   const outDir = path.join(OUT_DIR, article.slug);
   await fs.mkdir(outDir, { recursive: true });
   const metaTitle = article.seoTitle || `${article.title} | Certifyd Blog`;
   const metaDescription = article.seoDescription || article.excerpt;
   const ogImagePath = article.socialImage || article.coverImage;
-  const html = renderTemplate(template, {
+  let html = renderTemplate(template, {
     metaTitle: escapeHtml(metaTitle),
     ogTitle: escapeHtml(article.title),
     metaDescription: escapeHtml(metaDescription),
@@ -579,7 +610,29 @@ async function writeArticle(article, template) {
     heroImage: heroMediaHtml(article),
     tags: tagList(article),
     body: article.body,
+    relatedReading: renderRelatedReading(article, bySlug),
+    relatedStyles: RELATED_READING[article.slug] ? RELATED_STYLES : '',
   });
+  // This content project must not migrate existing article navigation layouts or
+  // churn equivalent schema serialization (including the live CTR experiments).
+  const breakpoint = previousHtml.match(/@media\(max-width:(860|1120)px\)\{\.nav-desktop/);
+  if (breakpoint) html = html.replace(/@media\(max-width:(860|1120)px\)\{\.nav-desktop/, breakpoint[0]);
+  const previousSchemas = [...previousHtml.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map(m => { try { return { raw: m[0], value: JSON.parse(m[1]) }; } catch { return null; } }).filter(Boolean);
+  if (previousHtml && !previousHtml.includes('/styles/grouped-navigation.css')) {
+    // Two legacy pages, including the live MLC experiment, have not migrated nav.
+    html = html.replace(/  <link rel="stylesheet" href="\/styles\/grouped-navigation.css" \/>\n  <script src="\/scripts\/grouped-navigation.js" defer><\/script>\n/, '');
+    for (const pattern of [/<header\b[\s\S]*?<\/header>/, /<footer>[\s\S]*?<\/footer>/]) {
+      const original = previousHtml.match(pattern)?.[0];
+      if (original) html = html.replace(pattern, original);
+    }
+    html = html.replace(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g, (raw, json) => {
+      const value = JSON.parse(json);
+      if (value['@type'] !== 'Organization') return raw;
+      const withoutEmail = { ...value }; delete withoutEmail.email;
+      return previousSchemas.find(s => isDeepStrictEqual(s.value, withoutEmail))?.raw || raw;
+    });
+  }
+  html = html.replace(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g, (raw, json) => previousSchemas.find(s => isDeepStrictEqual(s.value, JSON.parse(json)))?.raw || raw);
   await fs.writeFile(path.join(outDir, 'index.html'), html);
 }
 
@@ -606,23 +659,23 @@ async function updateHomepage() {
   await fs.writeFile(HOME_FILE, html);
 }
 
-async function writeSitemap(articles) {
+async function writeSitemap(articles, guides = []) {
   const staticUrls = [];
   for (const page of IMPORTANT_PUBLIC_PAGES) {
     const fullPath = path.join(ROOT, page.file);
     const html = await fs.readFile(fullPath, 'utf8').catch(() => '');
     if (!html || pageHasNoindex(html)) continue;
-    const stat = await fs.stat(fullPath).catch(() => null);
     staticUrls.push({
       loc: canonicalUrlForPath(page.path),
       lastmod: page.path === '/blog/'
-        ? (articles[0]?.updated || stat?.mtime || new Date()).toISOString().slice(0, 10)
-        : (stat?.mtime || new Date()).toISOString().slice(0, 10),
+        ? (articles[0]?.updated || new Date()).toISOString().slice(0, 10)
+        : '', // A checkout/build timestamp is not a verified content modification date.
       priority: page.priority,
     });
   }
   const urls = [
     ...staticUrls,
+    ...guides.map(guide => ({ loc: `${BASE_URL}/guides/${guide.slug}/`, lastmod: guide.updated, priority: '0.8' })),
     ...articles.map((article) => ({ loc: articleUrl(article), lastmod: article.updated.toISOString().slice(0, 10), priority: '0.6' })),
   ];
   const seen = new Set();
@@ -736,13 +789,18 @@ export async function buildBlog() {
     fs.readFile(path.join(TEMPLATE_DIR, 'blog-article.html'), 'utf8'),
   ]);
   const articles = await readArticles();
+  publishedGuides = await readGuides(ROOT);
   await ensureSocialImages(articles);
+  const previousPages = new Map(await Promise.all(articles.map(async article => [article.slug, await fs.readFile(path.join(OUT_DIR, article.slug, 'index.html'), 'utf8').catch(() => '')])));
   await ensureEmptyDir(OUT_DIR);
   await writeBlogIndex(articles, indexTemplate);
-  await Promise.all(articles.map((article) => writeArticle(article, articleTemplate)));
+  const bySlug = new Map(articles.map(article => [article.slug, article]));
+  await Promise.all(articles.map((article) => writeArticle(article, articleTemplate, bySlug, previousPages.get(article.slug))));
+  const guides = publishedGuides;
+  await writeGuides(ROOT, guides, articleTemplate);
   await writeStaticRedirects();
   await updateHomepage(articles);
-  await writeSitemap(articles);
+  await writeSitemap(articles, guides);
   await writeRobots();
   await writeFeed(articles);
   await writeGoogleVerificationFile();

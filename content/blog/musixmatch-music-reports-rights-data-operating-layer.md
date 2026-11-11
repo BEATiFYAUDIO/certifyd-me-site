@@ -50,6 +50,8 @@ Certifyd takes the opposite architectural direction. Its purpose is to reduce cr
 
 Catalog context is not rights administration, and Certifyd does not claim to replace the functions Musixmatch is assembling. The practical difference is the starting point: a creator can maintain work and release context in Core rather than relying solely on an intermediary’s version of the catalog to describe that work. Certifyd is building toward a network in which more of that foundation is operated by creators, reducing the need for a single rights-services company to become the place where a creator’s work is first defined and connected.
 
+Before handing a release between services, compare its credits and identifiers with the [independent artist metadata checklist](/guides/music-metadata-checklist/). It provides a practical record to check across systems.
+
 ## The test is not scale alone
 
 Musixmatch’s acquisition reflects a real industry need: music rights cannot be managed well when recordings, compositions, ownership details and usage information remain isolated. The company is betting that a joined-up data layer can handle that complexity more effectively, especially as music creation and use accelerate.

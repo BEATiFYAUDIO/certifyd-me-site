@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { IMPORTANT_PUBLIC_PAGES } from '../public-pages.js';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -288,6 +289,19 @@ export class GitHubPullRequestPublisher {
           targetDir: path.join(tempRoot, 'content', 'blog'),
         });
       }
+      // Builds used to stage only the homepage. The sitemap allowlist could not
+      // see Downloads/Profile, so the next dashboard publish silently dropped them.
+      for (const page of IMPORTANT_PUBLIC_PAGES.filter(p => p.path !== '/blog/')) {
+        const source = path.join(this.siteRoot, page.file);
+        try {
+          await fs.mkdir(path.dirname(path.join(tempRoot, page.file)), { recursive: true });
+          await fs.copyFile(source, path.join(tempRoot, page.file));
+        } catch (error) { if (error.code !== 'ENOENT') throw error; }
+      }
+      await fs.cp(path.join(this.siteRoot, 'content/guides'), path.join(tempRoot, 'content/guides'), { recursive: true }).catch(error => { if (error.code !== 'ENOENT') throw error; });
+      if (options.repositoryConfig && options.token && options.branchName) {
+        await hydrateBlogSourcesFromRepository({ config: options.repositoryConfig, token: options.token, branchName: options.branchName, targetDir: path.join(tempRoot, 'content/guides'), dirPath: 'content/guides' });
+      }
       await copySiteImagesForBuild(this.siteRoot, tempRoot);
       await fs.cp(path.join(this.siteRoot, 'templates'), path.join(tempRoot, 'templates'), { recursive: true });
       await fs.copyFile(path.join(this.siteRoot, 'index.html'), path.join(tempRoot, 'index.html'));
@@ -531,12 +545,12 @@ async function putGeneratedFiles({ config, token, branchName, files, message }) 
   return [{ commit: nextCommit, content: { html_url: nextCommit.html_url || updatedRef?.object?.url || '' } }];
 }
 
-async function hydrateBlogSourcesFromRepository({ config, token, branchName, targetDir }) {
+async function hydrateBlogSourcesFromRepository({ config, token, branchName, targetDir, dirPath = 'content/blog' }) {
   const entries = await getRepositoryDirectoryEntries({
     config,
     token,
     branchName,
-    dirPath: 'content/blog',
+    dirPath,
   });
   if (!entries.length) return;
   await fs.mkdir(targetDir, { recursive: true });
@@ -544,7 +558,7 @@ async function hydrateBlogSourcesFromRepository({ config, token, branchName, tar
     if (entry.type !== 'file') continue;
     const name = String(entry.name || '').trim();
     if (!/^[a-z0-9][a-z0-9-]*\.md$/i.test(name)) continue;
-    const filePath = `content/blog/${name}`;
+    const filePath = `${dirPath}/${name}`;
     const content = await getRepositoryFileContent({ config, token, branchName, filePath });
     await fs.writeFile(path.join(targetDir, name), content, 'utf8');
   }

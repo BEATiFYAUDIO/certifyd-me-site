@@ -46,6 +46,8 @@ Certifyd Core supports release records that preserve work, release and attributi
 
 Release records do not settle consent standards or answer every AI-voice rights question. But they establish a current foundation for the broader direction Certifyd is building toward: creators operating more of the infrastructure around their work, rather than remaining only account holders inside an intermediary’s environment.
 
+For the everyday release records behind that handoff, see the [checklist for credits, versions and rights context](/guides/music-metadata-checklist/). Keeping those fields consistent is useful even when a particular service handles the delivery.
+
 ## The next test is whether standards work outside the originating service
 
 Voice-Swap’s DDEX participation puts the right question on the table: can AI-voice authorization become information that the wider music supply chain can interpret? The answer will depend on the standards that emerge and on whether downstream systems can use them consistently.

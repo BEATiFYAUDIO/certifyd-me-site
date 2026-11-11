@@ -38,6 +38,8 @@ This is the gap Certifyd addresses at an architectural level. If essential creat
 
 Certifyd exists to reduce dependency on centralized platforms by giving creator identity, publishing context, commerce activity and public records a stronger creator-controlled foundation. Its public network entry, node registration and profile surfaces are live today. The broader direction is a network where supported creator functions move away from being controlled solely by an intermediary and toward infrastructure creators operate themselves. In this story, that changes the creator’s position: rather than relying entirely on outside systems to preserve the context behind a work, the creator can take part in the record layer from which that context originates.
 
+Start with the records you can maintain yourself: this [release metadata checklist](/guides/music-metadata-checklist/) separates recording identifiers, composition credits and rights context.
+
 ## Treat data maintenance as revenue protection
 
 For creators, the practical takeaway is to treat repertoire, ownership and contributor information as live commercial records. Check that work and rights details agree across the services involved in administration and collection, and revisit them as relationships, releases and catalogues change. Waiting for a visible royalty gap can mean discovering a problem after it has spread.

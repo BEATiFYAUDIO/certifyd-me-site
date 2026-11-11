@@ -16,6 +16,8 @@ seoTitle: "How to Install Certifyd Core: Local Creator Infrastructure Guide"
 seoDescription: "Install Certifyd Core on Windows, macOS or Linux/Pi, create a local owner account, and understand the difference between Core’s private dashboard and public creator"
 ---
 
+> **Historical installation article.** This article preserves an earlier Beta 20 walkthrough and its original release context. For the current production build, supported packages and installation commands, follow the [maintained Certifyd Core installation guide](/core/guide/) and [Downloads](/downloads/). The archived [Beta 20 guide](/core/guide/archive/v0.1.0-beta.20/) is available for historical reference.
+
 Creators are used to being handed a login page and told that control begins there. Certifyd Core starts with a more practical question: where does the software that manages your work actually run?
 
 Core is designed to run on the computer that holds a creator’s work. Its published installation walkthrough, labelled **v0.1.0-beta.20**, covers Windows, macOS and Linux/Pi. The immediate goal is modest but important: install Core, open its local dashboard in a browser, and create or sign into the owner account for that installation.
@@ -26,7 +28,7 @@ That is not the same thing as publishing work, opening a public creator page, co
 
 Go to the [Certifyd downloads page](https://certifyd.me/downloads/) and choose the package for the computer that will hold your work.
 
-The published walkthrough describes a specific beta release, while the downloads page may list newer Core artifacts. Read and follow the instructions included with the package you download when they differ from the older walkthrough, particularly on Linux where package formats can change.
+The walkthrough below describes the earlier Beta 20 release. Use the [maintained installation guide](/core/guide/) for the current package names, operating-system support and commands; do not apply the historical commands below to a newer package.
 
 ## Install Certifyd Core on Windows
 

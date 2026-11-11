@@ -335,3 +335,54 @@ test('video metadata rejects unsafe paths and invalid durations', async () => {
     } finally { await fs.rm(root, { recursive: true, force: true }); }
   }
 });
+
+test('hub retains crawlable stable topics and newest-first archive while guides join sitemap but not news feed', async () => {
+  const sources = {
+    'ownership.md': article({title:'Ownership fixture',excerpt:'Ownership description.',slug:'certifyd-architecture-creator-operated-infrastructure',date:'2026-07-20'}),
+    'rights.md': article({title:'Rights fixture',excerpt:'Rights description.',slug:'digital-music-news-metadata-royalties-mistaken-identity',date:'2026-07-21'}),
+    'ai.md': article({title:'Identity fixture',excerpt:'Identity description.',slug:'jason-isbell-suno-ai-artist-identity',date:'2026-07-22'}),
+    'commerce.md': article({title:'Commerce fixture',excerpt:'Commerce description.',slug:'even-josh-remsberg-direct-to-fan-operating-layer',date:'2026-07-23'}),
+  };
+  const root = await makeFixture(sources);
+  try {
+    await fs.mkdir(path.join(root,'content/guides'),{recursive:true});
+    await fs.writeFile(path.join(root,'content/guides/checklist.md'),'---\ntitle: "Practical metadata checklist"\nslug: "music-metadata-checklist"\ndescription: "Check your release records."\ndate: "2026-11-10"\nupdated: "2026-11-10"\nstatus: "published"\n---\n\n## Check a release\n\n[Supporting article](/blog/digital-music-news-metadata-royalties-mistaken-identity/).');
+    for (const name of ['downloads','profile','core/guide']) {
+      await fs.mkdir(path.join(root,name),{recursive:true});
+      await fs.writeFile(path.join(root,name,'index.html'),`<html><head><title>${name}</title><meta name="description" content="Public ${name}"><link rel="canonical" href="https://certifyd.me/${name}/"><meta property="og:url" content="https://certifyd.me/${name}/"></head><body>Public</body></html>`);
+    }
+    const first = runBuild(root);assert.equal(first.status,0,first.stderr);
+    const hub = await fs.readFile(path.join(root,'blog/index.html'),'utf8');
+    for (const id of ['creator-ownership','music-rights','ai-identity','direct-commerce']) {
+      assert.ok(hub.includes(`href="/blog/#${id}"`));assert.ok(hub.includes(`id="${id}"`));
+    }
+    assert.match(hub,/Start Here/);assert.match(hub,/href="\/guides\/music-metadata-checklist\/"/);
+    const archive = hub.slice(hub.indexOf('<section class="latest-section"'));
+    assert.equal((archive.match(/class="blog-card"/g)||[]).length,4);
+    assert.ok(archive.indexOf('Commerce fixture') < archive.indexOf('Ownership fixture'));
+    const sitemap = await fs.readFile(path.join(root,'sitemap.xml'),'utf8');
+    for (const name of ['downloads','profile','core/guide','guides/music-metadata-checklist']) assert.ok(sitemap.includes(`https://certifyd.me/${name}/`));
+    assert.doesNotMatch(await fs.readFile(path.join(root,'feed.xml'),'utf8'),/Practical metadata checklist/);
+    const seo = spawnSync(process.execPath,[SEO_VALIDATE_SCRIPT],{cwd:root,encoding:'utf8'});assert.equal(seo.status,0,seo.stdout+seo.stderr);
+    // A missing cornerstone is a genuine broken-link regression, even with valid metadata.
+    await fs.rm(path.join(root,'guides/music-metadata-checklist/index.html'));
+    const broken = spawnSync(process.execPath,[SEO_VALIDATE_SCRIPT],{cwd:root,encoding:'utf8'});assert.notEqual(broken.status,0);assert.match(broken.stderr,/missing generated guide/);
+  } finally { await fs.rm(root,{recursive:true,force:true}); }
+});
+
+test('rebuild preserves live experiment presentation while allowing source content updates', async () => {
+  const root = await makeFixture({'article.md':article({title:'Protected fixture',slug:'protected-fixture',date:'2026-07-20'})});
+  try {
+    assert.equal(runBuild(root).status,0);
+    const file = path.join(root,'blog/protected-fixture/index.html');
+    let html = await fs.readFile(file,'utf8');
+    html = html.replace('@media(max-width:1120px)','@media(max-width:860px)');
+    await fs.writeFile(file,html);
+    assert.equal(runBuild(root).status,0);
+    assert.equal(await fs.readFile(file,'utf8'),html);
+    const source = path.join(root,'content/blog/article.md');
+    await fs.appendFile(source,'\nA real content update.\n');
+    assert.equal(runBuild(root).status,0);
+    assert.match(await fs.readFile(file,'utf8'),/A real content update/);
+  } finally { await fs.rm(root,{recursive:true,force:true}); }
+});

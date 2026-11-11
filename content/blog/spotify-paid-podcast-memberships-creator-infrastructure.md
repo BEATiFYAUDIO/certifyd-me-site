@@ -36,6 +36,8 @@ That is the larger shift in podcasting. Distribution and advertising are no long
 
 For creators, the question is not whether memberships are useful. They are. The harder question is why a creator’s paid fan relationship should require one intermediary to operate the discovery, purchase and access environment around it. As recurring memberships become normal, the context around what was offered, bought and delivered becomes part of the creator’s business—not merely a feature inside someone else’s account system.
 
+The same operating questions apply to a music release. Our [guide to a complete direct-to-fan sale](/guides/sell-music-directly-to-fans/) follows the offer through checkout, access and ongoing support.
+
 ## Creator-operated infrastructure changes the question
 
 Certifyd takes the opposite architectural direction: creator-operated infrastructure rather than a creator account inside a centralized operating environment. Its ecosystem is organized around creator publishing, ownership, direct commerce, profiles and network participation. That matters here because Spotify’s membership model concentrates the route from audience attention to payment and paid access inside Spotify’s own environment.

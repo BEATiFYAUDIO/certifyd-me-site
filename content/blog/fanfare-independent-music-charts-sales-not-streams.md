@@ -118,6 +118,8 @@ Both approaches begin with a similar observation: the conventional streaming lea
 
 Where we go further is in asking whether there should be a single story at all.
 
+For an artist, the practical foundation is a working sale rather than another activity total. The [direct-to-fan selling checklist](/guides/sell-music-directly-to-fans/) covers discovery, payment confirmation and access.
+
 ## Independent Music Needs More Than Another Scoreboard
 
 The future of music charts doesn't have to be a fight between streams and sales. Nor does independent music need to replace one dominant metric with another.

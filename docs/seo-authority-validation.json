@@ -1,0 +1,66 @@
+{
+  "baseMain": "9e9336500fe93dcebe9dc7e3ce3a005bdd766f07",
+  "publishedArticleCount": 112,
+  "missingOriginalArticles": [],
+  "changedExistingMetadata": [],
+  "changedStructuredDataIds": [],
+  "protectedFilesByteIdentical": {
+    "blog/from-hit-records-to-hollywood-vassal-benford-creator-economy/index.html": true,
+    "blog/i-asked-100-companies-for-my-data-i-got-deletion-notices-instead/index.html": true,
+    "blog/mlc-2027-black-box-royalty-distribution-market-share/index.html": true,
+    "blog/stella-lefty-organic-discovery-release-records/index.html": true,
+    "blog/the-business-relevance-of-preserving-b-b-king-s-legacy-beyond-the-music-a-look-at-vassal-b/index.html": true,
+    "blog/universal-has-sold-a-chunk-of-spotify-stock-for-around-467m-artists-will-likely-be-paid-ov/index.html": true,
+    "blog/vassal-benford-career-ownership-technology-hip-hop/index.html": true,
+    "blog/vassal-benford-clive-davis-vaz-arista-records/index.html": true,
+    "blog/vassal-benford-feature-profile-july-2026-feature-profile-reinvention-in-the-modern-enterta/index.html": true,
+    "blog/vassal-benford-quincy-jones-music-sovereignty-certifyd/index.html": true,
+    "content/blog/from-hit-records-to-hollywood-vassal-benford-creator-economy.md": true,
+    "content/blog/i-asked-100-companies-for-my-data-i-got-deletion-notices-instead.md": true,
+    "content/blog/mlc-2027-black-box-royalty-distribution-market-share.md": true,
+    "content/blog/stella-lefty-organic-discovery-release-records.md": true,
+    "content/blog/the-business-relevance-of-preserving-b-b-king-s-legacy-beyond-the-music-a-look-at-vassal-b.md": true,
+    "content/blog/universal-has-sold-a-chunk-of-spotify-stock-for-around-467m-artists-will-likely-be-paid-ov.md": true,
+    "content/blog/vassal-benford-career-ownership-technology-hip-hop.md": true,
+    "content/blog/vassal-benford-clive-davis-vaz-arista-records.md": true,
+    "content/blog/vassal-benford-feature-profile-july-2026-feature-profile-reinvention-in-the-modern-enterta.md": true,
+    "content/blog/vassal-benford-quincy-jones-music-sovereignty-certifyd.md": true
+  },
+  "homepageMetadataUnchanged": true,
+  "feedByteIdentical": true,
+  "feedItemCount": 112,
+  "sitemapUrlCount": 124,
+  "sitemapAdded": [
+    "https://certifyd.me/core/guide/",
+    "https://certifyd.me/downloads/",
+    "https://certifyd.me/guides/music-metadata-checklist/",
+    "https://certifyd.me/guides/sell-music-directly-to-fans/",
+    "https://certifyd.me/join/",
+    "https://certifyd.me/media-promotion/",
+    "https://certifyd.me/network.html",
+    "https://certifyd.me/profile/",
+    "https://certifyd.me/retail-partners/",
+    "https://certifyd.me/services/"
+  ],
+  "sitemapRemoved": [],
+  "tests": {
+    "javascript": {
+      "passed": 395,
+      "failed": 0,
+      "blog": 14,
+      "dashboardAndAdvisory": 117,
+      "generation": 157,
+      "trends": 85,
+      "images": 22
+    },
+    "releaseDocumentationPython": {
+      "passed": 7,
+      "failed": 0
+    },
+    "seoValidation": "PASS",
+    "javascriptSyntaxFiles": 13,
+    "diffCheck": "PASS",
+    "feedXml": "PASS",
+    "sitemapXml": "PASS"
+  }
+}

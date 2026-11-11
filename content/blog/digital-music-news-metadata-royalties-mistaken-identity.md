@@ -40,6 +40,8 @@ A mistaken identity link can sit inside a database that the creator does not ope
 
 Certifyd is positioned as creator-owned infrastructure, and Certifyd Core is currently in beta with catalog context for works and releases. That gives creators a shared foundation for the work and release information that can inform Certifyd surfaces, rather than leaving catalog context only inside disconnected outside systems. It does not eliminate the need for accurate registrations or rights review. It makes the underlying catalog context more durable within infrastructure built around the creator’s operation.
 
+For a release-by-release check of artist names, credits and identifiers, use the [music metadata checklist for independent artists](/guides/music-metadata-checklist/).
+
 ## A practical response
 
 Creators and small music businesses should treat identity checks as part of release and catalog maintenance, not an occasional cleanup project. Review how artist and songwriter names appear across recordings and works, keep unique identity details consistent, and investigate quickly when a catalog is attributed to someone else.

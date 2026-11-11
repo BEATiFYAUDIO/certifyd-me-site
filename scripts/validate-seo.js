@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { readGuides } from './build-guides.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import matter from 'gray-matter';
@@ -12,12 +13,14 @@ const STATIC_PAGES = [
   { file: 'profile/index.html', canonical: `${BASE_URL}/profile/` },
   { file: 'join/index.html', canonical: `${BASE_URL}/join/` },
   { file: 'downloads/index.html', canonical: `${BASE_URL}/downloads/` },
+  { file: 'core/guide/index.html', canonical: `${BASE_URL}/core/guide/`, optionalOgUrl: true },
   { file: 'network.html', canonical: `${BASE_URL}/network.html` },
   { file: 'retail-partners/index.html', canonical: `${BASE_URL}/retail-partners/` },
   { file: 'media-promotion/index.html', canonical: `${BASE_URL}/media-promotion/` },
   { file: 'services/index.html', canonical: `${BASE_URL}/services/` },
 ];
 const errors = [];
+let guides = [];
 
 function fail(message) {
   errors.push(message);
@@ -127,12 +130,12 @@ async function validateStaticPages() {
     if (!description) fail(`${file}: missing meta description.`);
     if (!canonical) fail(`${file}: missing canonical.`);
     if (canonical && canonical !== page.canonical) fail(`${file}: canonical mismatch: ${canonical}`);
-    if (!ogUrl) fail(`${file}: missing og:url.`);
+    if (!ogUrl && !page.optionalOgUrl) fail(`${file}: missing og:url.`);
     if (ogUrl && ogUrl !== canonical) fail(`${file}: og:url does not match canonical.`);
   }
 }
 
-function validateJsonLd(file, html, expectedCanonical) {
+function validateJsonLd(file, html, expectedCanonical, articleType = 'BlogPosting') {
   const scripts = extractAll(html, /<script type="application\/ld\+json">([\s\S]*?)<\/script>/g);
   if (!scripts.length) fail(`${file}: missing JSON-LD.`);
   const types = new Set();
@@ -146,12 +149,16 @@ function validateJsonLd(file, html, expectedCanonical) {
       fail(`${file}: malformed JSON-LD: ${error.message}`);
     }
   }
-  for (const requiredType of ['BlogPosting', 'Organization', 'BreadcrumbList']) {
+  for (const requiredType of [articleType, 'Organization', 'BreadcrumbList']) {
     if (!types.has(requiredType)) fail(`${file}: missing ${requiredType} JSON-LD.`);
   }
 }
 
 function validateInternalArticleLinks(file, html, published) {
+  const guideSlugs = new Set(guides.map(g => g.slug));
+  for (const href of extractAll(html, /href="(\/guides\/[^"#?]*)"/g)) {
+    if (!/^\/guides\/[a-z0-9-]+\/$/.test(href) || !guideSlugs.has(href.split('/')[2])) fail(`${file}: broken or noncanonical guide link: ${href}`);
+  }
   const links = extractAll(html, /href="(\/blog\/[^"#?]*)"/g);
   for (const href of links) {
     if (href === '/blog/') continue;
@@ -199,13 +206,37 @@ async function validateRobots() {
   if (/Disallow:\s*\/images/i.test(robots)) fail('robots.txt blocks image assets.');
 }
 
+async function validateGuides(published, locs) {
+  for (const guide of guides) {
+    const file = `guides/${guide.slug}/index.html`;
+    const html = await fs.readFile(path.join(ROOT, file), 'utf8').catch(() => '');
+    const canonical = `${BASE_URL}/guides/${guide.slug}/`;
+    if (!html) { fail(`${file}: missing generated guide`); continue; }
+    if (extract(html, /<link rel="canonical" href="([^"]+)"/i) !== canonical) fail(`${file}: canonical mismatch`);
+    if (!extract(html, /<title>([^<]+)<\/title>/i) || !extractMetaContent(html, 'name', 'description')) fail(`${file}: missing metadata`);
+    if (/noindex/i.test(extractMetaContent(html, 'name', 'robots'))) fail(`${file}: guide must be indexable`);
+    if ((html.match(/<h1\b/gi) || []).length !== 1) fail(`${file}: expected one h1`);
+    validateJsonLd(file, html, canonical, 'Article');
+    validateInternalArticleLinks(file, html, published);
+    if (!locs.includes(canonical)) fail(`sitemap.xml missing guide: ${canonical}`);
+    const hub = await fs.readFile(path.join(ROOT, 'blog/index.html'), 'utf8');
+    if (!hub.includes(`href="/guides/${guide.slug}/"`)) fail(`${file}: guide is orphaned from blog hub`);
+  }
+  for (const page of STATIC_PAGES) {
+    const html = await fs.readFile(path.join(ROOT, page.file), 'utf8').catch(() => '');
+    if (html && !/noindex/i.test(extractMetaContent(html, 'name', 'robots')) && !locs.includes(page.canonical)) fail(`sitemap.xml missing indexable public page: ${page.canonical}`);
+  }
+}
+
 async function main() {
   const { published, excluded } = await readBlogSources();
+  guides = await readGuides(ROOT);
   const locs = await readSitemapLocs();
   await validateStaticPages();
   await validateGeneratedArticles(published);
   validateSitemap(locs, published, excluded);
   await validateRobots();
+  await validateGuides(published, locs);
   if (errors.length) {
     console.error(`SEO validation failed with ${errors.length} issue${errors.length === 1 ? '' : 's'}:`);
     for (const error of errors) console.error(`- ${error}`);

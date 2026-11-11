@@ -2,11 +2,52 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://certifyd.me/</loc>
-    <lastmod>2026-11-09</lastmod>
     <priority>1.0</priority>
   </url>
   <url>
+    <loc>https://certifyd.me/profile/</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://certifyd.me/join/</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://certifyd.me/downloads/</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://certifyd.me/core/guide/</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://certifyd.me/network.html</loc>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://certifyd.me/retail-partners/</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://certifyd.me/media-promotion/</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://certifyd.me/services/</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://certifyd.me/blog/</loc>
+    <lastmod>2026-11-10</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://certifyd.me/guides/music-metadata-checklist/</loc>
+    <lastmod>2026-11-10</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://certifyd.me/guides/sell-music-directly-to-fans/</loc>
     <lastmod>2026-11-10</lastmod>
     <priority>0.8</priority>
   </url>

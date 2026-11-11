@@ -17,6 +17,9 @@ import { publicArticleBodyMarkdown } from '../scripts/content-dashboard/public-m
 import { buildDistributionAdapters, markdownToHtml } from '../scripts/content-dashboard/distribution-adapters.js';
 import { BLOGGER_REDIRECT_URI } from '../scripts/content-dashboard/blogger-oauth.js';
 
+const defaultTestRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'certifyd-dashboard-default-'));
+test.after(() => fs.rm(defaultTestRoot, { recursive: true, force: true }));
+
 const env = {
   ...process.env,
   CONTENT_DASHBOARD_ENABLED: 'true',
@@ -24,7 +27,7 @@ const env = {
   CONTENT_DASHBOARD_LOCAL_LOGIN_TOKEN: 'test-token',
   CONTENT_DASHBOARD_FOUNDER_EMAILS: 'founder@example.test',
   CONTENT_DASHBOARD_ALLOWED_ROLES: 'writer:writer@example.test;editor:editor@example.test;marketing:marketing@example.test;developer:developer@example.test;viewer:viewer@example.test',
-  CONTENT_AGENT_ROOT: '/home/Darryl/Projects/contentbox/content-agent',
+  CONTENT_AGENT_ROOT: defaultTestRoot,
   CONTENT_DASHBOARD_DB_PATH: ':memory:',
 };
 
@@ -1375,6 +1378,7 @@ test('20bba direct publish generation preserves existing GitHub branch articles 
   await fs.symlink(path.join(process.cwd(), 'node_modules'), path.join(tmpSiteRoot, 'node_modules'), 'dir');
   await fs.cp(path.join(process.cwd(), 'templates'), path.join(tmpSiteRoot, 'templates'), { recursive: true });
   await fs.copyFile(path.join(process.cwd(), 'scripts', 'build-blog.js'), path.join(tmpSiteRoot, 'scripts', 'build-blog.js'));
+  for (const file of ['blog-topics.js', 'build-guides.js', 'public-pages.js']) await fs.copyFile(path.join(process.cwd(), 'scripts', file), path.join(tmpSiteRoot, 'scripts', file));
   await fs.copyFile(path.join(process.cwd(), 'scripts', 'content-dashboard', 'public-markdown.js'), path.join(tmpSiteRoot, 'scripts', 'content-dashboard', 'public-markdown.js'));
   await fs.writeFile(path.join(tmpSiteRoot, 'index.html'), [
     '<main>',
@@ -1398,6 +1402,13 @@ test('20bba direct publish generation preserves existing GitHub branch articles 
     'Local body.',
   ].join('\n'));
 
+  // The real dashboard staging path must retain all indexable public pages and guides.
+  for (const name of ['downloads', 'profile', 'core/guide']) {
+    await fs.mkdir(path.join(tmpSiteRoot, name), { recursive: true });
+    await fs.writeFile(path.join(tmpSiteRoot, name, 'index.html'), `<html><head><link rel="canonical" href="https://certifyd.me/${name}/"></head><body>Public</body></html>`);
+  }
+  await fs.mkdir(path.join(tmpSiteRoot, 'content/guides'), { recursive: true });
+  await fs.writeFile(path.join(tmpSiteRoot, 'content/guides/checklist.md'), '---\ntitle: "Practical guide"\nslug: "music-metadata-checklist"\ndescription: "A release checklist."\ndate: "2026-11-10"\nupdated: "2026-11-10"\nstatus: "published"\n---\n\nPractical body.');
   const remotePriorMarkdown = [
     '---',
     'title: "Remote Prior Article"',
@@ -1464,6 +1475,10 @@ test('20bba direct publish generation preserves existing GitHub branch articles 
     const index = files.find((file) => file.path === 'blog/index.html')?.content || '';
     assert.match(index, /Remote Prior Article/);
     assert.match(index, /New Article/);
+    assert.match(index, /href="\/guides\/music-metadata-checklist\/"/);
+    const sitemap = files.find(file => file.path === 'sitemap.xml')?.content || '';
+    for (const name of ['downloads', 'profile', 'core/guide', 'guides/music-metadata-checklist']) assert.ok(sitemap.includes(`https://certifyd.me/${name}/`));
+    assert.equal(files.some(file => file.path === 'index.html'), false);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -1476,6 +1491,7 @@ test('20bbb direct publishing writes generated files as one atomic GitHub commit
   await fs.symlink(path.join(process.cwd(), 'node_modules'), path.join(tmpSiteRoot, 'node_modules'), 'dir');
   await fs.cp(path.join(process.cwd(), 'templates'), path.join(tmpSiteRoot, 'templates'), { recursive: true });
   await fs.copyFile(path.join(process.cwd(), 'scripts', 'build-blog.js'), path.join(tmpSiteRoot, 'scripts', 'build-blog.js'));
+  for (const file of ['blog-topics.js', 'build-guides.js', 'public-pages.js']) await fs.copyFile(path.join(process.cwd(), 'scripts', file), path.join(tmpSiteRoot, 'scripts', file));
   await fs.writeFile(path.join(tmpSiteRoot, 'index.html'), [
     '<main>',
     '<!-- BLOG_RECENT_START -->',
@@ -1564,6 +1580,7 @@ test('20bbba direct publishing mirrors blog files without writing preview homepa
   await fs.symlink(path.join(process.cwd(), 'node_modules'), path.join(tmpSiteRoot, 'node_modules'), 'dir');
   await fs.cp(path.join(process.cwd(), 'templates'), path.join(tmpSiteRoot, 'templates'), { recursive: true });
   await fs.copyFile(path.join(process.cwd(), 'scripts', 'build-blog.js'), path.join(tmpSiteRoot, 'scripts', 'build-blog.js'));
+  for (const file of ['blog-topics.js', 'build-guides.js', 'public-pages.js']) await fs.copyFile(path.join(process.cwd(), 'scripts', file), path.join(tmpSiteRoot, 'scripts', file));
   await fs.writeFile(path.join(tmpSiteRoot, 'index.html'), [
     '<main>',
     '<!-- BLOG_RECENT_START -->',
@@ -1654,6 +1671,7 @@ test('20bbd direct publishing skips GitHub commits when generated output is unch
   await fs.symlink(path.join(process.cwd(), 'node_modules'), path.join(tmpSiteRoot, 'node_modules'), 'dir');
   await fs.cp(path.join(process.cwd(), 'templates'), path.join(tmpSiteRoot, 'templates'), { recursive: true });
   await fs.copyFile(path.join(process.cwd(), 'scripts', 'build-blog.js'), path.join(tmpSiteRoot, 'scripts', 'build-blog.js'));
+  for (const file of ['blog-topics.js', 'build-guides.js', 'public-pages.js']) await fs.copyFile(path.join(process.cwd(), 'scripts', file), path.join(tmpSiteRoot, 'scripts', file));
   await fs.writeFile(path.join(tmpSiteRoot, 'index.html'), [
     '<main>',
     '<!-- BLOG_RECENT_START -->',
@@ -1733,6 +1751,7 @@ test('20bbe publish-time static generation stages SVG cover images and generated
   await fs.symlink(path.join(process.cwd(), 'node_modules'), path.join(tmpSiteRoot, 'node_modules'), 'dir');
   await fs.cp(path.join(process.cwd(), 'templates'), path.join(tmpSiteRoot, 'templates'), { recursive: true });
   await fs.copyFile(path.join(process.cwd(), 'scripts', 'build-blog.js'), path.join(tmpSiteRoot, 'scripts', 'build-blog.js'));
+  for (const file of ['blog-topics.js', 'build-guides.js', 'public-pages.js']) await fs.copyFile(path.join(process.cwd(), 'scripts', file), path.join(tmpSiteRoot, 'scripts', file));
   await fs.copyFile(path.join(process.cwd(), 'scripts', 'content-dashboard', 'public-markdown.js'), path.join(tmpSiteRoot, 'scripts', 'content-dashboard', 'public-markdown.js'));
   await fs.writeFile(path.join(tmpSiteRoot, 'index.html'), [
     '<main>',
