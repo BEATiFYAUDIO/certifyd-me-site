@@ -38,7 +38,7 @@
   </url>
   <url>
     <loc>https://certifyd.me/blog/</loc>
-    <lastmod>2026-11-12</lastmod>
+    <lastmod>2026-11-14</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
@@ -50,6 +50,11 @@
     <loc>https://certifyd.me/guides/sell-music-directly-to-fans/</loc>
     <lastmod>2026-11-10</lastmod>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://certifyd.me/blog/old-laptop-certifyd-core-creator-server/</loc>
+    <lastmod>2026-11-14</lastmod>
+    <priority>0.6</priority>
   </url>
   <url>
     <loc>https://certifyd.me/blog/bitcoin-after-us-two-fathers-one-mission-and-a-future-worth-building/</loc>
