@@ -24,8 +24,6 @@ That old machine might have another job. With compatible hardware and an operati
 
 ## Stop Paying for a Creator Platform
 
-![Illustrated spare laptop in a home workspace. Slide 01: Stop paying for a creator platform; your old laptop can run Certifyd Core.](/images/blog/old-laptop-certifyd-core-creator-server/01-old-laptop.webp)
-
 Creators pay for convenience in all kinds of ways: subscriptions, sales fees, storage plans and the time spent moving between accounts. Those services can be useful. But when your identity, catalogue and business exist inside someone else's account system, the choices available to you depend on how that company runs it.
 
 Certifyd Core gives creators a way to operate more of that infrastructure themselves. It puts a local environment for identity, work records and publishing on a computer they control. Running it carries responsibilities, but it also changes who operates this part of the business.
