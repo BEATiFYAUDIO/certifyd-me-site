@@ -1116,7 +1116,7 @@ function buildTechnologyInstruction(stage) {
     'Respect qualifiedClaims and prohibitedClaims silently; never narrate internal governance, source IDs or review rules in public prose. Separate documented facts from clearly reasoned explanation.',
     stage === 'reasoning' ? 'Use eventSummary for the technology question, editorialTension for the practical creator problem, verifiedFacts for documented facts, and articleProgression for at least four useful steps if worthPublishing=true. Cite exact approved Brain record IDs in editorialIdeaSupport.factIds. Return certifydConcepts as []. Set worthPublishing=false with a reason if the documentation cannot support a useful, specific article.' : 'Use only ALLOWED_BRAIN_SOURCE_IDS in claims[].sourceIds. Do not set approval or publication fields. Do not pad the article with repeated creator-operated infrastructure claims; let length follow supported substance. Include a useful next step only if documented.',
     'The brand is Certifyd. Preserve its creator-operated infrastructure perspective through the specific supported technical advantage, without generic promotional filler or keyword stuffing.',
-    ...articleEditorialVoice(),
+    ...articleEditorialVoice(stage),
   ].join('\n');
 }
 
@@ -1132,8 +1132,9 @@ function buildTechnologyPrompt(input, context, writingContext, reasoning) {
   ].join('\n');
 }
 
-function articleEditorialVoice() {
-  return [
+function articleEditorialVoice(stage = 'writing') {
+  // Preserve the existing technology reasoning prompt; public prose guidance is writing-only.
+  if (stage === 'reasoning') return [
     'Write like an informed technology/music-business publication, not a compliance memo.',
     'Use plain, direct language for intelligent creators, musicians, producers and general music-business readers. Aim roughly for Grade 8 to 10 readability without simplifying the underlying reasoning.',
     'Write with the voice of an intelligent, opinionated founder who understands the creative industries and cares about creators: conversational without becoming casual, confident without exaggeration, curious, skeptical of centralized systems and willing to make a clear source-backed argument.',
@@ -1153,6 +1154,20 @@ function articleEditorialVoice() {
     'Do not add defensive disclaimers merely to show what the article is not claiming.',
     'When uncertainty is genuinely required, express it naturally and briefly, for example “The case remains unresolved” or “The ruling does not decide the underlying dispute.”',
   ];
+  return [
+    'Write like an intelligent, opinionated founder explaining a story to a smart friend: plainspoken, confident and interested in who gains or loses control. Do not sound like an analyst writing a briefing.',
+    'Use plain, direct language for intelligent creators, musicians, producers and general music-business readers. Aim roughly for Grade 8 to 10 readability without simplifying the underlying reasoning.',
+    'Within the first 2–4 sentences, usually name what happened, who is involved and the strongest supported stake. Then follow those specific people, companies, money, work, rights, access or audiences through the article.',
+    'Prefer named actors and active verbs. Say who controls the customer relationship or what creators can run themselves before introducing technical terms. Use architecture or infrastructure only when the term adds precision.',
+    'Keep the reasoning deep but the language simple. Use short declarative sentences when they carry the point, and longer sentences when the explanation needs them. Vary sentence length and rhythm naturally. Use mostly conventional editorial paragraphs of roughly 3 to 5 sentences, with occasional short paragraphs for earned emphasis; retain the existing heading and article conventions.',
+    'Create personality through the argument, concrete detail and storytelling. Punchy headlines, tension, surprise and a memorable line are welcome when the facts earn them. Do not manufacture personality with jokes, slang, fake quotations, invented anecdotes or artificial enthusiasm.',
+    'Never imply that a particular creator lost money, rights, control or opportunity unless the verified source package establishes it. Do not invent losses, motives, secret deals, ownership, control, payment outcomes, conflict, urgency or certainty.',
+    'Preserve useful SEO entity coverage while improving the prose: retain relevant company and organization names, people and job titles, products, services, technologies, dates, financial figures, industry terminology, primary keywords, secondary keywords and search-relevant relationships. Use them naturally without keyword stuffing.',
+    'Carry plain, concrete wording through every section and the ending. Avoid abstract noun chains and repeated announcements of broader implications, structural shifts or deeper questions; explain the actual consequence instead. Do not replace depth with slogans or make every paragraph a dramatic one-liner.',
+    'Do not confuse responsible sourcing with timid writing. Qualification belongs on the uncertain fact—not across the entire article. Distinguish allegations from findings, forecasts from outcomes, and plans from live capabilities. Never delete a qualification that changes the truth of the claim or use “may” to disguise an unsupported accusation.',
+    'Do not mention the validation system, source-support restrictions, uncertainty machinery, prompt rules, or internal editorial rules in article prose. Do not add defensive disclaimers merely to show what the article is not claiming. Express necessary uncertainty briefly and naturally.',
+    'Treat Certifyd as a point of view, not a paragraph requirement. One substantive, source-grounded connection is enough when it advances this story. Do not repeat generic infrastructure, ownership or decentralization language or force Certifyd into every section.',
+  ];
 }
 
 function buildArticleSystemInstruction() {
@@ -1161,23 +1176,23 @@ function buildArticleSystemInstruction() {
     '',
     'Return only JSON matching the requested schema.',
     'Use the verified source facts, advisory editorial notes and selected Certifyd Brain together as the writing context.',
-    'The canonical editorial thesis is the source-of-truth for the article’s structural interpretation, Certifyd relevance and image brief.',
+    'The canonical editorial thesis is the source-of-truth for the article’s argument, Certifyd relevance and image brief. Its conclusions constrain the article; its vocabulary does not.',
     'You own the final thesis only inside the boundaries of the canonical editorial thesis, which is the source-of-truth. Use source-only reasoning as advisory analysis; challenge it, deepen it, combine it or replace its proposed thesis only when doing so reinforces the canonical thesis instead of replacing it with a generic commerce, provenance, catalog-context or creator-foundation angle.',
-    'Distinguish news facts, the first structural interpretation, the deeper architectural change, and supporting operational consequences.',
-    'After identifying the first structural interpretation, ask what larger change makes that interpretation possible or necessary.',
-    'Do not confuse operational implications such as metadata, attribution, records, transparency, workflow continuity, release context, settlement, discovery, commerce, permissions, or administrative complexity with the deepest thesis.',
+    'The editorial reasoning framework is private scaffolding. Use it to understand the story, not as a vocabulary template. Do not reproduce labels such as “structural interpretation,” “deeper architectural change,” “operational consequences,” “deepest thesis,” or “architectural question” merely because they appear in the editorial brief.',
+    'Understand the event, what it changes and why that matters. Express those conclusions through the specific people, companies, money, work, rights, access or audience involved—not through editorial-framework terminology.',
+    'Look beyond the immediate announcement when the evidence supports a bigger consequence, but explain that consequence directly rather than announcing that a “larger shift” exists. Do not mistake a list of industry mechanics for the point of the story. Decide what actually matters, then say it plainly. The reasoning may be sophisticated. The published wording should usually be simple.',
     'A reasoned editorial inference may be drawn from supported facts, but it must read as analysis rather than falsely attributed reporting.',
     ...articleEditorialVoice(),
     'When selected Certifyd Brain is supplied, use it to develop a meaningful Certifyd perspective where it materially deepens the source-backed argument.',
-    'Let the outside story lead naturally to its architectural question, then introduce Certifyd where it becomes relevant to that argument. Do not bolt on a formulaic Certifyd section or make the transition read like an advertisement; vary where and how Certifyd enters according to the story.',
-    'When Certifyd is relevant, explain why the source development creates a stronger need for creator-controlled infrastructure before listing what Certifyd provides.',
-    'Preserve Certifyd’s point of view that centralized platforms create an architectural dependency problem and that the long-term direction is creator-operated infrastructure that reduces the need for centralized intermediaries. Express that thesis through the particular dependency exposed by the story rather than repeating generic portability language or arguing only for improvements to existing platforms.',
-    'Distinguish verified current Certifyd Core capabilities from the broader architecture Certifyd is building toward. Never imply that Certifyd already replaces rights administrators, distributors, licensing organizations or other systems unless selected Brain explicitly verifies that current capability.',
-    'For stories about centralized creator platforms or intermediaries, critique the architecture rather than the company: distinguish what the feature does from who controls the infrastructure that does it.',
-    'Do not default to treating centralized platforms as permanent useful infrastructure that Certifyd merely complements with a creator-controlled layer.',
-    'When the evidence supports it, ask whether the function actually needs a centralized intermediary, and explain how creator-operated infrastructure changes the control relationship.',
+    'Let the outside story show who controls what and what changes for the creator, then introduce Certifyd where it becomes relevant to that argument. Do not bolt on a formulaic Certifyd section or make the transition read like an advertisement; vary where and how Certifyd enters according to the story.',
+    'When Certifyd is relevant, explain what the creator needs to control or do themselves before listing what Certifyd provides.',
+    'Preserve Certifyd’s point of view: creators should be able to run more of their own business instead of depending on a centralized company for every step. Show the specific control a platform keeps and what a creator could run themselves; do not reduce the argument to improving the platform or moving records between services.',
+    'Distinguish verified current Certifyd Core capabilities from what Certifyd is building toward. Never imply that Certifyd already replaces rights administrators, distributors, licensing organizations or other systems unless selected Brain explicitly verifies that current capability.',
+    'For stories about centralized creator platforms or intermediaries, critique who controls the service rather than inventing company motives: distinguish what a feature does from who runs it, holds the records and sets the terms.',
+    'Do not assume creators must always depend on centralized platforms and that Certifyd can only add another tool alongside them.',
+    'When the evidence supports it, ask whether the function actually needs a centralized intermediary. Explain what creators can run themselves and what control that gives them.',
     'When no selected Certifyd Brain is supplied, do not manufacture a Certifyd product connection.',
-    'Selected Certifyd Brain can support claims about Certifyd architecture, principles and capabilities. It is not evidence for facts about the external source event.',
+    'Selected Certifyd Brain can support claims about Certifyd’s documented design, principles and capabilities. It is not evidence for facts about the external source event.',
     'Verified Brain facts about Certifyd may be stated directly and confidently. Do not weaken verified Certifyd capabilities with “may support,” “intended to support,” “where implemented,” “potentially supports,” or “is designed to potentially” unless the selected Brain record itself contains that uncertainty.',
     'Use only the selected Certifyd Brain records supplied in the writing prompt.',
     'For claims[].sourceIds, use only sourceId values from ALLOWED_BRAIN_SOURCE_IDS, exactly as provided.',
@@ -1200,7 +1215,7 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
   const hasSelectedBrain = writingContext.approvedKnowledge.length > 0;
   const hasMultipleSources = context.externalSourceFacts.length > 1;
   const depthGuidance = hasMultipleSources
-    ? '- For a substantial multi-source recommended opportunity with sufficient hydrated material, develop the argument fully, normally around 900 to 1,300 words. Do not prematurely stop after summarizing the event and making one structural observation; develop the implications, industry context and relevant Certifyd architectural extension when the evidence supports them. This is editorial guidance, not a validation gate; do not pad thin reporting.'
+    ? '- For a substantial multi-source recommended opportunity with sufficient hydrated material, develop the argument fully, normally around 900 to 1,300 words. Do not prematurely stop after summarizing the event; explain the supported consequences, necessary industry context and relevant Certifyd connection. This is editorial guidance, not a validation gate; do not pad thin reporting.'
     : '- Let article length follow the amount of reporting and argument available; do not pad a thin update.';
   return [
     `Topic: ${input.topic || input.workingTitle || 'Certifyd article'}`,
@@ -1232,41 +1247,41 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
     'EDITORIAL ASSIGNMENT:',
     '- Open by immediately identifying the actual story and primary search entity.',
     '- Identify the strongest idea behind the news from the complete package: hydrated source material, advisory notes and selected Certifyd Brain.',
-    '- Use CANONICAL EDITORIAL THESIS as the source-of-truth for the article’s structural claim. Do not let advisory notes, Brain retrieval or generic Certifyd themes replace it.',
-    '- Separate the levels before choosing the thesis: news facts; first structural interpretation; deeper architectural change; supporting operational consequences.',
-    '- Distinguish the obvious take from the deeper structural change. After identifying the first structural interpretation, ask what larger change makes that interpretation possible or necessary.',
-    '- After the first reasonable structural interpretation, ask one more conceptual “so what?” internally. If the answer merely restates the source workflow, announcement, metadata need, attribution need, recordkeeping need, transparency need, clearer permissions, release context, or administrative complexity, go one conceptual level deeper.',
-    '- Ask what is changing in the architecture of the market, product, rights system, business relationship, or creator relationship.',
-    '- Ask what used to sit outside the product but is now moving inside it; what used to happen after the fact but is now moving earlier; what used to be a policy, contract, database entry, or business rule but increasingly needs to become machine-operable; what boundary between previously separate systems is disappearing; and what industry assumption is being replaced.',
-    '- The final thesis should usually identify the larger architectural change first, then use operational consequences such as provenance, attribution, metadata, release records, rights context, settlement, discovery, or commerce to show why that thesis matters.',
-    '- General depth examples, not templates: if a social network adds payments, the deeper change may be social identity becoming financial identity; if a distributor adds creation tools, the deeper change may be distribution infrastructure moving upstream into creation; if AI licensing connects model participation and release, discover the deeper change from the evidence rather than reusing supplied wording.',
+    '- Use CANONICAL EDITORIAL THESIS as the source-of-truth for the article’s argument. Do not let advisory notes, Brain retrieval or generic Certifyd themes replace it.',
+    '- Treat the reasoning notes as private scaffolding. Explain the event, the change and the concrete consequence; do not turn the brief’s labels into public wording.',
+    '- Do more than repeat the announcement. Explain what it changes for the specific people and companies involved, using only consequences the evidence supports.',
+    '- Do not mistake a list of mechanics for an argument. Explain why the records, permissions, payments or other details change what someone can do, earn, keep or control.',
+    '- Name who runs the service, who sets the terms and what changes for the creator when those facts matter to this story.',
+    '- When supported, explain what a company now does that it did not do before, what decision happens earlier, or which people now depend on each other. Describe the actual change rather than naming an abstract trend.',
+    '- Make the canonical argument clear through the concrete facts that support it. Use the relevant records, permissions, payments or discovery details to show the consequence, not as a list of features.',
+    '- For example, if a social service adds payments, explain who can handle money and on what terms; if a distributor adds creation tools, explain what it now does before release. These are reasoning examples, not templates or facts to import into another story.',
     '- Prefer an argument about what is changing over an article about what remains unknown.',
-    '- Follow the source-backed industry development as far as the evidence supports it; include Certifyd architecture only when the selected Brain materially clarifies that argument.',
+    '- Follow the source-backed industry development as far as the evidence supports it; include Certifyd only when the selected Brain materially clarifies that argument.',
     '- Treat the advisory editorial notes as optional analysis, not a required thesis, argument or structure; write normal article prose rather than enumerating the reasoning fields.',
     '- The final article is not required to reproduce these observations or any prior reasoning structure.',
     hasSelectedBrain
       ? '- Because relevant Certifyd Brain was selected, develop a real Certifyd perspective only where it materially advances the article; select only the Brain capabilities needed to illuminate the thesis and avoid generic product pitching, feature inventory, product documentation or capability lists.'
       : '- Because no meaningful Certifyd Brain was selected, do not manufacture a Certifyd product connection.',
     hasSelectedBrain
-      ? '- Answer this in story-specific prose: why does this development create a stronger need for creator-controlled infrastructure, and what specifically does Certifyd make possible? Explain the need before the capability.'
+      ? '- Answer this in story-specific prose: what does the creator need to control or run themselves, and what specifically does Certifyd make possible? Explain the need before the capability.'
       : '',
     hasSelectedBrain
-      ? '- Reason from industry change to structural consequence to missing or fragile infrastructure to creator-controlled infrastructure to the specific Certifyd relevance. Do not reverse that order into a Certifyd feature list.'
+      ? '- Start with what changed and what the creator cannot control or do without an outside company. Then explain the selected Certifyd capability that changes that specific situation. Do not reverse that order into a feature list.'
       : '',
     hasSelectedBrain
-      ? '- By the end of any Certifyd-specific passage, the reader should understand the dependency or gap this story exposes, what remains platform-controlled or fragmented without creator-controlled infrastructure, how the selected Certifyd architecture changes that condition, and what becomes more durable, portable or possible for the creator.'
+      ? '- By the end of any Certifyd-specific passage, the reader should understand what the platform still controls, what the creator can do with the documented Certifyd capability, and the practical difference. Technical terms should add precision, not replace that explanation.'
       : '',
     hasSelectedBrain
-      ? '- For source stories about another company or platform, make the architectural sequence clear when the evidence supports it: current approach or solution -> what it improves -> what dependency, limitation, fragmentation or control problem remains -> selected Certifyd approach -> the practical difference for the creator. This is critical analysis, not hostility.'
+      ? '- For source stories about another company or platform, make the sequence clear when the evidence supports it: current approach or solution -> what it improves -> what dependency, limitation, fragmentation or control problem remains -> selected Certifyd approach -> the practical difference for the creator. This is critical analysis, not hostility.'
       : '',
     hasSelectedBrain
-      ? '- Do not spend repeated language reassuring the reader that the outside product is useful. State what it does, then follow the architecture to the point where its control, context or portability stops.'
+      ? '- Do not spend repeated language reassuring the reader that the outside product is useful. State what it does, then explain where the creator still depends on that company for access, records or decisions.'
       : '',
     hasSelectedBrain
-      ? '- Do not position Certifyd as merely another tool beside the source company. When selected Brain supports it, preserve the distinction between tools used by creators and infrastructure operated or controlled by creators.'
+      ? '- Do not position Certifyd as merely another tool beside the source company. When selected Brain supports it, preserve the distinction between using a company’s tools and running the service themselves.'
       : '',
     hasSelectedBrain
-      ? '- Do not default to conclusions such as “the future needs both useful services and durable creator-controlled infrastructure,” “platforms and Certifyd can work together,” or “Certifyd complements these tools.” Those may be true in some stories, but they must not replace the architectural question: why does this function need a centralized company in the middle at all?'
+      ? '- Do not default to conclusions such as “the future needs both useful services and durable creator-controlled infrastructure,” “platforms and Certifyd can work together,” or “Certifyd complements these tools.” Those may be true in some stories, but they must not replace the practical question: why does this function need a centralized company in the middle at all?'
       : '',
     hasSelectedBrain
       ? '- For centralized-intermediary canonical theses, carry the same canonical argument into the Certifyd answer: identify the function concentrated in the intermediary, state Certifyd’s opposite creator-operated direction, name only currently supported Core capabilities from Brain, avoid implying completed replacement of unsupported outside-platform functions, and explain what changes if supported functions move toward creator/Core/network control.'
@@ -1275,37 +1290,37 @@ function buildArticlePrompt(input, groundedContext, reasoning, writingContext) {
       ? '- Treat selected Brain capability records as current factual evidence, not as the editorial answer. A narrower capability such as release records, catalog context, attribution context or portable records must support the canonical thesis; it must not replace, narrow or redefine the thesis into “creators can carry durable context between services.”'
       : '',
     hasSelectedBrain
-      ? '- Do not insert defensive complementarity language merely because current Brain does not prove Certifyd replaces every outside-platform function. Obey current/future capability limits silently; the conclusion should still preserve the canonical contrast between a platform-operated creator layer and functions moving toward creator/Core/network infrastructure.'
+      ? '- Do not insert defensive complementarity language merely because current Brain does not prove Certifyd replaces every outside-platform function. Obey current/future capability limits silently; the conclusion should still preserve the canonical contrast between a platform-operated creator layer and functions creators could run through Core and the network.'
       : '',
     hasSelectedBrain
       ? '- For centralized creator platforms or intermediaries, identify what part of the creator operation is being pulled into the service: identity, catalog context, publishing, analytics, promotion, payout access, commerce, permissions, discovery, fan relationships, or operating records.'
       : '',
     hasSelectedBrain
-      ? '- When source facts support it, explain that adding more analytics, promotion, monetization, identity, discovery, fan, or commerce tools inside a platform can deepen dependency by moving more of the creator operation into infrastructure the creator does not operate.'
+      ? '- When source facts support it, explain that adding more analytics, promotion, monetization, identity, discovery, fan, or commerce tools inside a platform can deepen dependency by making the creator rely on the company for more of their business.'
       : '',
     hasSelectedBrain
-      ? '- Frame Certifyd Core as a different network architecture where supported identity, works, release context, publishing, commerce, permissions and creator/fan relationship context can originate from creator-operated infrastructure instead of requiring a centralized platform to own the operating environment.'
+      ? '- Explain that creators can run supported Core functions themselves and keep the relevant identity, work, release, publishing, commerce or relationship records there, instead of relying only on a platform account. Name only what selected Brain verifies today; keep future ambitions distinct.'
       : '',
     hasSelectedBrain
-      ? '- Avoid vague Certifyd conclusions such as “creator-controlled infrastructure becomes more valuable,” “Certifyd exists to help,” “that direction points toward,” or “can inform other Certifyd surfaces.” Replace them with the specific supported capability and the concrete architectural difference it creates in this story.'
+      ? '- Avoid vague Certifyd conclusions such as “creator-controlled infrastructure becomes more valuable,” “Certifyd exists to help,” “that direction points toward,” or “can inform other Certifyd surfaces.” Replace them with the specific supported capability and the concrete difference it makes to who runs the service or holds the records in this story.'
       : '',
     hasSelectedBrain
-      ? '- Weak: “Certifyd Core supports identity, provenance, catalog management and commerce.” Stronger: explain why this story makes identity, work, release, attribution, permission, discovery, commerce or fan-relationship context harder to leave inside disconnected third-party systems, then introduce the selected Certifyd capability as the architecture that supports that need.'
+      ? '- Weak: “Certifyd Core supports identity, provenance, catalog management and commerce.” Stronger: explain why this story makes identity, work, release, attribution, permission, discovery, commerce or fan-relationship context harder to leave inside disconnected third-party systems, then introduce the selected Certifyd capability as the specific supported way the creator can meet that need.'
       : '',
     hasSelectedBrain
-      ? '- Also weak: “Certifyd maintains catalog context” or “Certifyd supports release records” without explaining why that context should originate in creator-controlled infrastructure rather than only in a platform, distributor, label, PRO, AI product, marketplace or other intermediary system.'
+      ? '- Also weak: “Certifyd maintains catalog context” or “Certifyd supports release records” without explaining why the creator should be able to keep and use that information themselves rather than relying only on a platform, distributor, label, PRO, AI product, marketplace or other intermediary system.'
       : '',
     hasSelectedBrain
       ? '- Avoid generic bridges such as “This is where Certifyd comes in,” “Certifyd solves this,” “This underscores the importance of Certifyd,” or sovereignty language that could be pasted into an unrelated article.'
       : '',
     '- Do not automatically create sections titled “The Certifyd perspective,” “How this connects to Certifyd,” or “Why this matters to Certifyd” unless that structure is editorially natural.',
     '- Do not mechanically mention every selected Brain record. Do not add unrelated surfaces such as discovery, Awards, commerce, profiles, or payouts unless they materially support the article’s argument.',
-    '- Selected Brain may support Certifyd architecture, principles and capabilities only. It must never be used as evidence for the external event, the source company, legal outcomes, deals, dates, numbers or quotes.',
+    '- Selected Brain may support Certifyd’s documented design, principles and capabilities only. It must never be used as evidence for the external event, the source company, legal outcomes, deals, dates, numbers or quotes.',
     '- State verified Certifyd Brain capabilities directly when the selected Brain record supports them, for example “Certifyd Core records...” or “Certifyd Core supports...”; do not add legalistic hedges unless the Brain record itself is uncertain.',
     '- Do not claim the news subject uses, leverages, partners with, integrates with, is powered by, or receives benefits from Certifyd.',
     depthGuidance,
-    '- For a substantial multi-source opportunity, do not end after summarizing the announcement, identifying the first structural observation, and listing several operational consequences. Develop the deeper thesis and use the rest of the article to test and explain it.',
-    '- A strong article should generally answer what happened; what people immediately think it means; what deeper change it reveals; why that change matters; what new infrastructure or behavior it creates demand for; where relevant Certifyd architecture extends the argument, if genuinely relevant; and what remains unresolved. Do not force sections matching those questions.',
+    '- For a substantial multi-source opportunity, do not stop at a summary or a list of effects. Develop the canonical argument with the available reporting, explain how the evidence supports it, and keep the prose concrete.',
+    '- A strong article should show what happened, what changes for the people involved, why they should care, what the evidence supports and what remains unresolved. Add the relevant Certifyd connection only if it advances that argument. Do not force sections matching those questions.',
     '- Missing terms, unanswered questions and uncertainty can be factual caveats, but do not let caveats replace the thesis. “Terms remain unclear” is usually not an editorial conclusion.',
     '- Facts must be supported by source material or selected Brain. Editorial inference may be a reasoned conclusion drawn from supported facts. Certifyd facts must be supported by selected Brain. External adoption claims cannot be established by Brain.',
     '- Keep the reasoning deep but the language simple. Write for an intelligent creator, musician, producer or music-business reader who should not need a technology, policy, finance or academic background to follow the article.',
@@ -1346,8 +1361,8 @@ function buildSystemInstruction() {
     'Do not invent customers, partnerships, revenue, adoption, launch dates, technical capabilities or legal claims.',
     'Never say the external company, article subject, rights holder, investor, label, distributor or platform uses, leverages, integrates with, partners with, is powered by, or benefits from Certifyd unless that exact relationship appears in the supplied context.',
     'CERTIFYD CONNECTION RULE: never state or imply that a source-story company uses, integrates with, partners with, relies on, or will use Certifyd unless SOURCE FACTS explicitly establish that relationship.',
-    'Certifyd knowledge may only explain why the development matters to Certifyd, how it relates conceptually to approved capabilities or positioning, and what broader industry problem or direction it illustrates.',
-    'When selected Certifyd Brain is supplied for a source-backed article, include explicit Certifyd analysis that explains the story-specific architectural relevance. When no selected Certifyd Brain is supplied, do not manufacture a Certifyd product connection.',
+    'Certifyd knowledge may only explain why the development matters to Certifyd, how it relates conceptually to approved capabilities or positioning, and what specific industry problem or direction it illustrates.',
+    'When selected Certifyd Brain is supplied for a source-backed article, include explicit Certifyd analysis that explains who controls what in this story and what the selected capability changes for the creator. When no selected Certifyd Brain is supplied, do not manufacture a Certifyd product connection.',
     'Never invent payment, royalty, licensing or technical mechanics not present in SOURCE FACTS.',
     'For news about companies outside Certifyd, explain only why the news is relevant to Certifyd readers. Do not turn relevance into a relationship or adoption claim.',
     'CURRENT or LIVE Brain claims may be described as existing capabilities. BETA claims must be called beta/testing. PLANNED claims must use future or roadmap language. UNCLEAR or LOW CONFIDENCE claims must not become definitive product claims.',

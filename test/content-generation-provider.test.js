@@ -1236,7 +1236,7 @@ test('OpenAI final writing receives source facts editorial direction and relevan
   assert.match(finalPrompt, /Certifyd can describe permission-aware publishing/i);
   assert.match(finalPrompt, /Because relevant Certifyd Brain was selected, develop a real Certifyd perspective only where it materially advances the article/i);
   assert.match(finalPrompt, /normally around 900 to 1,300 words/i);
-  assert.match(finalPrompt, /Do not prematurely stop after summarizing the event and making one structural observation/i);
+  assert.match(finalPrompt, /Do not prematurely stop after summarizing the event; explain the supported consequences/i);
   assert.match(finalPrompt, /advisory editorial notes as optional analysis, not a required thesis, argument or structure/i);
   assert.match(finalPrompt, /final article is not required to reproduce these observations or any prior reasoning structure/i);
   assert.match(finalPrompt, /must never be used as evidence for the external event/i);
@@ -1463,112 +1463,133 @@ test('OpenAI analytical vocabulary in reasoning is not a fatal pre-generation fa
   assert.equal(calls.length, 2);
 });
 
-test('OpenAI final writing instructions discourage validator-facing defensive prose and forced Certifyd sections', async () => {
+test('final writer translates private scaffolding without changing source, thesis or claim boundaries', async () => {
   const calls = [];
   const config = await makeConfig();
   const context = await makeContext(config);
+  const fixture = validArticle(context.sourceRecords[0].id);
   const provider = new OpenAIGenerationProvider(config, {
-    openaiClient: mockOpenAIClient({ calls, article: validArticle(context.sourceRecords[0].id) }),
+    openaiClient: mockOpenAIClient({ calls, article: fixture }),
   });
-  await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
-  const finalInstructionText = `${calls[1].instructions}\n${calls[1].input}`;
-  assert.match(finalInstructionText, /Write like an informed technology\/music-business publication, not a compliance memo/i);
-  assert.match(finalInstructionText, /Use plain, direct language for intelligent creators, musicians, producers and general music-business readers/i);
-  assert.match(finalInstructionText, /Aim roughly for Grade 8 to 10 readability without simplifying the underlying reasoning/i);
-  assert.match(finalInstructionText, /voice of an intelligent, opinionated founder who understands the creative industries and cares about creators/i);
-  assert.match(finalInstructionText, /Create personality through the argument, concrete detail and storytelling/i);
-  assert.match(finalInstructionText, /open with a concrete human consequence, tension, contradiction or revealing observation rather than defaulting to a formal announcement followed by statistics/i);
-  assert.match(finalInstructionText, /Introduce the actual news, primary search entities, dates, figures and industry terms promptly/i);
-  assert.match(finalInstructionText, /Never imply that a particular creator lost money, rights, control or opportunity unless the verified source package establishes it/i);
-  assert.match(finalInstructionText, /Preserve useful SEO entity coverage while improving the prose/i);
-  assert.match(finalInstructionText, /company and organization names, people and job titles, products, services, technologies, dates, financial figures, industry terminology, primary keywords, secondary keywords and search-relevant relationships/i);
-  assert.match(finalInstructionText, /Explain what happens, who is affected and why it matters before introducing architectural terminology/i);
-  assert.match(finalInstructionText, /Vary sentence length and rhythm naturally/i);
-  assert.match(finalInstructionText, /conventional editorial paragraphs of roughly 3 to 5 sentences/i);
-  assert.match(finalInstructionText, /Avoid repetitive transition scaffolding such as “The obvious reading is,” “The deeper issue is,” “The practical difference is,”/i);
-  assert.match(finalInstructionText, /Prefer familiar words, concrete statements, active voice and shorter sentence structures over academic, corporate, policy, investor or strategy-memo language/i);
-  assert.match(finalInstructionText, /Preserve necessary industry terminology, factual qualifications and technical precision/i);
-  assert.match(finalInstructionText, /When an idea can be expressed accurately in simpler language, use the simpler language/i);
-  assert.match(finalInstructionText, /Avoid elevated strategy phrases such as/i);
-  assert.match(finalInstructionText, /The strategic direction is this/i);
-  assert.match(finalInstructionText, /increasingly inseparable from/i);
-  assert.match(finalInstructionText, /Avoid abstract noun chains/i);
-  assert.match(finalInstructionText, /Keep the reasoning deep but the language simple/i);
-  assert.match(finalInstructionText, /should not need a technology, policy, finance or academic background/i);
-  assert.match(finalInstructionText, /Do not mention the validation system, source-support restrictions, uncertainty machinery, prompt rules, or internal editorial rules in article prose/i);
-  assert.match(finalInstructionText, /Do not add defensive disclaimers merely to show what the article is not claiming/i);
-  assert.match(finalInstructionText, /Prefer confident, conventional editorial prose over defensive phrases/i);
-  assert.match(finalInstructionText, /Use the verified source facts, advisory editorial notes and selected Certifyd Brain together/i);
-  assert.match(finalInstructionText, /You own the final thesis/i);
-  assert.match(finalInstructionText, /challenge it, deepen it, combine it or replace its proposed thesis/i);
-  assert.match(finalInstructionText, /Use source-only reasoning as advisory analysis/i);
-  assert.match(finalInstructionText, /only when doing so reinforces the canonical thesis/i);
-  assert.match(finalInstructionText, /Distinguish news facts, the first structural interpretation, the deeper architectural change, and supporting operational consequences/i);
-  assert.match(finalInstructionText, /After identifying the first structural interpretation, ask what larger change makes that interpretation possible or necessary/i);
-  assert.match(finalInstructionText, /Do not confuse operational implications such as metadata, attribution, records, transparency, workflow continuity, release context, settlement, discovery, commerce, permissions, or administrative complexity with the deepest thesis/i);
-  assert.match(finalInstructionText, /After the first reasonable structural interpretation, ask one more conceptual “so what\?” internally/i);
-  assert.match(finalInstructionText, /go one conceptual level deeper/i);
-  assert.match(finalInstructionText, /what used to sit outside the product but is now moving inside it/i);
-  assert.match(finalInstructionText, /what used to happen after the fact but is now moving earlier/i);
-  assert.match(finalInstructionText, /machine-operable/i);
-  assert.match(finalInstructionText, /boundary between previously separate systems is disappearing/i);
-  assert.match(finalInstructionText, /social identity becoming financial identity/i);
-  assert.match(finalInstructionText, /distribution infrastructure moving upstream into creation/i);
-  assert.match(finalInstructionText, /discover the deeper change from the evidence rather than reusing supplied wording/i);
-  assert.match(finalInstructionText, /When selected Certifyd Brain is supplied, use it to develop a meaningful Certifyd perspective/i);
-  assert.match(finalInstructionText, /Let the outside story lead naturally to its architectural question, then introduce Certifyd where it becomes relevant to that argument/i);
-  assert.match(finalInstructionText, /Do not bolt on a formulaic Certifyd section or make the transition read like an advertisement/i);
-  assert.match(finalInstructionText, /centralized platforms create an architectural dependency problem/i);
-  assert.match(finalInstructionText, /long-term direction is creator-operated infrastructure that reduces the need for centralized intermediaries/i);
-  assert.match(finalInstructionText, /Distinguish verified current Certifyd Core capabilities from the broader architecture Certifyd is building toward/i);
-  assert.match(finalInstructionText, /Never imply that Certifyd already replaces rights administrators, distributors, licensing organizations or other systems unless selected Brain explicitly verifies that current capability/i);
-  assert.match(finalInstructionText, /critique the architecture rather than the company/i);
-  assert.match(finalInstructionText, /distinguish what the feature does from who controls the infrastructure that does it/i);
-  assert.match(finalInstructionText, /Do not default to treating centralized platforms as permanent useful infrastructure that Certifyd merely complements/i);
-  assert.match(finalInstructionText, /ask whether the function actually needs a centralized intermediary/i);
-  assert.match(finalInstructionText, /creator-operated infrastructure changes the control relationship/i);
-  assert.match(finalInstructionText, /When no selected Certifyd Brain is supplied, do not manufacture a Certifyd product connection/i);
-  assert.match(finalInstructionText, /It is not evidence for facts about the external source event/i);
-  assert.match(finalInstructionText, /Verified Brain facts about Certifyd may be stated directly and confidently/i);
-  assert.match(finalInstructionText, /Do not weaken verified Certifyd capabilities with “may support,” “intended to support,” “where implemented,” “potentially supports,” or “is designed to potentially” unless the selected Brain record itself contains that uncertainty/i);
-  assert.match(finalInstructionText, /State verified Certifyd Brain capabilities directly when the selected Brain record supports them/i);
-  assert.match(finalInstructionText, /do not add legalistic hedges unless the Brain record itself is uncertain/i);
-  assert.match(finalInstructionText, /select only the Brain capabilities needed to illuminate the thesis/i);
-  assert.match(finalInstructionText, /current approach or solution -> what it improves -> what dependency, limitation, fragmentation or control problem remains -> selected Certifyd approach -> the practical difference for the creator/i);
-  assert.match(finalInstructionText, /This is critical analysis, not hostility/i);
-  assert.match(finalInstructionText, /Do not spend repeated language reassuring the reader that the outside product is useful/i);
-  assert.match(finalInstructionText, /follow the architecture to the point where its control, context or portability stops/i);
-  assert.match(finalInstructionText, /Do not position Certifyd as merely another tool beside the source company/i);
-  assert.match(finalInstructionText, /tools used by creators and infrastructure operated or controlled by creators/i);
-  assert.match(finalInstructionText, /Do not default to conclusions such as “the future needs both useful services and durable creator-controlled infrastructure,” “platforms and Certifyd can work together,” or “Certifyd complements these tools.”/i);
-  assert.match(finalInstructionText, /why does this function need a centralized company in the middle at all/i);
-  assert.match(finalInstructionText, /what part of the creator operation is being pulled into the service/i);
-  assert.match(finalInstructionText, /identity, catalog context, publishing, analytics, promotion, payout access, commerce, permissions, discovery, fan relationships, or operating records/i);
-  assert.match(finalInstructionText, /can deepen dependency by moving more of the creator operation into infrastructure the creator does not operate/i);
-  assert.match(finalInstructionText, /Certifyd Core as a different network architecture/i);
-  assert.match(finalInstructionText, /can originate from creator-operated infrastructure instead of requiring a centralized platform to own the operating environment/i);
-  assert.match(finalInstructionText, /Avoid vague Certifyd conclusions such as/i);
-  assert.match(finalInstructionText, /avoid generic product pitching, feature inventory, product documentation or capability lists/i);
-  assert.match(finalInstructionText, /Do not automatically create sections titled “The Certifyd perspective,” “How this connects to Certifyd,” or “Why this matters to Certifyd” unless that structure is editorially natural/i);
-  assert.match(finalInstructionText, /Do not mechanically mention every selected Brain record/i);
-  assert.match(finalInstructionText, /Do not add unrelated surfaces such as discovery, Awards, commerce, profiles, or payouts unless they materially support the article’s argument/i);
-  assert.match(finalInstructionText, /For a substantial multi-source opportunity, do not end after summarizing the announcement, identifying the first structural observation, and listing several operational consequences/i);
-  assert.match(finalInstructionText, /what deeper change it reveals/i);
-  assert.match(finalInstructionText, /where relevant Certifyd architecture extends the argument, if genuinely relevant/i);
-  assert.match(finalInstructionText, /Editorial inference may be a reasoned conclusion drawn from supported facts/i);
-  assert.match(finalInstructionText, /External adoption claims cannot be established by Brain/i);
-  assert.doesNotMatch(finalInstructionText, /Stage A1 thesis/i);
-  assert.doesNotMatch(finalInstructionText, /articleProgression/i);
-  assert.doesNotMatch(finalInstructionText, /Use external source summaries only/i);
-  assert.match(finalInstructionText, /Use the supplied verified source material only for facts about the news subject/i);
-  assert.match(finalInstructionText, /Do not enumerate source limitations as article prose/i);
-  assert.match(finalInstructionText, /Let article length follow the amount of reporting and argument available/i);
-  assert.doesNotMatch(finalInstructionText, /permission by design/i);
-  assert.doesNotMatch(finalInstructionText, /permission is moving upstream/i);
-  assert.doesNotMatch(finalInstructionText, /authorization becomes infrastructure/i);
-  assert.doesNotMatch(finalInstructionText, /Default to no Certifyd product mention/i);
-  assert.doesNotMatch(finalInstructionText, /Absence of a Certifyd reference is a successful outcome/i);
-  assert.doesNotMatch(finalInstructionText, /legal dispute → documentation → provenance → Certifyd/i);
+  const article = await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
+  const instructions = calls[1].instructions;
+  const assignment = calls[1].input;
+  const finalInstructionText = `${instructions}\n${assignment}`;
+  for (const pattern of [
+    /editorial reasoning framework is private scaffolding/,
+    /Use it to understand the story, not as a vocabulary template/,
+    /Do not reproduce labels such as “structural interpretation,” “deeper architectural change,” “operational consequences,” “deepest thesis,” or “architectural question” merely because/,
+    /specific people, companies, money, work, rights, access or audience involved/,
+    /Do not mistake a list of industry mechanics for the point of the story/,
+    /The reasoning may be sophisticated\. The published wording should usually be simple/,
+    /The canonical editorial thesis is the source-of-truth/,
+    /Its conclusions constrain the article; its vocabulary does not/,
+    /only when doing so reinforces the canonical thesis/,
+    /Use source-only reasoning as advisory analysis/,
+    /A reasoned editorial inference may be drawn from supported facts/,
+    /It is not evidence for facts about the external source event/,
+    /Never imply that Certifyd already replaces rights administrators, distributors, licensing organizations or other systems unless selected Brain explicitly verifies/,
+    /Do not weaken verified Certifyd capabilities with “may support,”/,
+    /Use only the selected Certifyd Brain records supplied/,
+    /claims\[\]\.sourceIds.*ALLOWED_BRAIN_SOURCE_IDS/,
+    /Never use SOURCE FACTS IDs, article URLs, publisher names, titles, shortened IDs, or newly created IDs/,
+    /Never copy Certifyd Brain glossary definitions verbatim/,
+    /Do not generate a byline or author field/,
+    /who runs it, holds the records and sets the terms/,
+    /what creators can run themselves and what control that gives them/,
+    /Do not assume creators must always depend on centralized platforms/,
+    /do not reduce the argument to improving the platform or moving records between services/,
+    /Do not bolt on a formulaic Certifyd section/,
+  ]) assert.match(instructions, pattern);
+  for (const pattern of [
+    /source-of-truth for the article’s argument/,
+    /Treat the reasoning notes as private scaffolding/,
+    /what it changes for the specific people and companies involved/,
+    /why the records, permissions, payments or other details change what someone can do, earn, keep or control/,
+    /what the platform still controls/,
+    /using a company’s tools and running the service themselves/,
+    /current approach or solution -> what it improves -> what dependency, limitation, fragmentation or control problem remains/,
+    /This is critical analysis, not hostility/,
+    /state Certifyd’s opposite creator-operated direction/,
+    /name only currently supported Core capabilities from Brain/,
+    /avoid implying completed replacement of unsupported outside-platform functions/,
+    /A narrower capability.*must support the canonical thesis/,
+    /do not end|do not stop at a summary/i,
+    /what changes for the people involved/,
+    /External adoption claims cannot be established by Brain/,
+    /Do not automatically create sections titled/,
+    /Do not mechanically mention every selected Brain record/,
+    /Use conventional 3 to 5 sentence paragraphs/,
+    /Use headings only for real subject changes/,
+    /Let article length follow the amount of reporting and argument available/,
+  ]) assert.match(assignment, pattern);
+  for (const pattern of [
+    /Distinguish news facts, the first structural interpretation/,
+    /After identifying the first structural interpretation, ask/,
+    /Do not confuse operational implications/,
+    /go one conceptual level deeper/,
+    /Frame Certifyd Core as a different network architecture/,
+    /CERTIFYD VOICE EXEMPLARS/,
+  ]) assert.doesNotMatch(finalInstructionText, pattern);
+  // The source-only private reasoning contract is still separate and unchanged.
+  assert.match(calls[0].instructions, /This is Stage A1: source-only thesis evaluation/);
+  assert.match(calls[0].instructions, /Look for the structural implication of the source event/);
+  assert.doesNotMatch(calls[0].instructions, /private scaffolding|published wording should usually be simple/);
+  assert.equal(calls.length, 2); // No rewrite stage or extra provider call.
+  assert.equal(article.title, fixture.title);
+  assert.equal(article.bodyMarkdown, fixture.bodyMarkdown);
+  assert.equal(article.seoTitle, fixture.seoTitle);
+});
+
+test('compact public voice keeps earned energy and qualifications without exemplar templates', async () => {
+  const calls = [];
+  const config = await makeConfig();
+  const context = await makeContext(config);
+  const fixture = validArticle(context.sourceRecords[0].id, {
+    bodyMarkdown: validArticle(context.sourceRecords[0].id).bodyMarkdown
+      + '\n\nThe company joined a standards body. It has not disclosed when the proposed standard will be adopted.',
+  });
+  const provider = new OpenAIGenerationProvider(config, {
+    openaiClient: mockOpenAIClient({ calls, article: fixture }),
+  });
+  const article = await provider.generateArticle({ actorEmail: 'voice@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
+  for (const pattern of [
+    /founder explaining a story to a smart friend/,
+    /Prefer named actors and active verbs/,
+    /Use architecture or infrastructure only when the term adds precision/,
+    /Punchy headlines, tension, surprise and a memorable line are welcome when the facts earn them/,
+    /Never imply that a particular creator lost money, rights, control or opportunity unless the verified source package establishes it/,
+    /Do not invent losses, motives, secret deals, ownership, control, payment outcomes, conflict, urgency or certainty/,
+    /Preserve useful SEO entity coverage/,
+    /Carry plain, concrete wording through every section and the ending/,
+    /Qualification belongs on the uncertain fact—not across the entire article/,
+    /Never delete a qualification that changes the truth of the claim/,
+    /Do not mention the validation system/,
+    /Do not add defensive disclaimers/,
+    /One substantive, source-grounded connection is enough/,
+    /roughly 3 to 5 sentences/,
+  ]) assert.match(calls[1].instructions, pattern);
+  assert.doesNotMatch(calls[1].instructions, /Analytical:|Certifyd voice:|The economics just changed/);
+  assert.match(article.bodyMarkdown, /The company joined a standards body\. It has not disclosed when the proposed standard will be adopted\./);
+  assert.equal(calls.length, 2);
+});
+
+test('sharper voice does not pardon unsupported financial claims or fabricated Certifyd adoption', () => {
+  const context = whyCertifydContext({
+    title: 'Platform changes catalog visibility',
+    summary: 'A platform changed how creators can organize catalog visibility. The company has not disclosed the rollout date.',
+    thesis: 'The platform controls how the catalog becomes visible.',
+    concept: 'Creator-controlled publishing',
+    sourceConnection: 'Creators need control over their own publishing context.',
+  });
+  for (const sentence of [
+    'According to the report, creators will lose royalties because of the policy.',
+    'The platform uses Certifyd to power its creator accounts.',
+  ]) {
+    const article = validArticle(context.sourceRecords[0].id);
+    article.bodyMarkdown += `\n\n${sentence}`;
+    assert.throws(() => validateGeneratedArticle(article, context), /unsupported factual claim|unsupported external Certifyd adoption claims/i);
+  }
 });
 
 test('fixture-informed editorial voice guidance preserves SEO facts while targeting report-like prose', async () => {
@@ -1597,8 +1618,8 @@ test('fixture-informed editorial voice guidance preserves SEO facts while target
   const finalInstructionText = `${calls[1].instructions}\n${calls[1].input}`;
   assert.match(finalInstructionText, /Preserve useful SEO entity coverage while improving the prose/i);
   assert.match(finalInstructionText, /retain relevant company and organization names, people and job titles, products, services, technologies, dates, financial figures, industry terminology, primary keywords, secondary keywords and search-relevant relationships/i);
-  assert.match(finalInstructionText, /human-centered opening must remain an accurate framing of supported facts/i);
-  assert.match(finalInstructionText, /examples of a repetitive habit, not a phrase blacklist/i);
+  assert.match(finalInstructionText, /Never imply that a particular creator lost money, rights, control or opportunity unless the verified source package establishes it/i);
+  assert.match(finalInstructionText, /Avoid abstract noun chains and repeated announcements of broader implications/i);
   assert.match(finalInstructionText, /Facts must be supported by source material or selected Brain/i);
   assert.match(finalInstructionText, /External adoption claims cannot be established by Brain/i);
 
@@ -1606,7 +1627,7 @@ test('fixture-informed editorial voice guidance preserves SEO facts while target
   assert.deepEqual(after, before);
 });
 
-test('final writing instructions require why-Certifyd architectural need before feature inventory', async () => {
+test('final writing explains creator control before feature inventory without framework prose', async () => {
   const calls = [];
   const config = await makeConfig();
   const context = await makeContext(config);
@@ -1615,27 +1636,27 @@ test('final writing instructions require why-Certifyd architectural need before 
   });
   await provider.generateArticle({ actorEmail: 'writer@example.test', topic: 'Core', audience: 'Creators', objective: 'Explain Core.' }, context);
   const finalInstructionText = `${calls[1].instructions}\n${calls[1].input}`;
-  assert.match(finalInstructionText, /why does this development create a stronger need for creator-controlled infrastructure/i);
+  assert.match(finalInstructionText, /what does the creator need to control or run themselves/i);
   assert.match(finalInstructionText, /what specifically does Certifyd make possible/i);
   assert.match(finalInstructionText, /Explain the need before the capability/i);
-  assert.match(finalInstructionText, /industry change to structural consequence to missing or fragile infrastructure to creator-controlled infrastructure to the specific Certifyd relevance/i);
-  assert.match(finalInstructionText, /Do not reverse that order into a Certifyd feature list/i);
-  assert.match(finalInstructionText, /what remains platform-controlled or fragmented without creator-controlled infrastructure/i);
-  assert.match(finalInstructionText, /what becomes more durable, portable or possible for the creator/i);
+  assert.match(finalInstructionText, /Start with what changed and what the creator cannot control or do without an outside company/i);
+  assert.match(finalInstructionText, /Do not reverse that order into a feature list/i);
+  assert.match(finalInstructionText, /what the platform still controls/i);
+  assert.match(finalInstructionText, /what the creator can do with the documented Certifyd capability, and the practical difference/i);
   assert.match(finalInstructionText, /current approach or solution -> what it improves -> what dependency, limitation, fragmentation or control problem remains -> selected Certifyd approach -> the practical difference for the creator/i);
-  assert.match(finalInstructionText, /State what it does, then follow the architecture to the point where its control, context or portability stops/i);
-  assert.match(finalInstructionText, /infrastructure operated or controlled by creators/i);
+  assert.match(finalInstructionText, /State what it does, then explain where the creator still depends on that company for access, records or decisions/i);
+  assert.match(finalInstructionText, /using a company’s tools and running the service themselves/i);
   assert.match(finalInstructionText, /ask whether the function actually needs a centralized intermediary/i);
   assert.match(finalInstructionText, /why does this function need a centralized company in the middle at all/i);
   assert.match(finalInstructionText, /creator operation is being pulled into the service/i);
-  assert.match(finalInstructionText, /creator-operated infrastructure instead of requiring a centralized platform to own the operating environment/i);
-  assert.match(finalInstructionText, /Replace them with the specific supported capability and the concrete architectural difference it creates in this story/i);
+  assert.match(finalInstructionText, /creators can run supported Core functions themselves/i);
+  assert.match(finalInstructionText, /Replace them with the specific supported capability and the concrete difference it makes to who runs the service or holds the records in this story/i);
   assert.match(finalInstructionText, /Weak: “Certifyd Core supports identity, provenance, catalog management and commerce.”/i);
   assert.match(finalInstructionText, /Also weak: “Certifyd maintains catalog context” or “Certifyd supports release records”/i);
-  assert.match(finalInstructionText, /rather than only in a platform, distributor, label, PRO, AI product, marketplace or other intermediary system/i);
+  assert.match(finalInstructionText, /rather than relying only on a platform, distributor, label, PRO, AI product, marketplace or other intermediary system/i);
   assert.match(finalInstructionText, /Avoid generic bridges such as “This is where Certifyd comes in,” “Certifyd solves this,”/i);
   assert.match(finalInstructionText, /CANONICAL EDITORIAL THESIS/i);
-  assert.match(finalInstructionText, /source-of-truth for the article’s structural claim/i);
+  assert.match(finalInstructionText, /source-of-truth for the article’s argument/i);
   assert.doesNotMatch(finalInstructionText, /may contain zero Certifyd product references/i);
   assert.doesNotMatch(finalInstructionText, /source-backed article may contain zero/i);
 });
@@ -4312,7 +4333,10 @@ test('manual Certifyd technology request uses approved Brain without news and pe
   assert.match(calls[0].input, /brain:capabilities\/ar/);
   assert.match(calls[1].input, /This workflow is in beta/);
   assert.match(calls[1].input, /A verified profile proves copyright ownership/);
-  assert.match(calls[1].instructions, /Write with the voice of an intelligent, opinionated founder/);
+  assert.match(calls[0].instructions, /Write like an informed technology\/music-business publication, not a compliance memo/);
+  assert.doesNotMatch(calls[0].instructions, /founder explaining a story to a smart friend/);
+  assert.doesNotMatch(calls[1].instructions, /Write like an informed technology\/music-business publication, not a compliance memo/);
+  assert.match(calls[1].instructions, /Write like an intelligent, opinionated founder explaining a story to a smart friend/);
   assert.match(calls[1].instructions, /Preserve useful SEO entity coverage/);
   assert.equal(fixture.context.externalSourceFacts.length, 0);
   const result = await persistGeneratedArticleRun(config, article, fixture.input, fixture.context, provider);
