@@ -5,11 +5,11 @@ author: "Certifyd"
 date: "2026-11-17"
 updated: "2026-11-17"
 excerpt: "Run Certifyd Core on your laptop, then manage your work from your phone on the same local network. Your computer does the work. You choose where to sit."
-coverImage: "/images/blog/2026/11/core-laptop-phone/01_laptop_is_the_server.png"
-coverImageAlt: "Certifyd Core running on a laptop, with the Works dashboard shown in the Your Laptop Is the Server campaign graphic."
-coverImageProvider: "upload"
-socialImageWidth: 1080
-socialImageHeight: 1350
+coverImage: "/images/blog/2026/11/core-laptop-phone/00_laptop_phone_landscape.png"
+coverImageAlt: "Certifyd Core campaign illustration: your laptop is the server and your phone is the remote, with laptop and phone dashboard views."
+coverImageProvider: "openai"
+socialImageWidth: 1680
+socialImageHeight: 945
 category: "Technology"
 focusKeyword: "Certifyd Core local network"
 tags: ["Technology", "Certifyd Core", "Certifyd Core local network", "Couch Mode Publishing", "creator tools", "direct publishing", "Bitcoin", "Lightning"]
@@ -25,6 +25,11 @@ And you do not have to sit in front of it every time you want to get something d
 **Your Computer. Your Network.** Including the bit of the network that reaches the couch.
 
 ## Run Certifyd Core on the laptop you already own
+
+<figure style="margin:2rem 0">
+  <img src="/images/blog/2026/11/core-laptop-phone/01_laptop_is_the_server.png" alt="Your Laptop Is the Server campaign graphic with the real Certifyd Core Works dashboard on a laptop." width="1080" height="1350" loading="lazy" decoding="async" style="display:block;width:100%;max-width:1080px;height:auto;margin:0 auto" />
+  <figcaption>Give a compatible laptop a new job running Certifyd Core.</figcaption>
+</figure>
 
 There is something satisfying about finding a new use for a computer you already own. A compatible spare laptop can become the machine behind your creator catalog: somewhere to manage your work, prepare releases and run your own part of the Certifyd network.
 
