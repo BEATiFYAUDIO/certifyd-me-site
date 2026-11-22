@@ -46,6 +46,7 @@ class CoreReleaseDocsTest(unittest.TestCase):
         guide = module.generated_guide(self.data)
         self.assertNotIn("<img src=\"images/", guide)
         self.assertNotIn("install-desktop.sh", guide)
+        self.assertIn("<!--email_off-->name@wallet.example<!--/email_off-->", guide)
         self.assertIn("Beta 20 archive", guide)
         figures = re.findall(r'<figure[^>]*>[\s\S]*?</figure>', guide)
         self.assertGreater(len(figures), 15)
@@ -109,15 +110,22 @@ class CoreReleaseDocsTest(unittest.TestCase):
         downloads = (ROOT / "downloads/index.html").read_text()
         reviewed_guide = module.generated_guide(self.data)
         beacon = '<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/test" data-cf-beacon=\'{}\'></script>\n'
-        deployed_guide = reviewed_guide.replace("</footer>\n", "</footer>\n" + beacon)
+        deployed_guide = reviewed_guide.replace("</body>", beacon + "</body>")
         stale_guide = reviewed_guide.replace(
             "On a Debian-compatible desktop, open the matching .deb with the graphical package installer",
             "Extract the Linux archive and run ./install-desktop.sh",
-        ).replace("</footer>\n", "</footer>\n" + beacon)
+        ).replace("</body>", beacon + "</body>")
         self.assertNotEqual(stale_guide, reviewed_guide)
         self.assertIn('content="0.1.0-beta.27"', stale_guide)
         with patch.object(module, "fetch_text", side_effect=[downloads, deployed_guide]):
             module.verify_live(self.data)
+        consumed_comments = deployed_guide.replace("<!--email_off-->", "").replace("<!--/email_off-->", "")
+        with patch.object(module, "fetch_text", side_effect=[downloads, consumed_comments]):
+            module.verify_live(self.data)
+        misplaced_beacon = reviewed_guide.replace("</footer>\n", "</footer>\n" + beacon)
+        with patch.object(module, "fetch_text", side_effect=[downloads, misplaced_beacon]):
+            with self.assertRaisesRegex(ValueError, "Published guide content differs"):
+                module.verify_live(self.data)
         with patch.object(module, "fetch_text", side_effect=[downloads, stale_guide]):
             with self.assertRaisesRegex(ValueError, "Published guide content differs"):
                 module.verify_live(self.data)
