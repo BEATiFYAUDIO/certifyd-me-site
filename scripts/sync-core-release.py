@@ -19,7 +19,7 @@ IDS = {"windows-x64", "linux-x64", "linux-arm64", "linux-x64-portable",
        "linux-arm64-portable", "macos-arm64", "macos-x64"}
 API = "https://api.github.com/repos/BEATiFYAUDIO/contentbox/releases"
 PAGES_BEACON = re.compile(
-    r'(?<=</footer>\n)<script type="module" src="https://static\.cloudflareinsights\.com/beacon\.min\.js/[^\"]+"[^>]*></script>\n'
+    r'<script type="module" src="https://static\.cloudflareinsights\.com/beacon\.min\.js/[^\"]+"[^>]*></script>\n(?=</body>\n</html>\n?\Z)'
 )
 
 
@@ -233,6 +233,11 @@ def verify_live(data):
         raise ValueError(f"Published guide is {guide_version or 'unversioned'}, downloads are {version}")
     expected_guide = generated_guide(data)
     normalized_guide = guide.replace("\r\n", "\n")
+    # Hosting may consume its email-obfuscation opt-out comments around the
+    # public example address. They do not change the displayed guide content.
+    for marker in ("<!--email_off-->", "<!--/email_off-->"):
+        expected_guide = expected_guide.replace(marker, "")
+        normalized_guide = normalized_guide.replace(marker, "")
     normalized_guide, beacon_count = PAGES_BEACON.subn("", normalized_guide)
     if beacon_count > 1:
         raise ValueError("Published guide contains multiple Cloudflare beacon injections")
