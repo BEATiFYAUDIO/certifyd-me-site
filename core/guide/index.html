@@ -316,20 +316,18 @@ Certifyd Core · 0.1.0-beta.27
         {label:'MORE IN CORE',ids:['works-tab','library','proof','audience','commerce-gate','network-tab','configuration','diagnostics','next']}
       ],
       creator:[
-        {label:'GET STARTED',ids:['install','owner']},
-        {label:'SET UP YOUR PROFILE',ids:['profile','picture']},
-        {label:'USE YOUR OWN DOMAIN',ids:['named']},
-        {label:'PUBLISH YOUR FIRST WORK',ids:['works','work-settings','release','library-first']},
-        {label:'GET PAID',ids:['wallet','provider']},
-        {label:'MORE IN CORE',ids:['works-tab','library','proof','splits','rights','audience','revenue','royalties','network-tab','advanced','configuration','diagnostics']}
+        {label:'BECOME SOVEREIGN',ids:['named','provider']},
+        {label:'YOUR LASTING IDENTITY',ids:['profile','picture','proof']},
+        {label:'SELL OR SHARE A WORK',ids:['works','work-settings','splits','release','library-first']},
+        {label:'YOUR CREATOR TOOLS',ids:['rights','audience','revenue','royalties']},
+        {label:'MORE IN CORE',ids:['works-tab','library','network-tab','advanced','configuration','diagnostics']}
       ],
       node:[
-        {label:'GET STARTED',ids:['install','owner']},
-        {label:'SET UP YOUR PROFILE',ids:['profile','picture']},
-        {label:'USE YOUR OWN DOMAIN',ids:['named']},
-        {label:'PUBLISH YOUR FIRST WORK',ids:['works','work-settings','release','library-first']},
-        {label:'GET PAID',ids:['wallet','lightning']},
-        {label:'MORE IN CORE',ids:['works-tab','library','proof','splits','console','rights','audience','revenue','royalties','network-tab','advanced','configuration','diagnostics']}
+        {label:'RUN YOUR OWN NODE',ids:['named','lightning','console']},
+        {label:'YOUR LASTING IDENTITY',ids:['profile','picture','proof']},
+        {label:'SELL OR SHARE A WORK',ids:['works','work-settings','splits','release','library-first']},
+        {label:'YOUR NETWORK TOOLS',ids:['rights','audience','revenue','royalties']},
+        {label:'MORE IN CORE',ids:['works-tab','library','network-tab','advanced','configuration','diagnostics']}
       ]
     };
     const saved=(()=>{try{return JSON.parse(localStorage.getItem('certifyd-core-walkthrough-v1')||'{}')}catch{return {}}})();
@@ -338,8 +336,8 @@ Certifyd Core · 0.1.0-beta.27
     const activeIds=()=>paths[selectedPath].flatMap(g=>g.ids);
     const pathCopy={
       basic:'Share a free solo work through a temporary link. Add a Lightning Address if you want tips.',
-      creator:'Use your own domain. Add a payment provider when you want to sell paid work.',
-      node:'Use your own domain and local Bitcoin and Lightning services.'
+      creator:'Continue after Basic: give your existing profile and works a permanent address on your own domain, then connect a payment provider for paid works. Installation, your owner account and profile setup are covered in Basic.',
+      node:'Build on Basic: check your permanent address, then connect the Bitcoin and Lightning services you operate. Provider Console is for node operators. If you still need to install Core or create an owner, start with Basic.'
     };
     const baseTitles=Object.fromEntries(topics.map(t=>[t.id,t.querySelector('h2').textContent]));
     const pathTitles={
@@ -370,8 +368,8 @@ Certifyd Core · 0.1.0-beta.27
     topics.forEach(topic=>{const controls=document.createElement('div');controls.className='step-actions';controls.innerHTML='<button type="button" class="previous">Previous</button><button type="button" class="next">Next step</button>';topic.append(controls);['previous','next'].forEach(direction=>controls.querySelector('.'+direction).addEventListener('click',()=>{const ids=activeIds(),index=ids.indexOf(topic.id);if(index<0)return;select(ids[index+(direction==='next'?1:-1)])}));});
     let current=topics.some(t=>t.id===location.hash.slice(1))?location.hash.slice(1):'install';
     function select(id,scroll=true){const ids=activeIds();if(!ids.includes(id))return;current=id;document.body.classList.add('guided');topics.forEach(t=>t.classList.toggle('current',t.id===id));const i=ids.indexOf(id),controls=document.querySelector('#'+id+' .step-actions');controls.querySelector('.previous').disabled=i===0;controls.querySelector('.next').disabled=i===ids.length-1;controls.querySelector('.next').textContent=i===ids.length-1?'End of walkthrough':'Next step';renderJourney();history.replaceState(null,'','#'+id);if(scroll)document.querySelector('#topics').scrollIntoView({behavior:'smooth',block:'start'})}
-    renderPath();select(activeIds().includes(current)?current:'install',false);
-    document.querySelectorAll('[data-path-choice]').forEach(button=>button.addEventListener('click',()=>{if(button.dataset.pathChoice===selectedPath)return;selectedPath=button.dataset.pathChoice;saved.path=selectedPath;save();renderPath();input.value='';search();select('install',false)}));
+    renderPath();select(activeIds().includes(current)?current:activeIds()[0],false);
+    document.querySelectorAll('[data-path-choice]').forEach(button=>button.addEventListener('click',()=>{if(button.dataset.pathChoice===selectedPath)return;selectedPath=button.dataset.pathChoice;saved.path=selectedPath;save();renderPath();input.value='';search();select(activeIds()[0],false)}));
     nav.addEventListener('click',e=>{const a=e.target.closest('a');if(a){e.preventDefault();input.value='';search();select(a.hash.slice(1))}});
     document.querySelector('#journey-card').addEventListener('click',e=>{const a=e.target.closest('a');if(a){e.preventDefault();input.value='';search();select(a.hash.slice(1))}});
     document.querySelector('#topics').addEventListener('click',e=>{const a=e.target.closest('a[href^="#"]');if(a&&activeIds().includes(a.hash.slice(1))){e.preventDefault();select(a.hash.slice(1))}});

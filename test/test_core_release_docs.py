@@ -99,6 +99,25 @@ class CoreReleaseDocsTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "release provenance"):
             module.validate(changed)
 
+    def test_creator_path_continues_after_basic_setup(self):
+        guide = module.generated_guide(self.data)
+        creator = re.search(r'creator:\s*\[([\s\S]*?)\n\s*\],\s*node:', guide).group(1)
+        ids = [topic for group in re.findall(r'ids:\[([^\]]+)\]', creator)
+               for topic in re.findall(r"'([^']+)'", group)]
+        self.assertEqual(["named", "provider"], ids[:2])
+        for basic_step in ["install", "owner", "public", "wallet"]:
+            self.assertNotIn(basic_step, ids)
+        self.assertLess(ids.index("provider"), ids.index("release"))
+        self.assertLess(ids.index("splits"), ids.index("release"))
+        self.assertEqual(len(ids), len(set(ids)))
+        node = re.search(r'node:\s*\[([\s\S]*?)\n\s*\]\n\s*};', guide).group(1)
+        node_ids = [topic for group in re.findall(r'ids:\[([^\]]+)\]', node)
+                    for topic in re.findall(r"'([^']+)'", group)]
+        self.assertEqual(["named", "lightning", "console"], node_ids[:3])
+        self.assertNotIn("install", node_ids)
+        self.assertNotIn("owner", node_ids)
+        self.assertIn("select(activeIds()[0],false)", guide)
+
     def test_archive_images_exist_and_are_not_current_release_evidence(self):
         archived = (ROOT / "core/guide/archive/v0.1.0-beta.20/index.html").read_text()
         self.assertIn("Historical Beta 20 archive", archived)
