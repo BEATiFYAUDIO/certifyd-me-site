@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import importlib.util
 import json
 import re
@@ -41,11 +42,61 @@ class CoreReleaseDocsTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "distinguish"):
             module.validate(changed)
 
-    def test_current_guide_has_no_unreviewed_screenshots(self):
+    def test_walkthrough_images_are_explicitly_historical(self):
         guide = module.generated_guide(self.data)
         self.assertNotIn("<img src=\"images/", guide)
         self.assertNotIn("install-desktop.sh", guide)
         self.assertIn("Beta 20 archive", guide)
+        figures = re.findall(r'<figure[^>]*>[\s\S]*?</figure>', guide)
+        self.assertGreater(len(figures), 15)
+        for figure in figures:
+            self.assertIn('data-screenshot-release="v0.1.0-beta.20"', figure)
+            self.assertIn("Beta 20 reference.", figure)
+        for path in re.findall(r'(?:src|href)="(/core/guide/images/[^\"]+)"', guide):
+            self.assertTrue((ROOT / path.lstrip("/")).is_file(), path)
+
+    def test_release_sync_preserves_full_walkthrough(self):
+        guide = (ROOT / "core/guide/index.html").read_text()
+        changed = copy.deepcopy(self.data)
+        changed["releaseTag"] = "v0.1.0-beta.28"
+        changed["guide"]["instructions"]["owner"] = "Reviewed new owner instruction"
+        authored = guide.replace("Your work. Your page. Your audience.", "An authored guide heading")
+        updated = module.generated_guide(changed, authored)
+        self.assertIn("An authored guide heading", updated)
+        self.assertIn('content="0.1.0-beta.28"', updated)
+        self.assertIn("Reviewed new owner instruction", updated)
+        for hook in ['id="search"', 'id="search-results"', 'id="journey-card"',
+                     'data-path-choice="basic"', 'data-path-choice="creator"',
+                     'data-path-choice="node"', 'certifyd_logo_transparent.svg']:
+            self.assertIn(hook, updated)
+        self.assertEqual(28, len(re.findall(r'class="topic"', updated)))
+        strip = lambda text: re.sub(
+            r'(?:<!--|/\*) CORE_RELEASE:(\S+):BEGIN (?:-->|\*/)[\s\S]*?'
+            r'(?:<!--|/\*) CORE_RELEASE:\1:END (?:-->|\*/)', '', text)
+        self.assertEqual(strip(authored), strip(updated))
+        self.assertEqual(updated, module.generated_guide(changed, updated))
+
+    def test_release_sync_refuses_missing_duplicate_or_malformed_regions(self):
+        guide = (ROOT / "core/guide/index.html").read_text()
+        begin = '<!-- CORE_RELEASE:installation:BEGIN -->'
+        end = '<!-- CORE_RELEASE:installation:END -->'
+        for broken in [guide.replace(begin, ''), guide + begin,
+                       guide.replace(begin, '__BEGIN__').replace(end, begin).replace('__BEGIN__', end)]:
+            with self.subTest(broken=broken[-70:]):
+                with self.assertRaisesRegex(ValueError, "Guide release region"):
+                    module.generated_guide(self.data, broken)
+
+    def test_historical_screenshot_is_not_current_release_evidence(self):
+        changed = copy.deepcopy(self.data)
+        path = "core/guide/images/first-run-address.png"
+        changed["guide"]["screenshotStatus"] = "reviewed"
+        changed["guide"]["screenshots"] = [{
+            "path": path, "releaseTag": "v0.1.0-beta.20",
+            "caption": "Historical dashboard", "reviewedBy": "test",
+            "sha256": hashlib.sha256((ROOT / path).read_bytes()).hexdigest(),
+        }]
+        with self.assertRaisesRegex(ValueError, "release provenance"):
+            module.validate(changed)
 
     def test_archive_images_exist_and_are_not_current_release_evidence(self):
         archived = (ROOT / "core/guide/archive/v0.1.0-beta.20/index.html").read_text()

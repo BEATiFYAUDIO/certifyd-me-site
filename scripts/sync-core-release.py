@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate Core download cards and the primary guide from one reviewed release manifest."""
+"""Sync Core download cards and release-owned guide regions from a reviewed manifest."""
 
 import argparse
 import hashlib
@@ -116,63 +116,70 @@ def generated_downloads(current, data):
     return result
 
 
-def generated_guide(data):
-    tag = data["releaseTag"]
-    version = tag[1:]
+def generated_guide(data, current=None):
+    """Update release-owned regions without replacing the authored walkthrough."""
+    current = GUIDE.read_text() if current is None else current
+    version = data["releaseTag"][1:]
     e = html.escape
-    items = {item["id"]: item for item in data["assets"]}
-    def link(item_id):
-        item = items[item_id]
-        return f'<a href="{e(item["url"])}">{e(item["filename"])}</a>'
     instruction = data["guide"]["instructions"]
-    def card(title, body):
-        return f'<section class="card"><h2>{e(title)}</h2>{body}</section>'
-    cards = [
-        card("Windows x64", f'<p>{e(instruction["windows"])}</p><p>{link("windows-x64")}</p><p class="small">This installer is unsigned; Windows may show a warning. Confirm the exact filename and hash before proceeding.</p>'),
-        card("macOS Apple Silicon and Intel", f'<p>{e(instruction["macos"])}</p><ul><li>Apple Silicon: {link("macos-arm64")}</li><li>Intel: {link("macos-x64")}</li></ul><p class="small">These DMGs are signed and notarized per the release validation. Stop if Gatekeeper reports a different result.</p>'),
-        card("Linux x64 and ARM64", f'<p>{e(instruction["linuxDeb"])}</p><ul><li>x64: {link("linux-x64")}</li><li>ARM64: {link("linux-arm64")}</li></ul><p>{e(instruction["linuxPortable"])}</p><ul><li>x64 portable: {link("linux-x64-portable")}</li><li>ARM64 portable: {link("linux-arm64-portable")}</li></ul><p class="small">The portable command applies only to the extracted archive. Physical Raspberry Pi installation is not claimed here.</p>'),
-    ]
-    rows = "\n".join(f'<tr><th scope="row">{e(item["platform"])}</th><td><code>{e(item["filename"])}</code></td><td><code class="hash">{e(item["sha256"])}</code></td></tr>' for item in data["assets"])
+    packages = []
+    for title, ids in [
+        ("Windows x64", ["windows-x64"]),
+        ("macOS", ["macos-arm64", "macos-x64"]),
+        ("Linux Debian packages", ["linux-x64", "linux-arm64"]),
+        ("Linux portable archives", ["linux-x64-portable", "linux-arm64-portable"]),
+    ]:
+        assets = [item for item in data["assets"] if item["id"] in ids]
+        packages.append(f'<h3>{e(title)}</h3><ul>' + "".join(
+            f'<li><a href="{e(item["url"])}">{e(item["filename"])}</a>'
+            f'<code class="package-hash">SHA-256: {e(item["sha256"])}</code></li>'
+            for item in assets) + '</ul>')
+    installation = (
+        '<p><b>What to click:</b> Choose your computer below, then download the matching package. Open the installed Certifyd Core app.</p>\n'
+        '<div class="choice" role="group" aria-label="Choose your operating system">'
+        '<button type="button" data-os="windows" aria-pressed="false">Windows</button>'
+        '<button type="button" data-os="mac" aria-pressed="false">macOS</button>'
+        '<button type="button" data-os="linux" aria-pressed="false">Linux</button></div>\n'
+        '<div id="install-detail" class="choice-detail">Choose your computer to see its launch steps.</div>\n'
+        f'<div class="actions"><a class="action" href="/downloads/">Get Certifyd Core {e(version)}</a></div>\n'
+        '<details class="release-packages"><summary>Package links, checksums and release notes</summary>'
+        '<p>Windows installers are unsigned. macOS DMGs are signed and notarized. '
+        'Linux Debian packages and portable archives use different installation steps. '
+        'Physical Raspberry Pi installation has not been validated here.</p>'
+        + ''.join(packages) + f'<p><a href="{e(data["releaseUrl"])}">Release notes</a> · '
+        f'<a href="https://github.com/BEATiFYAUDIO/contentbox/releases/download/{e(data["releaseTag"])}/SHA256SUMS.txt">SHA256SUMS.txt</a></p></details>'
+    )
+    os_copy = {
+        "windows": e(instruction["windows"]) + '<p>Windows may show a warning for this unsigned installer. Check the package filename and SHA-256 before proceeding.</p>',
+        "mac": e(instruction["macos"]) + '<p>The DMGs are signed and notarized. Stop if Gatekeeper reports a different result.</p>',
+        "linux": '<p>' + e(instruction["linuxDeb"]) + '</p><p>' + e(instruction["linuxPortable"]) + '</p>',
+    }
     shots = data["guide"].get("screenshots", [])
-    gallery = "" if not shots else '<section class="panel"><h2>Reviewed interface screenshots</h2>' + "".join(
-        f'<figure><img src="/{e(shot["path"])}" alt="{e(shot["caption"])}" loading="lazy" /><figcaption>{e(shot["caption"])}</figcaption></figure>'
-        for shot in shots) + '</section>'
-    screenshot_note = ("Current-release screenshots will be added after clean-environment capture and review."
-                       if not shots else "The screenshots above were reviewed for this exact release.")
-    return f'''<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="certifyd-core-release" content="{e(version)}" />
-  <meta name="description" content="Install Certifyd Core {e(version)} on Windows x64, macOS Apple Silicon or Intel, and Linux x64 or ARM64." />
-  <link rel="icon" type="image/svg+xml" href="/images/certifyd-tab-icon.svg" />
-  <link rel="canonical" href="https://certifyd.me/core/guide/" />
-  <title>Install Certifyd Core {e(version)} | Certifyd</title>
-  <style>
-    :root{{--bg:#146f95;--text:#e8ecf1;--muted:#b4bdc8;--orange:#ff8a00;--blue:#5f9fff}}
-    *{{box-sizing:border-box}}html{{background:#092c40}}body{{margin:0;background:linear-gradient(165deg,#146f95,#082538 75%);color:var(--text);font:17px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}}
-    a{{color:#a8d0ff}}a:hover{{color:white}}header{{border-bottom:1px solid #ffffff36;background:#082538cf}}.wrap{{max-width:1120px;margin:auto;padding:20px clamp(18px,4vw,40px)}}.brand{{display:inline-flex;align-items:center;gap:14px;color:white;text-decoration:none;font-weight:800;font-size:22px}}.brand img{{width:45px;height:45px}}main{{padding-bottom:70px}}.eyebrow{{color:var(--orange);text-transform:uppercase;font-size:13px;font-weight:850;letter-spacing:.14em}}h1{{font-size:clamp(36px,6vw,64px);line-height:1.05;margin:10px 0 18px}}h2{{font-size:26px;line-height:1.2;margin:0 0 12px}}p{{margin:0 0 15px}}.intro{{max-width:820px;font-size:19px;color:#e1eff7}}.cards{{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:16px;margin:28px 0}}.card,.panel{{background:#061b2bbd;border:1px solid #aedaf14d;border-radius:20px;padding:24px;box-shadow:0 20px 50px #0003}}.card ul{{padding-left:20px}}.card li+li{{margin-top:10px}}.small{{font-size:14px;color:var(--muted)}}.button{{display:inline-block;background:var(--orange);color:#0b1c29;font-weight:800;text-decoration:none;padding:11px 17px;border-radius:12px}}.button:hover{{color:#0b1c29;background:#ffb053}}.panel{{margin-top:18px}}.panel ol{{padding-left:24px}}.panel li+li{{margin-top:12px}}code{{overflow-wrap:anywhere}}.table-wrap{{overflow-x:auto}}table{{border-collapse:collapse;width:100%;font-size:14px}}th,td{{border-bottom:1px solid #ffffff2b;padding:10px;text-align:left;vertical-align:top}}.hash{{font-size:12px}}footer{{border-top:1px solid #ffffff36;color:var(--muted)}}
-  </style>
-</head>
-<body>
-  <header><div class="wrap"><a class="brand" href="/"><img src="/images/certifyd-tab-icon.svg" alt="" />certifyd</a></div></header>
-  <main class="wrap">
-    <p class="eyebrow">Certifyd Core · {e(tag)}</p>
-    <h1>Install Certifyd Core</h1>
-    <p class="intro">This guide covers the packages published for {e(tag)}. Choose the package for your operating system and processor, then follow its installation path. The <a href="/downloads/">downloads page</a> and this guide are generated from the same reviewed release record.</p>
-    <a class="button" href="/downloads/">Choose your download</a>
-    <div class="cards" id="install">{''.join(cards)}</div>
-    <section class="panel" id="dashboard"><h2>Open the local dashboard</h2><p>{e(instruction["dashboard"])}</p><p>The dashboard is private to the Core computer by default. Installing Core does not enable public sharing.</p></section>
-    <section class="panel" id="owner"><h2>Create your first owner</h2><ol><li>{e(instruction["owner"])}</li><li>Sign in and confirm that the real dashboard loads. On an existing installation, sign in with the existing owner instead of creating another one.</li><li>Close Core and reopen it to confirm it returns to the local dashboard.</li></ol><p class="small">Do not share passwords, recovery material, creator keys, or wallet credentials in screenshots or support requests.</p></section>
-    <section class="panel" id="verify"><h2>Verify the package</h2><p>Compare your downloaded file with the SHA-256 listed below and the release's <a href="https://github.com/BEATiFYAUDIO/contentbox/releases/download/{e(tag)}/SHA256SUMS.txt">SHA256SUMS.txt</a>. Use the exact filename for your system.</p><div class="table-wrap"><table><thead><tr><th>System</th><th>Package</th><th>SHA-256</th></tr></thead><tbody>{rows}</tbody></table></div></section>
-{gallery}
-    <p class="small">Older walkthrough: <a href="/core/guide/archive/v0.1.0-beta.20/">Beta 20 archive</a>. Its interface screenshots and package steps are historical and are not presented as {e(tag)} evidence. {e(screenshot_note)} <a href="{e(data['releaseUrl'])}">Release notes</a>.</p>
-  </main>
-  <footer><div class="wrap">Certifyd Core {e(tag)} · Installation guide</div></footer>
-</body>
-</html>
-'''
+    gallery = '' if not shots else '<details class="release-packages"><summary>Reviewed current-release screenshots</summary>' + ''.join(
+        f'<figure class="screen" data-screenshot-release="{e(data["releaseTag"])}">'
+        f'<a class="screen-shot" href="/{e(shot["path"])}"><img src="/{e(shot["path"])}" alt="{e(shot["caption"])}" loading="lazy"></a>'
+        f'<figcaption>{e(data["releaseTag"])}: {e(shot["caption"])}</figcaption></figure>'
+        for shot in shots) + '</details>'
+    regions = {
+        "meta": f'<meta name="certifyd-core-release" content="{e(version)}" />',
+        "label": f'Certifyd Core · {e(version)}',
+        "installation": installation,
+        "owner": '<p><b>What to click:</b> ' + e(instruction["owner"]) + ' If this computer already has your Core account, sign in instead.</p>',
+        "dashboard": '<details><summary>Dashboard does not open automatically?</summary><p>' + e(instruction["dashboard"]) + ' The dashboard is private to the Core computer by default. Installing Core does not enable public sharing.</p></details>',
+        "screenshots": gallery,
+        "os": "    choose('[data-os]','os',document.querySelector('#install-detail')," + json.dumps(os_copy, ensure_ascii=False) + ");",
+    }
+    for name, body in regions.items():
+        start, end = ('/*', '*/') if name == 'os' else ('<!--', '-->')
+        begin = f'{start} CORE_RELEASE:{name}:BEGIN {end}'
+        finish = f'{start} CORE_RELEASE:{name}:END {end}'
+        if current.count(begin) != 1 or current.count(finish) != 1:
+            raise ValueError(f'Guide release region missing or duplicated: {name}')
+        pattern = re.escape(begin) + r'[\s\S]*?' + re.escape(finish)
+        current, count = re.subn(pattern, lambda _: begin + '\n' + body + '\n' + finish, current)
+        if count != 1:
+            raise ValueError(f'Guide release region is malformed: {name}')
+    return current
 
 
 def verify_remote(data):
