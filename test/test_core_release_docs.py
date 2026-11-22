@@ -105,7 +105,8 @@ class CoreReleaseDocsTest(unittest.TestCase):
         ids = [topic for group in re.findall(r'ids:\[([^\]]+)\]', creator)
                for topic in re.findall(r"'([^']+)'", group)]
         self.assertEqual(["named", "provider"], ids[:2])
-        for basic_step in ["install", "owner", "public", "wallet"]:
+        for basic_step in ["install", "owner", "public", "wallet", "profile", "picture",
+                           "proof", "works", "library-first", "works-tab", "library", "audience"]:
             self.assertNotIn(basic_step, ids)
         self.assertLess(ids.index("provider"), ids.index("release"))
         self.assertLess(ids.index("splits"), ids.index("release"))
@@ -117,6 +118,21 @@ class CoreReleaseDocsTest(unittest.TestCase):
         self.assertNotIn("install", node_ids)
         self.assertNotIn("owner", node_ids)
         self.assertIn("select(activeIds()[0],false)", guide)
+
+    def test_guide_sidebar_and_domain_setup_are_self_contained(self):
+        guide = module.generated_guide(self.data)
+        sidebar = re.search(r'<aside class="side"[\s\S]*?</aside>', guide).group(0)
+        self.assertEqual({"basic", "creator", "node"},
+                         set(re.findall(r'data-path-choice="([^"]+)"', sidebar)))
+        self.assertIn('id="topic-nav"', sidebar)
+        self.assertIn('id="guide-outline"', sidebar)
+        named = re.search(r'<section class="topic" id="named"[\s\S]*?</section>', guide).group(0)
+        self.assertGreaterEqual(len(re.findall(r"<h3\b", named)), 4)
+        self.assertIn("http://127.0.0.1:4010", named)
+        self.assertIn("PRIVATE DASHBOARD", named)
+        self.assertIn("127.0.0.1:4000", named)
+        self.assertIn("Enable sharing", named)
+        self.assertIn("/core/tunnel-setup/", named)
 
     def test_archive_images_exist_and_are_not_current_release_evidence(self):
         archived = (ROOT / "core/guide/archive/v0.1.0-beta.20/index.html").read_text()
