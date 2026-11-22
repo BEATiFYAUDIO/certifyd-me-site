@@ -70,7 +70,7 @@ class CoreReleaseDocsTest(unittest.TestCase):
                      'data-path-choice="basic"', 'data-path-choice="creator"',
                      'data-path-choice="node"', 'certifyd_logo_transparent.svg']:
             self.assertIn(hook, updated)
-        self.assertEqual(28, len(re.findall(r'class="topic"', updated)))
+        self.assertEqual(30, len(re.findall(r'class="topic"', updated)))
         strip = lambda text: re.sub(
             r'(?:<!--|/\*) CORE_RELEASE:(\S+):BEGIN (?:-->|\*/)[\s\S]*?'
             r'(?:<!--|/\*) CORE_RELEASE:\1:END (?:-->|\*/)', '', text)
@@ -114,10 +114,45 @@ class CoreReleaseDocsTest(unittest.TestCase):
         node = re.search(r'node:\s*\[([\s\S]*?)\n\s*\]\n\s*};', guide).group(1)
         node_ids = [topic for group in re.findall(r'ids:\[([^\]]+)\]', node)
                     for topic in re.findall(r"'([^']+)'", group)]
-        self.assertEqual(["named", "lightning", "console"], node_ids[:3])
+        self.assertEqual(["named", "lightning", "node-provider", "node-network", "console"], node_ids[:5])
         self.assertNotIn("install", node_ids)
         self.assertNotIn("owner", node_ids)
+        self.assertNotIn("provider", node_ids)
+        self.assertEqual(len(node_ids), len(set(node_ids)))
         self.assertIn("select(activeIds()[0],false)", guide)
+
+    def test_node_walkthrough_distinguishes_credentials_provider_and_admission(self):
+        guide = module.generated_guide(self.data)
+        section = lambda name: re.search(
+            r'<section class="topic" id="' + name + r'"[\s\S]*?</section>', guide).group(0)
+        lightning = section("lightning")
+        for anchor in ["lightning-endpoint", "lightning-macaroon", "lightning-tls",
+                       "lightning-test", "lightning-readiness"]:
+            self.assertIn('id="' + anchor + '" data-nav-label=', lightning)
+        for field in ["LND REST URL", "Network", "Macaroon (.macaroon)",
+                      "Macaroon path (optional)", "TLS cert (.pem/.crt, optional)",
+                      "TLS cert path (optional)", "Auto-detect", "Test", "Save",
+                      "receive ready"]:
+            self.assertIn(field, lightning)
+        self.assertIn("Core’s installer does not install Bitcoin or LND", lightning)
+        self.assertIn("does not save your configuration", lightning)
+        provider = section("node-provider")
+        for text in ["Network Participation Mode", "Effective", "local node services are authoritative",
+                     "optional, not required for readiness", "Provider Node ID", "Provider URL",
+                     "Provider Profile ID", "Provider Public Key"]:
+            self.assertIn(text, provider)
+        admission = section("node-network")
+        for text in ["https://network.certifyd.me/join", "/api/network/nodes",
+                     "Check Node Eligibility", "Request Listing on GitHub",
+                     "not automatic registration", "Test fan network readiness",
+                     "Submit to Fan Network", "Opening the issue does not complete admission"]:
+            self.assertIn(text, admission)
+        console = section("console")
+        for text in ["Creator Scope", "Sale (buyer payment)", "Paid (remitted execution)",
+                     "not a completed payout"]:
+            self.assertIn(text, console)
+        for name in ["lightning", "node-provider", "node-network", "console"]:
+            self.assertGreaterEqual(len(re.findall(r'<h3 id="[^"]+" data-nav-label=', section(name))), 3)
 
     def test_guide_sidebar_and_domain_setup_are_self_contained(self):
         guide = module.generated_guide(self.data)
