@@ -172,7 +172,7 @@ Certifyd Core · 0.1.0-beta.27
         </section>
         <section class="topic" id="named" data-search="named tunnel permanent durable hostname domain dns cloudflare exact tunnel identity service">
           <div class="topic-head"><div><div class="number">11 · DOMAIN + TUNNEL</div><h2>Set up your domain and tunnel</h2></div><label class="mark"><input type="checkbox" data-done="named">Done</label></div>
-          <p>This is where Sovereign Creator picks up after Basic. Keep your owner account, profile and works; give them a lasting address on a domain you control instead of relying on a temporary link.</p>
+          <p>Continue after Basic with your existing owner account, profile and works. Give them a lasting address on a domain you control instead of relying on a temporary link. If you already completed this as a Sovereign Creator, check that the address still works and continue to payment setup.</p>
           <h3 id="named-address" data-nav-label="Choose your address">1. Choose your public creator address</h3>
           <p>Use a domain you own and choose the hostname you want people to visit. If your domain is not active in Cloudflare yet, the <a href="/core/tunnel-setup/">guided domain setup</a> walks through that first. If you already use Cloudflare, keep the existing connection and check the exact tunnel serving this Core computer.</p>
           <h3 id="named-connector" data-nav-label="Connect the tunnel">2. Connect the computer with a named tunnel</h3>
@@ -196,17 +196,61 @@ Certifyd Core · 0.1.0-beta.27
           <p>Running your own Bitcoin and Lightning services instead? Choose <b>Sovereign Node</b> in the guide contents for that setup.</p>
 
         </section>
-        <section class="topic" id="lightning" data-search="lightning lnd local node node settings rest url macaroon tls certificate auto detect test save operator">
-          <div class="topic-head"><div><div class="number">13 · NODE OPERATOR</div><h2>What is Lightning?</h2></div><label class="mark"><input type="checkbox" data-done="lightning">Done</label></div>
-          <p>This step is for Sovereign Node operators using their own local Bitcoin and Lightning (LND) services. Other creators can use a payment provider instead.</p>
-          <p><b>What to click:</b> Check local Bitcoin readiness in <b>Node</b>, then open <b>Node → Lightning</b>. Use <b>Auto-detect</b> if available, choose <b>Test</b>, and save only after Core reports the service ready.</p>
-          <p class="note"><b>It worked when:</b> Core shows both local payment services ready. Keep connection credentials in Core only; never paste them into this guide.</p>
-
+        <section class="topic" id="lightning" data-search="lightning lnd local bitcoin node settings rest url network mainnet testnet regtest macaroon path tls certificate auto detect test save receive ready liquidity">
+          <div class="topic-head"><div><div class="number">13 · NODE OPERATOR</div><h2>Configure your Lightning node</h2></div><label class="mark"><input type="checkbox" data-done="lightning">Done</label></div>
+          <p>Connect Core to the local LND service you operate. Core’s installer does not install Bitcoin or LND for you. Start with your Bitcoin backend and LND running, your LND wallet unlocked, and your permanent public address working.</p>
+          <h3 id="lightning-endpoint" data-nav-label="LND URL and network">1. Choose the LND endpoint and network</h3>
+          <ol><li>In Core’s sidebar, open <b>Node → Lightning</b>. If the extra controls are hidden, choose <b>Show Advanced</b>.</li><li>Under <b>Lightning Configuration</b>, enter your <b>LND REST URL</b>. The form’s default is <code>https://127.0.0.1:8080</code>; use the endpoint your LND actually serves. This is the REST endpoint, not LND’s gRPC or peer address.</li><li>Set <b>Network</b> to match that node: <b>mainnet</b>, <b>testnet</b> or <b>regtest</b>. Do not mix credentials or payment expectations between networks.</li><li><b>Auto-detect</b> can suggest endpoints. Select the correct detected endpoint, then supply its credentials below; detection alone does not establish a connection.</li></ol>
+          <h3 id="lightning-macaroon" data-nav-label="Macaroon credentials">2. Supply the macaroon</h3>
+          <p>An LND macaroon authorizes API operations on your node. In <b>Macaroon (.macaroon)</b>, select the credential file for this LND instance and network. Alternatively, enter its existing location in <b>Macaroon path (optional)</b>.</p>
+          <p>A path is read by the computer running Core, not the phone or browser you use to manage it. The Core process must be able to read that file. Use a credential with the permissions needed for your intended operations; a connection test alone does not establish permission to send payouts.</p>
+          <h3 id="lightning-tls" data-nav-label="TLS certificate">3. Supply the TLS certificate when needed</h3>
+          <p>For an LND endpoint using its own certificate, provide that instance’s certificate through <b>TLS cert (.pem/.crt, optional)</b> or <b>TLS cert path (optional)</b>. The path field can point to the node’s existing <code>tls.cert</code>. It must be readable on the Core computer and belong to the endpoint you entered.</p>
+          <p class="note">Keep macaroons, private keys and wallet recovery phrases private. Enter connection credentials only in your authenticated Core dashboard. Neither the Network Map nor a listing request needs your macaroon. Keep LND and Bitcoin administration off your public creator route.</p>
+          <h3 id="lightning-test" data-nav-label="Test and save">4. Test, then save the connection</h3>
+          <ol><li>Choose <b>Test</b>. A successful result reports <b>Connected</b> with the node alias and version. Check that they belong to your intended node.</li><li>If the test fails, check the REST URL, network, wallet state, macaroon permissions and certificate. Resolve the actual error before continuing.</li><li>Choose <b>Save</b> to persist the connection. A successful test by itself does not save your configuration.</li><li>Review <b>Lightning &amp; Rails → Lightning Node Runtime</b> for <b>configured</b>, <b>node reachable</b>, <b>receive ready</b> and the reported network.</li></ol>
+          <h3 id="lightning-readiness" data-nav-label="Payment readiness">5. Check readiness beyond “Connected”</h3>
+          <p>A reachable LND API is the first check. Review open and pending channels, inbound liquidity for receiving, and outbound liquidity for sending. A wallet balance or a pending channel is not proof that payments can route. Core reports receive readiness separately.</p>
+          <p>Next, check <b>Configuration → Network Participation Mode</b>. Core must report the local Bitcoin, local LND and local commerce requirements ready before Sovereign Node can become available. Resolve any listed blocker rather than treating the Lightning connection as the whole setup.</p>
+          <p class="note"><b>You’re ready for the next step when:</b> The saved connection reaches the intended LND instance, and Core’s local-service readiness checks pass. These checks do not prove a customer payment or creator payout has occurred.</p>
         </section>
-        <section class="topic" id="console" data-search="provider console node operator lan delegated creators creator scope revenue diagnostics settlement payout treasury">
-          <div class="topic-head"><div><div class="number">14 · NODE OPERATOR</div><h2>What is Provider Console?</h2></div><label class="mark"><input type="checkbox" data-done="console">Done</label></div>
-          <p><b>Provider Console</b> is for operators offering payment services to other creators. It shows the creators served by the node, fees, sales, payouts, and node health.</p>
-          <p class="note">Core shows this tab only when the node has the required operator setup. Most creators do not need it.</p>
+        <section class="topic" id="node-provider" data-search="sovereign node provider configuration local services optional interoperability enabled provider node id profile public key url network participation mode requirements bitcoin lnd commerce">
+          <div class="topic-head"><div><div class="number">14 · NODE CONFIGURATION</div><h2>Configure your node’s provider role</h2></div><label class="mark"><input type="checkbox" data-done="node-provider">Done</label></div>
+          <p>A Sovereign Creator can connect another node for payment services. A Sovereign Node operates its own local services. The <b>Provider Configuration</b> panel describes that distinction; it is not where you upload LND credentials.</p>
+          <h3 id="node-participation" data-nav-label="Activate Sovereign Node">1. Confirm the participation mode</h3>
+          <ol><li>Open <b>Configuration → Network Participation Mode</b>.</li><li>Check the requirements: a canonical public origin, local Bitcoin, local LND and local commerce readiness.</li><li>When available, select <b>Sovereign Node</b>. Read both <b>Current Participation</b> and <b>Effective</b> to confirm the result.</li><li>If the choice is unavailable, follow the displayed blockers. Changing the guide selection does not change Core’s operating mode.</li></ol>
+          <h3 id="node-provider-configuration" data-nav-label="Provider Configuration">2. Review Provider Configuration</h3>
+          <p>Open <b>Network → Provider Configuration</b>. In Sovereign Node posture, Core says that <b>local node services are authoritative</b> and provider setup is optional, not required for readiness. An existing provider binding is for optional interoperability; you do not need to connect your node to itself.</p>
+          <p>If you are still using the Sovereign Creator route before your local stack is ready, its provider form uses <b>Provider Node ID</b>, <b>Provider URL</b>, optional <b>Provider Profile ID</b> and optional <b>Provider Public Key</b>. Copy these public connection values from the chosen provider, set <b>Enabled</b>, then use <b>Save provider</b> and <b>Connect provider</b>. They are different from your LND macaroon and TLS certificate.</p>
+          <h3 id="node-service-status" data-nav-label="Check your services">3. Check what your node actually offers</h3>
+          <p>In <b>Network</b>, review <b>Network Summary</b>, <b>Payment Capability</b>, <b>Node Presence</b> and <b>Network Services</b>. Confirm the public address, node identity and available commerce services match this installation. A public page being online does not establish that the node can receive payments or execute payouts.</p>
+          <p class="note"><b>You’re ready for the next step when:</b> Core reports effective Sovereign Node participation with the intended local services ready. Public network listing is a separate step below.</p>
+        </section>
+        <section class="topic" id="node-network" data-search="add register join node network map eligibility listing request provider canonical url public key metadata api network nodes fan discovery submit readiness">
+          <div class="topic-head"><div><div class="number">15 · JOIN THE NETWORK</div><h2>Add your node to the network</h2></div><label class="mark"><input type="checkbox" data-done="node-network">Done</label></div>
+          <p>Make your ready node discoverable to creators looking for infrastructure. The Network Map lists provider nodes; Certifyd Fan discovers public creator content. They use separate checks and submission paths.</p>
+          <h3 id="node-public-metadata" data-nav-label="Public node details">1. Check your public node details</h3>
+          <p>Use your stable HTTPS provider URL, not the private dashboard or LND REST URL. Core exposes public-safe node metadata at <code>/api/network/nodes</code> on the public origin. Check that it identifies your node and supplies the correct <b>Provider Node ID</b>, <b>Provider Public Key</b>, <b>Provider URL</b> and <b>Provider Profile ID</b> where available.</p>
+          <p>The listing checker also evaluates published identity, service capabilities and reachability. Missing or degraded services must be resolved in your node setup; typing a URL into the directory does not enable them.</p>
+          <h3 id="node-map-eligibility" data-nav-label="Check map eligibility">2. Run the Network Map eligibility check</h3>
+          <ol><li>Open <a href="https://network.certifyd.me/join" target="_blank" rel="noopener noreferrer">Become a Node Operator</a> on the Certifyd Network Map.</li><li>Enter your canonical <b>Provider URL</b> and select <b>Check Node Eligibility</b>. The checker reads the public node metadata.</li><li>Review the returned node identity, service statuses and eligibility notes. Resolve missing metadata, public-route or readiness problems, then check again.</li></ol>
+          <h3 id="node-listing-request" data-nav-label="Request a listing">3. Request the public listing</h3>
+          <p>When the checker reports the node provisionable, choose <b>Request Listing on GitHub</b>. Review the prefilled public node details and submit the listing request. This is a reviewed request, not automatic registration: passing eligibility does not put the node on the map by itself.</p>
+          <p>After the listing is accepted, find your node on the <a href="https://network.certifyd.me/" target="_blank" rel="noopener noreferrer">Network Map</a>. Check its detail page and copied provider connection values. Only share public node metadata in the request—never wallet credentials or private configuration.</p>
+          <h3 id="node-fan-discovery" data-nav-label="Join Fan discovery">4. Submit your creator content to Fan separately</h3>
+          <ol><li>In Core, open <b>Configuration → Join Fan Network</b>. Check the detected public origin and discoverable endpoint.</li><li>Choose <b>Test fan network readiness</b>. Check that the endpoint is reachable and returns valid JSON. An empty result can pass the endpoint test while exposing no works; publish and make the intended work discoverable first.</li><li>Choose <b>Submit to Fan Network</b>. Core opens a prefilled GitHub issue; review and submit it. Opening the issue does not complete admission.</li><li>Once accepted and discovery has updated, check your intended public content in <a href="https://fan.certifyd.me/" target="_blank" rel="noopener noreferrer">Certifyd Fan</a>.</li></ol>
+          <p class="note"><b>Mark this section done when:</b> You have completed the listing and discovery steps you intend to use and checked their actual result. Network Map listing, Fan discovery, public sharing and payment readiness are separate states.</p>
+        </section>
+        <section class="topic" id="console" data-search="provider console node operator lan delegated creators creator scope all active creators revenue diagnostics settlement payout payable paid fees treasury refresh">
+          <div class="topic-head"><div><div class="number">16 · PROVIDER OPERATIONS</div><h2>Use Provider Console</h2></div><label class="mark"><input type="checkbox" data-done="console">Done</label></div>
+          <p><b>Provider Console</b> is the operator’s view of delegated commerce on this node. It appears when Core has the required Sovereign Node capabilities. If you cannot see it, check participation and local-service readiness first.</p>
+          <h3 id="console-creators" data-nav-label="Creators and activity">1. Select the creator you are reviewing</h3>
+          <p>Open <b>Provider Console</b> from Core’s advanced menu. Start with <b>All Active Creators</b>, or select a specific creator under <b>Creator Scope</b>. Review linked creators, published items, payment intents and receipts in that scope. A new node may have no delegated activity yet.</p>
+          <h3 id="console-settlement" data-nav-label="Payments and payouts">2. Separate sales from settled payouts</h3>
+          <p>Read the selected time range and whether the view uses <b>Sale (buyer payment)</b> or <b>Paid (remitted execution)</b>. Review fees, payable amounts and payout states separately. A settled buyer invoice is not evidence that every collaborator has received their share; a payable amount is not a completed payout.</p>
+          <h3 id="console-health" data-nav-label="Refresh and check health">3. Check failures before relying on the service</h3>
+          <p>Choose <b>Refresh</b> for current console data. Review pending, blocked or failed payout states and any runtime error shown. Return to <b>Node → Lightning</b> for connection, channel and liquidity checks; use <b>Diagnostics</b> for public connectivity problems.</p>
+          <p class="note"><b>It worked when:</b> You can inspect the correct creator scope and distinguish invoice receipts, amounts owed and executed payouts. An empty console is not evidence of a fault or of successful commerce.</p>
         </section>
         <section class="topic" id="advanced" data-search="unlock menu show advanced hide advanced node operator configuration diagnostics revenue commerce locked">
           <div class="topic-head"><div><div class="number">15 · MORE CONTROLS</div><h2>Show the advanced menu</h2></div><label class="mark"><input type="checkbox" data-done="advanced">Done</label></div>
@@ -347,10 +391,12 @@ Certifyd Core · 0.1.0-beta.27
       ],
       node:[
         {label:'YOUR DOMAIN + TUNNEL',ids:['named']},
-        {label:'YOUR PAYMENT SERVICES',ids:['lightning','console']},
+        {label:'YOUR PAYMENT SERVICES',ids:['lightning','node-provider']},
+        {label:'JOIN THE NETWORK',ids:['node-network']},
+        {label:'PROVIDER OPERATIONS',ids:['console']},
         {label:'SELL OR COLLABORATE',ids:['work-settings','splits','release']},
         {label:'NETWORK TOOLS',ids:['rights','revenue','royalties']},
-        {label:'MORE IN CORE',ids:['advanced']}
+        {label:'MORE IN CORE',ids:['advanced','diagnostics']}
       ]
     };
     const saved = (() => {
@@ -367,7 +413,7 @@ Certifyd Core · 0.1.0-beta.27
     const pathCopy = {
       basic: 'Start here: install Core, make your profile and share a free work through a temporary link.',
       creator: 'Continue after Basic with your domain and tunnel, then a provider for paid works.',
-      node: 'Use a permanent address and operate your own Bitcoin and Lightning services.'
+      node: 'Continue with your permanent address: configure local Lightning, activate your provider role, join the network and review node operations.'
     };
     const pathNames = {basic: 'Basic', creator: 'Sovereign Creator', node: 'Sovereign Node'};
     const baseTitles = Object.fromEntries(topics.map(t => [t.id, t.querySelector('h2').textContent]));
@@ -375,7 +421,7 @@ Certifyd Core · 0.1.0-beta.27
     const pathTitles={
       basic:{works:'Add your first free work',release:'Publish a free solo work'},
       creator:{profile:'Set up your profile',works:'Add a work to sell or share','work-settings':'Set price and delivery',splits:'Agree on a shared split (if sharing)',release:'Publish a paid or shared work','library-first':'Show it on your profile'},
-      node:{lightning:'Check your Lightning node',console:'Open Provider Console',profile:'Set up your profile',works:'Add a work to sell or share','work-settings':'Set price and delivery',splits:'Agree on a shared split (if sharing)',release:'Publish a paid or shared work','library-first':'Show it on your profile'}
+      node:{lightning:'Configure your Lightning node',console:'Use Provider Console',profile:'Set up your profile',works:'Add a work to sell or share','work-settings':'Set price and delivery',splits:'Agree on a shared split (if sharing)',release:'Publish a paid or shared work','library-first':'Show it on your profile'}
     };
     const title = id => pathTitles[selectedPath][id] || baseTitles[id];
     let current = location.hash.slice(1);
