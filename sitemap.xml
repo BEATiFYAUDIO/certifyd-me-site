@@ -38,7 +38,7 @@
   </url>
   <url>
     <loc>https://certifyd.me/blog/</loc>
-    <lastmod>2026-11-17</lastmod>
+    <lastmod>2026-11-24</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
@@ -50,6 +50,11 @@
     <loc>https://certifyd.me/guides/sell-music-directly-to-fans/</loc>
     <lastmod>2026-11-10</lastmod>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://certifyd.me/blog/certifyd-core-publishing-alongside-spotify-github-instagram/</loc>
+    <lastmod>2026-11-24</lastmod>
+    <priority>0.6</priority>
   </url>
   <url>
     <loc>https://certifyd.me/blog/certifyd-core-laptop-phone-local-network/</loc>
