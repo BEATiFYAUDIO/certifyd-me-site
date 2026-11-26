@@ -60,8 +60,11 @@ test('build renders blog index, article pages, and metadata without publishing p
   assert.match(articleHtml, /"@type":"BlogPosting"/);
   assert.match(articleHtml, /"@type":"Organization"/);
   assert.match(articleHtml, /"@type":"BreadcrumbList"/);
-  assert.match(articleHtml, /href="\/styles\/grouped-navigation\.css"/);
+  assert.match(articleHtml, /href="\/styles\/grouped-navigation\.css\?v=[a-z0-9-]+"/);
   assert.match(articleHtml, /src="\/scripts\/grouped-navigation\.js" defer/);
+  const header = articleHtml.match(/<header\b[\s\S]*?<\/header>/)[0];
+  assert.match(header, /href="\/core\/"/);
+  assert.doesNotMatch(header, /href="\/profile\/"/);
   assert.equal((articleHtml.match(/<h1\b/gi) || []).length, 1);
   assert.doesNotMatch(articleHtml, /<article[^>]*>[\s\S]*<h1>Newer Article<\/h1>[\s\S]*Body\./);
   const jsonLd = [...articleHtml.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((match) => JSON.parse(match[1]));
