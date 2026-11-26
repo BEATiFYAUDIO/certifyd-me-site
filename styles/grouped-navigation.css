@@ -96,3 +96,6 @@
   background: rgba(255, 255, 255, 0.1);
   color: #fff;
 }
+
+/* Clear legacy narrow-screen left offsets when the drawer is right-aligned. */
+.nav-mobile .nav-drawer { left: auto; }
