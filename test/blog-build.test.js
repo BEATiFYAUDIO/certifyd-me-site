@@ -61,7 +61,7 @@ test('build renders blog index, article pages, and metadata without publishing p
   assert.match(articleHtml, /"@type":"Organization"/);
   assert.match(articleHtml, /"@type":"BreadcrumbList"/);
   assert.match(articleHtml, /href="\/styles\/grouped-navigation\.css\?v=[a-z0-9-]+"/);
-  assert.match(articleHtml, /src="\/scripts\/grouped-navigation\.js" defer/);
+  assert.match(articleHtml, /src="\/scripts\/grouped-navigation\.js\?v=[a-z0-9-]+" defer/);
   const header = articleHtml.match(/<header\b[\s\S]*?<\/header>/)[0];
   assert.match(header, /href="\/core\/"/);
   assert.doesNotMatch(header, /href="\/profile\/"/);

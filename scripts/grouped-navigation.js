@@ -43,3 +43,20 @@ document.querySelectorAll('.nav-desktop').forEach((navigation) => {
     openGroup.querySelector('summary')?.focus();
   });
 });
+
+// The public header is shared; mark the current page without duplicating its markup.
+document.querySelectorAll('.public-header a[href]').forEach((link) => {
+  const destination = new URL(link.href, location.href);
+  if (destination.origin !== location.origin || destination.pathname !== location.pathname) return;
+  link.setAttribute('aria-current', 'page');
+  link.closest('.nav-group')?.classList.add('is-current');
+});
+document.querySelectorAll('.public-header .nav-mobile').forEach((menu) => {
+  menu.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => { menu.open = false; }));
+  document.addEventListener('click', (event) => { if (!menu.contains(event.target)) menu.open = false; });
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !menu.open) return;
+    menu.open = false;
+    menu.querySelector('summary')?.focus();
+  });
+});
