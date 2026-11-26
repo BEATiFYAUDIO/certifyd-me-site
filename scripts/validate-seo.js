@@ -13,6 +13,7 @@ const STATIC_PAGES = [
   { file: 'profile/index.html', canonical: `${BASE_URL}/profile/` },
   { file: 'join/index.html', canonical: `${BASE_URL}/join/` },
   { file: 'downloads/index.html', canonical: `${BASE_URL}/downloads/` },
+  { file: 'core/index.html', canonical: `${BASE_URL}/core/` },
   { file: 'core/guide/index.html', canonical: `${BASE_URL}/core/guide/`, optionalOgUrl: true },
   { file: 'network.html', canonical: `${BASE_URL}/network.html` },
   { file: 'retail-partners/index.html', canonical: `${BASE_URL}/retail-partners/` },

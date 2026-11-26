@@ -4,6 +4,7 @@ export const IMPORTANT_PUBLIC_PAGES = [
   { path: '/profile/', file: 'profile/index.html', priority: '0.8' },
   { path: '/join/', file: 'join/index.html', priority: '0.8' },
   { path: '/downloads/', file: 'downloads/index.html', priority: '0.8' },
+  { path: '/core/', file: 'core/index.html', priority: '0.8' },
   { path: '/core/guide/', file: 'core/guide/index.html', priority: '0.8' },
   { path: '/network.html', file: 'network.html', priority: '0.7' },
   { path: '/retail-partners/', file: 'retail-partners/index.html', priority: '0.8' },
