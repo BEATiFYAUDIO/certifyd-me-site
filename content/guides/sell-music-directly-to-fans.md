@@ -3,7 +3,7 @@ title: "How to Sell Music Directly to Fans"
 slug: "sell-music-directly-to-fans"
 description: "Plan a direct music sale from the release file and public page through pricing, checkout, confirmed access and fan support. Compare the control and operating tradeoffs."
 date: "2026-11-10"
-updated: "2026-11-10"
+updated: "2026-11-27"
 status: "published"
 ---
 
@@ -64,6 +64,6 @@ Check which customer records you can export, what you are allowed to retain and 
 
 A hosted service may handle checkout, hosting and support tools for you, with its own policies and fees. Running creator infrastructure puts more operational responsibility on you: updates, backups, connectivity, public availability and payment configuration. Verify the actual responsibilities before choosing.
 
-Certifyd Core is creator infrastructure that can run on your computer. Start with the [current installation guide](/core/guide/) and choose the correct release on [Downloads](/downloads/). Installation is a first step; it is separate from public publishing and payment readiness.
+The [Certifyd Core overview](/core/#commerce) explains creator-operated publishing and supported direct commerce. Start with the [current installation guide](/core/guide/#install) and choose the correct release on [Downloads](/downloads/#certifyd-core). For paid work, follow the [provider setup](/core/guide/#provider) and check the [commerce requirements](/core/guide/#commerce-gate). Installation is a first step; it is separate from public publishing and payment readiness.
 
 Your next action: write down one offer and walk through its public page, checkout, payment confirmation and access recovery as a buyer would. Fix the first unclear step before promoting it. Direct selling works best when the fan does not have to understand your infrastructure to enjoy your music.

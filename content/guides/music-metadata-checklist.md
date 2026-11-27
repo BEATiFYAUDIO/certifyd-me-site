@@ -3,7 +3,7 @@ title: "Music Metadata Checklist for Independent Artists"
 slug: "music-metadata-checklist"
 description: "A practical release checklist for artist names, credits, ISRCs, release identifiers, rights context and master records. Keep your music data consistent across systems."
 date: "2026-11-10"
-updated: "2026-11-10"
+updated: "2026-11-27"
 status: "published"
 ---
 
@@ -68,4 +68,4 @@ For every delivery or correction, record the destination, date, submitted values
 
 Your next action: choose one upcoming release and complete the table before uploading it anywhere. Then use the [direct-to-fan selling guide](/guides/sell-music-directly-to-fans/) to check how a listener will discover, buy and access that work.
 
-If you are evaluating creator-operated publishing, the [maintained Certifyd Core guide](/core/guide/) explains installation. Core publishing does not replace music-rights registration or royalty administration.
+For creator-operated work records, the [Core overview](/core/#commerce) explains credits and recorded relationships. Use the [maintained Core guide](/core/guide/#install) to get started and the [split setup walkthrough](/core/guide/#splits) for the supported contributor-agreement workflow. Core publishing does not replace music-rights registration or royalty administration.

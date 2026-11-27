@@ -535,7 +535,13 @@ Certifyd Core · 0.1.0-beta.27
     }
     function select(id, scroll = true) {
       const section = sectionFor(id);
-      if (!section || !activeIds().includes(section.id)) return;
+      if (!section) return;
+      if (!activeIds().includes(section.id)) {
+        // A documentation link may target a topic outside the saved setup.
+        // Reveal it for this visit without changing the saved choice or Core itself.
+        selectedPath = Object.keys(paths).find(key => paths[key].some(group => group.ids.includes(section.id)));
+        renderPath();
+      }
       scrollLockUntil = performance.now() + 800;
       setCurrent(id);
       if (scroll) {
@@ -571,7 +577,7 @@ Certifyd Core · 0.1.0-beta.27
       box.addEventListener('change', () => { saved[completionKey(box.dataset.done)] = box.checked; save(); progress(); renderJourney(); });
     });
     renderPath();
-    select(sectionFor(current) && activeIds().includes(sectionFor(current).id) ? current : activeIds()[0], false);
+    select(sectionFor(current) ? current : activeIds()[0], false);
     closeMobileOutline();
     if (location.hash && byId[current]) requestAnimationFrame(() => select(currentAnchor));
     document.querySelectorAll('[data-path-choice]').forEach(button => button.addEventListener('click', () => {
@@ -591,7 +597,7 @@ Certifyd Core · 0.1.0-beta.27
     });
     container.addEventListener('click', e => {
       const a = e.target.closest('a[href^="#"]');
-      if (a && activeIds().includes(a.hash.slice(1))) { e.preventDefault(); clearSearch(); select(a.hash.slice(1)); }
+      if (a && sectionFor(a.hash.slice(1))) { e.preventDefault(); clearSearch(); select(a.hash.slice(1)); }
     });
     input.addEventListener('input', search);
     results.addEventListener('click', e => {
@@ -599,7 +605,7 @@ Certifyd Core · 0.1.0-beta.27
       if (a) { e.preventDefault(); clearSearch(); select(a.hash.slice(1)); }
     });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') { clearSearch(); input.blur(); } });
-    window.addEventListener('hashchange', () => { const id = location.hash.slice(1); select(sectionFor(id) && activeIds().includes(sectionFor(id).id) ? id : activeIds()[0]); });
+    window.addEventListener('hashchange', () => { const id = location.hash.slice(1); select(sectionFor(id) ? id : activeIds()[0]); });
     window.addEventListener('scroll', () => {
       if (scrollPending) return;
       scrollPending = true;

@@ -1,10 +1,10 @@
 ---
-title: "Why Federated Data Discovery is Better Than Legacy Blackbox Discovery for Creators"
+title: "Discover Creative Work Through the People Behind It"
 slug: "why-federated-data-discovery-is-better-than-legacy-blackbox-discovery-for-creators"
 author: "Certifyd"
 date: "2026-07-31"
-updated: "2026-07-31"
-excerpt: "Introduction In today’s digital landscape, creators rely on robust tools to manage their work, track financials, and engage with audiences effectively. One critical aspect of this ecosystem is the ability to discover and"
+updated: "2026-11-27"
+excerpt: "A credit can be the beginning of another discovery. Explore how Certifyd Fan connects creative work with contributors, profiles and collaborations."
 coverImage: "/images/blog/why-federated-data-discovery-is-better-than-legacy-blackbox-discovery-for-creators-1785520776608.png"
 coverImageAlt: ""
 coverImageCredit: ""
@@ -12,52 +12,55 @@ coverImageCreditUrl: ""
 coverImageProvider: "upload"
 tags: ["Certifyd", "creator ownership"]
 status: "published"
-seoTitle: "Why Federated Data Discovery is Better Than Legacy Blackbox Discovery"
-seoDescription: "Introduction In today’s digital landscape, creators rely on robust tools to manage their work, track financials, and engage with audiences effectively. One critical "
+seoTitle: "Discover Creative Work Through Creator Connections | Certifyd"
+seoDescription: "Discover creative work through the people behind it. See how contributor records, linked profiles and collaborations can guide exploration in Certifyd Fan."
 ---
 
-# Why Federated Data Discovery is Better Than Legacy Blackbox Discovery for Creators
+# Discover Creative Work Through the People Behind It
 
-## Introduction
+Sometimes the most interesting discovery happens after you've found something you like. You hear a song and wonder who else worked on it. You enjoy a video, notice a contributor's name, and want to see what they've made with other people.
 
-In today’s digital landscape, creators rely on robust tools to manage their work, track financials, and engage with audiences effectively. One critical aspect of this ecosystem is the ability to discover and access content efficiently.
+For a creator, those credits carry part of your creative life: the people you've worked with and the projects that brought you together. For someone discovering your work, they can offer a reason to keep exploring.
 
-### The Need for Transparency
+[Certifyd Fan](https://fan.certifyd.me/) supports that kind of exploration where the public records provide the connections. A work can lead to a contributor, their creator profile and another collaboration.
 
-Legacy blackbox discovery methods often lack transparency, making it difficult for creators to understand exactly how their work is being discovered and accessed by fans. This can lead to issues such as low visibility in search results or poor engagement metrics.
+## From a game video to another collaboration
 
-### What Is Federated Data Discovery?
+A product demonstration recorded on **November 25, 2026** followed that journey through **Farmers East**, a gaming video by **David** used in earlier Certifyd testing.
 
-Federated data discovery offers a more transparent approach by providing detailed insights into the catalog management, release records, analytics, and fan capabilities of Certifyd. This makes it easier for creators to understand how their work is being discovered and accessed by fans.
+Opening **Attribution & Lineage** revealed David and **Darryl Hillock** among the people involved. Following Darryl's contributor link opened his public creator profile. Its **Collaborations** section included both Farmers East and **I Love Certifyd**: another work to explore through someone connected to the first.
 
-### The Benefits of Federated Data Discovery
+The useful discovery wasn't just another video. It was a person whose creative connections gave the viewer somewhere else to go.
 
-#### Enhanced Visibility
+<figure>
+  <a href="/images/blog/farmers-east-attribution-demo-20261125.png"><img src="/images/blog/farmers-east-attribution-demo-20261125.png" alt="Historical November 25 product demonstration: Farmers East attribution view showing David and Darryl Hillock among the people involved" width="1080" height="1920" loading="lazy" style="width:min(100%,360px);height:auto" /></a>
+  <figcaption>November 25, 2026 — a recorded product demonstration from earlier testing. Select the image for the full-size view.</figcaption>
+</figure>
 
-With federated data discovery, creators can see exactly where their content appears in search results based on keywords or tags. This visibility helps them optimize their catalog management strategies to improve discoverability.
+## The people recorded alongside the work
 
-#### Improved Attribution
+Two current public works show how contributor information can carry across projects. Checked on **November 27, 2026**, **[I Love Certifyd](https://certifyd.blessedrthe.fyi/buy/cmuuugt8w0005uwmw93s8her2)** and **[Margaret's Place](https://certifyd.blessedrthe.fyi/buy/cmpz4zbos000duwfslk6gi0mr)** both name **Blessedrthe** as creator. Each lists **darrylhillock** and **Blessedrthe** as writers, with a recorded **50%** allocation apiece.
 
-Certifyd’s analytics capabilities allow creators to track the performance of their work across various channels and platforms. This detailed reporting helps creators understand which activities are driving engagement and financials, enabling better decision-making.
+Seeing the same contributor labels on two works gives a viewer context that a title or thumbnail alone cannot provide. These records show the shared credits and allocations. Their contributor entries currently have no profile links, so they do not provide the complete click-through journey shown in the earlier demonstration.
 
-#### Better Access Control
+## When a credit leads somewhere
 
-The fan capability ensures that only authorized users can access specific parts of a creator’s catalog or release records. This control mechanism prevents unauthorized access to sensitive information, enhancing security and compliance.
+A [public Certifyd profile](/profile/) brings a creator's identity, selected work and official links together. Where a work links to a contributor's profile and that profile lists collaborations, a viewer can follow the connection into another project.
 
-### Why It Matters for Creators
+As more works have linked creator profiles and available collaboration records, that could open more routes through the network. Someone might arrive for one work and stay to explore a collaborator's other projects. The connection becomes another way to choose what to discover next.
 
-For creators, the ability to see exactly how their work is discovered and accessed by fans is crucial. This transparency helps them:
+Fan currently shows contributor information and supports navigation where those links exist. The broader possibility depends on creators making those connections public and keeping their destinations available.
 
-- Optimize their content strategy
-- Improve financial performance through better analytics
-- Ensure that only authorized users can access their catalog or release records
-- Enhance security and compliance with access control mechanisms
+## A note on the examples
 
-### Conclusion
+The November 25 Farmers East demonstration shows a real product workflow, although its contributor records and links have since changed. The current examples demonstrate recorded credits and splits, but not a complete clickable discovery journey.
 
-Federated data discovery offers creators a more transparent, efficient, and secure way to manage their work, track financials, and engage with fans. By leveraging Certifyd’s capabilities, creators can gain better visibility into how their content is discovered and accessed, leading to improved engagement, performance, and security.
+These records document attribution; they don't independently establish legal ownership, payments or royalties received.
 
-### Next Steps
+## Give people another way into your work
 
-If you are a creator looking for a more transparent and efficient way to manage your work, discover your audience, and track financials, consider exploring the federated data discovery features of Certifyd. This will help you stay ahead in today’s digital marketplace.
+[Certifyd Core](/core/) provides the creator-operated publishing infrastructure behind supported work records and profiles. **Fan is a separate discovery application**, bringing together eligible public work from configured creator origins.
 
+If you're preparing your own work, the [Core walkthrough](/core/guide/#works) covers work records, and the [split setup guide](/core/guide/#splits) explains the supported contributor-agreement workflow. Publication, public sharing and discovery are separate steps; sharing does not guarantee inclusion or an audience.
+
+A viewer may come for a particular work. A useful credit can give them a reason to meet the people behind it—and see what else connects them.
