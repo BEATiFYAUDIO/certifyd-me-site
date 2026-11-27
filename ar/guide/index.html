@@ -3,31 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>How to use Certifyd AR</title>
-  <meta name="description" content="Install Certifyd AR, explore verified creator pages, and publish your own AR promotion.">
+  <title>Certifyd AR | Your Message on Supported Platforms</title>
+  <meta name="description" content="Add creator-authorized messages and actions to supported social profiles. Connect platform discovery to your official presence with Certifyd AR beta.">
+  <link rel="canonical" href="https://certifyd.me/ar/guide/">
   <link rel="icon" type="image/svg+xml" href="/images/certifyd-tab-icon.svg">
-  <style>
-    :root{--ink:#292b32;--muted:#56626b;--line:#dce6ea;--blue:#147dab;--paper:#f5f7f8}
-    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif}a{color:#096b96}a:focus-visible{outline:3px solid #69bce1;outline-offset:3px}.top{background:#fff;border-bottom:1px solid var(--line)}.top-inner{max-width:1000px;margin:auto;padding:15px 24px;display:flex;justify-content:space-between;align-items:center;gap:20px}.brand{display:flex;align-items:center;gap:9px;color:#263038;text-decoration:none;font-weight:750;font-size:22px;letter-spacing:-.04em}.brand img{width:34px;height:34px}.top nav{display:flex;gap:18px;font-size:14px}.top nav [aria-current]{font-weight:750;color:#095c83}main{max-width:1000px;margin:auto;padding:38px 24px 75px}.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--blue);font-weight:750}h1{font-size:clamp(2rem,5vw,3.5rem);letter-spacing:-.055em;line-height:1.1;margin:9px 0 14px}h2{font-size:1.45rem;letter-spacing:-.025em;margin:0 0 8px}.intro{max-width:700px;color:var(--muted)}.tabs{display:flex;flex-wrap:wrap;gap:9px;margin:27px 0 22px}.tabs a{padding:10px 14px;border:1px solid #bdd4e0;border-radius:9px;background:#fff;text-decoration:none;font-weight:650}.tabs a:hover{background:#e9f5fa}.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:25px;margin:0 0 16px;scroll-margin-top:20px}.card p{margin:0 0 14px;color:#45535c}.card ol{padding-left:23px;margin:12px 0 18px}.card li{padding-left:4px;margin:8px 0}.note{background:#e9f5fa;border-left:3px solid var(--blue);padding:11px 14px;border-radius:5px;color:#24516a!important}.footer{font-size:13px;color:var(--muted);margin-top:24px}@media(max-width:520px){.top-inner{padding:12px 16px}.brand{font-size:18px}.brand img{width:30px;height:30px}.top nav{font-size:12px;gap:10px}main{padding:28px 16px 60px}.card{padding:20px}}
-
-    /* Genuine AR walkthrough captures; no shared-header changes. */
-    .ar-guide-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(24px,4vw,60px);align-items:center;margin-bottom:24px}
-    .ar-guide-hero>div,.ar-illustrated>div{min-width:0}
-    .ar-capture{margin:22px 0 0;min-width:0;max-width:100%}
-    .ar-guide-hero>.ar-capture{margin:0;max-width:540px;justify-self:center}
-    .ar-capture a{display:block;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#0b1018}
-    .ar-capture img{display:block;width:100%;height:auto;max-width:100%}
-    .ar-capture figcaption{font-size:.85rem;line-height:1.5;color:var(--muted);margin-top:10px;max-width:78ch}
-    .ar-illustrated{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(24px,4vw,56px);align-items:start}
-    .ar-illustrated>.ar-capture{margin-top:0}
-    .ar-illustrated .ar-popup{width:min(100%,355px);justify-self:center}.ar-illustrated .ar-actions{width:min(100%,500px);justify-self:center}
-    @media(max-width:950px){.ar-guide-hero,.ar-illustrated{grid-template-columns:minmax(0,1fr)}.ar-illustrated>.ar-capture{margin-top:8px}}
-  </style>
-<link rel="stylesheet" href="/styles/public-layout.css?v=public-header-unified-20261127d">
+  <link rel="stylesheet" href="/styles/main-site.css">
+  <link rel="stylesheet" href="/ar/guide/overview.css?v=ar-creator-control-20261127b">
+  <link rel="stylesheet" href="/styles/public-layout.css?v=public-header-unified-20261127d">
 <script src="/scripts/grouped-navigation.js?v=public-header-20261126a" defer></script>
 </head>
-<body class="public-document public-walkthrough">
-  <header class="site-header public-header" role="banner">
+<body class="public-document public-walkthrough ar-page">
+<a class="ar-skip" href="#main">Skip to content</a>
+<header class="site-header public-header" role="banner">
   <div class="header-rail">
     <div class="wrap header-inner">
       <a class="brand" href="/" aria-label="Certifyd home"><img src="/images/certifyd_logo_transparent.svg" width="428" height="138" alt="Certifyd"></a>
@@ -43,17 +30,83 @@
     </div>
   </div>
 </header>
-  <main>
-    <div class="ar-guide-hero"><div>
-    <div class="eyebrow">Certifyd AR · Browser extension</div>
-    <h1>Meet the creator behind the page.</h1>
-    <p class="intro">Certifyd AR shows verified creator information while you browse. Creators can also publish their own messages on verified pages. Choose the path that fits you.</p>
-    </div><figure class="ar-capture"><a href="/ar/guide/images/certifyd-youtube-ar.webp" target="_blank" rel="noopener" aria-label="Open the full Certifyd YouTube and AR screenshot"><img src="/ar/guide/images/certifyd-youtube-ar.webp" width="1080" height="1060" fetchpriority="high" alt="Certifyd’s official YouTube profile with its genuine Certifyd AR panel showing Reveal, Support and Action buttons"></a><figcaption>The official Certifyd YouTube profile with its real AR actions open. Select an image to view it at full size.</figcaption></figure></div>
-    <nav class="tabs" aria-label="Certifyd AR paths"><a href="#install">Get AR</a><a href="#fan">Explore as a fan</a><a href="#creator">Publish as a creator</a></nav>
-    <section class="card" id="install"><h2>Get Certifyd AR</h2><p>Install the extension for your browser from the <a href="/downloads/">Certifyd downloads page</a>. On Android, Certifyd Browser has AR built in.</p><p class="note"><b>It worked when:</b> You can open the Certifyd icon in your browser. A supported, verified creator page will show their Certifyd information after checking the proof.</p></section>
-    <section class="card ar-illustrated" id="fan"><div><h2>Explore as a fan</h2><ol><li>Open a creator's supported social page or Certifyd profile.</li><li>Choose the Certifyd icon in your browser, or the Certifyd button beside a verified creator name where it appears.</li><li>Open their verified profile, website, or social links. A creator's published promotion appears on their sovereign profile.</li></ol><p class="note"><b>It worked when:</b> AR shows the verified creator's name and links. If it says it could not check the page, try again later; a network failure does not mean the creator is unregistered.</p><p>On <a href="https://fan.certifyd.me/">Certifyd Fan</a>, the AR popup shows a simple introduction to Certifyd. On a supported page for a creator who has not joined, it may offer an invitation.</p></div><div class="ar-example-stack"><figure class="ar-capture"><a href="/ar/guide/images/certifyd-public-profile.webp" target="_blank" rel="noopener" aria-label="Open the official Certifyd public profile screenshot"><img src="/ar/guide/images/certifyd-public-profile.webp" width="1000" height="215" loading="lazy" alt="The genuine public Certifyd creator profile showing the Certifyd name, logo, at-certifyd handle and Sovereign Node label"></a><figcaption>The official Certifyd public creator profile, @certifyd.</figcaption></figure><figure class="ar-capture ar-actions"><a href="/ar/guide/images/blessedrthe-inline-actions.webp" target="_blank" rel="noopener" aria-label="Open the full Blessedrthe creator actions screenshot"><img src="/ar/guide/images/blessedrthe-inline-actions.webp" width="500" height="870" loading="lazy" alt="Actual inline Certifyd AR panel for Blessedrthe, showing Reveal, Support and Action buttons"></a><figcaption>Blessedrthe’s real creator actions: open a reveal, offer support or explore his catalogue.</figcaption></figure></div></section>
-    <section class="card ar-illustrated" id="creator"><div><h2>Publish as a creator</h2><p>Editing is available only after you authorize this browser for your own verified profile. Visiting a page alone never grants editing access.</p><ol><li>Verify your profile or outside account in Core. On your verified page, open Certifyd AR and choose <b>Connect this browser</b>, then <b>Copy code</b>.</li><li>In Core, open <b>Profile → Connected apps → Certifyd AR</b>. Paste the code, choose <b>Connect Certifyd AR</b>, then <b>Approve connection</b>. Back in the extension, choose <b>Check connection</b>.</li><li>On your own sovereign profile, fill in the promotion's <b>Headline</b>, <b>Offer</b>, <b>Description</b>, and <b>Destination</b>. Choose <b>Preview as fan</b>, then <b>Save</b> and <b>Publish</b>.</li></ol><p class="note"><b>It worked when:</b> AR says <b>Published</b> and a visitor can see the promotion on your profile. You can update it and publish again, or choose <b>Deactivate</b> to remove it from the public view.</p><p>On your verified social pages, the creator editor offers <b>Reveal</b>, <b>Support</b>, and <b>Action</b>. The same browser authorization protects those updates.</p></div><figure class="ar-capture ar-popup"><a href="/ar/guide/images/blessedrthe-connect-browser.webp" target="_blank" rel="noopener" aria-label="Open the full browser connection controls screenshot"><img src="/ar/guide/images/blessedrthe-connect-browser.webp" width="355" height="565" loading="lazy" alt="Blessedrthe’s actual Certifyd AR popup showing the Connect this browser and Check connection buttons below verified creator links"></a><figcaption>Start with <b>Connect this browser</b>. Complete the authorization in Core, then return to <b>Check connection</b>.</figcaption></figure></section>
-    <p class="footer">AR checks live identity proofs before showing creator information. A missing or uncertain result should be treated as unverified. Read the <a href="/ar/privacy/">Certifyd AR privacy policy</a> or <a href="/core/guide/">return to the Core guide</a>.</p>
-  </main>
+
+<main id="main">
+  <section class="ar-hero hero" aria-labelledby="ar-title">
+    <div class="ar-hero-copy">
+      <p class="ar-eyebrow">Certifyd AR · Browser augmentation · Beta</p>
+      <h1 id="ar-title"><span>THEIR PLATFORM.</span><span>YOUR AUDIENCE.</span><span class="ar-accent">YOUR MESSAGE.</span></h1>
+      <p class="ar-lede">You built the audience. Certifyd AR helps you connect that attention to your verified creator presence, customizable messages and destinations beyond the platform.</p>
+      <div class="ar-actions"><a class="ar-btn ar-btn-primary" href="#customize">See the creator controls</a><a class="ar-btn" href="#get-started">Get started with AR</a></div>
+      <p class="ar-small">An additional layer for visitors using Certifyd AR on supported pages.</p>
+    </div>
+    <figure class="ar-shot ar-hero-shot">
+      <a href="/ar/guide/images/certifyd-youtube-ar.webp" target="_blank" rel="noopener" aria-label="View the full genuine Certifyd YouTube AR screenshot"><img src="/ar/guide/images/certifyd-youtube-ar.webp" width="1080" height="1060" fetchpriority="high" alt="Certifyd’s official YouTube page with its actual AR panel showing creator-selected Reveal, Support and Action buttons"></a>
+      <figcaption>A familiar platform. An additional message from the creator. Real Certifyd AR on YouTube; select images for a full-size view.</figcaption>
+    </figure>
+  </section>
+  <nav class="ar-page-nav" aria-label="On this page"><a href="#why-ar">Why AR</a><a href="#customize">Creator controls</a><a href="#get-started">Get started</a></nav>
+
+  <section id="why-ar" class="ar-section ar-demo" aria-labelledby="problem-title">
+    <div><p class="ar-eyebrow">A next step you choose</p><h2 id="problem-title">Their platform brings the visit.<br>You add the invitation.</h2><p>You earn people’s attention, while the platform controls much of how discovery and engagement work. Certifyd AR gives interested visitors another route to your official presence and the destinations you choose.</p><p id="how-it-works">On supported pages, AR adds a creator-authorized layer in the visitor’s browser. The Certifyd button opens your published message and actions alongside the existing page.</p><p class="ar-small">Visitors need AR installed. They choose whether to follow an action; platform accounts and audience data remain with the platform.</p></div>
+<figure class="ar-shot ar-context-shot"><a href="/ar/guide/images/blessedrthe-github-context.webp" target="_blank" rel="noopener" aria-label="View Blessedrthe’s genuine GitHub page with Certifyd AR"><img src="/ar/guide/images/blessedrthe-github-context.webp" width="1080" height="960" loading="lazy" alt="Blessedrthe’s actual GitHub profile with the Certifyd AR overlay open, displaying his published messages and links"></a><figcaption>Blessedrthe on GitHub, with his real AR message and actions. The underlying GitHub page remains in place.</figcaption></figure>
+  </section>
+
+  <section id="customize" class="ar-section ar-customize" aria-labelledby="customize-title">
+    <div class="ar-customize-intro"><p class="ar-eyebrow">Make the encounter yours</p><h2 id="customize-title">Your words.<br>Your buttons.<br>Your next step.</h2><p>Give interested people a reason to explore, a way to support you and a place to go next.</p></div>
+    <div class="ar-customize-grid">
+      <div class="ar-control-list">
+        <article><p class="ar-control-label">Reveal</p><h3>Give people a reason to look closer.</h3><p>Write a title and message, then link to something worth exploring. Blessedrthe uses his reveal to connect his code and music.</p></article>
+        <article><p class="ar-control-label">Support</p><h3>Make support an option.</h3><p>Choose a button label and a support destination. Blessedrthe’s real example invites visitors to “Keep the experiments alive.” Available payment options depend on the configured destination.</p></article>
+        <article><p class="ar-control-label">Action</p><h3>Choose where the conversation continues.</h3><p>Name the button and set its destination. In this example, “Explore the creator catalog” gives the visitor a route to more of Blessedrthe’s work.</p></article>
+        <div class="ar-publish-note"><strong>You write it. You preview it. You publish it.</strong><p>An authorized creator edits these messages in AR. Save the changes, use <b>Preview as fan</b> to see the viewer experience, then <b>Publish</b> when ready.</p></div>
+      </div>
+      <figure class="ar-shot ar-action-shot"><a href="/ar/guide/images/blessedrthe-actions-detail.webp" target="_blank" rel="noopener" aria-label="View Blessedrthe’s actual published AR actions at full size"><img src="/ar/guide/images/blessedrthe-actions-detail.webp" width="466" height="771" loading="lazy" alt="Blessedrthe’s genuine AR panel: Code, chords and creator control reveal; Keep the experiments alive support; and Explore the creator catalog action"></a><figcaption>Blessedrthe’s published messages and actions, shown in the actual browser panel.</figcaption></figure>
+    </div>
+    <div id="beyond-platforms" class="ar-profile-destination"><figure class="ar-shot"><a href="/ar/guide/images/certifyd-public-profile.webp" target="_blank" rel="noopener" aria-label="View the real public Certifyd profile identity"><img src="/ar/guide/images/certifyd-public-profile.webp" width="1000" height="215" loading="lazy" alt="The official public Certifyd profile showing the Certifyd identity, at-certifyd handle and Sovereign Node label"></a><figcaption>The official public Certifyd profile: a presence beyond the social account.</figcaption></figure><div><h3>An official place to continue.</h3><p>The browser popup can connect a visitor to your Certifyd profile, verified website and linked accounts. Your published actions offer the additional destinations you select.</p></div></div>
+
+  </section>
+
+  <section class="ar-section ar-products" aria-labelledby="products-title"><h2 id="products-title">AR publishes the message. Core authorizes the browser.</h2><div class="ar-product-grid"><article><h3>Certifyd AR</h3><p>Use the browser extension to view creator context, or to edit and publish your own AR messages after authorization.</p></article><article><h3>Certifyd Core</h3><p>Your creator-operated infrastructure supplies your profile, account connections and AR browser authorization.</p><a href="/core/">Explore Certifyd Core →</a></article></div><aside class="ar-fan-note"><p><strong>Certifyd Fan is a separate discovery application.</strong> It is optional and is not required to use AR. <a href="https://fan.certifyd.me/">Explore Certifyd Fan →</a></p></aside></section>
+
+  <section id="get-started" class="ar-section ar-start" aria-labelledby="start-title"><p class="ar-eyebrow">Choose your path</p><h2 id="start-title">View creator messages.<br>Or publish your own.</h2><p class="ar-start-intro">Viewers install AR and explore supported pages. Creators also authorize their browser through Core before editing and publishing.</p>
+    <nav class="ar-path-links" aria-label="Choose an AR guide path"><a class="ar-btn" href="#viewer">I’m here to explore</a><a class="ar-btn ar-btn-primary" href="#creator">I’m here to publish</a></nav>
+    <div class="ar-guide-paths">
+      <section id="viewer" class="ar-guide-path" aria-labelledby="viewer-title"><h3 id="viewer-title">Viewer path</h3><p>Read creator context and choose where to go next.</p>
+        <details id="install" class="ar-guide-step" open><summary>1. Install Certifyd AR</summary><div class="ar-guide-step-body"><p>Install the extension for your browser from the <a href="/downloads/">Certifyd downloads page</a>. On Android, Certifyd Browser has AR built in.</p><p class="ar-check"><b>It worked when:</b> You can open the Certifyd icon in your browser. A supported, verified creator page will show its Certifyd information after checking the connection.</p></div></details>
+        <details id="fan" class="ar-guide-step"><summary>2. Explore a supported creator page</summary><div class="ar-guide-step-body"><ol><li>Open a creator’s supported social page or Certifyd profile.</li><li>Choose the Certifyd icon in your browser to inspect the creator’s profile and verified links. Where the page shows a Certifyd button, use it to open the creator’s public AR actions.</li><li>Choose an available action or follow an official profile, website or account link.</li></ol><p class="ar-check"><b>It worked when:</b> AR shows the creator’s context for that page. If it cannot check the connection, try again later; a network failure does not mean the creator is unregistered.</p><p class="ar-small">On <a href="https://fan.certifyd.me/">Certifyd Fan</a>, the AR popup offers an introduction to Certifyd. This is an optional, separate discovery application. A supported page for a creator who has not joined may offer an invitation.</p></div></details>
+      </section>
+      <section id="creator" class="ar-guide-path" aria-labelledby="creator-title"><h3 id="creator-title">Creator path</h3><p>Editing is available only after you authorize this browser for your own verified profile. Visiting a page alone never grants editing access.</p>
+        <details id="authorize" class="ar-guide-step"><summary>1. Authorize this browser through Core</summary><div class="ar-guide-step-body"><ol><li>Verify your profile or outside account in Core. On your verified page, open Certifyd AR and choose <b>Connect this browser</b>, then <b>Copy code</b>.</li><li>In Core, open <b>Profile → Connected apps → Certifyd AR</b>. Paste the code, choose <b>Connect Certifyd AR</b>, then <b>Approve connection</b>. Back in the extension, choose <b>Check connection</b>.</li></ol><p>Core approves the browser’s permission to publish. Your AR messages are edited and published through AR; opening someone else’s profile does not give you those controls.</p><figure class="ar-shot"><a href="/ar/guide/images/blessedrthe-connect-browser.webp" target="_blank" rel="noopener" aria-label="View the real Certifyd AR browser connection controls"><img src="/ar/guide/images/blessedrthe-connect-browser.webp" width="355" height="565" loading="lazy" alt="Blessedrthe’s actual AR popup with verified creator links, Connect this browser and Check connection controls"></a><figcaption>The real browser connection controls. Authorize in Core before publishing from this device.</figcaption></figure></div></details>
+        <details id="publish" class="ar-guide-step"><summary>2. Customize and publish your message</summary><div class="ar-guide-step-body"><ol><li>On your verified social page, use the AR popup’s creator editor. Add the <b>Reveal</b> title, text and link; set the <b>Support</b> label and destination; and choose an <b>Action</b> label and destination.</li><li>Choose <b>Save</b>, check <b>Preview as fan</b> (the editor’s viewer preview), then choose <b>Publish</b>. The publishing service must be available, and your Core must be reachable for live authorization checks.</li></ol><p class="ar-check"><b>It worked when:</b> AR says <b>Published</b> and a visitor using AR can open your published actions on the supported page. To change your message, edit, save, preview and publish again.</p></div></details>
+      </section>
+    </div>
+    <div class="ar-actions ar-setup-actions"><a class="ar-btn ar-btn-primary" href="/downloads/">Get Certifyd AR</a><a class="ar-btn" href="/core/guide/">Open the Core walkthrough</a></div>
+  </section>
+  <footer class="ar-footer"><p><strong>Beta, on supported pages.</strong> The installed AR version, site compatibility, a reachable creator Core and publishing-service availability affect the experience. AR does not replace the platform or override its rules.</p><p>AR checks live identity connections before showing creator information. Treat a missing or uncertain result as unverified. <a href="/ar/privacy/">Certifyd AR privacy policy</a> · <a href="/downloads/">Downloads</a> · <a href="/core/guide/">Core guide</a></p></footer>
+</main>
+<script>
+// Preserve direct links to guide steps when their native accordion is closed.
+(() => {
+  function revealGuideTarget() {
+    let id;
+    try { id = decodeURIComponent(location.hash.slice(1)); } catch { return; }
+    const target = id && document.getElementById(id);
+    if (!target || !target.closest('main')) return;
+    let element = target;
+    while (element) {
+      if (element.tagName === 'DETAILS') element.open = true;
+      element = element.parentElement;
+    }
+    if (id === 'creator' || id === 'viewer') {
+      const firstStep = target.querySelector('details');
+      if (firstStep) firstStep.open = true;
+    }
+    requestAnimationFrame(() => target.scrollIntoView({ block: 'start', behavior: 'instant' }));
+  }
+  addEventListener('hashchange', revealGuideTarget);
+  revealGuideTarget();
+})();
+</script>
 </body>
 </html>
