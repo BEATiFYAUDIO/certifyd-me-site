@@ -3,3 +3,18 @@
 
 /* Core → public profile journey, scoped to the overview. */
 .profile-flow{list-style:none;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;padding:0;margin:30px 0}.profile-flow li{min-width:0;padding:22px 18px;background:var(--main-card);border:1px solid var(--main-border);border-top:3px solid #80e8f5;border-radius:16px}.flow-number{display:block;color:#ffb45d;font-size:.8rem;font-weight:800;letter-spacing:.12em;margin-bottom:18px}.profile-flow h3{font-size:1.12rem;line-height:1.25;letter-spacing:-.02em}.profile-flow p{font-size:.9rem;line-height:1.5;margin:0;color:#dcebf4}.profile-example{display:grid;grid-template-columns:1.15fr 1fr;align-items:center;gap:32px}.profile-example figure{min-width:0}.profile-example img{border-radius:12px;border:1px solid var(--main-border)}.profile-example figcaption{margin-top:12px}.profile-example h3{font-size:clamp(1.6rem,2.3vw,2rem)}@media(max-width:1120px){.profile-flow{grid-template-columns:repeat(3,minmax(0,1fr))}.profile-example{grid-template-columns:1fr}.profile-example figure{max-width:760px}}@media(max-width:600px){.profile-flow{grid-template-columns:1fr;gap:10px}.profile-flow li{position:relative;padding:20px 20px 20px 65px}.flow-number{position:absolute;left:20px;top:22px}.profile-flow h3{margin-bottom:8px}.profile-example{gap:24px}}
+
+/* Use the same framed hero and section rhythm as the main product pages. */
+.core-overview .breadcrumbs{margin:0 0 24px}
+.core-overview .core-hero{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);padding:clamp(24px,3.5vw,56px);gap:clamp(24px,3.5vw,56px)}
+.core-overview .hero-copy{min-width:0}
+.core-overview h1{font-size:clamp(2.35rem,4.4vw,4.5rem);line-height:1.02;font-weight:900;letter-spacing:-.045em}
+.core-overview .section{margin-top:clamp(24px,3vw,48px)}
+.core-overview .section-panel{padding:clamp(24px,3.5vw,48px)}
+.core-overview .on-page{gap:10px;padding:18px 0;border:0}
+.core-overview .on-page a{display:inline-flex;align-items:center;min-height:44px;padding:8px 16px;border:1px solid var(--main-border);border-radius:999px;background:rgba(255,255,255,.06);text-decoration:none;font-weight:650}
+.core-overview .on-page a:hover{background:rgba(255,255,255,.12)}
+.core-overview .on-page+.section{margin-top:12px}
+.core-overview .product-shot{min-width:0;box-shadow:var(--main-card-shadow)}
+@media(max-width:1120px){.core-overview .core-hero{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:720px){.core-overview .core-hero,.core-overview .section-panel{padding:24px 20px}.core-overview h1{font-size:clamp(2.15rem,8.7vw,2.9rem)}.core-overview .on-page{gap:8px}.core-overview .on-page a{font-size:.82rem;padding:8px 12px}}
