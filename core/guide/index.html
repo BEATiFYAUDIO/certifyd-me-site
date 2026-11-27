@@ -135,6 +135,12 @@ Certifyd Core · 0.1.0-beta.27
           <p class="note"><b>It worked when:</b> Core marks that account verified. If the other site has not updated yet, leave the proof in place and try again later.</p>
           <figure data-screenshot-release="v0.1.0-beta.20" class="screen proof-focus"><a data-screenshot-release="v0.1.0-beta.20" class="screen-shot" href="/core/guide/images/profile-proofs.png" target="_blank" rel="noopener"><img src="/core/guide/images/profile-proofs.png" alt="Profile Verification Proofs area with Creator Platforms and Add or Verify platform" loading="lazy" width="977" height="939"><span class="circle" style="--x:87%;--y:50%;--w:11%;--h:12%" aria-hidden="true"></span></a><figcaption><b>Beta 20 reference.</b> Find <b>Add / Verify platform</b> in Profile’s Verification Proofs area. This example already has verified accounts. Select the image for the full screen.</figcaption></figure>
         </section>
+        <section class="topic" id="ar-authorization" data-search="certifyd ar browser extension connected apps authorization identity connection code approve profile">
+          <div class="topic-head"><div><div class="number">AR · CONNECTED APPS</div><h2>Authorize a browser for Certifyd AR</h2></div><label class="mark"><input type="checkbox" data-done="ar-authorization">Done</label></div>
+          <p>Open <b>Profile → Connected apps → Certifyd AR</b>. This is the Core side of browser authorization: your creator identity signs permission for that browser to publish AR experiences. A verified account by itself does not give a browser editing access.</p>
+          <p>Use the Core device/browser holding your creator identity key. Paste the connection code from AR, choose <b>Connect Certifyd AR</b>, then <b>Approve connection</b>. The entry should show <b>Connected</b>; you can revoke it later with <b>Remove access</b>.</p>
+          <p>For browser installation, getting the code, checking the connection and publishing, follow the <a href="/ar/guide/#authorize">complete AR authorization instructions</a> and <a href="/ar/guide/#creator">AR creator guide</a>. Messages are edited and published in AR, not in Core. Certifyd Fan is a separate application and is not required for authorization.</p>
+        </section>
         <section class="topic" id="works" data-search="works catalog certifyd works legacy connect work spotify apple music youtube isrc upc iswc doi isbn eidr">
           <div class="topic-head"><div><div class="number">06 · CATALOG</div><h2>Add your first work</h2></div><label class="mark"><input type="checkbox" data-done="works">Done</label></div>
           <p>Start a draft for the song, video, book, image, or other file you want to share.</p>
@@ -397,14 +403,14 @@ Certifyd Core · 0.1.0-beta.27
         {label:'PUT YOUR PAGE ONLINE',ids:['public']},
         {label:'PUBLISH YOUR FIRST WORK',ids:['works','work-settings','release','library-first']},
         {label:'GET PAID',ids:['wallet']},
-        {label:'MORE IN CORE',ids:['works-tab','library','proof','audience','commerce-gate','network-tab','configuration','diagnostics','next']}
+        {label:'MORE IN CORE',ids:['works-tab','library','proof','ar-authorization','audience','commerce-gate','network-tab','configuration','diagnostics','next']}
       ],
       creator:[
         {label:'YOUR DOMAIN + TUNNEL',ids:['named']},
         {label:'PAYMENT SETUP',ids:['provider']},
         {label:'SELL OR COLLABORATE',ids:['work-settings','splits','release']},
         {label:'CREATOR TOOLS',ids:['rights','revenue','royalties']},
-        {label:'MORE IN CORE',ids:['advanced']}
+        {label:'MORE IN CORE',ids:['ar-authorization','advanced']}
       ],
       node:[
         {label:'YOUR DOMAIN + TUNNEL',ids:['named']},
@@ -413,7 +419,7 @@ Certifyd Core · 0.1.0-beta.27
         {label:'PROVIDER OPERATIONS',ids:['console']},
         {label:'SELL OR COLLABORATE',ids:['work-settings','splits','release']},
         {label:'NETWORK TOOLS',ids:['rights','revenue','royalties']},
-        {label:'MORE IN CORE',ids:['advanced','diagnostics']}
+        {label:'MORE IN CORE',ids:['ar-authorization','advanced','diagnostics']}
       ]
     };
     const saved = (() => {
