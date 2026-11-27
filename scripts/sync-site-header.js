@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const header = (await fs.readFile(path.join(root, 'templates/site-header.html'), 'utf8')).trim();
 const dirs = ['blog','guides','core','profile','downloads','join','retail-partners','media-promotion','services','policies','ar','browser','content-distribution'];
-const files = ['index.html', 'network.html', 'templates/blog-article.html', 'templates/blog-index.html'];
+const files = ['core/guide/archive/v0.1.0-beta.20/index.html', 'index.html', 'network.html', 'templates/blog-article.html', 'templates/blog-index.html'];
 async function collect(dir) {
   for (const entry of await fs.readdir(path.join(root, dir), { withFileTypes: true })) {
     if (entry.name === 'archive' || entry.isSymbolicLink()) continue;
@@ -29,8 +29,8 @@ for (const name of files) {
     after = after.replace('<main>', `<div class="guide-page-tools">${tools}</div>\n  <main>`);
   }
   after = after.replace(/<header\b[\s\S]*?<\/header>/, header);
-  if (!after.includes('href="/styles/public-layout.css?v=public-header-colour-20261127b"')) {
-    after = after.replace('</head>', '<link rel="stylesheet" href="/styles/public-layout.css?v=public-header-colour-20261127b">\n</head>');
+  if (!after.includes('href="/styles/public-layout.css?v=public-header-unified-20261127c"')) {
+    after = after.replace('</head>', '<link rel="stylesheet" href="/styles/public-layout.css?v=public-header-unified-20261127c">\n</head>');
   }
   after = after.replace(/[ \t]*<script\b[^>]*src="\/scripts\/grouped-navigation\.js(?:\?[^"\s]*)?"[^>]*><\/script>\n?/g, '');
   after = after.replace('</head>', '<script src="/scripts/grouped-navigation.js?v=public-header-20261126a" defer></script>\n</head>');
