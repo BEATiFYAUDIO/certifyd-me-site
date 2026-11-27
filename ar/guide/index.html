@@ -8,7 +8,7 @@
   <link rel="canonical" href="https://certifyd.me/ar/guide/">
   <link rel="icon" type="image/svg+xml" href="/images/certifyd-tab-icon.svg">
   <link rel="stylesheet" href="/styles/main-site.css">
-  <link rel="stylesheet" href="/ar/guide/overview.css?v=ar-creator-control-20261127b">
+  <link rel="stylesheet" href="/ar/guide/overview.css?v=ar-compact-20261127">
   <link rel="stylesheet" href="/styles/public-layout.css?v=public-header-unified-20261127d">
 <script src="/scripts/grouped-navigation.js?v=public-header-20261126a" defer></script>
 </head>
@@ -32,48 +32,41 @@
 </header>
 
 <main id="main">
-  <section class="ar-hero hero" aria-labelledby="ar-title">
+  <section id="why-ar" class="ar-hero hero" aria-labelledby="ar-title">
     <div class="ar-hero-copy">
       <p class="ar-eyebrow">Certifyd AR · Browser augmentation · Beta</p>
       <h1 id="ar-title"><span>THEIR PLATFORM.</span><span>YOUR AUDIENCE.</span><span class="ar-accent">YOUR MESSAGE.</span></h1>
-      <p class="ar-lede">You built the audience. Certifyd AR helps you connect that attention to your verified creator presence, customizable messages and destinations beyond the platform.</p>
-      <div class="ar-actions"><a class="ar-btn ar-btn-primary" href="#customize">See the creator controls</a><a class="ar-btn" href="#get-started">Get started with AR</a></div>
-      <p class="ar-small">An additional layer for visitors using Certifyd AR on supported pages.</p>
+      <p id="how-it-works" class="ar-lede">You built an audience on a platform you don’t run. Certifyd AR adds your published message and chosen actions to supported pages, giving interested visitors a next step you control.</p>
+      <div class="ar-actions"><a class="ar-btn ar-btn-primary" href="#install">Get Certifyd AR</a><a class="ar-btn" href="#creator">Set up creator messages</a></div>
+      <p class="ar-small">For visitors using AR. Platform accounts and audience data stay with the platform.</p>
     </div>
     <figure class="ar-shot ar-hero-shot">
       <a href="/ar/guide/images/certifyd-youtube-ar.webp" target="_blank" rel="noopener" aria-label="View the full genuine Certifyd YouTube AR screenshot"><img src="/ar/guide/images/certifyd-youtube-ar.webp" width="1080" height="1060" fetchpriority="high" alt="Certifyd’s official YouTube page with its actual AR panel showing creator-selected Reveal, Support and Action buttons"></a>
-      <figcaption>A familiar platform. An additional message from the creator. Real Certifyd AR on YouTube; select images for a full-size view.</figcaption>
+      <figcaption>Real Certifyd AR on YouTube. Select the image for a full-size view.</figcaption>
     </figure>
   </section>
   <nav class="ar-page-nav" aria-label="On this page"><a href="#why-ar">Why AR</a><a href="#customize">Creator controls</a><a href="#get-started">Get started</a></nav>
 
-  <section id="why-ar" class="ar-section ar-demo" aria-labelledby="problem-title">
-    <div><p class="ar-eyebrow">A next step you choose</p><h2 id="problem-title">Their platform brings the visit.<br>You add the invitation.</h2><p>You earn people’s attention, while the platform controls much of how discovery and engagement work. Certifyd AR gives interested visitors another route to your official presence and the destinations you choose.</p><p id="how-it-works">On supported pages, AR adds a creator-authorized layer in the visitor’s browser. The Certifyd button opens your published message and actions alongside the existing page.</p><p class="ar-small">Visitors need AR installed. They choose whether to follow an action; platform accounts and audience data remain with the platform.</p></div>
-<figure class="ar-shot ar-context-shot"><a href="/ar/guide/images/blessedrthe-github-context.webp" target="_blank" rel="noopener" aria-label="View Blessedrthe’s genuine GitHub page with Certifyd AR"><img src="/ar/guide/images/blessedrthe-github-context.webp" width="1080" height="960" loading="lazy" alt="Blessedrthe’s actual GitHub profile with the Certifyd AR overlay open, displaying his published messages and links"></a><figcaption>Blessedrthe on GitHub, with his real AR message and actions. The underlying GitHub page remains in place.</figcaption></figure>
-  </section>
-
   <section id="customize" class="ar-section ar-customize" aria-labelledby="customize-title">
-    <div class="ar-customize-intro"><p class="ar-eyebrow">Make the encounter yours</p><h2 id="customize-title">Your words.<br>Your buttons.<br>Your next step.</h2><p>Give interested people a reason to explore, a way to support you and a place to go next.</p></div>
+    <div class="ar-customize-intro"><p class="ar-eyebrow">Creator controls</p><h2 id="customize-title">Your words. Your buttons. Your next step.</h2></div>
     <div class="ar-customize-grid">
       <div class="ar-control-list">
-        <article><p class="ar-control-label">Reveal</p><h3>Give people a reason to look closer.</h3><p>Write a title and message, then link to something worth exploring. Blessedrthe uses his reveal to connect his code and music.</p></article>
-        <article><p class="ar-control-label">Support</p><h3>Make support an option.</h3><p>Choose a button label and a support destination. Blessedrthe’s real example invites visitors to “Keep the experiments alive.” Available payment options depend on the configured destination.</p></article>
-        <article><p class="ar-control-label">Action</p><h3>Choose where the conversation continues.</h3><p>Name the button and set its destination. In this example, “Explore the creator catalog” gives the visitor a route to more of Blessedrthe’s work.</p></article>
-        <div class="ar-publish-note"><strong>You write it. You preview it. You publish it.</strong><p>An authorized creator edits these messages in AR. Save the changes, use <b>Preview as fan</b> to see the viewer experience, then <b>Publish</b> when ready.</p></div>
+        <article><h3 class="ar-control-label">Reveal</h3><p>Write your introduction. Blessedrthe’s “Code, chords and creator control” brings his code and music together.</p></article>
+        <article><h3 class="ar-control-label">Support</h3><p>Choose a label and support destination: “Keep the experiments alive.”</p></article>
+        <article><h3 class="ar-control-label">Action</h3><p>Choose where visitors go next: “Explore the creator catalog.”</p></article>
+        <div class="ar-publish-note"><strong>Save. Preview. Publish.</strong><p><a href="#authorize">Authorize your browser through Core</a>, then <a href="#publish">edit and publish in AR</a>.</p></div>
       </div>
-      <figure class="ar-shot ar-action-shot"><a href="/ar/guide/images/blessedrthe-actions-detail.webp" target="_blank" rel="noopener" aria-label="View Blessedrthe’s actual published AR actions at full size"><img src="/ar/guide/images/blessedrthe-actions-detail.webp" width="466" height="771" loading="lazy" alt="Blessedrthe’s genuine AR panel: Code, chords and creator control reveal; Keep the experiments alive support; and Explore the creator catalog action"></a><figcaption>Blessedrthe’s published messages and actions, shown in the actual browser panel.</figcaption></figure>
+      <figure class="ar-shot ar-action-shot"><a href="/ar/guide/images/blessedrthe-actions-detail.webp" target="_blank" rel="noopener" aria-label="View Blessedrthe’s actual published AR actions at full size"><img src="/ar/guide/images/blessedrthe-actions-detail.webp" width="466" height="771" loading="lazy" alt="Blessedrthe’s genuine AR panel: Code, chords and creator control reveal; Keep the experiments alive support; and Explore the creator catalog action"></a><figcaption>Blessedrthe’s published AR message and actions.</figcaption></figure>
     </div>
-    <div id="beyond-platforms" class="ar-profile-destination"><figure class="ar-shot"><a href="/ar/guide/images/certifyd-public-profile.webp" target="_blank" rel="noopener" aria-label="View the real public Certifyd profile identity"><img src="/ar/guide/images/certifyd-public-profile.webp" width="1000" height="215" loading="lazy" alt="The official public Certifyd profile showing the Certifyd identity, at-certifyd handle and Sovereign Node label"></a><figcaption>The official public Certifyd profile: a presence beyond the social account.</figcaption></figure><div><h3>An official place to continue.</h3><p>The browser popup can connect a visitor to your Certifyd profile, verified website and linked accounts. Your published actions offer the additional destinations you select.</p></div></div>
-
+    <details class="ar-guide-step ar-extra-example"><summary>See the same experience on GitHub</summary><div class="ar-guide-step-body"><figure class="ar-shot ar-context-shot"><a href="/ar/guide/images/blessedrthe-github-context.webp" target="_blank" rel="noopener" aria-label="View Blessedrthe’s genuine GitHub page with Certifyd AR"><img src="/ar/guide/images/blessedrthe-github-context.webp" width="1080" height="960" loading="lazy" alt="Blessedrthe’s actual GitHub profile with his published Certifyd AR messages and links"></a><figcaption>Blessedrthe’s real GitHub page with AR open.</figcaption></figure></div></details>
+    <p id="beyond-platforms" class="ar-small ar-product-context">AR shows and publishes your messages. <a href="/core/">Core</a> supplies your creator infrastructure and browser authorization.</p>
   </section>
-
-  <section class="ar-section ar-products" aria-labelledby="products-title"><h2 id="products-title">AR publishes the message. Core authorizes the browser.</h2><div class="ar-product-grid"><article><h3>Certifyd AR</h3><p>Use the browser extension to view creator context, or to edit and publish your own AR messages after authorization.</p></article><article><h3>Certifyd Core</h3><p>Your creator-operated infrastructure supplies your profile, account connections and AR browser authorization.</p><a href="/core/">Explore Certifyd Core →</a></article></div><aside class="ar-fan-note"><p><strong>Certifyd Fan is a separate discovery application.</strong> It is optional and is not required to use AR. <a href="https://fan.certifyd.me/">Explore Certifyd Fan →</a></p></aside></section>
 
   <section id="get-started" class="ar-section ar-start" aria-labelledby="start-title"><p class="ar-eyebrow">Choose your path</p><h2 id="start-title">View creator messages.<br>Or publish your own.</h2><p class="ar-start-intro">Viewers install AR and explore supported pages. Creators also authorize their browser through Core before editing and publishing.</p>
     <nav class="ar-path-links" aria-label="Choose an AR guide path"><a class="ar-btn" href="#viewer">I’m here to explore</a><a class="ar-btn ar-btn-primary" href="#creator">I’m here to publish</a></nav>
     <div class="ar-guide-paths">
       <section id="viewer" class="ar-guide-path" aria-labelledby="viewer-title"><h3 id="viewer-title">Viewer path</h3><p>Read creator context and choose where to go next.</p>
-        <details id="install" class="ar-guide-step" open><summary>1. Install Certifyd AR</summary><div class="ar-guide-step-body"><p>Install the extension for your browser from the <a href="/downloads/">Certifyd downloads page</a>. On Android, Certifyd Browser has AR built in.</p><p>The desktop downloads currently list <b>0.1.7 beta</b> packages. Choose your browser below; these are manual beta installs, not an automatic extension-store installation.</p>
+        <details id="install" class="ar-guide-step"><summary>1. Install Certifyd AR</summary><div class="ar-guide-step-body"><p>Install the extension for your browser from the <a href="/downloads/">Certifyd downloads page</a>. On Android, Certifyd Browser has AR built in.</p><p>The desktop downloads currently list <b>0.1.7 beta</b> packages. Choose your browser below; these are manual beta installs, not an automatic extension-store installation.</p>
 <details id="install-chrome" class="ar-guide-step"><summary>Chrome / Chromium</summary><div class="ar-guide-step-body"><ol><li>Download the Chrome ZIP from <a href="/downloads/#browser-extension">Browser extensions</a> and extract it.</li><li>Open <code>chrome://extensions</code> and enable <b>Developer mode</b>.</li><li>Choose <b>Load unpacked</b> and select the extracted extension folder containing <code>manifest.json</code>.</li><li>Open a supported creator page and choose the Certifyd toolbar icon. If the icon is hidden, find Certifyd in your browser’s extensions menu.</li></ol></div></details>
 <details id="install-edge" class="ar-guide-step"><summary>Microsoft Edge</summary><div class="ar-guide-step-body"><ol><li>Download and extract the Edge ZIP from <a href="/downloads/#browser-extension">Browser extensions</a>.</li><li>Open <code>edge://extensions</code> and enable <b>Developer mode</b>.</li><li>Choose <b>Load unpacked</b> and select the extracted extension folder containing <code>manifest.json</code>.</li><li>Open a supported creator page and choose Certifyd from the toolbar or extensions menu.</li></ol></div></details>
 <details id="install-firefox" class="ar-guide-step"><summary>Firefox — temporary beta installation</summary><div class="ar-guide-step-body"><ol><li>Download and extract the Firefox ZIP from <a href="/downloads/#browser-extension">Browser extensions</a>.</li><li>Open <code>about:debugging#/runtime/this-firefox</code>.</li><li>Choose <b>Load Temporary Add-on</b>, then select <code>manifest.json</code> inside the extracted folder.</li><li>Repeat the temporary installation after restarting Firefox. This package is not a permanent Firefox Add-ons installation.</li></ol></div></details>
