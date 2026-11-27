@@ -29,8 +29,8 @@ for (const name of files) {
     after = after.replace('<main>', `<div class="guide-page-tools">${tools}</div>\n  <main>`);
   }
   after = after.replace(/<header\b[\s\S]*?<\/header>/, header);
-  if (!after.includes('href="/styles/public-layout.css?v=public-header-20261126a"')) {
-    after = after.replace('</head>', '<link rel="stylesheet" href="/styles/public-layout.css?v=public-header-20261126a">\n</head>');
+  if (!after.includes('href="/styles/public-layout.css?v=public-header-colour-20261127a"')) {
+    after = after.replace('</head>', '<link rel="stylesheet" href="/styles/public-layout.css?v=public-header-colour-20261127a">\n</head>');
   }
   after = after.replace(/[ \t]*<script\b[^>]*src="\/scripts\/grouped-navigation\.js(?:\?[^"\s]*)?"[^>]*><\/script>\n?/g, '');
   after = after.replace('</head>', '<script src="/scripts/grouped-navigation.js?v=public-header-20261126a" defer></script>\n</head>');

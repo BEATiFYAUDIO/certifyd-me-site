@@ -21,7 +21,7 @@ body.public-document:not(.public-walkthrough)>main p,body.public-document:not(.p
 .public-header .nav-desktop>a:hover,.public-header .nav-group[open]>summary,.public-header .nav-group.is-current>summary{background:#ffffff12;color:#fff}
 .public-header .nav-group-menu{position:absolute;top:calc(100% + 8px);left:0;z-index:1800;display:grid;gap:6px;min-width:220px;padding:8px;border:1px solid #cdeeff3d;border-radius:16px;background:#081620;box-shadow:0 20px 50px #00000070;white-space:nowrap}
 .public-header .nav-group-menu a{display:block;padding:10px 12px;border:1px solid #cdeeff1f;border-radius:10px;background:#ffffff0b;font-size:15px;line-height:1.5;min-height:44px}
-.public-header a[aria-current=page],.public-header .nav-group-menu a:hover,.public-header .nav-drawer a:hover{background:#ffffff15;color:#fff}
+.public-header a[aria-current=page]:not(.brand),.public-header .nav-group-menu a:hover,.public-header .nav-drawer a:hover{background:#ffffff15;color:#fff}
 .public-header .nav-mobile{display:none;position:relative;justify-self:end;margin:0;padding:0;z-index:1700}
 .public-header .nav-mobile>summary{display:flex;align-items:center;justify-content:center;width:48px;min-height:44px;padding:10px;list-style:none;border:1px solid #ffffff28;border-radius:12px;background:#ffffff0b;cursor:pointer}
 .public-header .burger{display:block;position:relative;width:22px;height:16px;border:0}
